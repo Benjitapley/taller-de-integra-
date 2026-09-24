@@ -1,0 +1,435 @@
+:root {
+  --morado: #493da0;
+  --morado-fuerte: #5138cc;
+  --fondo: #f7f6fd;
+  --blanco: #ffffff;
+  --texto: #302953;
+  --texto-suave: #7b7595;
+  --borde: #e5e1f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: "Segoe UI", Arial, sans-serif;
+  line-height: 1.5;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+/* Barra superior */
+.barra-superior {
+  background: var(--morado);
+  color: var(--blanco);
+  box-shadow: 0 2px 8px #30295312;
+}
+
+.navegacion {
+  max-width: 1200px;
+  min-height: 72px;
+  margin: 0 auto;
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.logo {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.8px;
+}
+
+a.logo {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.menu {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu a {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.menu a:hover {
+  background: #ffffff18;
+}
+
+/* Posición del contenido */
+.contenedor {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+/* Ancho del formulario */
+.crear-publicacion {
+  width: 100%;
+  max-width: 850px;
+  min-width: 0;
+}
+
+/* Encabezado */
+.encabezado-publicacion {
+  margin-bottom: 26px;
+}
+
+.volver {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: var(--morado-fuerte);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.volver:hover {
+  text-decoration: underline;
+}
+
+.crear-publicacion h1 {
+  margin: 0 0 6px;
+  color: var(--morado);
+  font-size: 34px;
+  line-height: 1.2;
+  letter-spacing: -1px;
+}
+
+.subtitulo {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+/* Tarjeta blanca */
+.formulario-publicacion {
+  padding: 26px;
+  background: var(--blanco);
+  border: 1px solid #eeebf7;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px #493da006;
+}
+
+/* Campos en dos columnas */
+.fila {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.formulario-publicacion > h2 {
+  width: 100%;
+  margin-bottom: 22px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--borde);
+  color: var(--morado);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.campo label {
+  color: var(--texto);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Estos campos ocupan toda la fila */
+.campo:has(#titulo),
+.campo:has(#descripcion),
+.campo:has(#imagen) {
+  grid-column: 1 / -1;
+}
+
+/* Campos de texto y selectores */
+.campo input:not([type="file"]),
+.campo select,
+.campo textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: #fdfcff;
+  color: var(--texto);
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.campo input::placeholder,
+.campo textarea::placeholder {
+  color: #938ca8;
+  opacity: 1;
+}
+
+.campo select {
+  cursor: pointer;
+}
+
+.campo textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: #8471df;
+  box-shadow: 0 0 0 3px #8471df20;
+}
+
+/* Subir imagen */
+.campo input[type="file"] {
+  width: 100%;
+  min-width: 0;
+  padding: 16px;
+  border: 1px dashed #c9c0e8;
+  border-radius: 10px;
+  background: #faf9ff;
+  color: var(--texto-suave);
+  font-size: 13px;
+}
+
+.campo input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #ede9fc;
+  color: var(--morado);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.campo input[type="file"]::file-selector-button:hover {
+  background: #e2daf9;
+}
+
+.campo small {
+  color: var(--texto-suave);
+  font-size: 12px;
+}
+
+/* Casilla de comentarios */
+.campo-checkbox {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.campo-checkbox input {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--morado-fuerte);
+  cursor: pointer;
+}
+
+.campo-checkbox label {
+  color: var(--texto-suave);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Franja de botones */
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 26px;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--fondo);
+}
+
+.acciones button {
+  min-height: 44px;
+  padding: 11px 22px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.acciones .boton-secundario {
+  background: var(--blanco);
+  color: var(--morado);
+  border-color: var(--borde);
+}
+
+.acciones .boton-secundario:hover {
+  background: #ede9fa;
+}
+
+.boton-primario {
+  background: var(--morado-fuerte);
+  color: var(--blanco);
+}
+
+.boton-primario:hover {
+  background: #412aa9;
+}
+
+a:focus-visible,
+button:focus-visible,
+.campo-checkbox input:focus-visible {
+  outline: 3px solid #a795ee;
+  outline-offset: 4px;
+}
+
+/* Pie de página */
+.pie-pagina {
+  margin-top: 24px;
+  padding: 20px;
+  border-top: 1px solid var(--borde);
+  color: var(--texto-suave);
+  text-align: center;
+  font-size: 12px;
+}
+
+.pie-pagina p {
+  margin: 0;
+}
+/* Ajustes para la estructura actual del HTML */
+.barra-superior {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  padding: 16px 28px;
+}
+
+.contenedor {
+  max-width: 906px;
+  padding: 28px;
+}
+
+.subtitulo {
+  margin-bottom: 26px;
+}
+
+.formulario-publicacion > h2 {
+  margin-top: 0;
+}
+
+.formulario-publicacion > .campo,
+.formulario-publicacion > .fila {
+  margin-bottom: 22px;
+}
+
+.volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  margin-bottom: 10px;
+}
+
+/* Flecha dibujada en CSS: no depende del símbolo de la fuente */
+.volver::before {
+  content: "";
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  flex-shrink: 0;
+  margin-left: 3px;
+}
+
+.acciones button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+#mensaje {
+  margin: 16px 0 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+#mensaje:empty {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .barra-superior {
+    padding: 16px 20px;
+  }
+
+  .contenedor {
+    padding: 22px 16px;
+  }
+
+  .crear-publicacion h1 {
+    font-size: 28px;
+  }
+
+  .formulario-publicacion {
+    padding: 20px 16px;
+  }
+
+  .fila {
+    grid-template-columns: 1fr;
+  }
+
+  .acciones {
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .acciones button {
+    width: 100%;
+  }
+}
