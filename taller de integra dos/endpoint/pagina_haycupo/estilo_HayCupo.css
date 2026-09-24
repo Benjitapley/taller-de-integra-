@@ -182,3 +182,45 @@ footer p {
     min-height: 200px;
   }
 }
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+}
+
+.boton-registro {
+  display: inline-block;
+  padding: 10px 16px;
+  border: 1px solid #ffffff80;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.2s;
+}
+
+.boton-registro:hover {
+  background: #ffffff20;
+}
+
+.boton-registro:focus-visible {
+  outline: 3px solid #a793e1;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  header {
+    padding: 12px 14px;
+  }
+
+  .boton-registro {
+    max-width: 55%;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
