@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear publicación | Hay cupo</title>
+  <link rel="stylesheet" href="creacion_intento1.css">
+</head>
+
+<body>
+  <!-- Barra superior -->
+  <header class="barra-superior">
+    <div class="logo">
+        <a href="#">Hay <br> cupo?</a>
+    </div>
+
+      <ul class="menu">
+        <li>
+          <!-- aka para ponerla denuevo en la pagina principal porfa -->
+          <a href="#" aria-label="Salir">Salir &#9650;</a>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="contenedor">
+    <section class="crear-publicacion"
+             aria-labelledby="titulo-crear-publicacion">
+
+      <header class="encabezado-publicacion">
+        <!-- cuando este lista la pagina que alguiien la cambia a la pagina principal porfa -->
+        <a class="enlace-volver" href="#">&larr; Volver</a>
+
+        <h1 id="titulo-crear-publicacion">Crear publicación</h1>
+        <p>Comparte tu arriendo o encuentra un lugar para vivir.</p>
+      </header>
+
+      
+      <form class="formulario-publicacion"
+            action="#"
+            method="post"
+            enctype="multipart/form-data">
+
+        <fieldset class="datos-publicacion">
+          <legend>Contenido de la publicación</legend>
+
+          <div class="campo">
+            <label for="titulo">Título</label>
+            <input
+              type="text"
+              id="titulo"
+              name="titulo"
+              placeholder="Escribe un título"
+              required
+              maxlength="120"
+            >
+          </div>
+
+          <div class="campo">
+            <label for="categoria">¿Buscas u ofreces arriendo?</label>
+            <select id="categoria" name="categoria" required>
+              <option value="">Selecciona una categoría</option>
+              <option value="busco">Busco arriendo</option>
+              <option value="ofrezco">Ofrezco arriendo</option>
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="ubicacion">Ubicación</label>
+            <input
+              type="text"
+              id="ubicacion"
+              name="ubicacion"
+              placeholder="Escribe la ubicación"
+              required
+            >
+          </div>
+
+          <div class="campo">
+            <label for="precio">Precio</label>
+            <input
+              type="number"
+              id="precio"
+              name="precio"
+              placeholder="Escribe el precio"
+              required
+              min="0"
+              step="0.01"
+            >
+          </div>
+
+          <div class="campo">
+            <label for="tipo">Tipo de vivienda</label>
+            <select id="tipo" name="tipo" required>
+              <option value="">Selecciona una opción</option>
+              <option value="casa">Casa</option>
+              <option value="departamento">Departamento</option>
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="contenido">Descripción</label>
+            <textarea
+              id="contenido"
+              name="contenido"
+              rows="10"
+              placeholder="Describe lo que ofreces o lo que estás buscando..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="campo">
+            <label for="imagen">Imagen (opcional)</label>
+            <input
+              type="file"
+              id="imagen"
+              name="imagen"
+              accept="image/png, image/jpeg, image/webp"
+              aria-describedby="ayuda-imagen"
+            >
+            <small id="ayuda-imagen">
+              Formatos permitidos: JPG, PNG o WEBP.
+            </small>
+          </div>
+
+          <div class="campo-checkbox">
+            <input
+              type="checkbox"
+              id="comentarios"
+              name="comentarios"
+              value="si"
+              checked
+            >
+            <label for="comentarios">Permitir comentarios</label>
+          </div>
+
+         
+        </fieldset>
+
+        <div class="acciones">
+          <button class="boton-secundario" type="reset">
+            Limpiar formulario
+          </button>
+
+          <button class="boton-principal" type="submit">
+            Publicar
+          </button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer class="pie-pagina">
+    <p>&copy; 2026 Hay cupo</p>
+  </footer>
+</body>
+</html>
