@@ -6,10 +6,10 @@
 
   <title>Crear publicación | Hay cupo</title>
 
-  <link rel="stylesheet" href="creacion.css">
+<link rel="stylesheet" href="/static/creacion.css">
 
-  <script src="ubicacion.js" defer></script>
-  <script src="creacion.js" defer></script>
+<script src="/static/ubicacion.js" defer></script>
+<script src="/static/creacion.js" defer></script>
 </head>
 
 <body>
@@ -100,8 +100,8 @@
               name="precio"
               placeholder="Escribe el precio"
               min="0"
-              max="1000000000000"
-              step="1"
+              max="999999999999.99"
+              step="0.01"
               required
             >
           </div>
@@ -121,6 +121,35 @@
               <option value="departamento">Departamento</option>
               <option value="habitacion">Habitación</option>
             </select>
+          </div>
+        </div>
+
+        <div class="fila">
+          <div class="campo">
+            <label for="tipo-publicacion">Tipo de publicación</label>
+
+            <select id="tipo-publicacion" name="tipo" required>
+              <option value="" disabled selected>
+                Selecciona una opción
+              </option>
+              <option value="Arrendador">Arrendador</option>
+              <option value="Compartida">Compartida</option>
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="cupos-totales">Cupos totales</label>
+
+            <input
+              type="number"
+              id="cupos-totales"
+              name="cupos_totales"
+              placeholder="Cantidad de cupos"
+              min="1"
+              max="2147483647"
+              step="1"
+              required
+            >
           </div>
         </div>
 

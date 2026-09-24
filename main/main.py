@@ -1,6 +1,8 @@
 import os
 from contextlib import asynccontextmanager
 from io import BytesIO
+from decimal import Decimal
+import logging
 from pathlib import Path
 from typing import Annotated, Literal
 from uuid import uuid4
@@ -15,7 +17,7 @@ from PIL import Image, UnidentifiedImageError
 
 # CARPETAS
 BASE = Path(__file__).resolve().parent
-FRONTEND = BASE / "CreacionDePublicacion"
+FRONTEND = BASE / "CreacionDePublicvacion"
 IMAGENES = BASE / "imagenes"
 
 IMAGENES.mkdir(parents=True, exist_ok=True)
@@ -31,33 +33,17 @@ def conectar():
     return psycopg.connect(url, connect_timeout=10)
 
 
-# CREAR TABLA AL INICIAR
+# Verifica el esquema existente. No crea la tabla antigua.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     with conectar() as conexion:
         conexion.execute("""
-            CREATE TABLE IF NOT EXISTS publicaciones (
-                id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                titulo VARCHAR(200) NOT NULL,
-                categoria VARCHAR(20) NOT NULL
-                    CHECK (categoria IN ('busco', 'ofrezco')),
-                ubicacion VARCHAR(250) NOT NULL,
-                precio BIGINT NOT NULL CHECK (precio >= 0),
-                tipo_vivienda VARCHAR(30) NOT NULL
-                    CHECK (
-                        tipo_vivienda IN (
-                            'casa',
-                            'departamento',
-                            'habitacion'
-                        )
-                    ),
-                descripcion TEXT NOT NULL,
-                permitir_comentarios BOOLEAN NOT NULL DEFAULT FALSE,
-                imagen TEXT,
-                creada_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
+            SELECT id_publicacion, id_usuario, tipo, titulo, descripcion,
+                   precio, ubicacion, estado, cupos_totales,
+                   categoria, tipo_vivienda, permitir_comentarios
+            FROM haycupo.publicacion LIMIT 0
         """)
-
+        conexion.execute("SELECT id_imagen, id_publicacion, url, orden FROM haycupo.imagen_publicacion LIMIT 0")
     yield
 
 
@@ -68,6 +54,23 @@ app.mount(
     StaticFiles(directory=FRONTEND),
     name="static",
 )
+
+
+app.mount("/imagenes", StaticFiles(directory=IMAGENES), name="imagenes")
+
+
+# Autor fijo SOLO para desarrollo local sin sistema de login.
+# No se recibe un id arbitrario desde el navegador.
+def autor_de_prueba():
+    if os.getenv("MODO_PRUEBA_LOCAL") != "1":
+        raise HTTPException(503, "Falta integrar el login. Para pruebas locales configura MODO_PRUEBA_LOCAL=1.")
+    try:
+        identificador = int(os.environ["PUBLICACION_AUTOR_ID"])
+        if identificador <= 0:
+            raise ValueError()
+        return identificador
+    except (KeyError, ValueError):
+        raise HTTPException(503, "Configura PUBLICACION_AUTOR_ID con el ID del usuario de prueba.") from None
 
 
 # MOSTRAR EL HTML
@@ -128,7 +131,9 @@ def crear_publicacion(
     titulo: Annotated[str, Form(min_length=1, max_length=200)],
     categoria: Annotated[Literal["busco", "ofrezco"], Form()],
     ubicacion: Annotated[str, Form(min_length=1, max_length=250)],
-    precio: Annotated[int, Form(ge=0, le=1000000000000)],
+    precio: Annotated[Decimal, Form(ge=0, max_digits=14, decimal_places=2)],
+    tipo: Annotated[Literal["Arrendador", "Compartida"], Form()],
+    cupos_totales: Annotated[int, Form(ge=1, le=2147483647)],
     tipo_vivienda: Annotated[
         Literal["casa", "departamento", "habitacion"],
         Form(),
@@ -137,6 +142,7 @@ def crear_publicacion(
     permitir_comentarios: Annotated[bool, Form()] = False,
     imagen: Annotated[UploadFile | None, File()] = None,
 ):
+    id_usuario = autor_de_prueba()
     titulo = titulo.strip()
     ubicacion = ubicacion.strip()
     descripcion = descripcion.strip()
@@ -191,46 +197,52 @@ def crear_publicacion(
 
         nombre_imagen = uuid4().hex + extension
         ruta_imagen = IMAGENES / nombre_imagen
-        ruta_imagen.write_bytes(contenido)
+
 
     try:
         with conectar() as conexion:
+            existe = conexion.execute(
+                "SELECT id_usuario FROM haycupo.usuario WHERE id_usuario = %s FOR KEY SHARE",
+                (id_usuario,),
+            ).fetchone()
+            if not existe:
+                raise HTTPException(422, "El autor configurado no existe. Revisa PUBLICACION_AUTOR_ID.")
+
             fila = conexion.execute(
                 """
-                INSERT INTO publicaciones (
-                    titulo,
-                    categoria,
-                    ubicacion,
-                    precio,
-                    tipo_vivienda,
-                    descripcion,
-                    permitir_comentarios,
-                    imagen
+                INSERT INTO haycupo.publicacion (
+                    id_usuario, tipo, titulo, descripcion, precio, ubicacion,
+                    estado, cupos_totales, categoria, tipo_vivienda,
+                    permitir_comentarios
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING id
+                VALUES (%s, %s, %s, %s, %s, %s, 'Disponible', %s, %s, %s, %s)
+                RETURNING id_publicacion
                 """,
-                (
-                    titulo,
-                    categoria,
-                    ubicacion,
-                    precio,
-                    tipo_vivienda,
-                    descripcion,
-                    permitir_comentarios,
-                    nombre_imagen,
-                ),
+                (id_usuario, tipo, titulo, descripcion, precio, ubicacion,
+                 cupos_totales, categoria, tipo_vivienda, permitir_comentarios),
             ).fetchone()
-
             identificador = fila[0]
 
-    except psycopg.Error:
-        if ruta_imagen:
-            ruta_imagen.unlink(missing_ok=True)
+            if ruta_imagen:
+                ruta_imagen.write_bytes(contenido)
+                conexion.execute(
+                    """INSERT INTO haycupo.imagen_publicacion
+                       (id_publicacion, url, orden) VALUES (%s, %s, 0)""",
+                    (identificador, f"/imagenes/{nombre_imagen}"),
+                )
+            # El contexto confirma ambas inserciones juntas al salir.
 
+    except (psycopg.Error, OSError):
+        if ruta_imagen:
+            try:
+                ruta_imagen.unlink(missing_ok=True)
+            except OSError:
+                logging.getLogger(__name__).warning("No se pudo limpiar la foto del intento fallido.")
+        # No imprimir claves ni datos enviados en los registros.
+        logging.getLogger(__name__).error("Falló el guardado de la publicación. Revisa PostgreSQL y los permisos de imagenes.")
         raise HTTPException(
             status_code=500,
-            detail="No se pudo guardar la publicación en PostgreSQL.",
+            detail="No se pudo guardar la publicación. Revisa la conexión y el esquema de PostgreSQL.",
         ) from None
 
     return {
