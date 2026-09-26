@@ -1,0 +1,39 @@
+Hay cupo | para la ejecucion ejecución
+Windows · PowerShell · FastAPI · PostgreSQL
+Comandos para compartir con el equipo de trabajo.
+
+Ejecuta los pasos en orden, en la misma terminal. Necesitas Python 3.10 o posterior, PostgreSQL en el puerto
+5432 y la base haycupo con el esquema y las tablas del proyecto.
+El modelo debe incluir categoria, tipo_vivienda y permitir_comentarios en haycupo.publicacion. Esta guía no
+crea ni migra las tablas.
+
+1. Entrar al proyecto
+Sustituye la ruta por la ubicación de tu copia del repositorio.
+cd 'C:\RUTA\AL\taller-de-integra-'
+
+2. Crear el entorno virtual (solo la primera vez)
+python -m venv .venv
+
+3. Activar el entorno
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+.\.venv\Scripts\Activate.ps1
+Debe aparecer (.venv) al inicio de la línea. Esta política solo se aplica a la sesión actual de PowerShell.
+
+4. Instalar las dependencias (primera instalación)
+python -m pip install "fastapi[standard]" "uvicorn[standard]"
+python -m pip install "psycopg[binary]" httpx python-multipart Pillow
+
+5. Entrar a la carpeta del backend
+cd .\main
+dir
+Aquí debe estar main.py y la carpeta del HTML, CSS y JavaScript. Su nombre debe coincidir exactamente con
+FRONTEND en main.py.
+Usa el backend actualizado: debe guardar en haycupo.publicacion e haycupo.imagen_publicacion, no en la tabla
+antigua publicaciones
+
+para la bases de datos 
+
+$env:DATABASE_URL = 'postgresql://postgres:152505@localhost:5432/haycupo'
+$env:GEOAPIFY_API_KEY = 'cf16179cadd64ea19502e32109355f1f'
+$env:MODO_PRUEBA_LOCAL = '1'
+$env:PUBLICACION_AUTOR_ID = '1'
