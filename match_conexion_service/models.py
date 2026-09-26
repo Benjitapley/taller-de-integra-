@@ -1,24 +1,49 @@
 from sqlalchemy import Column, Integer, DateTime, Enum
-from sqlalchemy.orm import declarative_base
-from datetime import datetime
+from sqlalchemy.ext.declarative import declarative_base
 import enum
+from datetime import datetime
+from database import engine
+from sqlalchemy import String, Float
+
 
 Base = declarative_base()
 
-# Definimos los estados exactos que pide la regla de negocio
+Base.metadata.create_all(bind=engine)
+
+# Enumerador extraído del MER
 class EstadoConexion(enum.Enum):
-    PENDIENTE = "Pendiente"
-    ACEPTADA = "Aceptada"
-    RECHAZADA = "Rechazada"
+    Pendiente = "Pendiente"
+    Aceptada = "Aceptada"
+    Rechazada = "Rechazada"
 
 class Conexion(Base):
-    __tablename__ = "conexiones"
+    __tablename__ = "conexion"
 
-    id = Column(Integer, primary_key=True, index=True)
-   #qien manda la solicitud
-    usuario_origen_id = Column(Integer, nullable=False, index=True)
-    #qien recibe la solicitud
-    usuario_destino_id = Column(Integer, nullable=False, index=True)
-    #el estado por defecto al enviar (FR-15 y FR-16)
-    estado = Column(Enum(EstadoConexion), default=EstadoConexion.PENDIENTE)
-    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    id_conexion = Column(Integer, primary_key=True, index=True)
+    
+    # En un entorno de microservicios compartiendo BD, estos IDs corresponden a la tabla Usuario
+    id_solicitante_FK = Column(Integer, nullable=False)
+    id_receptor_FK = Column(Integer, nullable=False)
+    
+    estado = Column(Enum(EstadoConexion), default=EstadoConexion.Pendiente, nullable=False)
+    fecha_solicitud = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class Usuario(Base):
+    __tablename__ = "usuario" # Asumimos que tu compa la llamó así
+    # Solo mapeamos los campos que necesitas para buscar[cite: 7]
+    id_usuario_PK = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String)
+    presupuesto = Column(Integer)
+    zona_interes = Column(String)
+    ocupacion = Column(String)
+
+class Publicacion(Base):
+    __tablename__ = "publicacion"
+    # Campos clave para los filtros de arriendo[cite: 7]
+    id_publicacion_PK = Column(Integer, primary_key=True, index=True)
+    titulo = Column(String)
+    precio = Column(Float)
+    ubicacion = Column(String)
+    tipo = Column(String)
+    estado = Column(String)
