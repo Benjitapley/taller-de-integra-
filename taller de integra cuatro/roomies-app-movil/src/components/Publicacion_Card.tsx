@@ -4,20 +4,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { Card } from './Card';
 import { colors } from '../theme/colors';
 
-type TipoPublicacion = 'arriendo' | 'se_busca' | 'se_necesita';
+export type TipoPublicacion = 'arriendo' | 'se_busca' | 'se_necesita';
 
-interface PublicacionCardProps {
+export interface PublicacionCardProps {
     tipo: TipoPublicacion;
     titulo: string;
     imagenUrl?: string;
     precio?: string;
     ubicacion?: string;
+    personas?: string;
+    descripcion?: string;
     publicadoHace: string;
     onPress?: () => void;
     onPressMenu?: () => void;
 }
 
-const configPorTipo: Record<TipoPublicacion, { etiqueta: string; icono: keyof typeof Ionicons.glyphMap; color: string }> = {
+export const configPorTipo: Record<TipoPublicacion, { etiqueta: string; icono: keyof typeof Ionicons.glyphMap; color: string }> = {
     arriendo: { etiqueta: 'Arriendo', icono: 'home-outline', color: colors.primary },
     se_busca: { etiqueta: 'Se busca', icono: 'search-outline', color: colors.secondary },
     se_necesita: { etiqueta: 'Se necesita', icono: 'person-outline', color: colors.warning },
@@ -29,6 +31,8 @@ export const PublicacionCard: React.FC<PublicacionCardProps> = ({
     imagenUrl,
     precio,
     ubicacion,
+    personas,
+    descripcion,
     publicadoHace,
     onPress,
     onPressMenu,
@@ -46,6 +50,13 @@ export const PublicacionCard: React.FC<PublicacionCardProps> = ({
 
             <Text style={styles.titulo} numberOfLines={2}>{titulo}</Text>
 
+            {personas && (
+                <View style={styles.filaUbicacion}>
+                    <Ionicons name="people-outline" size={14} color="#9CA3AF" />
+                    <Text style={styles.ubicacion}>{personas}</Text>
+                </View>
+            )}
+
             {precio && <Text style={styles.precio}>{precio}</Text>}
             {ubicacion && (
                 <View style={styles.filaUbicacion}>
@@ -53,6 +64,7 @@ export const PublicacionCard: React.FC<PublicacionCardProps> = ({
                     <Text style={styles.ubicacion}>{ubicacion}</Text>
                 </View>
             )}
+            {descripcion && <Text style={styles.descripcion}>{descripcion}</Text>}
 
             <View style={styles.footer}>
                 <Text style={styles.publicadoHace}>Publicado hace {publicadoHace}</Text>
@@ -107,6 +119,11 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#9CA3AF',
         marginLeft: 4,
+    },
+    descripcion: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 8,
     },
     footer: {
         flexDirection: 'row',
