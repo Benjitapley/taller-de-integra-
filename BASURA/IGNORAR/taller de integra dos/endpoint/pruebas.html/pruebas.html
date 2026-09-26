@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Prueba verificación</title>
+</head>
+
+<body>
+
+    <h1>Prueba de fotos</h1>
+
+    <button onclick="probarFotos()">
+        Probar fotos
+    </button>
+
+    <p id="resultado"></p>
+
+    <script>
+
+        async function probarFotos() {
+
+            const respuesta = await fetch(
+                "http://127.0.0.1:8080/api/verificacion/prueba"
+            );
+
+            const datos = await respuesta.json();
+
+            document.getElementById("resultado").textContent =
+                "Documento existe: " + datos.documento_existe +
+                " | Foto existe: " + datos.foto_existe;
+        }
+
+    </script>
+
+</body>
+</html>
