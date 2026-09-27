@@ -10,6 +10,8 @@ from uuid import uuid4
 import httpx
 import psycopg
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from match_conexion_service.routes import router as conexion_router
+
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
@@ -28,7 +30,7 @@ def conectar():
     url = os.getenv("DATABASE_URL")
 
     if not url:
-        raise RuntimeError("Falta configurar DATABASE_URL.")
+        raise RuntimeError("Falta configurar DATABASE_URL.")##########################################################
 
     return psycopg.connect(url, connect_timeout=10)
 
@@ -48,11 +50,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
+app.include_router(conexion_router)
 app.mount(
     "/static",
     StaticFiles(directory=FRONTEND),
-    name="static",
+    name="static"
+
 )
 
 
