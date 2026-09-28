@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Mulish:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>[hidden] { display: none !important; }</style>
   </head>
   <body>
     <header class="topbar">
@@ -143,6 +144,19 @@
               <span class="arrow">→</span>
             </button>
 
+                        <div id="emailVerification" hidden>
+              <p>Ingresa el código que recibiste por correo.</p>
+              <label class="field" for="verificationCode">
+                <span>Código de verificación</span>
+                <div class="input-wrap">
+                  <input id="verificationCode" type="text" inputmode="numeric" autocomplete="one-time-code" minlength="3" maxlength="3" pattern="[0-9]{3}" placeholder="123" aria-describedby="registerMessage" />
+                </div>
+              </label>
+              <button id="verifyCodeBtn" type="button" class="primary-btn">Verificar código</button>
+              <button id="resendCodeBtn" type="button" class="register-btn">Reenviar código</button>
+              <button id="changeEmailBtn" type="button" class="link-button">Corregir mis datos</button>
+              <p>El código vence en 10 minutos. Espera 60 segundos entre envíos.</p>
+            </div>
             <p id="registerMessage" class="message" aria-live="polite"></p>
 
             <div class="divider"><span>o</span></div>
@@ -220,3 +234,4 @@
     <script src="auth_app.js"></script>
   </body>
 </html>
+

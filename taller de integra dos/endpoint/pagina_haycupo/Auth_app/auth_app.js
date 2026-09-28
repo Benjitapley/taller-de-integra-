@@ -167,33 +167,151 @@ function showProfile(user) {
   document.getElementById('profileBio').value = user.bio || '';
 }
 
+// Rutas del mismo servidor FastAPI que sirve este HTML.
+let registroPendiente = null;
+let correoConfirmado = false;
+let correoOcupado = false;
+
+async function solicitarCorreo(ruta, datos) {
+  let respuesta;
+  try {
+    respuesta = await fetch(`/api/correo/${ruta}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    });
+  } catch {
+    throw new Error('No se pudo conectar con el servidor. Revisa que FastAPI esté iniciado.');
+  }
+  let resultado;
+  try { resultado = await respuesta.json(); }
+  catch { throw new Error('Abre esta página desde FastAPI; el servidor no devolvió JSON.'); }
+  if (!respuesta.ok) {
+    throw new Error(typeof resultado.detail === 'string'
+      ? resultado.detail : 'Revisa el correo y el código ingresados.');
+  }
+  return resultado;
+}
+
+function actualizarControlesCorreo() {
+  const pendiente = Boolean(registroPendiente);
+  ['registerName', 'registerEmail', 'registerPassword'].forEach(id => {
+    document.getElementById(id).readOnly = pendiente || correoOcupado;
+  });
+  document.querySelector('#registerForm button[type="submit"]').disabled = pendiente || correoOcupado;
+  document.getElementById('emailVerification').hidden = !pendiente;
+  ['verifyCodeBtn', 'resendCodeBtn', 'changeEmailBtn'].forEach(id => {
+    document.getElementById(id).disabled = correoOcupado;
+  });
+  document.getElementById('verificationCode').disabled = correoOcupado || correoConfirmado;
+  document.getElementById('resendCodeBtn').disabled = correoOcupado || correoConfirmado;
+}
+
 async function handleRegister(event) {
   event.preventDefault();
+  if (correoOcupado || registroPendiente) return;
   const form = event.currentTarget;
-  const data = new FormData(form);
-
-  const payload = {
-    name: String(data.get('name') || '').trim(),
-    email: String(data.get('email') || '').trim(),
-    password: String(data.get('password') || '').trim()
-  };
-
   const message = document.getElementById('registerMessage');
-
-  if (!payload.name || !payload.email || payload.password.length < 6) {
-    setMessage(message, 'Completa todos los campos y usa al menos 6 caracteres en la contraseña.', 'error');
+  const payload = {
+    name: document.getElementById('registerName').value.trim(),
+    email: document.getElementById('registerEmail').value.trim(),
+    password: document.getElementById('registerPassword').value
+  };
+  if (!form.reportValidity() || !payload.name || payload.password.length < 6) {
+    setMessage(message, 'Completa los campos y usa al menos 6 caracteres en la contraseña.', 'error');
     return;
   }
-
+  correoOcupado = true;
+  actualizarControlesCorreo();
   try {
-    await mockApi.register(payload);
-    resetAuthForms();
-    switchTab('login');
-    document.getElementById('loginEmail').focus();
+    if (readUsers().some(user => user.email.toLowerCase() === payload.email.toLowerCase())) {
+      throw new Error('Ya existe un usuario de prueba con ese correo.');
+    }
+    await solicitarCorreo('enviar-codigo', { correo: payload.email });
+    registroPendiente = payload;
+    correoConfirmado = false;
+    setMessage(message, `Enviamos un código a ${payload.email}. Vence en 10 minutos.`);
   } catch (error) {
-    setMessage(message, error.message || 'No se pudo registrar.', 'error');
+    setMessage(message, error.message, 'error');
+  } finally {
+    correoOcupado = false;
+    actualizarControlesCorreo();
+    if (registroPendiente) document.getElementById('verificationCode').focus();
   }
 }
+
+async function comprobarCorreo() {
+  if (correoOcupado || !registroPendiente) return;
+  const message = document.getElementById('registerMessage');
+  const codigo = document.getElementById('verificationCode').value.trim();
+  if (!correoConfirmado && !/^[0-9]{3}$/.test(codigo)) {
+    setMessage(message, 'Ingresa los 3 números del código.', 'error');
+    return;
+  }
+  correoOcupado = true;
+  actualizarControlesCorreo();
+  try {
+    if (!correoConfirmado) {
+      const resultado = await solicitarCorreo('verificar-codigo', {
+        correo: registroPendiente.email, codigo
+      });
+      if (resultado.resultado !== 'CORRECTO' || resultado.verificado !== true) {
+        throw new Error(resultado.mensaje || 'Código incorrecto o vencido.');
+      }
+      correoConfirmado = true;
+    }
+    // El registro original sigue siendo una demo local; no es autenticación real.
+    await mockApi.register(registroPendiente);
+    localStorage.removeItem(STORAGE_KEYS.currentUser);
+    registroPendiente = null;
+    correoConfirmado = false;
+    resetAuthForms();
+    switchTab('login');
+    setMessage(document.getElementById('loginMessage'), 'Cuenta de prueba creada. Correo verificado correctamente.');
+    document.getElementById('loginEmail').focus();
+  } catch (error) {
+    setMessage(message, error.message || 'No se pudo verificar el correo.', 'error');
+  } finally {
+    correoOcupado = false;
+    actualizarControlesCorreo();
+  }
+}
+
+async function reenviarCorreo() {
+  if (correoOcupado || !registroPendiente || correoConfirmado) return;
+  correoOcupado = true;
+  actualizarControlesCorreo();
+  const message = document.getElementById('registerMessage');
+  try {
+    await solicitarCorreo('enviar-codigo', { correo: registroPendiente.email });
+    document.getElementById('verificationCode').value = '';
+    setMessage(message, 'Nuevo código enviado. Usa el más reciente.');
+  } catch (error) {
+    setMessage(message, error.message, 'error');
+  } finally {
+    correoOcupado = false;
+    actualizarControlesCorreo();
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('verifyCodeBtn').addEventListener('click', comprobarCorreo);
+  document.getElementById('resendCodeBtn').addEventListener('click', reenviarCorreo);
+  document.getElementById('changeEmailBtn').addEventListener('click', () => {
+    if (correoOcupado) return;
+    registroPendiente = null;
+    correoConfirmado = false;
+    document.getElementById('verificationCode').value = '';
+    actualizarControlesCorreo();
+    setMessage(document.getElementById('registerMessage'), 'Edita tus datos y vuelve a pulsar Registrarse.');
+    document.getElementById('registerEmail').focus();
+  });
+  document.getElementById('verificationCode').addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); comprobarCorreo(); }
+  });
+  actualizarControlesCorreo();
+});
+
 
 async function handleLogin(event) {
   event.preventDefault();
@@ -202,7 +320,7 @@ async function handleLogin(event) {
 
   const payload = {
     email: String(data.get('email') || '').trim(),
-    password: String(data.get('password') || '').trim()
+    password: String(data.get('password') || '')
   };
 
   const message = document.getElementById('loginMessage');
@@ -289,3 +407,4 @@ window.addEventListener('DOMContentLoaded', () => {
   showProfile(null);
   switchTab('login');
 });
+
