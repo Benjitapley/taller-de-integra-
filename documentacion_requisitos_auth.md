@@ -9,6 +9,9 @@ Alcance: registro, inicio de sesion y gestion de la sesion del usuario
 
 ## 3. Stakeholders, actores y casos de uso
 
+## 3.0 Para iniciar:
+uvicorn main.main:app --reload
+
 ### 3.1. Stakeholders
 
 | Stakeholder | Interes / necesidad |
