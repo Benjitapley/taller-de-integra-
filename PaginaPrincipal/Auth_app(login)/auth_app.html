@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hay cupo</title>
-    <link rel="stylesheet" href="auth_app.css" />
+    <link rel="stylesheet" href="/static_principal/Auth_app(login)/auth_app.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Mulish:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -68,7 +68,7 @@
           <h2 class="welcome">¡Bienvenido de vuelta!</h2>
 
           <form id="loginForm" class="form-panel active" novalidate>
-            <p class="subtitle">Inicia sesión para continuar encontrando tu próximo hogar. PASENME LOS ICONOS DEL MOCKUP DEL FIGMA PORFA INTENTE HACER LO MAS PARECIDO EL ICONO DEL SILLONXD</p>
+            <p class="subtitle">Inicia sesión para continuar encontrando tu próximo hogar.</p>
 
             <label class="field">
               <span>Correo electrónico</span>
@@ -77,6 +77,7 @@
                 <input type="email" id="loginEmail" name="email" placeholder="ejemplo@correo.com" required />
               </div>
             </label>
+            
 
             <label class="field">
               <span>Contraseña</span>
@@ -124,6 +125,14 @@
               <div class="input-wrap">
                 <span class="input-icon"><i class="fa-solid fa-envelope"></i></span>
                 <input type="email" id="registerEmail" name="email" placeholder="ejemplo@correo.com" required />
+              </div>
+            </label>
+
+            <label class="field">
+              <span>Fecha de nacimiento</span>
+              <div class="input-wrap">
+                <span class="input-icon"><i class="fa-solid fa-calendar"></i></span>
+                <input type="date" id="registerFecha" name="fecha_nacimiento" required />
               </div>
             </label>
 
@@ -217,6 +226,6 @@
       </div>
     </footer>
 
-    <script src="auth_app.js"></script>
+    <script src="/static_principal/Auth_app(login)/auth_app.js"></script>
   </body>
 </html>
