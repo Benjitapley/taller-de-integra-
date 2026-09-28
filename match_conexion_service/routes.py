@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from database import get_db 
-from models import Conexion, EstadoConexion, Usuario, Publicacion
-from schemas import ConexionCreate, ConexionResponse, ConexionUpdate, UsuarioBusqueda, PublicacionBusqueda
+from match_conexion_service.database import get_db
+from match_conexion_service.models import Conexion, EstadoConexion, Usuario, Publicacion
+from match_conexion_service.schemas import ConexionCreate, ConexionResponse, ConexionUpdate, UsuarioBusqueda, PublicacionBusqueda
 
 router = APIRouter(
     prefix="/conexiones",

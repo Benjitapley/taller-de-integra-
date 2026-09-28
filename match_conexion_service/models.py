@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, DateTime, Enum, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 import enum
 from datetime import datetime
-from database import engine
+from match_conexion_service.database import engine
 
 Base = declarative_base()
 
