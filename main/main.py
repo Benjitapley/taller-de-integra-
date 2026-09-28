@@ -14,12 +14,15 @@ from match_conexion_service.routes import router as conexion_router
 
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
+from auth_service.main import auth_router
 
 
 # CARPETAS
 BASE = Path(__file__).resolve().parent
-FRONTEND = BASE / "CreacionDePublicvacion"
+FRONTEND_CREACION = BASE.parent / "Creacion_De_publicacion"
+FRONTEND_PRINCIPAL = BASE.parent / "PaginaPrincipal"
 IMAGENES = BASE / "imagenes"
 
 IMAGENES.mkdir(parents=True, exist_ok=True)
@@ -27,12 +30,9 @@ IMAGENES.mkdir(parents=True, exist_ok=True)
 
 # CONEXIÓN CON POSTGRESQL
 def conectar():
-    url = os.getenv("DATABASE_URL")
-
-    if not url:
-        raise RuntimeError("Falta configurar DATABASE_URL.")##########################################################
-
+    url = "postgresql://postgres:Hcupo2223xd@db.erefnpvdjondjpcyjrpb.supabase.co:5432/postgres"
     return psycopg.connect(url, connect_timeout=10)
+   
 
 
 # Verifica el esquema existente. No crea la tabla antigua.
@@ -50,37 +50,46 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-app.include_router(conexion_router)
-app.mount(
-    "/static",
-    StaticFiles(directory=FRONTEND),
-    name="static"
 
+# CONFIGURACIÓN DE CORS (Permite que tu JS se conecte sin bloqueos)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
+app.include_router(conexion_router)
+app.include_router(auth_router)
 
+# MONTAJE DE CARPETAS ESTÁTICAS
+app.mount("/static_creacion", StaticFiles(directory=FRONTEND_CREACION), name="static_creacion")
+app.mount("/static_principal", StaticFiles(directory=FRONTEND_PRINCIPAL), name="static_principal")
 app.mount("/imagenes", StaticFiles(directory=IMAGENES), name="imagenes")
 
 
 # Autor fijo SOLO para desarrollo local sin sistema de login.
 # No se recibe un id arbitrario desde el navegador.
 def autor_de_prueba():
-    if os.getenv("MODO_PRUEBA_LOCAL") != "1":
-        raise HTTPException(503, "Falta integrar el login. Para pruebas locales configura MODO_PRUEBA_LOCAL=1.")
-    try:
-        identificador = int(os.environ["PUBLICACION_AUTOR_ID"])
-        if identificador <= 0:
-            raise ValueError()
-        return identificador
-    except (KeyError, ValueError):
-        raise HTTPException(503, "Configura PUBLICACION_AUTOR_ID con el ID del usuario de prueba.") from None
+    return 1
 
 
-# MOSTRAR EL HTML
+# RUTAS PARA MOSTRAR LOS HTML
 @app.get("/")
-def mostrar_formulario():
-    return FileResponse(FRONTEND / "Creacion.html")
+def mostrar_login():
+    # La página de inicio por defecto será el Login
+    return FileResponse(FRONTEND_PRINCIPAL / "Auth_app(login)" / "auth_app.html")
 
+@app.get("/inicio")
+def mostrar_pagina_principal():
+    # La pantalla morada de búsqueda
+    return FileResponse(FRONTEND_PRINCIPAL / "hayCupo.html")
+
+@app.get("/crear")
+def mostrar_formulario_creacion():
+    # El formulario de creación con el nuevo nombre de archivo
+    return FileResponse(FRONTEND_CREACION / "publicacion.html")
 
 # AUTOCOMPLETADO DE UBICACIÓN
 @app.get("/api/ubicaciones")
@@ -233,7 +242,6 @@ def crear_publicacion(
                        (id_publicacion, url, orden) VALUES (%s, %s, 0)""",
                     (identificador, f"/imagenes/{nombre_imagen}"),
                 )
-            # El contexto confirma ambas inserciones juntas al salir.
 
     except (psycopg.Error, OSError):
         if ruta_imagen:
@@ -241,7 +249,6 @@ def crear_publicacion(
                 ruta_imagen.unlink(missing_ok=True)
             except OSError:
                 logging.getLogger(__name__).warning("No se pudo limpiar la foto del intento fallido.")
-        # No imprimir claves ni datos enviados en los registros.
         logging.getLogger(__name__).error("Falló el guardado de la publicación. Revisa PostgreSQL y los permisos de imagenes.")
         raise HTTPException(
             status_code=500,
