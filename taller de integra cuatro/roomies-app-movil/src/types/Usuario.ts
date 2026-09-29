@@ -1,10 +1,15 @@
 export type RolUsuario = 'Usuario' | 'Admin';
 
-export type OcupacionUsuario = 'Estudiante' | 'Trabajador' | 'Ambos';
+export type OcupacionUsuario =
+  | 'Estudiante'
+  | 'Trabajador'
+  | 'Ambos';
 
 /**
- * Datos de usuario que pueden utilizarse en las primeras vistas del cliente.
- * Se basa en la entidad Usuario del MER y en FR-12/FR-13 del SRS.
+ * Datos base del usuario utilizados por las primeras pantallas.
+ *
+ * Se basa en la entidad Usuario del MER y en los requisitos
+ * FR-03, FR-12 y FR-13 del SRS.
  */
 export interface Usuario {
   idUsuario: number;
@@ -18,14 +23,41 @@ export interface Usuario {
   fotoPerfilUrl?: string;
 
   /**
-   * Campo derivado de las evaluaciones. No existe como atributo directo
-   * de Usuario en el MER, pero FR-13 contempla la calificación como filtro.
-   * Queda opcional hasta que TI2 defina el contrato definitivo.
+   * Campo derivado de las evaluaciones.
+   * No existe como atributo directo de Usuario en el MER,
+   * pero FR-13 contempla la calificación como filtro.
    */
   calificacionPromedio?: number;
+
+  /**
+   * Cantidad de evaluaciones recibidas por el usuario.
+   * Se mantiene opcional hasta contar con el contrato definitivo de TI2.
+   */
+  cantidadEvaluaciones?: number;
 }
 
-/** Datos adicionales que corresponden al perfil del propio usuario. */
+/**
+ * Información adicional utilizada en la vista del perfil
+ * del propio usuario.
+ */
 export interface UsuarioPerfil extends Usuario {
   email: string;
+
+  /**
+   * Información presentada en el perfil.
+   * No corresponde actualmente a atributos definidos en el MER,
+   * por lo que puede ajustarse cuando exista el contrato definitivo.
+   */
+  bio?: string;
+
+  stats?: {
+    publicaciones: number;
+    mensajes: number;
+    guardados: number;
+    evaluaciones: number;
+  };
+
+  preferencias?: string[];
+
+  buscaEn?: string[];
 }

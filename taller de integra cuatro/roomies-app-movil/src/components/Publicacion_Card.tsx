@@ -196,6 +196,11 @@ const styles = StyleSheet.create({
         lineHeight: 18,
         color: paletaPublicacion.textoPrincipal,
     },
+    descripcion: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 8,
+    },
     footer: {
         flexDirection: 'row',
         alignItems: 'center',
