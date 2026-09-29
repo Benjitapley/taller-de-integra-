@@ -1,31 +1,52 @@
-export type RolUsuario = 'Usuario' | 'Admin';
+import type { TipoPublicacion } from "@/components/Publicacion_Card";
 
-export type OcupacionUsuario = 'Estudiante' | 'Trabajador' | 'Ambos';
+// Modelos usados por la pantalla de Perfil (MOB-08).
+// El campo "estado" de Usuario y el tipo de Publicacion ahora reutilizan
+// TipoPublicacion ('arriendo' | 'se_busca' | 'se_necesita'), definido en
+// Publicacion_Card.tsx (componente de un compañero, probablemente MOB-03).
+// Antes existía un EstadoPublicacion propio en constants/estadosPublicacion.ts
+// con solo 2 valores — se eliminó ese archivo para no tener dos taxonomías
+// distintas conviviendo.
 
-/**
- * Datos de usuario que pueden utilizarse en las primeras vistas del cliente.
- * Se basa en la entidad Usuario del MER y en FR-12/FR-13 del SRS.
- */
 export interface Usuario {
-  idUsuario: number;
-  rol: RolUsuario;
+  id: string;
   nombre: string;
-  fechaNacimiento: string;
-  estadoVerificacion: string;
-  presupuesto: number;
-  zonaInteres: string;
-  ocupacion: OcupacionUsuario;
-  fotoPerfilUrl?: string;
-
-  /**
-   * Campo derivado de las evaluaciones. No existe como atributo directo
-   * de Usuario en el MER, pero FR-13 contempla la calificación como filtro.
-   * Queda opcional hasta que TI2 defina el contrato definitivo.
-   */
-  calificacionPromedio?: number;
+  fotoUrl: string;
+  calificacionPromedio: number;
+  cantidadEvaluaciones: number;
+  estado: TipoPublicacion;
+  ubicacion: string;
+  edad: number;
+  ocupacion: string;
+  bio: string;
+  stats: {
+    publicaciones: number;
+    mensajes: number;
+    guardados: number;
+    evaluaciones: number;
+  };
+  preferencias: string[];
+  buscaEn: string[];
+  presupuestoMaxCLP: number;
 }
 
-/** Datos adicionales que corresponden al perfil del propio usuario. */
-export interface UsuarioPerfil extends Usuario {
-  email: string;
+export interface Publicacion {
+  id: string;
+  tipo: TipoPublicacion;
+  titulo: string;
+  imagenUrl?: string;
+  personas?: string;
+  precio?: string;
+  ubicacion?: string;
+  descripcion?: string;
+  publicadoHace: string;
+}
+
+export interface Evaluacion {
+  id: string;
+  evaluadorNombre: string;
+  evaluadorFotoUrl: string;
+  calificacion: number;
+  fechaTexto: string;
+  comentario: string;
 }
