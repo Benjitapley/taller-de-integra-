@@ -16,48 +16,72 @@ import {
 import AppHeader from "@/components/AppHeader";
 import BarraBusqueda from "@/components/BarraBusqueda";
 import { PublicacionCard, configPorTipo } from "@/components/Publicacion_Card";
-import type { Evaluacion, Publicacion, Usuario } from "@/types/Usuario";
+import type { Evaluacion } from "@/types/Evaluacion";
+import type { Publicacion } from "@/types/Publicacion";
+import type { TipoPublicacion } from "@/components/Publicacion_Card";
+import type { UsuarioPerfil } from "@/types/Usuario";
 
 
-const USUARIO_MOCK: Usuario = {
-  id: "u1",
-  nombre: "Matías Rojas",
-  fotoUrl: "https://i.pravatar.cc/300?img=12",
-  calificacionPromedio: 5.0,
-  cantidadEvaluaciones: 23,
-  estado: "se_busca",
-  ubicacion: "Santiago, Chile",
-  edad: 21,
+type PerfilUsuario = UsuarioPerfil & {
+  ubicacion: string;
+  edad: number;
+  estadoPublicacion: TipoPublicacion;
+  stats: NonNullable<UsuarioPerfil["stats"]>;
+  preferencias: string[];
+  buscaEn: string[];
+  fotoPerfilUrl: string;
+  calificacionPromedio: number;
+  cantidadEvaluaciones: number;
+  bio: string;
+};
+
+const USUARIO_MOCK: PerfilUsuario = {
+  idUsuario: 1,
+  rol: "Usuario",
+  nombre: "Sofía Muñoz",
+  email: "sofia.munoz@example.com",
+  fechaNacimiento: "2001-04-18",
+  estadoVerificacion: "Verificada",
+  presupuesto: 220000,
+  zonaInteres: "Temuco Centro",
   ocupacion: "Estudiante",
-  bio: "Estudiante de Ingeniería Civil. Ordenado, responsable y tranquilo. Me gusta el deporte, la música y los animales 🐶",
-  stats: { publicaciones: 2, mensajes: 14, guardados: 8, evaluaciones: 23 },
-  preferencias: ["No fuma", "No tiene mascotas", "Ordenado", "Responsable"],
-  buscaEn: ["Providencia", "Ñuñoa", "Santiago Centro"],
-  presupuestoMaxCLP: 250000,
+  fotoPerfilUrl: "https://i.pravatar.cc/300?img=47",
+  calificacionPromedio: 4.8,
+  cantidadEvaluaciones: 12,
+  ubicacion: "Temuco, Chile",
+  edad: 25,
+  estadoPublicacion: "se_busca",
+  bio: "Estudiante de Ingeniería Civil. Ordenada, responsable y tranquila. Me gusta el deporte, la música y los animales.",
+  stats: { publicaciones: 2, mensajes: 14, guardados: 8, evaluaciones: 12 },
+  preferencias: ["No fuma", "No tiene mascotas", "Ordenada", "Responsable"],
+  buscaEn: ["Temuco Centro", "Avenida Alemania"],
 };
 
 const PUBLICACIONES_MOCK: Publicacion[] = [
   {
-    id: "p1",
-    tipo: "se_busca",
-    titulo: "Busco arriendo en sector universitario",
-    imagenUrl: "https://picsum.photos/seed/roomies-perfil/600/400",
-    personas: "1 persona",
-    precio: "Máx. $250.000 CLP",
-    ubicacion: "Providencia, Ñuñoa, Santiago Centro",
-    descripcion: "Preferiblemente pieza amoblada con buena conexión a locomoción.",
-    publicadoHace: "2 días",
+    idPublicacion: 2,
+    idUsuario: 1,
+    tipo: "Compartida",
+    titulo: "Busco roomie para departamento",
+    descripcion: "Busco una persona responsable para compartir gastos y convivencia.",
+    precio: 190000,
+    ubicacion: "Temuco Centro",
+    estado: "Disponible",
+    cuposTotales: 2,
+    cuposDisponibles: 1,
+    imagenPrincipalUrl: "https://picsum.photos/seed/roomies-perfil/600/400",
   },
 ];
 
 const EVALUACIONES_MOCK: Evaluacion[] = [
   {
-    id: "e1",
-    evaluadorNombre: "Camila S.",
+    idEvaluacion: 1,
+    evaluadorNombre: "Camila Soto",
     evaluadorFotoUrl: "https://i.pravatar.cc/300?img=47",
-    calificacion: 5.0,
-    fechaTexto: "Hace 1 semana",
-    comentario: "Arrendamos juntos por 6 meses. Muy ordenado y respetuoso, excelente compañero.",
+    puntuacion: 5.0,
+    fechaEvaluacion: "2026-08-15",
+    comentario:
+      "Muy responsable y buena convivencia.",
   },
 ];
 
@@ -75,13 +99,13 @@ function TarjetaPrincipal({
   usuario,
   onPresionarEditar,
 }: {
-  usuario: Usuario;
+  usuario: PerfilUsuario;
   onPresionarEditar: () => void;
 }) {
   return (
     <View style={styles.tarjeta}>
       <View style={styles.filaPrincipal}>
-        <Image source={{ uri: usuario.fotoUrl }} style={styles.avatarGrande} />
+        <Image source={{ uri: usuario.fotoPerfilUrl }} style={styles.avatarGrande} />
         <View style={styles.infoPrincipal}>
           <Text style={styles.nombre}>{usuario.nombre}</Text>
           <View style={styles.filaEstrellas}>
@@ -90,14 +114,14 @@ function TarjetaPrincipal({
               {usuario.calificacionPromedio.toFixed(1)} ({usuario.cantidadEvaluaciones} evaluaciones)
             </Text>
           </View>
-          <View style={[styles.badgeEstado, { backgroundColor: `${configPorTipo[usuario.estado].color}1A` }]}>
+          <View style={[styles.badgeEstado, { backgroundColor: `${configPorTipo[usuario.estadoPublicacion].color}1A` }]}>
             <Ionicons
-              name={configPorTipo[usuario.estado].icono}
+              name={configPorTipo[usuario.estadoPublicacion].icono}
               size={12}
-              color={configPorTipo[usuario.estado].color}
+              color={configPorTipo[usuario.estadoPublicacion].color}
             />
-            <Text style={[styles.badgeEstadoTexto, { color: configPorTipo[usuario.estado].color }]}>
-              {configPorTipo[usuario.estado].etiqueta}
+            <Text style={[styles.badgeEstadoTexto, { color: configPorTipo[usuario.estadoPublicacion].color }]}>
+              {configPorTipo[usuario.estadoPublicacion].etiqueta}
             </Text>
           </View>
         </View>
@@ -127,7 +151,7 @@ function TarjetaPrincipal({
   );
 }
 
-function FilaEstadisticas({ usuario }: { usuario: Usuario }) {
+function FilaEstadisticas({ usuario }: { usuario: PerfilUsuario }) {
   const items = [
     { icono: "home-outline" as const, valor: usuario.stats.publicaciones, etiqueta: "Publicaciones" },
     { icono: "chatbubble-outline" as const, valor: usuario.stats.mensajes, etiqueta: "Mensajes" },
@@ -147,7 +171,7 @@ function FilaEstadisticas({ usuario }: { usuario: Usuario }) {
   );
 }
 
-function TarjetaSobreMi({ usuario }: { usuario: Usuario }) {
+function TarjetaSobreMi({ usuario }: { usuario: PerfilUsuario }) {
   return (
     <View style={styles.tarjeta}>
       <View style={styles.filaTituloSeccion}>
@@ -173,7 +197,7 @@ function TarjetaSobreMi({ usuario }: { usuario: Usuario }) {
           <Text style={styles.subBloqueTitulo}>Presupuesto</Text>
         </View>
         <Text style={styles.subBloqueTexto}>
-          Máx. ${usuario.presupuestoMaxCLP.toLocaleString("es-CL")} CLP
+          Máx. ${usuario.presupuesto.toLocaleString("es-CL")} CLP
         </Text>
       </View>
     </View>
@@ -190,15 +214,17 @@ function TarjetaPublicacionesActivas({ publicaciones }: { publicaciones: Publica
       <View style={{ gap: 12 }}>
         {publicaciones.map((publicacion) => (
           <PublicacionCard
-            key={publicacion.id}
-            tipo={publicacion.tipo}
+            key={publicacion.idPublicacion}
+            tipo={publicacion.tipo === "Arrendador" ? "arriendo" : "se_busca"}
             titulo={publicacion.titulo}
-            imagenUrl={publicacion.imagenUrl}
-            personas={publicacion.personas}
-            precio={publicacion.precio}
+            imagenUrl={publicacion.imagenPrincipalUrl}
+            personas={`${publicacion.cuposDisponibles} cupo${
+              publicacion.cuposDisponibles === 1 ? "" : "s"
+            } disponible${publicacion.cuposDisponibles === 1 ? "" : "s"}`}
+            precio={`$${publicacion.precio.toLocaleString("es-CL")} CLP`}
             ubicacion={publicacion.ubicacion}
             descripcion={publicacion.descripcion}
-            publicadoHace={publicacion.publicadoHace}
+            publicadoHace="recientemente"
           />
         ))}
       </View>
@@ -223,7 +249,7 @@ function TarjetaEvaluaciones({ evaluaciones }: { evaluaciones: Evaluacion[] }) {
       </View>
       <FlatList
         data={evaluaciones}
-        keyExtractor={(evaluacion) => evaluacion.id}
+        keyExtractor={(evaluacion) => evaluacion.idEvaluacion.toString()}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -231,24 +257,40 @@ function TarjetaEvaluaciones({ evaluaciones }: { evaluaciones: Evaluacion[] }) {
         renderItem={({ item }) => (
           <View style={{ width: anchoTarjeta }}>
             <View style={styles.filaEvaluador}>
-              <Image source={{ uri: item.evaluadorFotoUrl }} style={styles.avatarEvaluador} />
+              <Image
+                source={{ uri: item.evaluadorFotoUrl }}
+                style={styles.avatarEvaluador}
+              />
+
               <View style={{ flex: 1 }}>
-                <Text style={styles.evaluadorNombre}>{item.evaluadorNombre}</Text>
+                <Text style={styles.evaluadorNombre}>
+                  {item.evaluadorNombre}
+                </Text>
+
                 <View style={styles.filaEstrellas}>
                   <Ionicons name="star" size={12} color="#F59E0B" />
-                  <Text style={styles.calificacionTexto}>{item.calificacion.toFixed(1)}</Text>
+
+                  <Text style={styles.calificacionTexto}>
+                    {item.puntuacion.toFixed(1)}
+                  </Text>
                 </View>
               </View>
-              <Text style={styles.evaluacionFecha}>{item.fechaTexto}</Text>
+
+              <Text style={styles.evaluacionFecha}>
+                {item.fechaEvaluacion}
+              </Text>
             </View>
-            <Text style={styles.evaluacionComentario}>{item.comentario}</Text>
+
+            <Text style={styles.evaluacionComentario}>
+              {item.comentario}
+            </Text>
           </View>
         )}
       />
       {evaluaciones.length > 1 && (
         <View style={styles.filaPuntos}>
           {evaluaciones.map((evaluacion, indice) => (
-            <View key={evaluacion.id} style={[styles.punto, indice === indiceActual && styles.puntoActivo]} />
+            <View key={evaluacion.idEvaluacion} style={[styles.punto, indice === indiceActual && styles.puntoActivo]} />
           ))}
         </View>
       )}
@@ -291,8 +333,8 @@ function TarjetaEditarPerfil({
   onGuardar,
   onCancelar,
 }: {
-  usuario: Usuario;
-  onGuardar: (usuario: Usuario) => void;
+  usuario: PerfilUsuario;
+  onGuardar: (usuario: PerfilUsuario) => void;
   onCancelar: () => void;
 }) {
   const [nombre, setNombre] = useState(usuario.nombre);
@@ -301,7 +343,7 @@ function TarjetaEditarPerfil({
   const [ubicacion, setUbicacion] = useState(usuario.ubicacion);
   const [bio, setBio] = useState(usuario.bio);
   const [buscaEnTexto, setBuscaEnTexto] = useState(usuario.buscaEn.join(", "));
-  const [presupuesto, setPresupuesto] = useState(String(usuario.presupuestoMaxCLP));
+  const [presupuesto, setPresupuesto] = useState(String(usuario.presupuesto));
   const [preferencias, setPreferencias] = useState<string[]>(usuario.preferencias);
 
   function alternarPreferencia(opcion: string) {
@@ -319,7 +361,7 @@ function TarjetaEditarPerfil({
       ubicacion,
       bio,
       buscaEn: buscaEnTexto.split(",").map((z) => z.trim()).filter(Boolean),
-      presupuestoMaxCLP: Number(presupuesto) || usuario.presupuestoMaxCLP,
+      presupuesto: Number(presupuesto) || usuario.presupuesto,
       preferencias,
     });
   }
@@ -373,13 +415,13 @@ function TarjetaEditarPerfil({
 
 
 export default function Perfil() {
-  const [usuario, setUsuario] = useState<Usuario>(USUARIO_MOCK);
+  const [usuario, setUsuario] = useState<PerfilUsuario>(USUARIO_MOCK);
   const [editando, setEditando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
 
   return (
     <ScrollView style={styles.pantalla} contentContainerStyle={styles.contenedor}>
-      <AppHeader fotoUsuarioUrl={usuario.fotoUrl} />
+      <AppHeader fotoUsuarioUrl={usuario.fotoPerfilUrl} />
       <BarraBusqueda valor={busqueda} onCambiarValor={setBusqueda} />
 
       {editando ? (

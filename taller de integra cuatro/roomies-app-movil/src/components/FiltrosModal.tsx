@@ -21,7 +21,12 @@ type Props = {
   onAplicar: (filtros: FiltrosSeleccionados) => void;
 };
 
-const ZONAS_DISPONIBLES = ["Providencia", "Ñuñoa", "Santiago Centro", "Las Condes"];
+const ZONAS_DISPONIBLES = [
+  "Temuco Centro",
+  "Avenida Alemania",
+  "Universidad Católica de Temuco",
+  "Portal Temuco",
+];
 const PERSONAS_DISPONIBLES = ["1 persona", "2 personas", "3 o más"];
 
 // Filtros 100% visuales: seleccionar acá NO dispara ninguna búsqueda real
