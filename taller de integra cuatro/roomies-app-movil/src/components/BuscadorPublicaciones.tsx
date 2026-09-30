@@ -9,19 +9,6 @@ import { PublicacionCard } from "@/components/Publicacion_Card";
 import { publicacionesMock } from "@/mocks";
 import type { Publicacion } from "@/types/Publicacion";
 
-function formatearPrecio(precio: number): string {
-  return `$${precio.toLocaleString("es-CL")} CLP`;
-}
-
-function obtenerTipoCard(publicacion: Publicacion) {
-  return publicacion.tipo === "Arrendador" ? "arriendo" : "se_busca";
-}
-
-function obtenerPersonas(publicacion: Publicacion): string {
-  const cantidad = publicacion.cuposDisponibles;
-  return `${cantidad} ${cantidad === 1 ? "cupo disponible" : "cupos disponibles"}`;
-}
-
 function coincideBusqueda(publicacion: Publicacion, busqueda: string): boolean {
   const termino = busqueda.trim().toLocaleLowerCase("es-CL");
   if (!termino) return true;
@@ -58,21 +45,6 @@ function coincideFiltros(
       : publicacion.precio <= precioMaximo;
 
   return coincideZona && coincidePersonas && coincidePrecio;
-}
-
-function TarjetaPublicacion({ publicacion }: { publicacion: Publicacion }) {
-  return (
-    <PublicacionCard
-      tipo={obtenerTipoCard(publicacion)}
-      titulo={publicacion.titulo}
-      imagenUrl={publicacion.imagenPrincipalUrl}
-      precio={formatearPrecio(publicacion.precio)}
-      ubicacion={publicacion.ubicacion}
-      personas={obtenerPersonas(publicacion)}
-      descripcion={publicacion.descripcion}
-      publicadoHace="recientemente"
-    />
-  );
 }
 
 export default function BuscadorPublicaciones() {
@@ -124,7 +96,7 @@ export default function BuscadorPublicaciones() {
       {publicacionesFiltradas.length > 0 ? (
         <View style={styles.lista}>
           {publicacionesFiltradas.map((publicacion) => (
-            <TarjetaPublicacion
+            <PublicacionCard
               key={publicacion.idPublicacion}
               publicacion={publicacion}
             />

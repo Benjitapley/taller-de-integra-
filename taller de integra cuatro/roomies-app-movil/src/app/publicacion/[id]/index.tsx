@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, View, Text, Image, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
@@ -9,20 +9,35 @@ import {
     TITULO_PUBLICACION,
     configPorEstado,
     configPorOrigen,
+    estiloPorTipo,
     paletaPublicacion,
 } from '@/constants/origenPublicacion';
 
-const opcionesHeader = {
-    headerShown: true,
-    title: 'Publicación',
-    headerTintColor: colors.primary,
-    headerShadowVisible: false,
-    headerStyle: { backgroundColor: colors.background },
-};
+function formatoPrecio(precio: number): string {
+    return `$${String(precio).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} CLP`;
+}
 
 export default function PublicacionDetallePantalla() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
+
+    const opcionesHeader = {
+        headerShown: true,
+        title: 'Publicación',
+        headerTintColor: colors.primary,
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: colors.background },
+        headerLeft: () => (
+            <Pressable
+                onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+                hitSlop={12}
+                accessibilityLabel="Volver"
+                style={{ paddingHorizontal: 12 }}
+            >
+                <Ionicons name="arrow-back" size={24} color={colors.primary} />
+            </Pressable>
+        ),
+    };
 
     // Datos simulados de mocks
     const publicacion = publicacionesMock.find((p) => p.idPublicacion === Number(id));
@@ -44,6 +59,7 @@ export default function PublicacionDetallePantalla() {
     }
 
     const config = configPorOrigen[publicacion.tipo];
+    const estilo = estiloPorTipo[publicacion.tipo];
     const estado = configPorEstado[publicacion.estado];
     const autor = usuariosMock.find((u) => u.idUsuario === publicacion.idUsuario);
     const cuposTexto =
@@ -83,8 +99,13 @@ export default function PublicacionDetallePantalla() {
                         </View>
                     </View>
 
+                    <View style={styles.etiquetaTipo}>
+                        <Ionicons name={estilo.icono} size={18} color={estilo.color} />
+                        <Text style={[styles.etiquetaTipoTexto, { color: estilo.color }]}>{estilo.texto}</Text>
+                    </View>
+
                     <Text style={styles.titulo}>{publicacion.titulo}</Text>
-                    <Text style={styles.precio}>{publicacion.precio} CLP</Text>
+                    <Text style={styles.precio}>{formatoPrecio(publicacion.precio)}</Text>
 
                     <View style={styles.bloque}>
                         <View style={styles.datoFila}>
@@ -201,6 +222,16 @@ const styles = StyleSheet.create({
     chipEstadoTexto: {
         fontSize: 12,
         fontWeight: '600',
+    },
+    etiquetaTipo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    etiquetaTipoTexto: {
+        fontSize: 15,
+        fontWeight: '700',
+        marginLeft: 6,
     },
     titulo: {
         fontSize: 22,

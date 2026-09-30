@@ -15,10 +15,11 @@ import {
 } from "react-native";
 import AppHeader from "@/components/AppHeader";
 import BarraBusqueda from "@/components/BarraBusqueda";
-import { PublicacionCard, configPorTipo } from "@/components/Publicacion_Card";
+import { PublicacionCard } from "@/components/Publicacion_Card";
+import { configPorOrigen } from "@/constants/origenPublicacion";
 import type { Evaluacion } from "@/types/Evaluacion";
 import type { Publicacion } from "@/types/Publicacion";
-import type { TipoPublicacion } from "@/components/Publicacion_Card";
+import type { TipoPublicacion } from "@/types/Publicacion";
 import type { UsuarioPerfil } from "@/types/Usuario";
 
 
@@ -50,7 +51,7 @@ const USUARIO_MOCK: PerfilUsuario = {
   cantidadEvaluaciones: 12,
   ubicacion: "Temuco, Chile",
   edad: 25,
-  estadoPublicacion: "se_busca",
+  estadoPublicacion: "Compartida",
   bio: "Estudiante de Ingeniería Civil. Ordenada, responsable y tranquila. Me gusta el deporte, la música y los animales.",
   stats: { publicaciones: 2, mensajes: 14, guardados: 8, evaluaciones: 12 },
   preferencias: ["No fuma", "No tiene mascotas", "Ordenada", "Responsable"],
@@ -114,14 +115,14 @@ function TarjetaPrincipal({
               {usuario.calificacionPromedio.toFixed(1)} ({usuario.cantidadEvaluaciones} evaluaciones)
             </Text>
           </View>
-          <View style={[styles.badgeEstado, { backgroundColor: `${configPorTipo[usuario.estadoPublicacion].color}1A` }]}>
+          <View style={[styles.badgeEstado, { backgroundColor: `${configPorOrigen[usuario.estadoPublicacion].color}1A` }]}>
             <Ionicons
-              name={configPorTipo[usuario.estadoPublicacion].icono}
+              name={configPorOrigen[usuario.estadoPublicacion].icono}
               size={12}
-              color={configPorTipo[usuario.estadoPublicacion].color}
+              color={configPorOrigen[usuario.estadoPublicacion].color}
             />
-            <Text style={[styles.badgeEstadoTexto, { color: configPorTipo[usuario.estadoPublicacion].color }]}>
-              {configPorTipo[usuario.estadoPublicacion].etiqueta}
+            <Text style={[styles.badgeEstadoTexto, { color: configPorOrigen[usuario.estadoPublicacion].color }]}>
+              {configPorOrigen[usuario.estadoPublicacion].etiqueta}
             </Text>
           </View>
         </View>
@@ -215,16 +216,7 @@ function TarjetaPublicacionesActivas({ publicaciones }: { publicaciones: Publica
         {publicaciones.map((publicacion) => (
           <PublicacionCard
             key={publicacion.idPublicacion}
-            tipo={publicacion.tipo === "Arrendador" ? "arriendo" : "se_busca"}
-            titulo={publicacion.titulo}
-            imagenUrl={publicacion.imagenPrincipalUrl}
-            personas={`${publicacion.cuposDisponibles} cupo${
-              publicacion.cuposDisponibles === 1 ? "" : "s"
-            } disponible${publicacion.cuposDisponibles === 1 ? "" : "s"}`}
-            precio={`$${publicacion.precio.toLocaleString("es-CL")} CLP`}
-            ubicacion={publicacion.ubicacion}
-            descripcion={publicacion.descripcion}
-            publicadoHace="recientemente"
+            publicacion={publicacion}
           />
         ))}
       </View>

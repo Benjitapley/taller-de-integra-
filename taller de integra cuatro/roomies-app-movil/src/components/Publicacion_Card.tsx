@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { Card } from './Card';
 import { colors } from '@/theme/colors';
 import type { Publicacion } from '@/types/Publicacion';
-import { TITULO_PUBLICACION, configPorOrigen, paletaPublicacion } from '@/constants/origenPublicacion';
+import { configPorOrigen, estiloPorTipo, paletaPublicacion } from '@/constants/origenPublicacion';
 
 interface PublicacionCardProps {
     publicacion: Publicacion;
@@ -13,19 +13,19 @@ interface PublicacionCardProps {
     onPressMenu?: () => void;
 }
 
-type Fila = { icono: keyof typeof Ionicons.glyphMap; texto: string };
+type NombreIcono = keyof typeof Ionicons.glyphMap;
 
 function textoCupos(publicacion: Publicacion): string {
     const libres = publicacion.cuposDisponibles;
     if (libres <= 0) return 'Sin cupos disponibles';
-
-    if (publicacion.tipo === 'Arrendador') {
-        return `${libres} ${libres === 1 ? 'cupo disponible' : 'cupos disponibles'}`;
-    }
-    return libres === 1 ? 'Se busca 1 roomie' : `Se buscan ${libres} roomies`;
+    return `${libres} ${libres === 1 ? 'cupo disponible' : 'cupos disponibles'}`;
 }
 
-function IconoCircular({ nombre, tamano }: { nombre: keyof typeof Ionicons.glyphMap; tamano: number }) {
+function formatoPrecio(precio: number): string {
+    return `$${String(precio).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} CLP`;
+}
+
+function IconoCircular({ nombre, tamano }: { nombre: NombreIcono; tamano: number }) {
     return (
         <View style={[styles.circulo, { width: tamano, height: tamano, borderRadius: tamano / 2 }]}>
             <Ionicons name={nombre} size={tamano * 0.5} color={colors.background} />
@@ -40,45 +40,14 @@ export const PublicacionCard: React.FC<PublicacionCardProps> = ({
 }) => {
     const router = useRouter();
     const config = configPorOrigen[publicacion.tipo];
+    const estilo = estiloPorTipo[publicacion.tipo];
     const imagenUrl = publicacion.imagenPrincipalUrl;
 
     const irAlDetalle = () =>
         router.push({
-            pathname: '/publicaciones/[id]',
+            pathname: '/publicacion/[id]',
             params: { id: String(publicacion.idPublicacion) },
         });
-
-    const filas: Fila[] = [
-        { icono: 'people', texto: textoCupos(publicacion) },
-        { icono: 'cash', texto: `${publicacion.precio} CLP` },
-        { icono: 'location', texto: publicacion.ubicacion },
-    ];
-
-    const encabezado = (
-        <View style={styles.encabezado}>
-            <Text style={styles.etiqueta}>{TITULO_PUBLICACION}</Text>
-            <Text style={styles.tipo}>{config.tipo}</Text>
-        </View>
-    );
-
-    const resumen = (
-        <View style={styles.filas}>
-            {filas.map((fila) => (
-                <View key={fila.icono} style={styles.fila}>
-                    <Ionicons name={fila.icono} size={16} color={colors.primary} />
-                    <Text style={styles.filaTexto} numberOfLines={1}>
-                        {fila.texto}
-                    </Text>
-                </View>
-            ))}
-        </View>
-    );
-
-    const descripcion = (
-        <Text style={styles.descripcion} numberOfLines={3}>
-            {publicacion.descripcion}
-        </Text>
-    );
 
     return (
         <Card
@@ -88,29 +57,48 @@ export const PublicacionCard: React.FC<PublicacionCardProps> = ({
             <View style={styles.recorte} accessible accessibilityLabel={`${config.etiqueta}: ${publicacion.titulo}`}>
                 <View style={styles.cuerpo}>
                     {imagenUrl ? (
-                        <>
-                            <Image source={{ uri: imagenUrl }} style={styles.imagen} resizeMode="cover" />
-                            <View style={styles.info}>
-                                <View style={styles.cabecera}>
-                                    <IconoCircular nombre={config.icono} tamano={44} />
-                                    {encabezado}
-                                </View>
-                                {resumen}
-                                {descripcion}
-                            </View>
-                        </>
+                        <Image source={{ uri: imagenUrl }} style={styles.imagen} resizeMode="cover" />
                     ) : (
-                        <>
-                            <View style={styles.columnaIcono}>
-                                <IconoCircular nombre={config.icono} tamano={52} />
-                            </View>
-                            <View style={styles.info}>
-                                {encabezado}
-                                {resumen}
-                                {descripcion}
-                            </View>
-                        </>
+                        <View style={[styles.imagen, styles.imagenVacia]}>
+                            <IconoCircular nombre={config.icono} tamano={52} />
+                        </View>
                     )}
+
+                    <View style={styles.info}>
+                        <View style={styles.cabecera}>
+                            <Ionicons name={estilo.icono} size={16} color={estilo.color} />
+                            <Text style={[styles.etiqueta, { color: estilo.color }]}>{estilo.texto}</Text>
+                            <View style={[styles.chipTipo, { backgroundColor: `${estilo.color}1A` }]}>
+                                <Text style={[styles.chipTipoTexto, { color: estilo.color }]}>{config.tipo}</Text>
+                            </View>
+                        </View>
+
+                        <Text style={styles.titulo} numberOfLines={2}>
+                            {publicacion.titulo}
+                        </Text>
+
+                        <View style={styles.fila}>
+                            <Ionicons name="people-outline" size={16} color={paletaPublicacion.textoSecundario} />
+                            <Text style={styles.filaTexto} numberOfLines={1}>
+                                {textoCupos(publicacion)}
+                            </Text>
+                        </View>
+
+                        <Text style={styles.precio}>{formatoPrecio(publicacion.precio)}</Text>
+
+                        <View style={styles.fila}>
+                            <Ionicons name="location-outline" size={16} color={paletaPublicacion.textoSecundario} />
+                            <Text style={styles.filaTexto} numberOfLines={1}>
+                                {publicacion.ubicacion}
+                            </Text>
+                        </View>
+
+                        <Text style={styles.descripcion} numberOfLines={3}>
+                            {publicacion.descripcion}
+                        </Text>
+
+                        <Text style={styles.publicado}>Publicado hace recientemente</Text>
+                    </View>
                 </View>
 
                 {onPressMenu ? (
@@ -132,74 +120,86 @@ export const PublicacionCard: React.FC<PublicacionCardProps> = ({
 const styles = StyleSheet.create({
     card: {
         padding: 0,
+        borderRadius: 14,
     },
     recorte: {
-        borderRadius: 11,
+        borderRadius: 13,
         overflow: 'hidden',
     },
     cuerpo: {
-        flexDirection: 'row',
+        padding: 16,
     },
     imagen: {
-        width: '38%',
-        minHeight: 160,
+        width: '100%',
+        height: 160,
+        borderRadius: 10,
     },
-    columnaIcono: {
-        paddingTop: 14,
-        paddingLeft: 14,
+    imagenVacia: {
+        backgroundColor: paletaPublicacion.fondoSuave,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     info: {
-        flex: 1,
-        padding: 14,
+        marginTop: 14,
     },
     cabecera: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 6,
+    },
+    chipTipo: {
+        marginLeft: 'auto',
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderRadius: 12,
+    },
+    chipTipoTexto: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     circulo: {
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 10,
-    },
-    encabezado: {
-        flexShrink: 1,
     },
     etiqueta: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '700',
+        marginLeft: 6,
+    },
+    titulo: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: paletaPublicacion.textoPrincipal,
+        marginBottom: 8,
+    },
+    precio: {
+        fontSize: 20,
+        fontWeight: '800',
         color: colors.primary,
-    },
-    tipo: {
-        fontSize: 13,
-        color: paletaPublicacion.textoSecundario,
-        marginTop: 2,
-    },
-    filas: {
-        marginTop: 2,
+        marginTop: 6,
         marginBottom: 8,
     },
     fila: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 6,
     },
     filaTexto: {
         flex: 1,
         fontSize: 14,
-        color: paletaPublicacion.textoPrincipal,
+        color: paletaPublicacion.textoSecundario,
         marginLeft: 8,
     },
     descripcion: {
-        fontSize: 13,
-        lineHeight: 18,
+        fontSize: 14,
+        lineHeight: 20,
         color: paletaPublicacion.textoPrincipal,
+        marginTop: 10,
     },
-    descripcion: {
+    publicado: {
         fontSize: 12,
-        color: '#6B7280',
-        marginBottom: 8,
+        color: '#9CA3AF',
+        marginTop: 12,
     },
     footer: {
         flexDirection: 'row',

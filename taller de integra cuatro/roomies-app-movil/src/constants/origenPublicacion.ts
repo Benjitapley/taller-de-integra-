@@ -12,11 +12,17 @@ export const configPorOrigen: Record<
     etiqueta: string;
     tipo: string;
     icono: NombreIcono;
+    color: string;
     rolPublicador: string;
   }
 > = {
-  Arrendador: { etiqueta: 'Publicación arrendador', tipo: 'Arrendador', icono: 'home', rolPublicador: 'Arrendador' },
-  Compartida: { etiqueta: 'Publicación compartida', tipo: 'Compartida', icono: 'search', rolPublicador: 'Integrante del arriendo' },
+  Arrendador: { etiqueta: 'Publicación arrendador', tipo: 'Arrendador', icono: 'home', color: colors.primary, rolPublicador: 'Arrendador' },
+  Compartida: { etiqueta: 'Publicación compartida', tipo: 'Compartida', icono: 'search', color: '#059669', rolPublicador: 'Integrante del arriendo' },
+};
+
+export const estiloPorTipo: Record<TipoPublicacion, { texto: string; icono: NombreIcono; color: string }> = {
+  Arrendador: { texto: 'Arriendo', icono: 'home-outline', color: colors.primary },
+  Compartida: { texto: 'Se busca', icono: 'search-outline', color: colors.secondary },
 };
 
 export const configPorEstado: Record<
