@@ -10,7 +10,7 @@ from uuid import uuid4
 
 import httpx
 import psycopg
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, Depends, Cookie
 from match_conexion_service.routes import router as conexion_router
 
 from fastapi.responses import FileResponse
@@ -73,9 +73,9 @@ app.mount("/Iconos", StaticFiles(directory="Iconos"), name="iconos")
 app.mount("/PerfilU", StaticFiles(directory="PerfilU"), name="perfil_u")
 
 
-# Autor fijo SOLO para desarrollo local
-def autor_de_prueba():
-    return 1
+# Ahora lee la Cookie dinámica, pero si no hay, asume que es el usuario 1 para que no se caiga
+def autor_de_prueba(roomies_id: str = Cookie(default="1")):
+    return int(roomies_id)
 
 
 # ==========================================
@@ -161,18 +161,18 @@ def obtener_publicaciones():
 
 # OBTENER SOLO MIS PUBLICACIONES (Para el CRUD)
 @app.get("/api/mis-publicaciones")
-def obtener_mis_publicaciones():
-    id_usuario = autor_de_prueba()
+def obtener_mis_publicaciones(id_usuario: int = Depends(autor_de_prueba)):
     try:
         with conectar() as conexion:
             registros = conexion.execute("""
-                SELECT id_publicacion, titulo, precio, estado, tipo_vivienda 
-                FROM haycupo.publicacion
-                WHERE id_usuario = %s
-                ORDER BY id_publicacion DESC
+                SELECT p.id_publicacion, p.titulo, p.precio, p.estado, p.tipo_vivienda, p.ubicacion, p.cupos_totales, i.url
+                FROM haycupo.publicacion p
+                LEFT JOIN haycupo.imagen_publicacion i ON p.id_publicacion = i.id_publicacion
+                WHERE p.id_usuario = %s
+                ORDER BY p.id_publicacion DESC
             """, (id_usuario,)).fetchall()
             
-            return [{"id": r[0], "titulo": r[1], "precio": float(r[2]), "estado": r[3], "tipo": r[4]} for r in registros]
+            return [{"id": r[0], "titulo": r[1], "precio": float(r[2]), "estado": r[3], "tipo": r[4], "ubicacion": r[5], "cupos": r[6], "imagen": r[7]} for r in registros]
     except Exception:
         raise HTTPException(status_code=500, detail="Error al cargar tus publicaciones")
 
@@ -209,8 +209,8 @@ def crear_publicacion(
     mascota: Annotated[str, Form()] = "no",
     permitir_comentarios: Annotated[str, Form()] = "false",
     imagen: Annotated[UploadFile | None, File()] = None,
+    id_usuario: int = Depends(autor_de_prueba)
 ):
-    id_usuario = autor_de_prueba()
     texto_desc = descripcion.strip()
     permitir = True if permitir_comentarios.lower() == "true" else False
 
@@ -284,11 +284,9 @@ def actualizar_publicacion(
     cupos_totales: Annotated[int, Form()], 
     mascota: Annotated[str, Form()] = "no",
     permitir_comentarios: Annotated[str, Form()] = "false",
-    imagen: Annotated[UploadFile | None, File()] = None
+    imagen: Annotated[UploadFile | None, File()] = None,
+    id_usuario: int = Depends(autor_de_prueba)
 ):
-    id_usuario = autor_de_prueba()
-    
-    # En esta versión básica de edición, solo actualizamos los textos para asegurar que funcione rápido
     try:
         with conectar() as conexion:
             conexion.execute("""
@@ -304,8 +302,7 @@ def actualizar_publicacion(
 
 # ELIMINAR UNA PUBLICACIÓN
 @app.delete("/api/publicaciones/{id_pub}")
-def borrar_publicacion(id_pub: int):
-    id_usuario = autor_de_prueba()
+def borrar_publicacion(id_pub: int, id_usuario: int = Depends(autor_de_prueba)):
     try:
         with conectar() as conexion:
             conexion.execute("DELETE FROM haycupo.imagen_publicacion WHERE id_publicacion = %s", (id_pub,))
@@ -313,3 +310,57 @@ def borrar_publicacion(id_pub: int):
         return {"mensaje": "Publicación eliminada"}
     except Exception:
         raise HTTPException(status_code=500, detail="Error al eliminar")
+
+
+# OBTENER DATOS DEL PERFIL
+@app.get("/api/perfil")
+def obtener_perfil(id_usuario: int = Depends(autor_de_prueba)):
+    try:
+        with conectar() as conexion:
+            user = conexion.execute("SELECT nombre, edad, ocupacion, ciudad, breve_descripcion, sobre_mi, foto_perfil FROM haycupo.usuario WHERE id_usuario = %s", (id_usuario,)).fetchone()
+            pubs = conexion.execute("SELECT COUNT(*) FROM haycupo.publicacion WHERE id_usuario = %s", (id_usuario,)).fetchone()[0]
+            
+            if not user:
+                raise HTTPException(status_code=404, detail="Usuario no encontrado")
+                
+            return {
+                "nombre": user[0] or "Usuario", 
+                "edad": user[1] or "", 
+                "ocupacion": user[2] or "",
+                "ciudad": user[3] or "", 
+                "breve_descripcion": user[4] or "Aún no hay una descripción breve.",
+                "sobre_mi": user[5] or "No hay detalles adicionales.",
+                "foto_perfil": user[6] or None, 
+                "total_publicaciones": pubs
+            }
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error al cargar el perfil")
+
+# GUARDAR EDICIÓN DE PERFIL
+@app.put("/api/perfil")
+def actualizar_perfil(
+    edad: Annotated[str, Form()] = "", ocupacion: Annotated[str, Form()] = "",
+    ciudad: Annotated[str, Form()] = "", breve_descripcion: Annotated[str, Form()] = "",
+    sobre_mi: Annotated[str, Form()] = "", foto: Annotated[UploadFile | None, File()] = None,
+    id_usuario: int = Depends(autor_de_prueba)
+):
+    url_foto = None
+
+    if foto and foto.filename:
+        contenido_img = foto.file.read(5 * 1024 * 1024)
+        nombre_imagen = uuid4().hex + ".png"
+        ruta_foto = IMAGENES / nombre_imagen
+        ruta_foto.write_bytes(contenido_img)
+        url_foto = f"/imagenes/{nombre_imagen}"
+
+    try:
+        with conectar() as conexion:
+            if url_foto:
+                conexion.execute("UPDATE haycupo.usuario SET edad=%s, ocupacion=%s, ciudad=%s, breve_descripcion=%s, sobre_mi=%s, foto_perfil=%s WHERE id_usuario=%s", 
+                                 (edad, ocupacion, ciudad, breve_descripcion, sobre_mi, url_foto, id_usuario))
+            else:
+                conexion.execute("UPDATE haycupo.usuario SET edad=%s, ocupacion=%s, ciudad=%s, breve_descripcion=%s, sobre_mi=%s WHERE id_usuario=%s", 
+                                 (edad, ocupacion, ciudad, breve_descripcion, sobre_mi, id_usuario))
+        return {"mensaje": "Perfil actualizado permanentemente"}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error al guardar en la base de datos")

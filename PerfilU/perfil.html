@@ -7,179 +7,147 @@
     
     <link rel="stylesheet" href="/static_principal/estilo_HayCupo.css">
     <link rel="stylesheet" href="/Iconos/sidebar.css">
-    <link rel="stylesheet" href="/PerfilU/perfil.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        .perfil-container { max-width: 1100px; margin: 20px auto; padding: 0 20px; }
+        .tarjeta-header { background: white; border-radius: 12px; padding: 30px; display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .info-basica { display: flex; gap: 20px; }
+        .avatar-grande { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; background: #e0dcfc; display: flex; align-items: center; justify-content: center; font-size: 45px; color: #382384; overflow: hidden; }
+        .estadisticas { background: white; border-radius: 12px; padding: 20px; display: flex; justify-content: space-around; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .stat-item { text-align: center; color: #382384; }
+        .stat-numero { font-size: 24px; font-weight: 900; }
+        .dos-columnas { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        .caja-info { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .btn-editar-perfil { border: 2px solid #382384; color: #382384; background: white; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-editar-perfil:hover { background: #382384; color: white; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; overflow-y: auto;}
+        .modal-contenido { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; margin: 20px auto; }
+        .form-grupo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+        .form-grupo input, .form-grupo textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        .tarjeta-pub { display: flex; border: 1px solid #eee; border-radius: 12px; overflow: hidden; margin-bottom: 15px; }
+        .img-pub { width: 200px; height: 150px; object-fit: cover; background: #ddd; }
+        .info-pub { padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    </style>
 </head>
-<body>
+<body style="background-color: #f4f5f9; margin: 0; font-family: 'Mulish', sans-serif;">
 
+    <!-- MENÚ LATERAL OCULTO PARA QUE LA CASITA FUNCIONE -->
     <div id="fondo-menu" class="fondo-oscuro"></div>
-
     <nav id="menu-lateral" class="sidebar">
         <div class="sidebar-logo">
             <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
             <h2>Roomies</h2>
             <button id="btn-cerrar-menu" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
         </div>
-
         <ul class="sidebar-menu">
             <li><a href="/inicio"><img src="/Iconos/casa.webp" alt="Inicio" class="icono"> Inicio</a></li>
             <li><a href="/explorar"><img src="/Iconos/lupa_busqueda.webp" alt="Explorar" class="icono"> Explorar</a></li>
-            <li><a href="/chat"><img src="/Iconos/icono_chat.webp" alt="Chat" class="icono"> Chat <span class="punto-notificacion"></span></a></li>
+            <li><a href="/chat"><img src="/Iconos/icono_chat.webp" alt="Chat" class="icono"> Chat</a></li>
             <li><a href="/mis-publicaciones"><img src="/Iconos/icono_publicaciones.webp" alt="Mis publicaciones" class="icono"> Mis publicaciones</a></li>
-            <li><a href="/favoritos"><img src="/Iconos/favoritos.webp" alt="Favoritos" class="icono"> Favoritos</a></li>
+            <li><a href="/favoritos"><img src="/Iconos/favorito.webp" alt="Favoritos" class="icono"> Favoritos</a></li>
             <li class="activo"><a href="/perfil"><img src="/Iconos/icono_perfil.webp" alt="Perfil" class="icono"> Perfil</a></li>
             <li><a href="/ajustes"><img src="/Iconos/engrane_ajustes.webp" alt="Ajustes" class="icono"> Ajustes</a></li>
         </ul>
-
-        <div class="sidebar-card">
-            <img src="/Iconos/sofa(login).webp" alt="Ilustración sala" class="ilustracion-card" style="mix-blend-mode: multiply;">
-            <h3>¿Buscas algo para tu casa?</h3>
-            <p>Publica o encuentra lo que necesites.</p>
-            <a href="/publicar" class="btn-sidebar">Ver publicaciones</a>
-        </div>
     </nav>
 
-    <header>
-        <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-            <img src="/Iconos/casa.webp" alt="Abrir menú" style="width: 34px; filter: brightness(0) invert(1);"> 
-            <h1>¿Hay cupo?</h1>
+    <!-- HEADER MORADO -->
+    <header class="header-morado" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 30px; background-color: #382384; color: white;">
+        <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+            <i class="fa-solid fa-house" style="font-size: 20px;"></i>
+            <h1 style="margin: 0; font-size: 20px; font-weight: 800;">¿Hay cupo?</h1>
         </div>
-        
-        <div id="menu-usuario-container" style="position: relative; display: inline-block;">
-            <div id="perfil-usuario" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                <div id="avatar-letra" style="width: 35px; height: 35px; background-color: white; color: #432b91; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px;">
-                    ?
-                </div>
-                <span id="nombre-usuario-nav" style="font-weight: 700; font-size: 15px;">Cargando...</span>
-                <span style="font-size: 12px;">▼</span>
-            </div>
-            
-            <div id="dropdown-menu" style="display: none; position: absolute; right: 0; top: 110%; background: white; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; z-index: 1000; min-width: 150px;">
-                <button id="btn-cerrar-sesion" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; font-size: 14px; color: #cf3b3b; font-weight: bold;">
-                    Cerrar sesión
-                </button>
-            </div>
-        </div>
+        <a href="/inicio" style="color: white; text-decoration: none; font-weight: bold;">Volver al Inicio</a>
     </header>
 
-    <main>
-        <div class="contenedor-perfil">
-            
-            <section class="tarjeta-perfil header-perfil">
-                <div class="header-info">
-                    <div class="avatar-container">
-                        <div id="avatar-perfil-grande" style="width: 120px; height: 120px; background-color: var(--perfil-morado-claro); color: var(--perfil-morado); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 48px; flex-shrink: 0;">
-                            ?
-                        </div>
-                        <span class="estado-online"></span>
+    <main class="perfil-container">
+        <!-- HEADER TARJETA -->
+        <div class="tarjeta-header">
+            <div class="info-basica">
+                <div class="avatar-grande" id="avatar-img">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <div>
+                    <h2 id="perfil-nombre" style="margin: 0 0 10px 0; font-size: 28px; color: #1a1a1a;">Cargando...</h2>
+                    <div style="color: #666; font-size: 14px; display: flex; gap: 15px; margin-bottom: 10px;">
+                        <span><i class="fa-solid fa-location-dot"></i> <span id="perfil-ciudad">--</span></span>
+                        <span><i class="fa-regular fa-calendar"></i> <span id="perfil-edad">--</span></span>
+                        <span><i class="fa-solid fa-briefcase"></i> <span id="perfil-ocupacion">--</span></span>
                     </div>
-                    <div class="datos-usuario">
-                        <div class="nombre-fila">
-                            <h2 id="nombre-perfil-principal">Cargando...</h2>
-                            <button id="btn-abrir-modal-editar" class="btn-editar"><i class="fa-solid fa-pen"></i> Editar perfil</button>
-                        </div>
-                        
-                        <div class="calificacion">
-                            <div class="estrellas" style="color: #ccc;">
-                                <i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>
-                            </div>
-                            <span>0.0 (0 evaluaciones)</span>
-                        </div>
+                    <p id="perfil-breve" style="margin: 0; color: #444; font-size: 14px; max-width: 600px;"></p>
+                </div>
+            </div>
+            <button class="btn-editar-perfil" onclick="document.getElementById('modal-editar').style.display='flex'">
+                <i class="fa-solid fa-pen"></i> Editar perfil
+            </button>
+        </div>
 
-                        <div class="etiquetas">
-                            <span class="dato-extra"><i class="fa-solid fa-location-dot"></i> <span id="perfil-ciudad">Ciudad no definida</span></span>
-                            <span class="dato-extra"><i class="fa-regular fa-calendar"></i> <span id="perfil-edad">-- años</span></span>
-                            <span class="dato-extra"><i class="fa-solid fa-briefcase"></i> <span id="perfil-ocupacion">Ocupación no definida</span></span>
-                        </div>
+        <!-- ESTADÍSTICAS -->
+        <div class="estadisticas">
+            <div class="stat-item"><i class="fa-solid fa-house"></i> <div class="stat-numero" id="stat-pubs">0</div> <small>Publicaciones</small></div>
+            <div class="stat-item"><i class="fa-solid fa-comment-dots"></i> <div class="stat-numero">0</div> <small>Mensajes</small></div>
+            <div class="stat-item"><i class="fa-solid fa-heart"></i> <div class="stat-numero">0</div> <small>Guardados</small></div>
+        </div>
 
-                        <p id="perfil-bio" class="bio-texto">
-                            Aún no has escrito nada sobre ti. ¡Edita tu perfil para que otros te conozcan!
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <section class="barra-estadisticas">
-                <div class="stat-item">
-                    <i class="fa-solid fa-house stat-icono"></i>
-                    <div class="stat-datos">
-                        <strong id="contador-mis-pubs">0</strong>
-                        <span>Publicaciones</span>
-                    </div>
-                </div>
-                <div class="stat-divisor"></div>
-                <div class="stat-item">
-                    <i class="fa-solid fa-comment-dots stat-icono"></i>
-                    <div class="stat-datos">
-                        <strong>0</strong>
-                        <span>Mensajes</span>
-                    </div>
-                </div>
-                <div class="stat-divisor"></div>
-                <div class="stat-item">
-                    <i class="fa-solid fa-heart stat-icono"></i>
-                    <div class="stat-datos">
-                        <strong>0</strong>
-                        <span>Guardados</span>
-                    </div>
-                </div>
-                <div class="stat-divisor"></div>
-                <div class="stat-item">
-                    <i class="fa-solid fa-award stat-icono"></i>
-                    <div class="stat-datos">
-                        <strong>0</strong>
-                        <span>Evaluaciones</span>
-                    </div>
-                </div>
-            </section>
-
-            <div class="grid-perfil">
-                <section class="tarjeta-perfil publicaciones-activas" style="grid-column: 1 / -1;">
-                    <h3 class="titulo-seccion"><i class="fa-solid fa-list"></i> Mis Publicaciones activas</h3>
-                    <div id="contenedor-mis-publicaciones" style="display: flex; flex-direction: column; gap: 15px;">
-                        <p style="color: #666;">Cargando tus publicaciones...</p>
-                    </div>
-                </section>
+        <div class="dos-columnas">
+            <!-- COLUMNA SOBRE MÍ -->
+            <div class="caja-info">
+                <h3 style="color: #382384; margin-top: 0; border-bottom: 2px solid #f4f5f9; padding-bottom: 10px;"><i class="fa-solid fa-user"></i> Sobre mí</h3>
+                <p id="perfil-sobre-mi" style="color: #444; line-height: 1.6; white-space: pre-wrap;"></p>
             </div>
 
-            <section class="tarjeta-perfil seccion-evaluaciones">
-                <h3 class="titulo-seccion"><i class="fa-solid fa-star"></i> Evaluaciones recibidas</h3>
-                <p style="color: #666; text-align: center; padding: 20px 0;">Aún no tienes evaluaciones de otros usuarios.</p>
-            </section>
+            <!-- COLUMNA PUBLICACIONES ACTIVAS -->
+            <div class="caja-info">
+                <h3 style="color: #382384; margin-top: 0; border-bottom: 2px solid #f4f5f9; padding-bottom: 10px;"><i class="fa-solid fa-list"></i> Publicaciones activas</h3>
+                <div id="contenedor-publicaciones-perfil"></div>
+            </div>
         </div>
+
+        <!-- SECCIÓN EVALUACIONES (Solo estructura vacía) -->
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-top: 20px;">
+            <h3 style="color: #382384; margin-top: 0; border-bottom: 2px solid #f4f5f9; padding-bottom: 10px;">
+                <i class="fa-solid fa-star"></i> Evaluaciones recibidas
+            </h3>
+            <p style="text-align: center; color: #888; padding: 20px 0;">Aún no tienes evaluaciones de otros usuarios.</p>
+        </div>
+
     </main>
 
-    <div id="modal-editar-perfil" class="fondo-oscuro" style="display: none; align-items: center; justify-content: center; z-index: 3000;">
-        <div style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 500px;">
-            <h3 style="margin-top: 0; color: var(--perfil-morado);">Editar Perfil</h3>
-            <form id="form-editar-perfil" style="display: flex; flex-direction: column; gap: 15px;">
-                <div>
-                    <label>Ciudad</label>
-                    <input type="text" id="input-ciudad" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+    <!-- MODAL EDICIÓN -->
+    <div id="modal-editar" class="modal">
+        <div class="modal-contenido">
+            <h2 style="margin-top:0; color: #382384;">Editar Perfil</h2>
+            <form id="form-editar-perfil">
+                <div class="form-grupo">
+                    <label><strong>Foto de perfil</strong></label>
+                    <input type="file" name="foto" accept="image/*">
                 </div>
-                <div>
-                    <label>Edad</label>
-                    <input type="number" id="input-edad" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                <div class="form-grupo">
+                    <label><strong>Edad</strong></label>
+                    <input type="text" id="input-edad" name="edad" placeholder="Ej: 21 años">
                 </div>
-                <div>
-                    <label>Ocupación (Ej: Estudiante)</label>
-                    <input type="text" id="input-ocupacion" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                <div class="form-grupo">
+                    <label><strong>Ciudad</strong></label>
+                    <input type="text" id="input-ciudad" name="ciudad" placeholder="Ej: Temuco, Chile">
                 </div>
-                <div>
-                    <label>Sobre mí</label>
-                    <textarea id="input-bio" rows="3" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;"></textarea>
+                <div class="form-grupo">
+                    <label><strong>Ocupación</strong></label>
+                    <input type="text" id="input-ocupacion" name="ocupacion" placeholder="Ej: Estudiante UCT">
                 </div>
-                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
-                    <button type="button" id="btn-cerrar-modal" style="padding: 8px 16px; border: none; background: #eee; border-radius: 6px; cursor: pointer;">Cancelar</button>
-                    <button type="submit" style="padding: 8px 16px; border: none; background: var(--perfil-morado); color: white; border-radius: 6px; cursor: pointer;">Guardar cambios</button>
+                <div class="form-grupo">
+                    <label><strong>Breve descripción (Cabecera)</strong></label>
+                    <input type="text" id="input-breve" name="breve_descripcion" placeholder="Ej: Estudiante ordenado y tranquilo.">
+                </div>
+                <div class="form-grupo">
+                    <label><strong>Sobre mí (Detalles extra)</strong></label>
+                    <textarea id="input-sobre" name="sobre_mi" rows="3" placeholder="Ej: No fumo, sin mascotas..."></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+                    <button type="button" onclick="document.getElementById('modal-editar').style.display='none'" style="padding: 10px 15px; border-radius: 6px;">Cancelar</button>
+                    <button type="submit" style="padding: 10px 15px; background: #382384; color: white; font-weight: bold; border-radius: 6px;">Guardar cambios</button>
                 </div>
             </form>
         </div>
     </div>
-
-    <footer>
-        <p>© 2026 ¿Hay cupo? Todos los derechos reservados.</p>
-    </footer>
 
     <script src="/static_principal/HayCupo.js"></script>
     <script src="/PerfilU/perfil.js"></script>

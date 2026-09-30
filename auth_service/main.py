@@ -1,34 +1,30 @@
 import os
 from datetime import date
-from fastapi import APIRouter,FastAPI, HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, FastAPI, HTTPException, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
-from dotenv import load_dotenv
-from supabase import create_client, Client
-
-load_dotenv()
+import psycopg
 
 auth_router = APIRouter()
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
-SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
-
-supabase_admin: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-
 app = FastAPI(title="Auth Service - Roomies")
 
+# IMPORTANTE: allow_credentials=True es obligatorio para que las Cookies funcionen
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=True, 
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 EDAD_MINIMA = 18
+
+# Mima conexión directa a tu base de datos que usa tu main principal
+DB_URL = "postgresql://postgres.erefnpvdjondjpcyjrpb:Hcupo2223xd@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
+
+def conectar():
+    return psycopg.connect(DB_URL, connect_timeout=10)
 
 
 class RegistroRequest(BaseModel):
@@ -36,7 +32,6 @@ class RegistroRequest(BaseModel):
     correo: EmailStr
     contrasena: str
     fecha_nacimiento: date
-
 
 def calcular_edad(fecha_nacimiento: date) -> int:
     hoy = date.today()
@@ -46,10 +41,8 @@ def calcular_edad(fecha_nacimiento: date) -> int:
     return edad
 
 
-
-
 @auth_router.post("/auth/registro")
-def registrar_usuario(datos: RegistroRequest):
+def registrar_usuario(datos: RegistroRequest, response: Response):
     edad = calcular_edad(datos.fecha_nacimiento)
     if edad < EDAD_MINIMA:
         raise HTTPException(
@@ -64,37 +57,41 @@ def registrar_usuario(datos: RegistroRequest):
         )
 
     try:
-        resultado = supabase_admin.auth.admin.create_user({
-            "email": datos.correo,
-            "password": datos.contrasena,
-            "email_confirm": True,
-        })
+        with conectar() as conexion:
+            # 1. Verificar si el correo ya existe
+            existe = conexion.execute(
+                "SELECT id_usuario FROM haycupo.usuario WHERE correo = %s", 
+                (datos.correo,)
+            ).fetchone()
+            
+            if existe:
+                raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo.")
+            
+            # 2. Crear usuario directamente en haycupo.usuario
+            nuevo_id = conexion.execute(
+                """
+                INSERT INTO haycupo.usuario (nombre, correo, contrasena, fecha_nacimiento) 
+                VALUES (%s, %s, %s, %s) RETURNING id_usuario
+                """,
+                (datos.nombre, datos.correo, datos.contrasena, datos.fecha_nacimiento.isoformat())
+            ).fetchone()[0]
+            
+            # 3. Guardar la cookie de sesión en el navegador
+            response.set_cookie(key="roomies_id", value=str(nuevo_id), httponly=True, path="/")
+            
+            return {
+                "success": True,
+                "user": {
+                    "id": nuevo_id,
+                    "nombre": datos.nombre,
+                    "correo": datos.correo,
+                },
+            }
+    except HTTPException:
+        raise
     except Exception as e:
-        mensaje = str(e)
-        if "already" in mensaje.lower() or "duplicate" in mensaje.lower():
-            raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo.")
-        raise HTTPException(status_code=500, detail=f"Error al crear el usuario: {mensaje}")
+        raise HTTPException(status_code=500, detail=f"Error al registrar: {str(e)}")
 
-    usuario_id = resultado.user.id
-
-    try:
-        supabase_admin.table("perfiles").insert({
-            "id": usuario_id,
-            "nombre": datos.nombre,
-            "fecha_nacimiento": datos.fecha_nacimiento.isoformat(),
-        }).execute()
-    except Exception as e:
-        supabase_admin.auth.admin.delete_user(usuario_id)
-        raise HTTPException(status_code=500, detail=f"Error al crear el perfil: {str(e)}")
-
-    return {
-        "success": True,
-        "user": {
-            "id": usuario_id,
-            "nombre": datos.nombre,
-            "correo": datos.correo,
-        },
-    }
 
 class LoginRequest(BaseModel):
     correo: EmailStr
@@ -102,80 +99,38 @@ class LoginRequest(BaseModel):
 
 
 @auth_router.post("/auth/login")
-def iniciar_sesion(datos: LoginRequest):
+def iniciar_sesion(datos: LoginRequest, response: Response):
     try:
-        resultado = supabase_client.auth.sign_in_with_password({
-            "email": datos.correo,
-            "password": datos.contrasena,
-        })
-    except Exception:
-        raise HTTPException(status_code=401, detail="Credenciales inválidas.")
+        with conectar() as conexion:
+            # Buscar coincidencia exacta de correo y contraseña en tu esquema
+            usuario = conexion.execute(
+                "SELECT id_usuario, nombre FROM haycupo.usuario WHERE correo = %s AND contrasena = %s",
+                (datos.correo, datos.contrasena)
+            ).fetchone()
+            
+            if not usuario:
+                raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos.")
+            
+            # Guardar la cookie de sesión en el navegador
+            response.set_cookie(key="roomies_id", value=str(usuario[0]), httponly=True, path="/")
+            
+            return {
+                "success": True,
+                "user": {
+                    "id": usuario[0],
+                    "nombre": usuario[1],
+                    "correo": datos.correo,
+                },
+                "access_token": "demo_cookie_token",
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error en la base de datos al iniciar sesión.")
 
-    usuario_id = resultado.user.id
-
-    perfil = supabase_admin.table("perfiles").select("nombre").eq("id", usuario_id).single().execute()
-    nombre = perfil.data["nombre"] if perfil.data else ""
-
-    return {
-        "success": True,
-        "user": {
-            "id": usuario_id,
-            "nombre": nombre,
-            "correo": resultado.user.email,
-        },
-        "access_token": resultado.session.access_token,
-    }
-
-security = HTTPBearer()
-
-def obtener_usuario_actual(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    try:
-        resultado = supabase_admin.auth.get_user(token)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado.")
-    if not resultado or not resultado.user:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado.")
-    return resultado.user
 
 @auth_router.post("/auth/logout")
-def cerrar_sesion(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        supabase_admin.auth.admin.sign_out(credentials.credentials)
-    except Exception:
-        pass
-    return {"success": True}
-
-
-@auth_router.get("/auth/perfil")
-def obtener_perfil(usuario=Depends(obtener_usuario_actual)):
-    perfil = supabase_admin.table("perfiles").select("*").eq("id", usuario.id).single().execute()
-    if not perfil.data:
-        raise HTTPException(status_code=404, detail="Perfil no encontrado.")
-
-    return {
-        "nombre": perfil.data.get("nombre"),
-        "correo": usuario.email,
-        "telefono": perfil.data.get("telefono"),
-        "ciudad": perfil.data.get("ciudad"),
-        "biografia": perfil.data.get("biografia"),
-    }
-
-
-class PerfilUpdateRequest(BaseModel):
-    nombre: str
-    telefono: str | None = None
-    ciudad: str | None = None
-    biografia: str | None = None
-
-
-@auth_router.put("/auth/perfil")
-def actualizar_perfil(datos: PerfilUpdateRequest, usuario=Depends(obtener_usuario_actual)):
-    supabase_admin.table("perfiles").update({
-        "nombre": datos.nombre,
-        "telefono": datos.telefono,
-        "ciudad": datos.ciudad,
-        "biografia": datos.biografia,
-    }).eq("id", usuario.id).execute()
-
+def cerrar_sesion(response: Response):
+    # Eliminar la cookie para cerrar la sesión
+    response.delete_cookie("roomies_id", path="/")
     return {"success": True}

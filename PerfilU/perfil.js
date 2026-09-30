@@ -1,89 +1,109 @@
-document.addEventListener("DOMContentLoaded", async () => {
-    const nombreLogueado = localStorage.getItem("nombre_usuario");
-    const nombreLimpio = nombreLogueado ? nombreLogueado.charAt(0).toUpperCase() + nombreLogueado.slice(1) : "Invitado";
-    const inicial = nombreLimpio.charAt(0);
+document.addEventListener("DOMContentLoaded", () => {
     
-    document.getElementById("nombre-perfil-principal").textContent = nombreLimpio;
-    document.getElementById("avatar-perfil-grande").textContent = inicial;
-
-    if(localStorage.getItem("perfil_ciudad")) document.getElementById("perfil-ciudad").textContent = localStorage.getItem("perfil_ciudad");
-    if(localStorage.getItem("perfil_edad")) document.getElementById("perfil-edad").textContent = localStorage.getItem("perfil_edad") + " años";
-    if(localStorage.getItem("perfil_ocupacion")) document.getElementById("perfil-ocupacion").textContent = localStorage.getItem("perfil_ocupacion");
-    if(localStorage.getItem("perfil_bio")) document.getElementById("perfil-bio").textContent = localStorage.getItem("perfil_bio");
-
-    const modal = document.getElementById("modal-editar-perfil");
-    const btnAbrirModal = document.getElementById("btn-abrir-modal-editar");
-    const btnCerrarModal = document.getElementById("btn-cerrar-modal");
-    const formEditar = document.getElementById("form-editar-perfil");
-
-    if (btnAbrirModal) {
-        btnAbrirModal.addEventListener("click", () => {
-            modal.style.display = "flex";
-            document.getElementById("input-ciudad").value = localStorage.getItem("perfil_ciudad") || "";
-            document.getElementById("input-edad").value = localStorage.getItem("perfil_edad") || "";
-            document.getElementById("input-ocupacion").value = localStorage.getItem("perfil_ocupacion") || "";
-            document.getElementById("input-bio").value = localStorage.getItem("perfil_bio") || "";
-        });
-    }
-
-    if (btnCerrarModal) {
-        btnCerrarModal.addEventListener("click", () => {
-            modal.style.display = "none";
-        });
-    }
-
-    if (formEditar) {
-        formEditar.addEventListener("submit", (e) => {
-            e.preventDefault();
-            localStorage.setItem("perfil_ciudad", document.getElementById("input-ciudad").value);
-            localStorage.setItem("perfil_edad", document.getElementById("input-edad").value);
-            localStorage.setItem("perfil_ocupacion", document.getElementById("input-ocupacion").value);
-            localStorage.setItem("perfil_bio", document.getElementById("input-bio").value);
-            window.location.reload(); 
-        });
-    }
-
-    const contenedorMisPubs = document.getElementById("contenedor-mis-publicaciones");
-    if (contenedorMisPubs) {
+    // 1. Cargar Perfil y llenar la información visual
+    async function cargarPerfil() {
         try {
-            const respuesta = await fetch("/api/publicaciones");
-            const publicaciones = await respuesta.json();
-            
-            const misPublicaciones = publicaciones.filter(pub => pub.autor === nombreLogueado || pub.usuario_id === localStorage.getItem("user_id"));
-            
-            const contadorPubs = document.getElementById("contador-mis-pubs");
-            if(contadorPubs) contadorPubs.textContent = misPublicaciones.length;
-            
-            contenedorMisPubs.innerHTML = "";
+            const respuesta = await fetch("/api/perfil");
+            const data = await respuesta.json();
 
-            if (misPublicaciones.length === 0) {
-                contenedorMisPubs.innerHTML = "<p style='color: #666;'>No has subido ninguna publicación todavía.</p>";
+            // Llenar textos del perfil
+            document.getElementById("perfil-nombre").textContent = data.nombre;
+            document.getElementById("perfil-edad").textContent = data.edad || "--";
+            document.getElementById("perfil-ciudad").textContent = data.ciudad || "--";
+            document.getElementById("perfil-ocupacion").textContent = data.ocupacion || "--";
+            document.getElementById("perfil-breve").textContent = data.breve_descripcion;
+            document.getElementById("perfil-sobre-mi").textContent = data.sobre_mi;
+            document.getElementById("stat-pubs").textContent = data.total_publicaciones;
+
+            // Llenar imagen o dejar ícono por defecto
+            const avatar = document.getElementById("avatar-img");
+            if (data.foto_perfil) {
+                avatar.innerHTML = `<img src="${data.foto_perfil}" style="width: 100%; height: 100%; object-fit: cover;">`;
             } else {
-                misPublicaciones.forEach(pub => {
-                    const precioClp = new Intl.NumberFormat("es-CL").format(pub.precio);
-                    const tarjetaHtml = `
-                        <div class="tarjeta-publicacion-horizontal" style="border: 1px solid #eae8f0; border-radius: 12px; padding: 16px; background: white;">
-                            <div class="info-pub" style="width: 100%;">
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span class="etiqueta-busco pequeña" style="background: var(--perfil-verde-bg); color: var(--perfil-verde-texto); padding: 4px 10px; border-radius: 20px; font-size: 11px;">
-                                        ${pub.categoria === 'busco' ? 'Busca' : 'Ofrece'}
-                                    </span>
-                                    <button style="border: none; background: transparent; color: red; cursor: pointer;"><i class="fa-solid fa-trash"></i> Eliminar</button>
-                                </div>
-                                <h4 style="margin: 10px 0;">${pub.titulo}</h4>
-                                <div class="detalles-pub-lista" style="display: flex; gap: 15px; color: #5b5872; font-size: 13px;">
-                                    <span><i class="fa-solid fa-location-dot" style="color: var(--perfil-morado);"></i> ${pub.ubicacion}</span>
-                                    <span><i class="fa-solid fa-money-bill" style="color: var(--perfil-morado);"></i> $${precioClp} CLP</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    contenedorMisPubs.innerHTML += tarjetaHtml;
-                });
+                avatar.innerHTML = `<i class="fa-solid fa-user"></i>`;
             }
+
+            // Llenar inputs del modal de edición para que no partan vacíos
+            document.getElementById("input-edad").value = data.edad || "";
+            document.getElementById("input-ciudad").value = data.ciudad || "";
+            document.getElementById("input-ocupacion").value = data.ocupacion || "";
+            document.getElementById("input-breve").value = data.breve_descripcion || "";
+            document.getElementById("input-sobre").value = data.sobre_mi || "";
+
         } catch (error) {
-            console.error("Error al cargar mis publicaciones:", error);
-            contenedorMisPubs.innerHTML = "<p style='color:red;'>Error al cargar tus publicaciones.</p>";
+            console.error("Error cargando perfil", error);
         }
     }
+
+    // 2. Cargar SOLO LA ÚLTIMA publicación del usuario
+    async function cargarMisTarjetas() {
+        const contenedor = document.getElementById("contenedor-publicaciones-perfil");
+        try {
+            const respuesta = await fetch("/api/mis-publicaciones");
+            const pubs = await respuesta.json();
+
+            if (pubs.length === 0) {
+                contenedor.innerHTML = "<p style='color: #888;'>No has subido ninguna publicación todavía.</p>";
+                return;
+            }
+
+            // Seleccionar exclusivamente la primera publicación de la lista (la más reciente)
+            const pub = pubs[0];
+
+            const precio = new Intl.NumberFormat("es-CL").format(pub.precio || 0);
+            const imagen = pub.imagen ? pub.imagen : "https://via.placeholder.com/200x150?text=Sin+Imagen";
+            const tipo = pub.tipo ? pub.tipo.toUpperCase() : "VIVIENDA";
+            
+            // Fallbacks de seguridad por diferencias de nombres de variables
+            const cuposSafe = pub.cupos || pub.cupos_totales || "1";
+            const ubiSafe = pub.ubicacion || "Ubicación no especificada";
+
+            contenedor.innerHTML = `
+                <div class="tarjeta-pub" style="display: flex; border: 1px solid #eee; border-radius: 12px; overflow: hidden; margin-bottom: 15px;">
+                    <img src="${imagen}" class="img-pub" style="width: 200px; height: 160px; object-fit: cover; background: #ddd;">
+                    <div class="info-pub" style="padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <span style="background: #e6f8eb; color: #1f8b41; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;">${tipo}</span>
+                            <h4 style="margin: 10px 0 5px 0; color: #1a1a1a; font-size: 16px;">${pub.titulo}</h4>
+                            <div style="color: #666; font-size: 13px; margin-bottom: 5px;"><i class="fa-solid fa-users"></i> ${cuposSafe} persona(s)</div>
+                            <div style="color: #666; font-size: 13px;"><i class="fa-solid fa-location-dot"></i> ${ubiSafe}</div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
+                            <span style="color: #382384; font-weight: 800; font-size: 16px;">$${precio} CLP</span>
+                            <a href="/editar-publicacion?id=${pub.id}" style="background: #382384; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: bold;">Ver publicación</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            contenedor.innerHTML = "<p style='color: red;'>Error al cargar la publicación.</p>";
+        }
+    }
+
+    // 3. Enviar el Formulario de Edición
+    document.getElementById("form-editar-perfil").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        
+        try {
+            const respuesta = await fetch("/api/perfil", { 
+                method: "PUT", 
+                body: formData 
+            });
+            
+            if (respuesta.ok) {
+                document.getElementById("modal-editar").style.display = "none";
+                cargarPerfil(); // Recarga los datos actualizados sin refrescar la página
+            } else {
+                alert("Error al guardar los cambios.");
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    });
+
+    // Inicializar todo al abrir la página
+    cargarPerfil();
+    cargarMisTarjetas();
 });

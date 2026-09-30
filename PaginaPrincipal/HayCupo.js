@@ -81,13 +81,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             
             const titulo = pub.titulo ? `<p style="font-weight: 800; color: #1a1a1a; margin-bottom: 8px; font-size: 15px;">${pub.titulo}</p>` : '';
             
-            // Lógica exacta para el número de personas (cupos)
+            // Lógica exacta para el número de personas usando "cupos_totales" del backend
             let textoPersonas = "No especificado";
-            if (pub.cupos) {
-                if (String(pub.cupos) === "3") {
+            if (pub.cupos_totales) {
+                if (String(pub.cupos_totales) === "3") {
                     textoPersonas = "3 o más Personas";
                 } else {
-                    textoPersonas = `${pub.cupos} Persona(s)`;
+                    textoPersonas = `${pub.cupos_totales} Persona(s)`;
                 }
             }
 
@@ -132,7 +132,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    // 4. MOTOR DE FILTROS 
+    // 4. MOTOR DE FILTROS ACTUALIZADO A LAS VARIABLES DEL BACKEND
     const btnConsultar = document.getElementById("btn-consultar");
     if (btnConsultar) {
         btnConsultar.addEventListener("click", () => {
@@ -145,10 +145,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const pubUbi = (pub.ubicacion || "").toLowerCase();
                 const coincideUbicacion = txtUbicacion === "" || pubUbi.includes(txtUbicacion);
                 
-                const pubPersonas = String(pub.cupos || "").trim();
+                // Usando cupos_totales
+                const pubPersonas = String(pub.cupos_totales || "").trim();
                 const coincidePersonas = valPersonas === "" || (valPersonas === "3" ? Number(pubPersonas) >= 3 : pubPersonas === valPersonas);
                 
-                const pubTipo = String(pub.tipo || "").toLowerCase().trim();
+                // Usando tipo_vivienda
+                const pubTipo = String(pub.tipo_vivienda || "").toLowerCase().trim();
                 const coincideTipo = valTipo === "" || pubTipo === valTipo;
                 
                 const pubMascotas = String(pub.mascota || "").toLowerCase().trim();
@@ -162,19 +164,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
-// LÓGICA DEL MODAL: Inyecta TODA la información
+// LÓGICA DEL MODAL: Inyecta TODA la información corregida
 window.abrirDetalle = function(index) {
     const pub = window.todasLasPublicaciones[index];
     const modal = document.getElementById("modal-detalle");
     
     let textoPersonas = "No especificado";
-    if (pub.cupos) {
-        textoPersonas = (String(pub.cupos) === "3") ? "3 o más Personas" : `${pub.cupos} Persona(s)`;
+    if (pub.cupos_totales) {
+        textoPersonas = (String(pub.cupos_totales) === "3") ? "3 o más Personas" : `${pub.cupos_totales} Persona(s)`;
     }
 
     const aceptaMascotas = String(pub.mascota || "").toLowerCase() === "si" ? "Sí acepta" : "No acepta";
     const categoriaTexto = String(pub.categoria || "").toLowerCase().includes("busco") ? "Busca arriendo" : "Ofrece arriendo";
-    const tipoVivienda = pub.tipo ? (pub.tipo.charAt(0).toUpperCase() + pub.tipo.slice(1)) : "No especificado";
+    const tipoVivienda = pub.tipo_vivienda ? (pub.tipo_vivienda.charAt(0).toUpperCase() + pub.tipo_vivienda.slice(1)) : "No especificado";
 
     // Pasa los datos del JS al HTML del modal
     document.getElementById("modal-titulo").textContent = pub.titulo || "Sin título";
@@ -185,8 +187,8 @@ window.abrirDetalle = function(index) {
     document.getElementById("modal-personas").textContent = textoPersonas;
     document.getElementById("modal-mascotas").textContent = aceptaMascotas;
     
-    // Aquí mandamos la descripción completa que escribió el usuario
-    document.getElementById("modal-desc").textContent = pub.contenido || "El usuario no proporcionó una descripción detallada.";
+    // Usando "descripcion" en lugar de "contenido"
+    document.getElementById("modal-desc").textContent = pub.descripcion || "El usuario no proporcionó una descripción detallada.";
     
     modal.style.display = "flex";
 };
