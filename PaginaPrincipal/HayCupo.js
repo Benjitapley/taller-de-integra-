@@ -1,68 +1,196 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // Seleccionamos el formulario y el contenedor donde mostraremos los resultados
-    const formulario = document.querySelector('form');
-    const contenedorResultados = document.querySelector('.espacio-futuro');
+document.addEventListener("DOMContentLoaded", async () => {
+    
+    // 1. MENÚ Y HEADER
+    const btnAbrir = document.getElementById("btn-abrir-menu");
+    const btnCerrar = document.getElementById("btn-cerrar-menu");
+    const menuLateral = document.getElementById("menu-lateral");
+    const fondoMenu = document.getElementById("fondo-menu");
 
-    formulario.addEventListener('submit', async (evento) => {
-        // Evitamos que la página se recargue al presionar "Consultar"
-        evento.preventDefault();
+    if (btnAbrir && btnCerrar && menuLateral && fondoMenu) {
+        btnAbrir.addEventListener("click", () => {
+            menuLateral.classList.add("abierto");
+            fondoMenu.style.display = "block";
+        });
+        btnCerrar.addEventListener("click", () => {
+            menuLateral.classList.remove("abierto");
+            fondoMenu.style.display = "none";
+        });
+        fondoMenu.addEventListener("click", () => {
+            menuLateral.classList.remove("abierto");
+            fondoMenu.style.display = "none";
+        });
+    }
 
-        // Limpiamos los resultados anteriores
-        contenedorResultados.innerHTML = '<p>Buscando cupos...</p>';
-
-        // Obtenemos los valores ingresados en el formulario
-        const consulta = document.getElementById('consulta').value;
-        const personas = document.getElementById('personas').value;
-        const tipo = document.getElementById('tipo').value;
-        const mascotas = document.getElementById('mascotas').value;
-
-        // Armamos la URL para llamar al backend (usamos URLSearchParams para manejar los espacios y caracteres raros)
-        const parametros = new URLSearchParams();
-        if (consulta) parametros.append('consulta', consulta);
-        if (personas) parametros.append('personas', personas);
-        if (tipo) parametros.append('tipo', tipo);
-        if (mascotas) parametros.append('mascotas', mascotas);
-
-        // La ruta asume que el backend corre en el mismo servidor (localhost:8000)
-        const urlBusqueda = `/conexiones/publicaciones/buscar?${parametros.toString()}`;
-
-        try {
-            // Hacemos la petición a FastAPI
-            const respuesta = await fetch(urlBusqueda);
-            
-            if (!respuesta.ok) {
-                throw new Error('Error al conectar con el servidor');
+    const perfilUsuario = document.getElementById("perfil-usuario");
+    const dropdownMenu = document.getElementById("dropdown-menu");
+    
+    if (perfilUsuario && dropdownMenu) {
+        perfilUsuario.addEventListener("click", (e) => {
+            e.stopPropagation();
+            dropdownMenu.style.display = dropdownMenu.style.display === "block" ? "none" : "block";
+        });
+        document.addEventListener("click", (event) => {
+            if (!perfilUsuario.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                dropdownMenu.style.display = "none";
             }
+        });
+    }
 
-            const publicaciones = await respuesta.json();
+    const nombreGuardado = localStorage.getItem("nombre_usuario");
+    if (nombreGuardado) {
+        const nombreLimpio = nombreGuardado.charAt(0).toUpperCase() + nombreGuardado.slice(1);
+        const spanNombre = document.getElementById("nombre-usuario-nav");
+        const divAvatar = document.getElementById("avatar-letra");
+        if (spanNombre) spanNombre.textContent = nombreLimpio;
+        if (divAvatar) divAvatar.textContent = nombreLimpio.charAt(0);
+    }
 
-            // Dibujamos los resultados
-            if (publicaciones.length === 0) {
-                contenedorResultados.innerHTML = '<p>No se encontraron cupos con esos filtros.</p>';
-                return;
-            }
+    const btnCerrarSesion = document.getElementById("btn-cerrar-sesion");
+    if (btnCerrarSesion) {
+        btnCerrarSesion.addEventListener("click", () => {
+            localStorage.clear();
+            window.location.href = "/";
+        });
+    }
 
-            // Creamos un HTML para las tarjetas
-            let htmlResultados = '<h3>Resultados encontrados:</h3><div class="grilla-resultados">';
-            
-            publicaciones.forEach(pub => {
-                htmlResultados += `
-                    <div class="tarjeta-publicacion" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 8px;">
-                        <h4>${pub.titulo}</h4>
-                        <p><strong>Ubicación:</strong> ${pub.ubicacion}</p>
-                        <p><strong>Precio:</strong> $${pub.precio}</p>
-                        <p><strong>Tipo:</strong> ${pub.tipo_vivienda || pub.tipo}</p>
-                        <button onclick="alert('Solicitar cupo (En desarrollo)')">Me interesa</button>
-                    </div>
-                `;
-            });
-            
-            htmlResultados += '</div>';
-            contenedorResultados.innerHTML = htmlResultados;
+    // 2. SISTEMA DE PUBLICACIONES Y FILTROS
+    const contenedorPubs = document.getElementById("contenedor-publicaciones");
+    window.todasLasPublicaciones = [];
 
-        } catch (error) {
-            console.error('Error:', error);
-            contenedorResultados.innerHTML = '<p>Hubo un problema al realizar la búsqueda. Intenta nuevamente.</p>';
+    const renderizarPublicaciones = (publicaciones) => {
+        contenedorPubs.innerHTML = "";
+        contenedorPubs.className = "grid-publicaciones";
+        contenedorPubs.removeAttribute("style");
+
+        if (publicaciones.length === 0) {
+            contenedorPubs.innerHTML = "<p style='color: #666; text-align: center; grid-column: 1/-1; margin-top: 40px; font-weight: bold;'>No se encontraron publicaciones con esos filtros.</p>";
+            return;
         }
-    });
+
+        publicaciones.forEach((pub, index) => {
+            const precioClp = new Intl.NumberFormat("es-CL").format(pub.precio || 0);
+            const tieneImagen = pub.imagen && pub.imagen.trim() !== "";
+            
+            const categoria = (pub.categoria || "").toLowerCase();
+            const esBusqueda = categoria.includes("busco");
+            const iconoClase = esBusqueda ? "fa-magnifying-glass" : "fa-house";
+            const tituloCat = esBusqueda ? "Se busca arriendo" : "Se ofrece arriendo";
+            
+            const claseTarjeta = tieneImagen ? "tarjeta-mockup" : "tarjeta-mockup sin-imagen";
+            const imgHtml = tieneImagen ? `<div class="tarjeta-img" style="background-image: url('${pub.imagen}');"></div>` : "";
+            
+            const titulo = pub.titulo ? `<p style="font-weight: 800; color: #1a1a1a; margin-bottom: 8px; font-size: 15px;">${pub.titulo}</p>` : '';
+            
+            // Lógica exacta para el número de personas (cupos)
+            let textoPersonas = "No especificado";
+            if (pub.cupos) {
+                if (String(pub.cupos) === "3") {
+                    textoPersonas = "3 o más Personas";
+                } else {
+                    textoPersonas = `${pub.cupos} Persona(s)`;
+                }
+            }
+
+            // En la tarjeta principal (Home) ya NO ponemos la descripción, solo los datos
+            const tarjetaHtml = `
+                <div class="${claseTarjeta}" style="animation-delay: ${index * 0.05}s; cursor: pointer;" onclick="abrirDetalle(${index})">
+                    ${imgHtml}
+                    <div class="tarjeta-contenido">
+                        <div class="tarjeta-header">
+                            <div class="tarjeta-icono-cat">
+                                <i class="fa-solid ${iconoClase}"></i>
+                            </div>
+                            <div class="tarjeta-titulo-cat">
+                                <span>${tituloCat}</span>
+                                <div class="linea-corta"></div>
+                            </div>
+                        </div>
+                        <div class="tarjeta-detalles">
+                            ${titulo}
+                            <p><i class="fa-solid fa-user"></i> ${textoPersonas}</p>
+                            <p><i class="fa-solid fa-money-bill"></i> <strong>${precioClp} CLP</strong></p>
+                            <p><i class="fa-solid fa-location-dot"></i> <span>${pub.ubicacion || "No especificada"}</span></p>
+                        </div>
+                        <div class="tarjeta-footer">
+                            <span><i class="fa-regular fa-calendar"></i> Reciente</span>
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+            contenedorPubs.innerHTML += tarjetaHtml;
+        });
+    };
+
+    if (contenedorPubs) {
+        try {
+            const respuesta = await fetch("/api/publicaciones");
+            window.todasLasPublicaciones = await respuesta.json();
+            renderizarPublicaciones(window.todasLasPublicaciones);
+        } catch (error) {
+            contenedorPubs.innerHTML = "<p style='color:red; grid-column: 1/-1;'>Error al cargar las publicaciones.</p>";
+        }
+    }
+
+    // 4. MOTOR DE FILTROS 
+    const btnConsultar = document.getElementById("btn-consultar");
+    if (btnConsultar) {
+        btnConsultar.addEventListener("click", () => {
+            const txtUbicacion = document.getElementById("filtro-ubicacion").value.toLowerCase().trim();
+            const valPersonas = document.getElementById("filtro-personas").value;
+            const valTipo = document.getElementById("filtro-tipo").value;
+            const valMascotas = document.getElementById("filtro-mascotas").value;
+
+            const filtradas = window.todasLasPublicaciones.filter(pub => {
+                const pubUbi = (pub.ubicacion || "").toLowerCase();
+                const coincideUbicacion = txtUbicacion === "" || pubUbi.includes(txtUbicacion);
+                
+                const pubPersonas = String(pub.cupos || "").trim();
+                const coincidePersonas = valPersonas === "" || (valPersonas === "3" ? Number(pubPersonas) >= 3 : pubPersonas === valPersonas);
+                
+                const pubTipo = String(pub.tipo || "").toLowerCase().trim();
+                const coincideTipo = valTipo === "" || pubTipo === valTipo;
+                
+                const pubMascotas = String(pub.mascota || "").toLowerCase().trim();
+                const coincideMascotas = valMascotas === "" || pubMascotas === valMascotas;
+
+                return coincideUbicacion && coincidePersonas && coincideTipo && coincideMascotas;
+            });
+
+            renderizarPublicaciones(filtradas);
+        });
+    }
 });
+
+// LÓGICA DEL MODAL: Inyecta TODA la información
+window.abrirDetalle = function(index) {
+    const pub = window.todasLasPublicaciones[index];
+    const modal = document.getElementById("modal-detalle");
+    
+    let textoPersonas = "No especificado";
+    if (pub.cupos) {
+        textoPersonas = (String(pub.cupos) === "3") ? "3 o más Personas" : `${pub.cupos} Persona(s)`;
+    }
+
+    const aceptaMascotas = String(pub.mascota || "").toLowerCase() === "si" ? "Sí acepta" : "No acepta";
+    const categoriaTexto = String(pub.categoria || "").toLowerCase().includes("busco") ? "Busca arriendo" : "Ofrece arriendo";
+    const tipoVivienda = pub.tipo ? (pub.tipo.charAt(0).toUpperCase() + pub.tipo.slice(1)) : "No especificado";
+
+    // Pasa los datos del JS al HTML del modal
+    document.getElementById("modal-titulo").textContent = pub.titulo || "Sin título";
+    document.getElementById("modal-categoria-badge").textContent = categoriaTexto;
+    document.getElementById("modal-tipo").textContent = tipoVivienda;
+    document.getElementById("modal-ubi").textContent = pub.ubicacion || "No especificada";
+    document.getElementById("modal-precio").textContent = new Intl.NumberFormat("es-CL").format(pub.precio || 0) + " CLP";
+    document.getElementById("modal-personas").textContent = textoPersonas;
+    document.getElementById("modal-mascotas").textContent = aceptaMascotas;
+    
+    // Aquí mandamos la descripción completa que escribió el usuario
+    document.getElementById("modal-desc").textContent = pub.contenido || "El usuario no proporcionó una descripción detallada.";
+    
+    modal.style.display = "flex";
+};
+
+window.cerrarDetalle = function() {
+    document.getElementById("modal-detalle").style.display = "none";
+};

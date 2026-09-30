@@ -1,90 +1,182 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hay cupo</title>
-  <link rel="stylesheet" href="estilo_HayCupo.css">
-</head>
-
-<body>
-  <header>
-    <h1>¿Hay cupo?</h1>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hay cupo</title>
     
-    <p>Encuentra el lugar ideal para ti o comparte el tuyo.</p>
-    <div class="beneficios">
+    <link rel="stylesheet" href="/static_principal/estilo_HayCupo.css">
+    <link rel="stylesheet" href="/Iconos/sidebar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
 
-    <a class="boton-registro" href="Auth_app /registro.html">
-      Registrarte en ¿Hay cupo?
-    </a>
-  </header>
+    <!-- 1. Overlay oscuro del menú lateral -->
+    <div id="fondo-menu" class="fondo-oscuro"></div>
 
-  <main>
-    <section class="consulta">
-      <h2>Consulta de cupos</h2>
-      <p>Busca la ubicación que más te interese</p>
-
-      <form action="#" method="get">
-
-
-        <!-- Búsqueda arriba -->
-        <div class="busqueda">
-          <label for="consulta">Ubicación</label>
-
-          <div class="barra-busqueda">
-            <input
-              type="text"
-              id="consulta"
-              name="consulta"
-              placeholder="Escribe la ubicación"
-            >
-            <button type="submit">Consultar</button>
-          </div>
+    <!-- 2. Menú Lateral Off-canvas -->
+    <nav id="menu-lateral" class="sidebar">
+        <div class="sidebar-logo">
+            <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
+            <h2>Roomies</h2>
+            <button id="btn-cerrar-menu" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
         </div>
 
-        <!-- Filtros debajo -->
-        <div class="filtros">
-          <div class="filtro">
-            <label for="personas">
-              ¿Para cuántas personas?
-            </label>
+        <ul class="sidebar-menu">
+            <li><a href="/inicio"><img src="/Iconos/casa.webp" alt="Inicio" class="icono"> Inicio</a></li>
+            <li><a href="/explorar"><img src="/Iconos/lupa_busqueda.webp" alt="Explorar" class="icono"> Explorar</a></li>
+            <li class="activo"><a href="/chat"><img src="/Iconos/icono_chat.webp" alt="Chat" class="icono"> Chat <span class="punto-notificacion"></span></a></li>
+            <li><a href="/mis-publicaciones"><img src="/Iconos/icono_publicaciones.webp" alt="Mis publicaciones" class="icono"> Mis publicaciones</a></li>
+            <li><a href="/favoritos"><img src="/Iconos/favorito.webp" alt="Favoritos" class="icono"> Favoritos</a></li>
+            <li><a href="/perfil"><img src="/Iconos/icono_perfil.webp" alt="Perfil" class="icono"> Perfil</a></li>
+            <li><a href="/ajustes"><img src="/Iconos/engrane_ajustes.webp" alt="Ajustes" class="icono"> Ajustes</a></li>
+        </ul>
 
-            <select id="personas" name="personas">
-              <option value="uno">Uno</option>
-              <option value="dos">Dos</option>
-              <option value="tres">Tres</option>
-              <option value="cuatro_o_mas">Cuatro o más</option>
-            </select>
-          </div>
-
-          <div class="filtro">
-            <label for="tipo">Casa o departamento</label>
-
-            <select id="tipo" name="tipo">
-              <option value="casa">Casa</option>
-              <option value="departamento">Departamento</option>
-            </select>
-          </div>
-
-          <div class="filtro">
-            <label for="mascotas">¿Tiene mascotas?</label>
-
-            <select id="mascotas" name="mascotas">
-              <option value="si">Sí</option>
-              <option value="no">No</option>
-            </select>
-          </div>
+        <div class="sidebar-card">
+            <img src="/Iconos/sofa(login).webp" alt="Ilustración sala" class="ilustracion-card">
+            <h3>¿Buscas algo para tu casa?</h3>
+            <p>Publica o encuentra lo que necesites.</p>
+            <a href="/publicar" class="btn-sidebar">Ver publicaciones</a>
         </div>
-      </form>
-    </section>
+    </nav>
 
-    <!-- Aquí puedes agregar tus próximas ideas -->
-    <div class="espacio-futuro"></div>
-  </main>
+    <!-- 3. Header Principal Morado -->
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 12px 30px; background-color: #382384; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+            <i class="fa-solid fa-house" style="font-size: 20px; color: white;"></i>
+            <h1 style="margin: 0; font-size: 20px; font-weight: 800;">¿Hay cupo?</h1>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <a href="/crear" style="background-color: white; color: #382384; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: 0.2s;">
+                <i class="fa-solid fa-plus"></i> Crear publicación
+            </a>
 
-  <footer>
-    <p>&copy; 2026 Hay cupo</p>
-  </footer>
-  <script src="HayCupo.js"></script>
+            <div id="menu-usuario-container" style="position: relative; display: inline-block;">
+                <div id="perfil-usuario" style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(255,255,255,0.15); padding: 5px 12px 5px 5px; border-radius: 20px; transition: 0.2s;">
+                    <div id="avatar-letra" style="width: 32px; height: 32px; background-color: white; color: #382384; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
+                        ?
+                    </div>
+                    <span id="nombre-usuario-nav" style="font-weight: 700; font-size: 14px; color: white;">Cargando...</span>
+                    <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: white;"></i>
+                </div>
+                
+                <div id="dropdown-menu" style="display: none; position: absolute; right: 0; top: 110%; background: white; border: 1px solid #ddd; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; z-index: 1000; min-width: 150px;">
+                    <button id="btn-cerrar-sesion" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; font-size: 14px; color: #cf3b3b; font-weight: bold;">
+                        Cerrar sesión
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 4. Contenido Principal -->
+    <main>
+        <div class="consulta">
+            <h2>Consulta de cupos</h2>
+            <p>Busca la ubicación que más te interese</p>
+
+            <form id="form-busqueda">
+                <div class="busqueda">
+                    <label>Ubicación</label>
+                    <div class="barra-busqueda">
+                        <input type="text" id="filtro-ubicacion" placeholder="Ej: Temuco">
+                        <button type="button" id="btn-consultar">Consultar</button>
+                    </div>
+                </div>
+
+                <div class="filtros">
+                    <div class="filtro">
+                        <label>¿Para cuántas personas?</label>
+                        <select id="filtro-personas">
+                            <option value="">Cualquiera</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3 o más</option>
+                        </select>
+                    </div>
+                    <div class="filtro">
+                        <label>Casa o departamento</label>
+                        <select id="filtro-tipo">
+                            <option value="">Cualquiera</option>
+                            <option value="casa">Casa</option>
+                            <option value="departamento">Departamento</option>
+                        </select>
+                    </div>
+                    <div class="filtro">
+                        <label>¿Tiene mascotas?</label>
+                        <select id="filtro-mascotas">
+                            <option value="">Cualquiera</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Contenedor dinámico de las tarjetas -->
+        <div id="contenedor-publicaciones" class="espacio-futuro" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 24px;">
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2026 ¿Hay cupo? Todos los derechos reservados.</p>
+    </footer>
+
+    <!-- 5. Modal de Detalles de Publicación -->
+    <div id="modal-detalle" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+        <div style="background: white; width: 90%; max-width: 600px; border-radius: 12px; padding: 24px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+            <button onclick="cerrarDetalle()" style="position: absolute; top: 20px; right: 20px; background: transparent; border: none; font-size: 24px; cursor: pointer; color: #888; line-height: 1;">&times;</button>
+            
+            <h2 id="modal-titulo" style="color: #382384; margin-top: 0; font-size: 24px; font-weight: 800; padding-right: 30px;">Cargando...</h2>
+            <p id="modal-categoria-badge" style="display: inline-block; background: #382384; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-top: -10px; margin-bottom: 15px;"></p>
+            
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 0 0 16px 0;">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+                <div>
+                    <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 4px;">Tipo de vivienda:</p>
+                    <p style="margin: 0; color: #555; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-building" style="color: #382384; width: 16px; text-align: center;"></i>
+                        <span id="modal-tipo">...</span>
+                    </p>
+                </div>
+                <div>
+                    <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 4px;">Ubicación:</p>
+                    <p style="margin: 0; color: #555; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-location-dot" style="color: #382384; width: 16px; text-align: center;"></i>
+                        <span id="modal-ubi">...</span>
+                    </p>
+                </div>
+                <div>
+                    <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 4px;">Precio:</p>
+                    <p style="margin: 0; color: #555; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-money-bill" style="color: #382384; width: 16px; text-align: center;"></i>
+                        <span id="modal-precio">...</span>
+                    </p>
+                </div>
+                <div>
+                    <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 4px;">Personas:</p>
+                    <p style="margin: 0; color: #555; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-user" style="color: #382384; width: 16px; text-align: center;"></i>
+                        <span id="modal-personas">...</span>
+                    </p>
+                </div>
+                <div>
+                    <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 4px;">Mascotas:</p>
+                    <p style="margin: 0; color: #555; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-paw" style="color: #382384; width: 16px; text-align: center;"></i>
+                        <span id="modal-mascotas">...</span>
+                    </p>
+                </div>
+            </div>
+            
+            <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 8px;">Descripción detallada:</p>
+            <p id="modal-desc" style="color: #555; line-height: 1.5; margin: 0; background: #f4f5f9; padding: 15px; border-radius: 8px; border: 1px solid #eae8f0;"></p>
+        </div>
+    </div>
+
+    <script src="/static_principal/HayCupo.js"></script>
 </body>
 </html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Publicaciones - Hay cupo</title>
+    
+    <!-- Mismos estilos del inicio -->
+    <link rel="stylesheet" href="/static_principal/estilo_HayCupo.css">
+    <link rel="stylesheet" href="/Iconos/sidebar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="/static_principal/PublicacionesU/mis_publicaciones.css">
+</head>
+<body style="background-color: #f4f5f9; margin: 0; font-family: 'Mulish', sans-serif;">
+
+    <!-- 1. Fondo oscuro para cuando el menú lateral está abierto -->
+    <div id="fondo-menu" class="fondo-oscuro"></div>
+
+    <!-- 2. Menú Lateral Oculto (Off-canvas) -->
+    <nav id="menu-lateral" class="sidebar">
+        <div class="sidebar-logo">
+            <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
+            <h2>Roomies</h2>
+            <button id="btn-cerrar-menu" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="/inicio"><img src="/Iconos/casa.webp" alt="Inicio" class="icono"> Inicio</a></li>
+            <li><a href="/explorar"><img src="/Iconos/lupa_busqueda.webp" alt="Explorar" class="icono"> Explorar</a></li>
+            <li><a href="/chat"><img src="/Iconos/icono_chat.webp" alt="Chat" class="icono"> Chat <span class="punto-notificacion"></span></a></li>
+            <li class="activo"><a href="/mis-publicaciones"><img src="/Iconos/icono_publicaciones.webp" alt="Mis publicaciones" class="icono"> Mis publicaciones</a></li>
+            <li><a href="/favoritos"><img src="/Iconos/favorito.webp" alt="Favoritos" class="icono"> Favoritos</a></li>
+            <li><a href="/perfil"><img src="/Iconos/icono_perfil.webp" alt="Perfil" class="icono"> Perfil</a></li>
+            <li><a href="/ajustes"><img src="/Iconos/engrane_ajustes.webp" alt="Ajustes" class="icono"> Ajustes</a></li>
+        </ul>
+    </nav>
+
+    <!-- 3. Barra Morada Superior (Idéntica al inicio) -->
+    <header class="header-morado" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 30px; background-color: #382384; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        
+        <!-- Botón para abrir el menú lateral -->
+        <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+            <i class="fa-solid fa-house" style="font-size: 20px;"></i>
+            <h1 style="margin: 0; font-size: 20px; font-weight: 800;">¿Hay cupo?</h1>
+        </div>
+        
+        <!-- Perfil de usuario a la derecha -->
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div id="menu-usuario-container" style="position: relative; display: inline-block;">
+                <div id="perfil-usuario" style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(255,255,255,0.1); padding: 5px 12px 5px 5px; border-radius: 20px;">
+                    <div id="avatar-letra" style="width: 30px; height: 30px; background-color: white; color: #382384; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">?</div>
+                    <span id="nombre-usuario-nav" style="font-weight: 700; font-size: 14px; color: white;">Cargando...</span>
+                    <span style="font-size: 10px; color: white;">▼</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 4. Contenido Principal (CRUD) -->
+    <main style="padding: 20px; display: flex; justify-content: center;">
+        <div class="panel-crud" style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); width: 100%; max-width: 1000px; margin-top: 20px;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f5f9; padding-bottom: 15px;">
+                <h2 style="color: #1a1a1a; margin: 0; font-size: 24px; font-weight: 800;">Mis Anuncios</h2>
+                <a href="/crear" style="background: #382384; color: white; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 14px; transition: 0.2s;"><i class="fa-solid fa-plus"></i> Nueva</a>
+            </div>
+
+            <table class="tabla-crud" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                <thead>
+                    <tr>
+                        <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Título</th>
+                        <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Tipo</th>
+                        <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Precio</th>
+                        <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Estado</th>
+                        <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-mis-publicaciones">
+                    <tr><td colspan="5" style="text-align: center; padding: 20px; color: #888;">Cargando tus publicaciones...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal de confirmación para borrar -->
+    <div id="modal-borrar" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 9999;">
+        <div style="background: white; padding: 24px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%;">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size: 40px; color: #cf3b3b; margin-bottom: 15px;"></i>
+            <h2 style="margin-top: 0; color: #1a1a1a;">¿Eliminar publicación?</h2>
+            <p style="color: #666; margin-bottom: 25px;">Esta acción no se puede deshacer.</p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button onclick="document.getElementById('modal-borrar').style.display='none'" style="padding: 10px 20px; border-radius: 6px; border: 1px solid #ccc; background: rgb(17, 16, 16); cursor: pointer; font-weight: bold;">Cancelar</button>
+                <button id="btn-confirmar-borrar" style="padding: 10px 20px; border-radius: 6px; border: none; background: #cf3b3b; color: rgb(238, 231, 231); cursor: pointer; font-weight: bold;">Sí, eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts clave -->
+    <!-- HayCupo.js le da vida al menú lateral -->
+    <script src="/static_principal/HayCupo.js"></script>
+    <!-- MisPublicaciones.js llena los datos y hace funcionar los botones -->
+    <script src="/static_principal/PublicacionesU/MisPublicaciones.js"></script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+from fastapi.staticfiles import StaticFiles
 import os
 from contextlib import asynccontextmanager
 from io import BytesIO
@@ -13,13 +14,14 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from match_conexion_service.routes import router as conexion_router
 
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
 from auth_service.main import auth_router
 
 
-# CARPETAS
+# ==========================================
+# 1. CONFIGURACIÓN DE CARPETAS
+# ==========================================
 BASE = Path(__file__).resolve().parent
 FRONTEND_CREACION = BASE.parent / "Creacion_De_publicacion"
 FRONTEND_PRINCIPAL = BASE.parent / "PaginaPrincipal"
@@ -28,14 +30,14 @@ IMAGENES = BASE / "imagenes"
 IMAGENES.mkdir(parents=True, exist_ok=True)
 
 
-# CONEXIÓN CON POSTGRESQL
+# ==========================================
+# 2. CONEXIÓN CON POSTGRESQL (SUPABASE)
+# ==========================================
 def conectar():
-    url = "postgresql://postgres:Hcupo2223xd@db.erefnpvdjondjpcyjrpb.supabase.co:5432/postgres"
+    url = "postgresql://postgres.erefnpvdjondjpcyjrpb:Hcupo2223xd@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
     return psycopg.connect(url, connect_timeout=10)
-   
 
 
-# Verifica el esquema existente. No crea la tabla antigua.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     with conectar() as conexion:
@@ -51,7 +53,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CONFIGURACIÓN DE CORS (Permite que tu JS se conecte sin bloqueos)
+# CONFIGURACIÓN DE CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -67,77 +69,133 @@ app.include_router(auth_router)
 app.mount("/static_creacion", StaticFiles(directory=FRONTEND_CREACION), name="static_creacion")
 app.mount("/static_principal", StaticFiles(directory=FRONTEND_PRINCIPAL), name="static_principal")
 app.mount("/imagenes", StaticFiles(directory=IMAGENES), name="imagenes")
+app.mount("/Iconos", StaticFiles(directory="Iconos"), name="iconos")
+app.mount("/PerfilU", StaticFiles(directory="PerfilU"), name="perfil_u")
 
 
-# Autor fijo SOLO para desarrollo local sin sistema de login.
-# No se recibe un id arbitrario desde el navegador.
+# Autor fijo SOLO para desarrollo local
 def autor_de_prueba():
     return 1
 
 
-# RUTAS PARA MOSTRAR LOS HTML
+# ==========================================
+# 3. RUTAS PARA MOSTRAR LOS HTML (FRONTEND)
+# ==========================================
 @app.get("/")
 def mostrar_login():
-    # La página de inicio por defecto será el Login
     return FileResponse(FRONTEND_PRINCIPAL / "Auth_app(login)" / "auth_app.html")
 
 @app.get("/inicio")
 def mostrar_pagina_principal():
-    # La pantalla morada de búsqueda
     return FileResponse(FRONTEND_PRINCIPAL / "hayCupo.html")
 
 @app.get("/crear")
 def mostrar_formulario_creacion():
-    # El formulario de creación con el nuevo nombre de archivo
     return FileResponse(FRONTEND_CREACION / "publicacion.html")
+
+@app.get("/perfil")
+def mostrar_pantalla_perfil():
+    return FileResponse("PerfilU/perfil.html")
+
+@app.get("/mis-publicaciones")
+def mostrar_mis_publicaciones():
+    # Carga tu CRUD
+    return FileResponse(FRONTEND_PRINCIPAL / "PublicacionesU" / "mis_publicaciones.html")
+
+@app.get("/editar-publicacion")
+def mostrar_editar_publicacion():
+    # Reutiliza el HTML de creación para editar
+    return FileResponse(FRONTEND_CREACION / "publicacion.html")
+
+
+# ==========================================
+# 4. ENDPOINTS API (BACKEND)
+# ==========================================
 
 # AUTOCOMPLETADO DE UBICACIÓN
 @app.get("/api/ubicaciones")
-async def buscar_ubicaciones(
-    texto: str = Query(min_length=3, max_length=250),
-):
+async def buscar_ubicaciones(texto: str = Query(min_length=3, max_length=250)):
     clave = os.getenv("GEOAPIFY_API_KEY")
-
     if not clave:
-        raise HTTPException(
-            status_code=503,
-            detail="Falta configurar la clave de Geoapify.",
-        )
-
+        raise HTTPException(status_code=503, detail="Falta configurar la clave de Geoapify.")
     if len(texto.strip()) < 3:
         return []
 
-    parametros = {
-        "text": texto.strip(),
-        "apiKey": clave,
-        "lang": "es",
-        "limit": 5,
-        "format": "json",
-    }
-
+    parametros = {"text": texto.strip(), "apiKey": clave, "lang": "es", "limit": 5, "format": "json"}
     try:
         async with httpx.AsyncClient(timeout=10) as cliente:
-            respuesta = await cliente.get(
-                "https://api.geoapify.com/v1/geocode/autocomplete",
-                params=parametros,
-            )
+            respuesta = await cliente.get("https://api.geoapify.com/v1/geocode/autocomplete", params=parametros)
             respuesta.raise_for_status()
             datos = respuesta.json()
+    except Exception:
+        raise HTTPException(status_code=502, detail="No se pudo consultar ubicaciones.") from None
 
-    except (httpx.HTTPError, ValueError):
-        raise HTTPException(
-            status_code=502,
-            detail="No se pudo consultar el servicio de ubicaciones.",
-        ) from None
-
-    return [
-        lugar["formatted"]
-        for lugar in datos.get("results", [])
-        if lugar.get("formatted")
-    ]
+    return [lugar["formatted"] for lugar in datos.get("results", []) if lugar.get("formatted")]
 
 
-# CREAR PUBLICACIÓN
+# OBTENER TODAS LAS PUBLICACIONES (Para el inicio)
+@app.get("/api/publicaciones")
+def obtener_publicaciones():
+    try:
+        with conectar() as conexion:
+            registros = conexion.execute("""
+                SELECT p.id_publicacion, p.titulo, p.precio, p.ubicacion, p.cupos_totales, 
+                       p.tipo_vivienda, i.url as imagen_url, p.categoria, p.descripcion, p.mascota, p.contenido
+                FROM haycupo.publicacion p
+                LEFT JOIN haycupo.imagen_publicacion i ON p.id_publicacion = i.id_publicacion
+                ORDER BY p.id_publicacion DESC
+            """).fetchall()
+            
+            publicaciones = []
+            for row in registros:
+                desc_final = row[10] if row[10] else row[8]
+                publicaciones.append({
+                    "id": row[0], "titulo": row[1], "precio": float(row[2]), "ubicacion": row[3],
+                    "cupos_totales": row[4], "tipo_vivienda": row[5], "imagen": row[6],
+                    "categoria": row[7], "descripcion": desc_final, "mascota": row[9]
+                })
+            return publicaciones
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error al cargar publicaciones")
+
+
+# OBTENER SOLO MIS PUBLICACIONES (Para el CRUD)
+@app.get("/api/mis-publicaciones")
+def obtener_mis_publicaciones():
+    id_usuario = autor_de_prueba()
+    try:
+        with conectar() as conexion:
+            registros = conexion.execute("""
+                SELECT id_publicacion, titulo, precio, estado, tipo_vivienda 
+                FROM haycupo.publicacion
+                WHERE id_usuario = %s
+                ORDER BY id_publicacion DESC
+            """, (id_usuario,)).fetchall()
+            
+            return [{"id": r[0], "titulo": r[1], "precio": float(r[2]), "estado": r[3], "tipo": r[4]} for r in registros]
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error al cargar tus publicaciones")
+
+
+# OBTENER UNA SOLA PUBLICACIÓN (Para rellenar el formulario al editar)
+@app.get("/api/publicaciones/{id_pub}")
+def obtener_una_publicacion(id_pub: int):
+    with conectar() as conexion:
+        r = conexion.execute("""
+            SELECT titulo, categoria, tipo_vivienda, ubicacion, precio, cupos_totales, mascota, descripcion 
+            FROM haycupo.publicacion WHERE id_publicacion = %s
+        """, (id_pub,)).fetchone()
+        
+        if r:
+            return {
+                "titulo": r[0], "categoria": r[1], "tipo_vivienda": r[2], 
+                "ubicacion": r[3], "precio": r[4], "cupos_totales": r[5], 
+                "mascota": r[6], "descripcion": r[7]
+            }
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+
+
+# CREAR PUBLICACIÓN NUEVA
 @app.post("/api/publicaciones", status_code=201)
 def crear_publicacion(
     titulo: Annotated[str, Form(min_length=1, max_length=200)],
@@ -146,116 +204,112 @@ def crear_publicacion(
     precio: Annotated[Decimal, Form(ge=0, max_digits=14, decimal_places=2)],
     tipo: Annotated[Literal["Arrendador", "Compartida"], Form()],
     cupos_totales: Annotated[int, Form(ge=1, le=2147483647)],
-    tipo_vivienda: Annotated[
-        Literal["casa", "departamento", "habitacion"],
-        Form(),
-    ],
+    tipo_vivienda: Annotated[Literal["casa", "departamento", "habitacion"], Form()],
     descripcion: Annotated[str, Form(min_length=1, max_length=5000)],
-    permitir_comentarios: Annotated[bool, Form()] = False,
+    mascota: Annotated[str, Form()] = "no",
+    permitir_comentarios: Annotated[str, Form()] = "false",
     imagen: Annotated[UploadFile | None, File()] = None,
 ):
     id_usuario = autor_de_prueba()
-    titulo = titulo.strip()
-    ubicacion = ubicacion.strip()
-    descripcion = descripcion.strip()
+    texto_desc = descripcion.strip()
+    permitir = True if permitir_comentarios.lower() == "true" else False
 
-    if not all([titulo, ubicacion, descripcion]):
-        raise HTTPException(
-            status_code=422,
-            detail="Completa el título, la ubicación y la descripción.",
-        )
+    if not all([titulo.strip(), ubicacion.strip(), texto_desc]):
+        raise HTTPException(status_code=422, detail="Completa el título, ubicación y descripción.")
 
     nombre_imagen = None
     ruta_imagen = None
 
     if imagen and imagen.filename:
         limite = 5 * 1024 * 1024
-        contenido = imagen.file.read(limite + 1)
-
-        if len(contenido) > limite:
-            raise HTTPException(
-                status_code=413,
-                detail="La imagen debe pesar como máximo 5 MB.",
-            )
-
+        contenido_img = imagen.file.read(limite + 1)
+        if len(contenido_img) > limite:
+            raise HTTPException(status_code=413, detail="La imagen debe pesar como máximo 5 MB.")
         try:
-            with Image.open(BytesIO(contenido)) as foto:
-                extensiones = {
-                    "JPEG": ".jpg",
-                    "PNG": ".png",
-                    "WEBP": ".webp",
-                }
-
+            with Image.open(BytesIO(contenido_img)) as foto:
+                extensiones = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}
                 extension = extensiones.get(foto.format)
-
                 if not extension:
-                    raise HTTPException(
-                        status_code=422,
-                        detail="Usa una imagen JPG, PNG o WEBP.",
-                    )
-
+                    raise HTTPException(status_code=422, detail="Usa una imagen JPG, PNG o WEBP.")
                 foto.verify()
-
-        except (
-            UnidentifiedImageError,
-            OSError,
-            ValueError,
-            Image.DecompressionBombError,
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail="El archivo no es una imagen válida.",
-            ) from None
+        except Exception:
+            raise HTTPException(status_code=422, detail="El archivo no es válido.") from None
 
         nombre_imagen = uuid4().hex + extension
         ruta_imagen = IMAGENES / nombre_imagen
 
-
     try:
         with conectar() as conexion:
-            existe = conexion.execute(
-                "SELECT id_usuario FROM haycupo.usuario WHERE id_usuario = %s FOR KEY SHARE",
-                (id_usuario,),
-            ).fetchone()
-            if not existe:
-                raise HTTPException(422, "El autor configurado no existe. Revisa PUBLICACION_AUTOR_ID.")
-
             fila = conexion.execute(
                 """
                 INSERT INTO haycupo.publicacion (
                     id_usuario, tipo, titulo, descripcion, precio, ubicacion,
                     estado, cupos_totales, categoria, tipo_vivienda,
-                    permitir_comentarios
+                    permitir_comentarios, mascota, contenido
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, 'Disponible', %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, 'Disponible', %s, %s, %s, %s, %s, %s)
                 RETURNING id_publicacion
                 """,
-                (id_usuario, tipo, titulo, descripcion, precio, ubicacion,
-                 cupos_totales, categoria, tipo_vivienda, permitir_comentarios),
+                (id_usuario, tipo, titulo, texto_desc, precio, ubicacion,
+                 cupos_totales, categoria, tipo_vivienda, permitir, mascota, texto_desc),
             ).fetchone()
+            
             identificador = fila[0]
 
             if ruta_imagen:
-                ruta_imagen.write_bytes(contenido)
+                ruta_imagen.write_bytes(contenido_img)
                 conexion.execute(
-                    """INSERT INTO haycupo.imagen_publicacion
-                       (id_publicacion, url, orden) VALUES (%s, %s, 0)""",
-                    (identificador, f"/imagenes/{nombre_imagen}"),
+                    "INSERT INTO haycupo.imagen_publicacion (id_publicacion, url, orden) VALUES (%s, %s, 0)",
+                    (identificador, f"/imagenes/{nombre_imagen}")
                 )
-
-    except (psycopg.Error, OSError):
+    except Exception:
         if ruta_imagen:
-            try:
-                ruta_imagen.unlink(missing_ok=True)
-            except OSError:
-                logging.getLogger(__name__).warning("No se pudo limpiar la foto del intento fallido.")
-        logging.getLogger(__name__).error("Falló el guardado de la publicación. Revisa PostgreSQL y los permisos de imagenes.")
-        raise HTTPException(
-            status_code=500,
-            detail="No se pudo guardar la publicación. Revisa la conexión y el esquema de PostgreSQL.",
-        ) from None
+            ruta_imagen.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="Error al guardar.") from None
 
-    return {
-        "id": identificador,
-        "mensaje": "Publicación creada correctamente",
-    }
+    return {"id": identificador, "mensaje": "Publicación creada"}
+
+
+# ACTUALIZAR UNA PUBLICACIÓN EXISTENTE
+@app.put("/api/publicaciones/{id_pub}")
+def actualizar_publicacion(
+    id_pub: int,
+    titulo: Annotated[str, Form()], 
+    categoria: Annotated[str, Form()],
+    ubicacion: Annotated[str, Form()], 
+    precio: Annotated[Decimal, Form()],
+    tipo_vivienda: Annotated[str, Form()], 
+    descripcion: Annotated[str, Form()],
+    tipo: Annotated[str, Form()],
+    cupos_totales: Annotated[int, Form()], 
+    mascota: Annotated[str, Form()] = "no",
+    permitir_comentarios: Annotated[str, Form()] = "false",
+    imagen: Annotated[UploadFile | None, File()] = None
+):
+    id_usuario = autor_de_prueba()
+    
+    # En esta versión básica de edición, solo actualizamos los textos para asegurar que funcione rápido
+    try:
+        with conectar() as conexion:
+            conexion.execute("""
+                UPDATE haycupo.publicacion 
+                SET titulo=%s, categoria=%s, ubicacion=%s, precio=%s, 
+                    tipo_vivienda=%s, descripcion=%s, cupos_totales=%s, mascota=%s, contenido=%s
+                WHERE id_publicacion=%s AND id_usuario=%s
+            """, (titulo, categoria, ubicacion, precio, tipo_vivienda, descripcion, cupos_totales, mascota, descripcion, id_pub, id_usuario))
+        return {"mensaje": "Publicación actualizada correctamente"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="No se pudo actualizar la base de datos")
+
+
+# ELIMINAR UNA PUBLICACIÓN
+@app.delete("/api/publicaciones/{id_pub}")
+def borrar_publicacion(id_pub: int):
+    id_usuario = autor_de_prueba()
+    try:
+        with conectar() as conexion:
+            conexion.execute("DELETE FROM haycupo.imagen_publicacion WHERE id_publicacion = %s", (id_pub,))
+            conexion.execute("DELETE FROM haycupo.publicacion WHERE id_publicacion = %s AND id_usuario = %s", (id_pub, id_usuario))
+        return {"mensaje": "Publicación eliminada"}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error al eliminar")

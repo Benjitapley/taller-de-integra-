@@ -4,154 +4,148 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Crear publicación | Hay cupo</title>
+  
   <link rel="stylesheet" href="/static_creacion/estilo_de_publicacion.css">
+  <link rel="stylesheet" href="/static_principal/estilo_HayCupo.css">
+  <link rel="stylesheet" href="/Iconos/sidebar.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
-
 <body>
-  <!-- Barra superior -->
-  <header class="barra-superior">
-    <div class="logo">
-        <a href="#">Hay <br> cupo?</a>
-    </div>
 
-      <ul class="menu">
-        <li>
-          <!-- aka para ponerla denuevo en la pagina principal porfa -->
-          <a href="#" aria-label="Salir">Salir &#9650;</a>
-        </li>
+  <div id="fondo-menu" class="fondo-oscuro"></div>
+
+  <nav id="menu-lateral" class="sidebar">
+      <div class="sidebar-logo">
+          <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
+          <h2>Roomies</h2>
+          <button id="btn-cerrar-menu" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
+      </div>
+
+      <ul class="sidebar-menu">
+          <li><a href="/inicio"><img src="/Iconos/casa.webp" alt="Inicio" class="icono"> Inicio</a></li>
+          <li><a href="/explorar"><img src="/Iconos/lupa_busqueda.webp" alt="Explorar" class="icono"> Explorar</a></li>
+          <li><a href="/chat"><img src="/Iconos/icono_chat.webp" alt="Chat" class="icono"> Chat <span class="punto-notificacion"></span></a></li>
+          <li><a href="/mis-publicaciones"><img src="/Iconos/icono_publicaciones.webp" alt="Mis publicaciones" class="icono"> Mis publicaciones</a></li>
+          <li><a href="/favoritos"><img src="/Iconos/favorito.webp" alt="Favoritos" class="icono"> Favoritos</a></li>
+          <li><a href="/perfil"><img src="/Iconos/icono_perfil.webp" alt="Perfil" class="icono"> Perfil</a></li>
+          <li><a href="/ajustes"><img src="/Iconos/engrane_ajustes.webp" alt="Ajustes" class="icono"> Ajustes</a></li>
       </ul>
-    </nav>
+  </nav>
+
+  <header class="header-morado">
+      <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+          <i class="fa-solid fa-house" style="font-size: 20px;"></i>
+          <h1>¿Hay cupo?</h1>
+      </div>
+      
+      <div style="display: flex; align-items: center; gap: 20px;">
+          <div id="menu-usuario-container" style="position: relative; display: inline-block;">
+              <div id="perfil-usuario" style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(255,255,255,0.1); padding: 5px 12px 5px 5px; border-radius: 20px;">
+                  <div id="avatar-letra" style="width: 30px; height: 30px; background-color: white; color: #382384; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
+                      ?
+                  </div>
+                  <span id="nombre-usuario-nav" style="font-weight: 700; font-size: 14px; color: white;">Cargando...</span>
+                  <span style="font-size: 10px; color: white;">▼</span>
+              </div>
+              
+              <div id="dropdown-menu" style="display: none; position: absolute; right: 0; top: 110%; background: white; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; z-index: 1000; min-width: 150px;">
+                  <button id="btn-cerrar-sesion" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; font-size: 14px; color: #cf3b3b; font-weight: bold;">
+                      Cerrar sesión
+                  </button>
+              </div>
+          </div>
+      </div>
   </header>
 
-  <main class="contenedor">
-    <section class="crear-publicacion"
-             aria-labelledby="titulo-crear-publicacion">
-
-      <header class="encabezado-publicacion">
-        <!-- cuando este lista la pagina que alguiien la cambia a la pagina principal porfa -->
-        <a class="enlace-volver" href="#">&larr; Volver</a>
-
-        <h1 id="titulo-crear-publicacion">Crear publicación</h1>
-        <p>Comparte tu arriendo o encuentra un lugar para vivir.</p>
-      </header>
-
-      
-      <form class="formulario-publicacion"
-            action="#"
-            method="post"
-            enctype="multipart/form-data">
-
-        <fieldset class="datos-publicacion">
-          <legend>Contenido de la publicación</legend>
-
-          <div class="campo">
-            <label for="titulo">Título</label>
-            <input
-              type="text"
-              id="titulo"
-              name="titulo"
-              placeholder="Escribe un título"
-              required
-              maxlength="120"
-            >
-          </div>
-
-          <div class="campo">
-            <label for="categoria">¿Buscas u ofreces arriendo?</label>
-            <select id="categoria" name="categoria" required>
-              <option value="">Selecciona una categoría</option>
-              <option value="busco">Busco arriendo</option>
-              <option value="ofrezco">Ofrezco arriendo</option>
-            </select>
-          </div>
-
-          <div class="campo">
-            <label for="ubicacion">Ubicación</label>
-            <input
-              type="text"
-              id="ubicacion"
-              name="ubicacion"
-              placeholder="Escribe la ubicación"
-              required
-            >
-          </div>
-
-          <div class="campo">
-            <label for="precio">Precio</label>
-            <input
-              type="number"
-              id="precio"
-              name="precio"
-              placeholder="Escribe el precio"
-              required
-              min="0"
-              step="0.01"
-            >
-          </div>
-
-          <div class="campo">
-            <label for="tipo">Tipo de vivienda</label>
-            <select id="tipo" name="tipo" required>
-              <option value="">Selecciona una opción</option>
-              <option value="casa">Casa</option>
-              <option value="departamento">Departamento</option>
-            </select>
-          </div>
-
-          <div class="campo">
-            <label for="contenido">Descripción</label>
-            <textarea
-              id="contenido"
-              name="contenido"
-              rows="10"
-              placeholder="Describe lo que ofreces o lo que estás buscando..."
-              required
-            ></textarea>
-          </div>
-
-          <div class="campo">
-            <label for="imagen">Imagen (opcional)</label>
-            <input
-              type="file"
-              id="imagen"
-              name="imagen"
-              accept="image/png, image/jpeg, image/webp"
-              aria-describedby="ayuda-imagen"
-            >
-            <small id="ayuda-imagen">
-              Formatos permitidos: JPG, PNG o WEBP.
-            </small>
-          </div>
-
-          <div class="campo-checkbox">
-            <input
-              type="checkbox"
-              id="comentarios"
-              name="comentarios"
-              value="si"
-              checked
-            >
-            <label for="comentarios">Permitir comentarios</label>
-          </div>
-
-         
-        </fieldset>
-
-        <div class="acciones">
-          <button class="boton-secundario" type="reset">
-            Limpiar formulario
-          </button>
-
-          <button class="boton-principal" type="submit">
-            Publicar
-          </button>
+  <main style="padding: 0 20px;">
+    <div class="tarjeta-formulario">
+        <a class="enlace-volver" href="/inicio"><i class="fa-solid fa-arrow-left"></i> Volver al inicio</a>
+        
+        <div class="titulo-seccion-form">
+            <div class="icono-circulo">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </div>
+            <div class="texto-titulo">
+                <h2>Crear publicación</h2>
+                <div class="linea-morada"></div>
+            </div>
         </div>
-      </form>
-    </section>
+
+        <form id="form-crear" enctype="multipart/form-data" class="form-grid">
+            
+            <div class="grupo-input campo-full">
+                <label for="titulo">Título de la publicación</label>
+                <input type="text" id="titulo" name="titulo" placeholder="Ej: Busco habitación cerca del centro" required maxlength="120">
+            </div>
+
+            <div class="grupo-input">
+                <label for="categoria">¿Buscas u ofreces?</label>
+                <select id="categoria" name="categoria" required>
+                    <option value="">Selecciona una opción</option>
+                    <option value="busco">Busco arriendo</option>
+                    <option value="ofrezco">Ofrezco arriendo</option>
+                </select>
+            </div>
+
+            <div class="grupo-input">
+                <label for="tipo">Tipo de vivienda</label>
+                <select id="tipo" name="tipo" required>
+                    <option value="">Selecciona una opción</option>
+                    <option value="casa">Casa</option>
+                    <option value="departamento">Departamento</option>
+                </select>
+            </div>
+
+            <div class="grupo-input">
+                <label for="ubicacion">Ubicación</label>
+                <input type="text" id="ubicacion" name="ubicacion" placeholder="Ej: Barrio Universitario" required>
+            </div>
+
+            <div class="grupo-input">
+                <label for="precio">Presupuesto / Precio (CLP)</label>
+                <input type="number" id="precio" name="precio" placeholder="Ej: 150000" required min="0">
+            </div>
+
+            <div class="grupo-input">
+                <label for="cupos">Cantidad de personas</label>
+                <select id="cupos" name="cupos" required>
+                    <option value="">Selecciona una opción</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3 o más</option>
+                </select>
+            </div>
+
+            <div class="grupo-input">
+                <label for="mascota">¿Acepta mascotas?</label>
+                <select id="mascota" name="mascota">
+                    <option value="si">Sí</option>
+                    <option value="no">No</option>
+                </select>
+            </div>
+            <div class="grupo-input campo-full">
+                <label for="imagen"><i class="fa-solid fa-camera" style="margin-right: 5px;"></i> Subir imagen (opcional)</label>
+                <input type="file" id="imagen" name="imagen" accept="image/png, image/jpeg, image/webp" style="background: white; padding: 10px; cursor: pointer; border: 2px dashed #ccc;">
+                <small style="color: #888; font-size: 12px; margin-top: -4px;">Formatos permitidos: JPG, PNG o WEBP.</small>
+            </div>
+            <div class="grupo-input campo-full">
+                <label for="contenido">Descripción detallada</label>
+                <textarea id="contenido" name="contenido" rows="5" placeholder="Describe los detalles de lo que buscas o el lugar que ofreces..." required></textarea>
+            </div>
+
+            <!-- Checkbox oculto para que el JS no lance error -->
+            <input type="checkbox" id="comentarios" name="comentarios" checked style="display: none;">
+
+            <div class="grupo-input campo-full">
+                <button type="submit" class="btn-publicar">Publicar ahora</button>
+            </div>
+
+        </form>
+    </div>
   </main>
 
-  <footer class="pie-pagina">
-    <p>&copy; 2026 Hay cupo</p>
-  </footer>
+  <script src="/static_creacion/publicacion.js"></script>
+  <script src="/static_principal/HayCupo.js"></script>
 </body>
 </html>

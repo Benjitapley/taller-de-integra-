@@ -55,6 +55,9 @@ async function handleRegister(event) {
         throw new Error(json.detail || 'Error al registrarse');
     }
 
+    // NUEVA LÍNEA: Guarda el nombre directamente en la memoria del navegador
+    localStorage.setItem('nombre_usuario', payload.nombre);
+
     setMessage(message, 'Registro exitoso. Redirigiendo...', 'success');
     window.location.href = '/inicio';
   } catch (error) {
@@ -93,6 +96,13 @@ async function handleLogin(event) {
     }
 
     localStorage.setItem('access_token', json.access_token);
+    
+    // CORREGIDO: Tu backend envía el nombre dentro de "user", así que usamos json.user.nombre
+    localStorage.setItem('nombre_usuario', json.user.nombre || payload.correo.split('@')[0]);
+
+    // NUEVA LÍNEA: Guardamos el ID dinámico exacto de quien inicia sesión
+    localStorage.setItem('user_id', json.user.id);
+
     setMessage(message, 'Inicio de sesión exitoso.', 'success');
     window.location.href = '/inicio';
   } catch (error) {
