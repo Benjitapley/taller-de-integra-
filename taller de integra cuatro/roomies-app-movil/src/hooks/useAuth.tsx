@@ -10,6 +10,7 @@ interface AuthContextValue {
     nombre: string;
     email: string;
     password: string;
+    fechaNacimiento: string;
   }) => Promise<boolean>;
   cerrarSesion: () => void;
 }
@@ -39,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     nombre: string;
     email: string;
     password: string;
+    fechaNacimiento: string;
   }) {
     const correoExiste = credenciales.some(
       (item) => item.usuario.email.toLowerCase() === datos.email.trim().toLowerCase(),
@@ -53,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       rol: "Usuario",
       nombre: datos.nombre.trim(),
       email: datos.email.trim(),
-      fechaNacimiento: "",
+      fechaNacimiento: datos.fechaNacimiento,
       estadoVerificacion: "Pendiente",
       presupuesto: 0,
       zonaInteres: "",
