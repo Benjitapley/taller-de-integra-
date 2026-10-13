@@ -80,7 +80,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         )}
       </View>
 
-      {error && <Text style={styles.textoError}>{error}</Text>}
+      {error ? <Text style={styles.textoError}>{error}</Text> : null}
     </View>
   );
 };

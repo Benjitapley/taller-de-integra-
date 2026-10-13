@@ -11,7 +11,7 @@ export default function AuthBranding() {
       />
 
       <Image
-        source={require("../../assets/images/auth/hero.png")}
+        source={require("../../assets/images/auth/sofa(login).webp")}
         style={styles.ilustracion}
         resizeMode="contain"
         accessibilityLabel="Ilustración de un hogar"

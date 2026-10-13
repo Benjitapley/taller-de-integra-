@@ -368,7 +368,15 @@ function TarjetaEditarPerfil({
       <CampoTexto etiqueta="Nombre" valor={nombre} onCambiar={setNombre} />
       <View style={styles.filaDosCampos}>
         <CampoTexto etiqueta="Edad" valor={edad} onCambiar={setEdad} teclado="numeric" estiloContenedor={{ flex: 1 }} />
-        <CampoTexto etiqueta="Ocupación" valor={ocupacion} onCambiar={setOcupacion} estiloContenedor={{ flex: 2 }} />
+        <CampoTexto etiqueta="Ocupación" valor={ocupacion} onCambiar={(texto) => {
+          if (
+            texto === "Estudiante" ||
+            texto === "Trabajador" ||
+            texto === "Ambos"
+          ) {
+            setOcupacion(texto);
+          }
+        }} estiloContenedor={{ flex: 2 }} />
       </View>
       <CampoTexto etiqueta="Ubicación" valor={ubicacion} onCambiar={setUbicacion} />
       <CampoTexto etiqueta="Bio" valor={bio} onCambiar={setBio} multilinea />
