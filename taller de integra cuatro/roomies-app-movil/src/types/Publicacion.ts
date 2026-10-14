@@ -27,3 +27,25 @@ export interface Publicacion {
 
   imagenPrincipalUrl?: string;
 }
+
+export interface FormularioPublicacionValores {
+  tipo: TipoPublicacion;
+  titulo: string;
+  precio: string; // solo dígitos, ejemplo. "11000"
+  ubicacion: string;
+  cupos: string; // solo dígitos (1 cupo, 2 cupos, etc.)
+  descripcion: string;
+  enlaceReferencia: string; // opcional, solo aplica a Compartida (el enlace de la publicación de otro sitio)
+}
+
+export const formularioPublicacionInicialConOrigen = (
+  tipo: TipoPublicacion,
+): FormularioPublicacionValores => ({
+  tipo,
+  titulo: '',
+  precio: '',
+  ubicacion: '',
+  cupos: '',
+  descripcion: '',
+  enlaceReferencia: '',
+});
