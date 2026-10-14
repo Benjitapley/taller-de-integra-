@@ -57,7 +57,7 @@ export const textosFormularioPorOrigen: Record<
   },
   Arrendador: {
     tituloPantalla: 'Publicar un arriendo',
-    placeholderTitulo: 'Departamento con habitación disponible',
+    placeholderTitulo: 'Depto. con habitación disponible',
     mostrarEnlace: false, 
     nota: 'Las reglas y condiciones se completarán en los próximos pasos.',
   },
