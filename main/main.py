@@ -10,8 +10,10 @@ from uuid import uuid4
 
 import httpx
 import psycopg
+from pydantic import ValidationError
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, Depends, Cookie
 from match_conexion_service.routes import router as conexion_router
+from publicaciones_service.schemas import preferencias_desde_formulario
 
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,7 +46,8 @@ async def lifespan(app: FastAPI):
         conexion.execute("""
             SELECT id_publicacion, id_usuario, tipo, titulo, descripcion,
                    precio, ubicacion, estado, cupos_totales,
-                   categoria, tipo_vivienda, permitir_comentarios
+                   categoria, tipo_vivienda, permitir_comentarios,
+                   tipos_mascotas_aceptadas, condiciones_mascotas
             FROM haycupo.publicacion LIMIT 0
         """)
         conexion.execute("SELECT id_imagen, id_publicacion, url, orden FROM haycupo.imagen_publicacion LIMIT 0")
@@ -76,6 +79,16 @@ app.mount("/PerfilU", StaticFiles(directory="PerfilU"), name="perfil_u")
 # Ahora lee la Cookie dinámica, pero si no hay, asume que es el usuario 1 para que no se caiga
 def autor_de_prueba(roomies_id: str = Cookie(default="1")):
     return int(roomies_id)
+
+
+def validar_mascotas(mascota, tipos_json, condiciones, anteriores=None):
+    try:
+        return preferencias_desde_formulario(mascota, tipos_json, condiciones, anteriores)
+    except ValidationError as error:
+        mensaje = error.errors()[0]["msg"].removeprefix("Value error, ")
+        raise HTTPException(status_code=422, detail=mensaje) from None
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
 
 
 # ==========================================
@@ -140,7 +153,8 @@ def obtener_publicaciones():
         with conectar() as conexion:
             registros = conexion.execute("""
                 SELECT p.id_publicacion, p.titulo, p.precio, p.ubicacion, p.cupos_totales, 
-                       p.tipo_vivienda, i.url as imagen_url, p.categoria, p.descripcion, p.mascota, p.contenido
+                       p.tipo_vivienda, i.url as imagen_url, p.categoria, p.descripcion, p.mascota, p.contenido,
+                       p.tipos_mascotas_aceptadas, p.condiciones_mascotas
                 FROM haycupo.publicacion p
                 LEFT JOIN haycupo.imagen_publicacion i ON p.id_publicacion = i.id_publicacion
                 ORDER BY p.id_publicacion DESC
@@ -152,7 +166,9 @@ def obtener_publicaciones():
                 publicaciones.append({
                     "id": row[0], "titulo": row[1], "precio": float(row[2]), "ubicacion": row[3],
                     "cupos_totales": row[4], "tipo_vivienda": row[5], "imagen": row[6],
-                    "categoria": row[7], "descripcion": desc_final, "mascota": row[9]
+                    "categoria": row[7], "descripcion": desc_final, "mascota": row[9],
+                    "tipos_mascotas_aceptadas": row[11] or [],
+                    "condiciones_mascotas": row[12]
                 })
             return publicaciones
     except Exception:
@@ -182,7 +198,8 @@ def obtener_mis_publicaciones(id_usuario: int = Depends(autor_de_prueba)):
 def obtener_una_publicacion(id_pub: int):
     with conectar() as conexion:
         r = conexion.execute("""
-            SELECT titulo, categoria, tipo_vivienda, ubicacion, precio, cupos_totales, mascota, descripcion 
+            SELECT titulo, categoria, tipo_vivienda, ubicacion, precio, cupos_totales, mascota, descripcion,
+                   tipos_mascotas_aceptadas, condiciones_mascotas
             FROM haycupo.publicacion WHERE id_publicacion = %s
         """, (id_pub,)).fetchone()
         
@@ -190,7 +207,9 @@ def obtener_una_publicacion(id_pub: int):
             return {
                 "titulo": r[0], "categoria": r[1], "tipo_vivienda": r[2], 
                 "ubicacion": r[3], "precio": r[4], "cupos_totales": r[5], 
-                "mascota": r[6], "descripcion": r[7]
+                "mascota": r[6], "descripcion": r[7],
+                "tipos_mascotas_aceptadas": r[8] or [],
+                "condiciones_mascotas": r[9]
             }
         raise HTTPException(status_code=404, detail="Publicación no encontrada")
 
@@ -207,6 +226,8 @@ def crear_publicacion(
     tipo_vivienda: Annotated[Literal["casa", "departamento", "habitacion"], Form()],
     descripcion: Annotated[str, Form(min_length=1, max_length=5000)],
     mascota: Annotated[str, Form()] = "no",
+    tipos_mascotas_aceptadas: Annotated[str | None, Form(max_length=1000)] = None,
+    condiciones_mascotas: Annotated[str | None, Form(max_length=2000)] = None,
     permitir_comentarios: Annotated[str, Form()] = "false",
     imagen: Annotated[UploadFile | None, File()] = None,
     id_usuario: int = Depends(autor_de_prueba)
@@ -216,6 +237,8 @@ def crear_publicacion(
 
     if not all([titulo.strip(), ubicacion.strip(), texto_desc]):
         raise HTTPException(status_code=422, detail="Completa el título, ubicación y descripción.")
+
+    preferencias = validar_mascotas(mascota, tipos_mascotas_aceptadas, condiciones_mascotas)
 
     nombre_imagen = None
     ruta_imagen = None
@@ -245,13 +268,15 @@ def crear_publicacion(
                 INSERT INTO haycupo.publicacion (
                     id_usuario, tipo, titulo, descripcion, precio, ubicacion,
                     estado, cupos_totales, categoria, tipo_vivienda,
-                    permitir_comentarios, mascota, contenido
+                    permitir_comentarios, mascota, contenido,
+                    tipos_mascotas_aceptadas, condiciones_mascotas
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, 'Disponible', %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, 'Disponible', %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id_publicacion
                 """,
                 (id_usuario, tipo, titulo, texto_desc, precio, ubicacion,
-                 cupos_totales, categoria, tipo_vivienda, permitir, mascota, texto_desc),
+                 cupos_totales, categoria, tipo_vivienda, permitir, preferencias.mascota, texto_desc,
+                 preferencias.tipos_mascotas_aceptadas, preferencias.condiciones_mascotas),
             ).fetchone()
             
             identificador = fila[0]
@@ -283,20 +308,44 @@ def actualizar_publicacion(
     tipo: Annotated[str, Form()],
     cupos_totales: Annotated[int, Form()], 
     mascota: Annotated[str, Form()] = "no",
+    tipos_mascotas_aceptadas: Annotated[str | None, Form(max_length=1000)] = None,
+    condiciones_mascotas: Annotated[str | None, Form(max_length=2000)] = None,
     permitir_comentarios: Annotated[str, Form()] = "false",
     imagen: Annotated[UploadFile | None, File()] = None,
     id_usuario: int = Depends(autor_de_prueba)
 ):
     try:
         with conectar() as conexion:
+            anterior = conexion.execute("""
+                SELECT mascota, tipos_mascotas_aceptadas, condiciones_mascotas
+                FROM haycupo.publicacion
+                WHERE id_publicacion = %s AND id_usuario = %s
+                FOR UPDATE
+            """, (id_pub, id_usuario)).fetchone()
+            if anterior is None:
+                raise HTTPException(status_code=404, detail="Publicación no encontrada")
+
+            preferencias = validar_mascotas(
+                mascota, tipos_mascotas_aceptadas, condiciones_mascotas,
+                {
+                    "mascota": anterior[0],
+                    "tipos_mascotas_aceptadas": anterior[1],
+                    "condiciones_mascotas": anterior[2],
+                },
+            )
             conexion.execute("""
                 UPDATE haycupo.publicacion 
                 SET titulo=%s, categoria=%s, ubicacion=%s, precio=%s, 
-                    tipo_vivienda=%s, descripcion=%s, cupos_totales=%s, mascota=%s, contenido=%s
+                    tipo_vivienda=%s, descripcion=%s, cupos_totales=%s, mascota=%s, contenido=%s,
+                    tipos_mascotas_aceptadas=%s, condiciones_mascotas=%s
                 WHERE id_publicacion=%s AND id_usuario=%s
-            """, (titulo, categoria, ubicacion, precio, tipo_vivienda, descripcion, cupos_totales, mascota, descripcion, id_pub, id_usuario))
+            """, (titulo, categoria, ubicacion, precio, tipo_vivienda, descripcion, cupos_totales,
+                  preferencias.mascota, descripcion, preferencias.tipos_mascotas_aceptadas,
+                  preferencias.condiciones_mascotas, id_pub, id_usuario))
         return {"mensaje": "Publicación actualizada correctamente"}
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(status_code=500, detail="No se pudo actualizar la base de datos")
 
 

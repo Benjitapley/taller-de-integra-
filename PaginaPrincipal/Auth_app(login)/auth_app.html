@@ -9,21 +9,22 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Mulish:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/static_principal/tailwind.css" />
   </head>
   <body>
-    <header class="topbar">
+    <header class="topbar tw:flex-wrap! tw:gap-3! tw:px-4! tw:sm:px-7!">
       <div class="brand">
         <span class="house"><i class="fa-solid fa-house"></i></span>
         <span class="brand-text">¿Hay cupo?</span>
       </div>
 
-      <div class="header-actions">
+      <div class="header-actions tw:flex-wrap! tw:gap-3!">
         <button class="link-button" type="button" data-target="register">¿No tienes cuenta?</button>
         <button class="outline-button" type="button" data-target="register">Crear cuenta</button>
       </div>
     </header>
 
-    <main class="landing-layout">
+    <main class="landing-layout tw:grid! tw:grid-cols-1! tw:gap-6! tw:lg:grid-cols-[1.12fr_0.88fr]! tw:lg:gap-9!">
       <section class="hero-panel">
         <div class="hero-illustration">
           <div class="title-wrap">
@@ -56,7 +57,7 @@
       </section>
 
       <section class="login-panel">
-        <div id="authSection" class="auth-card">
+        <div id="authSection" class="auth-card tw:min-w-0! tw:px-5! tw:sm:px-7!">
           <h2 class="welcome">¡Bienvenido de vuelta!</h2>
 
           <form id="loginForm" class="form-panel active" novalidate>
@@ -158,7 +159,7 @@
         </div>
 
         <section id="profileSection" class="profile-card hidden">
-          <div class="profile-header">
+          <div class="profile-header tw:flex-wrap! tw:gap-4!">
             <div class="profile-heading">
               <div id="profileAvatar" class="profile-avatar">U</div>
               <div>
@@ -170,7 +171,7 @@
           </div>
 
           <form id="profileForm" novalidate>
-            <div class="two-columns">
+            <div class="two-columns tw:grid! tw:grid-cols-1! tw:gap-4! tw:sm:grid-cols-2!">
               <label>
                 Nombre completo
                 <input type="text" id="profileName" name="name" required />
@@ -209,7 +210,7 @@
       </section>
     </main>
 
-    <footer class="site-footer">
+    <footer class="site-footer tw:flex-wrap! tw:gap-5!">
       <span>© 2026 <strong>¿Hay cupo?</strong> Todos los derechos reservados.</span>
       <div class="footer-links">
         <a href="#">Términos y condiciones</a>

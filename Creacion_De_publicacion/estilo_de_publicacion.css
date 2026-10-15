@@ -141,3 +141,103 @@ body {
 .enlace-volver:hover {
     color: #382384;
 }
+
+.preferencias-mascotas {
+    min-width: 0;
+    margin: 0;
+    padding: 20px;
+    border: 1px solid #dcd5ee;
+    border-radius: 12px;
+    background: #f8f6fc;
+}
+
+.preferencias-mascotas[hidden] {
+    display: none;
+}
+
+.preferencias-mascotas legend {
+    padding: 0 6px;
+    color: #382384;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.ayuda-mascotas {
+    margin: 0 0 14px;
+    color: #655f75;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.grupo-input .ayuda-mascotas {
+    margin: 0;
+}
+
+.opciones-mascotas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.opcion-mascota {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px;
+    margin: 0;
+    border: 1px solid #e0dbea;
+    border-radius: 8px;
+    background: white;
+    color: #382384;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.opcion-mascota input {
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+    accent-color: #382384;
+}
+
+.aviso-mascotas {
+    margin: 0 0 18px;
+    padding: 12px;
+    border-left: 3px solid #7253bb;
+    border-radius: 4px;
+    background: #eee8f8;
+    color: #4e396f;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+    .tarjeta-formulario {
+        margin: 24px auto;
+        padding: 22px 18px;
+    }
+
+    .form-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px;
+    }
+
+    .campo-full {
+        grid-column: 1;
+    }
+
+    .preferencias-mascotas {
+        padding: 16px;
+    }
+
+    .grupo-input input,
+    .grupo-input select,
+    .grupo-input textarea {
+        min-width: 0;
+    }
+}

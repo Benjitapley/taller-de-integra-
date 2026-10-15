@@ -28,6 +28,7 @@
         .img-pub { width: 200px; height: 150px; object-fit: cover; background: #ddd; }
         .info-pub { padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
     </style>
+    <link rel="stylesheet" href="/static_principal/tailwind.css">
 </head>
 <body style="background-color: #f4f5f9; margin: 0; font-family: 'Mulish', sans-serif;">
 
@@ -51,7 +52,7 @@
     </nav>
 
     <!-- HEADER MORADO -->
-    <header class="header-morado" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 30px; background-color: #382384; color: white;">
+    <header class="header-morado tw:flex-wrap! tw:gap-3! tw:px-4! tw:sm:px-[30px]!" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 30px; background-color: #382384; color: white;">
         <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
             <i class="fa-solid fa-house" style="font-size: 20px;"></i>
             <h1 style="margin: 0; font-size: 20px; font-weight: 800;">¿Hay cupo?</h1>
@@ -59,16 +60,16 @@
         <a href="/inicio" style="color: white; text-decoration: none; font-weight: bold;">Volver al Inicio</a>
     </header>
 
-    <main class="perfil-container">
+    <main class="perfil-container tw:box-border! tw:w-full! tw:min-w-0! tw:px-4! tw:sm:px-5!">
         <!-- HEADER TARJETA -->
-        <div class="tarjeta-header">
-            <div class="info-basica">
-                <div class="avatar-grande" id="avatar-img">
+        <div class="tarjeta-header tw:flex-col! tw:gap-5! tw:p-5! tw:sm:flex-row! tw:sm:p-[30px]!">
+            <div class="info-basica tw:min-w-0! tw:flex-col! tw:gap-5! tw:sm:flex-row!">
+                <div class="avatar-grande tw:shrink-0!" id="avatar-img">
                     <i class="fa-solid fa-user"></i>
                 </div>
                 <div>
                     <h2 id="perfil-nombre" style="margin: 0 0 10px 0; font-size: 28px; color: #1a1a1a;">Cargando...</h2>
-                    <div style="color: #666; font-size: 14px; display: flex; gap: 15px; margin-bottom: 10px;">
+                    <div class="tw:flex-wrap! tw:gap-x-4! tw:gap-y-2!" style="color: #666; font-size: 14px; display: flex; gap: 15px; margin-bottom: 10px;">
                         <span><i class="fa-solid fa-location-dot"></i> <span id="perfil-ciudad">--</span></span>
                         <span><i class="fa-regular fa-calendar"></i> <span id="perfil-edad">--</span></span>
                         <span><i class="fa-solid fa-briefcase"></i> <span id="perfil-ocupacion">--</span></span>
@@ -76,27 +77,27 @@
                     <p id="perfil-breve" style="margin: 0; color: #444; font-size: 14px; max-width: 600px;"></p>
                 </div>
             </div>
-            <button class="btn-editar-perfil" onclick="document.getElementById('modal-editar').style.display='flex'">
+            <button class="btn-editar-perfil tw:shrink-0! tw:focus-visible:outline-2! tw:focus-visible:outline-offset-2!" onclick="document.getElementById('modal-editar').style.display='flex'">
                 <i class="fa-solid fa-pen"></i> Editar perfil
             </button>
         </div>
 
         <!-- ESTADÍSTICAS -->
-        <div class="estadisticas">
+        <div class="estadisticas tw:flex-wrap! tw:gap-5!">
             <div class="stat-item"><i class="fa-solid fa-house"></i> <div class="stat-numero" id="stat-pubs">0</div> <small>Publicaciones</small></div>
             <div class="stat-item"><i class="fa-solid fa-comment-dots"></i> <div class="stat-numero">0</div> <small>Mensajes</small></div>
             <div class="stat-item"><i class="fa-solid fa-heart"></i> <div class="stat-numero">0</div> <small>Guardados</small></div>
         </div>
 
-        <div class="dos-columnas">
+        <div class="dos-columnas tw:grid! tw:grid-cols-1! tw:gap-5! tw:lg:grid-cols-[1fr_2fr]!">
             <!-- COLUMNA SOBRE MÍ -->
-            <div class="caja-info">
+            <div class="caja-info tw:min-w-0!">
                 <h3 style="color: #382384; margin-top: 0; border-bottom: 2px solid #f4f5f9; padding-bottom: 10px;"><i class="fa-solid fa-user"></i> Sobre mí</h3>
                 <p id="perfil-sobre-mi" style="color: #444; line-height: 1.6; white-space: pre-wrap;"></p>
             </div>
 
             <!-- COLUMNA PUBLICACIONES ACTIVAS -->
-            <div class="caja-info">
+            <div class="caja-info tw:min-w-0!">
                 <h3 style="color: #382384; margin-top: 0; border-bottom: 2px solid #f4f5f9; padding-bottom: 10px;"><i class="fa-solid fa-list"></i> Publicaciones activas</h3>
                 <div id="contenedor-publicaciones-perfil"></div>
             </div>
@@ -141,7 +142,7 @@
                     <label><strong>Sobre mí (Detalles extra)</strong></label>
                     <textarea id="input-sobre" name="sobre_mi" rows="3" placeholder="Ej: No fumo, sin mascotas..."></textarea>
                 </div>
-                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+                <div class="tw:flex-wrap! tw:gap-3!" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
                     <button type="button" onclick="document.getElementById('modal-editar').style.display='none'" style="padding: 10px 15px; border-radius: 6px;">Cancelar</button>
                     <button type="submit" style="padding: 10px 15px; background: #382384; color: white; font-weight: bold; border-radius: 6px;">Guardar cambios</button>
                 </div>

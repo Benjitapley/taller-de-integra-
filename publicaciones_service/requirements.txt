@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+SQLAlchemy>=2,<3
+psycopg[binary]
+pydantic>=2,<3

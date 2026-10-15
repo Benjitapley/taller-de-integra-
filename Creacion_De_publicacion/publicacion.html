@@ -8,10 +8,11 @@
   <link rel="stylesheet" href="/static_creacion/estilo_de_publicacion.css">
   <link rel="stylesheet" href="/static_principal/estilo_HayCupo.css">
   <link rel="stylesheet" href="/Iconos/sidebar.css">
+  <link rel="stylesheet" href="/static_principal/tailwind.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="tw:min-h-screen tw:font-['Mulish',sans-serif]!">
 
   <div id="fondo-menu" class="fondo-oscuro"></div>
 
@@ -19,7 +20,7 @@
       <div class="sidebar-logo">
           <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
           <h2>Roomies</h2>
-          <button id="btn-cerrar-menu" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
+          <button id="btn-cerrar-menu" class="tw:ml-auto! tw:w-auto! tw:cursor-pointer! tw:border-0! tw:bg-transparent! tw:text-lg! tw:text-[#5b5872]!" aria-label="Cerrar menú">✖</button>
       </div>
 
       <ul class="sidebar-menu">
@@ -33,24 +34,24 @@
       </ul>
   </nav>
 
-  <header class="header-morado">
-      <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-          <i class="fa-solid fa-house" style="font-size: 20px;"></i>
-          <h1>¿Hay cupo?</h1>
+  <header class="header-morado tw:flex! tw:flex-wrap tw:items-center! tw:justify-between! tw:gap-3! tw:bg-[#382384]! tw:px-5! tw:py-3! tw:text-white! tw:sm:px-[30px]!">
+      <div id="btn-abrir-menu" class="tw:flex tw:cursor-pointer tw:items-center tw:gap-3">
+          <i class="fa-solid fa-house tw:text-xl!"></i>
+          <h1 class="tw:m-0! tw:text-xl! tw:font-extrabold!">¿Hay cupo?</h1>
       </div>
       
-      <div style="display: flex; align-items: center; gap: 20px;">
-          <div id="menu-usuario-container" style="position: relative; display: inline-block;">
-              <div id="perfil-usuario" style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(255,255,255,0.1); padding: 5px 12px 5px 5px; border-radius: 20px;">
-                  <div id="avatar-letra" style="width: 30px; height: 30px; background-color: white; color: #382384; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
+      <div class="tw:flex tw:items-center tw:gap-5">
+          <div id="menu-usuario-container" class="tw:relative tw:inline-block">
+              <div id="perfil-usuario" class="tw:flex tw:cursor-pointer tw:items-center tw:gap-2.5 tw:rounded-[20px] tw:bg-white/10 tw:py-[5px] tw:pr-3 tw:pl-[5px]">
+                  <div id="avatar-letra" class="tw:flex tw:size-[30px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-white tw:text-sm tw:font-bold tw:text-[#382384]">
                       ?
                   </div>
-                  <span id="nombre-usuario-nav" style="font-weight: 700; font-size: 14px; color: white;">Cargando...</span>
-                  <span style="font-size: 10px; color: white;">▼</span>
+                  <span id="nombre-usuario-nav" class="tw:text-sm tw:font-bold tw:text-white">Cargando...</span>
+                  <span class="tw:text-[10px] tw:text-white">▼</span>
               </div>
               
-              <div id="dropdown-menu" style="display: none; position: absolute; right: 0; top: 110%; background: white; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; z-index: 1000; min-width: 150px;">
-                  <button id="btn-cerrar-sesion" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; font-size: 14px; color: #cf3b3b; font-weight: bold;">
+              <div id="dropdown-menu" class="tw:absolute tw:top-[110%] tw:right-0 tw:z-[1000] tw:min-w-[150px] tw:overflow-hidden tw:rounded-lg tw:border tw:border-solid tw:border-[#ddd] tw:bg-white tw:shadow-[0_4px_6px_rgba(0,0,0,0.1)]" style="display: none;">
+                  <button id="btn-cerrar-sesion" class="tw:w-full! tw:cursor-pointer! tw:border-0! tw:bg-transparent! tw:px-4! tw:py-3! tw:text-left! tw:text-sm! tw:font-bold! tw:text-[#cf3b3b]! tw:hover:bg-red-50!">
                       Cerrar sesión
                   </button>
               </div>
@@ -58,12 +59,12 @@
       </div>
   </header>
 
-  <main style="padding: 0 20px;">
-    <div class="tarjeta-formulario">
-        <a class="enlace-volver" href="/inicio"><i class="fa-solid fa-arrow-left"></i> Volver al inicio</a>
+  <main class="tw:px-5! tw:py-0!">
+    <div class="tarjeta-formulario tw:mx-auto! tw:my-6! tw:max-w-[850px]! tw:rounded-2xl! tw:bg-white! tw:px-[18px]! tw:py-[22px]! tw:min-[601px]:my-10! tw:min-[601px]:p-10!">
+        <a class="enlace-volver tw:mb-5! tw:inline-block! tw:text-sm! tw:font-semibold! tw:text-[#666]! tw:no-underline! tw:hover:text-[#382384]!" href="/inicio"><i class="fa-solid fa-arrow-left"></i> Volver al inicio</a>
         
-        <div class="titulo-seccion-form">
-            <div class="icono-circulo">
+        <div class="titulo-seccion-form tw:mb-[30px]! tw:flex! tw:items-center! tw:gap-[15px]!">
+            <div class="icono-circulo tw:shrink-0">
                 <i class="fa-solid fa-pen-to-square"></i>
             </div>
             <div class="texto-titulo">
@@ -72,9 +73,9 @@
             </div>
         </div>
 
-        <form id="form-crear" enctype="multipart/form-data" class="form-grid">
+        <form id="form-crear" enctype="multipart/form-data" class="form-grid tw:grid! tw:grid-cols-1! tw:gap-5! tw:min-[601px]:grid-cols-2! tw:min-[601px]:gap-6!">
             
-            <div class="grupo-input campo-full">
+            <div class="grupo-input campo-full tw:col-span-full!">
                 <label for="titulo">Título de la publicación</label>
                 <input type="text" id="titulo" name="titulo" placeholder="Ej: Busco habitación cerca del centro" required maxlength="120">
             </div>
@@ -120,16 +121,35 @@
             <div class="grupo-input">
                 <label for="mascota">¿Acepta mascotas?</label>
                 <select id="mascota" name="mascota">
+                    <option value="no" selected>No</option>
                     <option value="si">Sí</option>
-                    <option value="no">No</option>
                 </select>
             </div>
-            <div class="grupo-input campo-full">
-                <label for="imagen"><i class="fa-solid fa-camera" style="margin-right: 5px;"></i> Subir imagen (opcional)</label>
-                <input type="file" id="imagen" name="imagen" accept="image/png, image/jpeg, image/webp" style="background: white; padding: 10px; cursor: pointer; border: 2px dashed #ccc;">
-                <small style="color: #888; font-size: 12px; margin-top: -4px;">Formatos permitidos: JPG, PNG o WEBP.</small>
+            <fieldset id="preferencias-mascotas" class="preferencias-mascotas campo-full tw:col-span-full!" hidden disabled>
+                <legend>¿Qué animales se aceptan?</legend>
+                <p class="ayuda-mascotas" id="ayuda-mascotas">Selecciona al menos uno. Aceptar una especie no significa aceptar todas las mascotas.</p>
+                <div class="opciones-mascotas" aria-describedby="ayuda-mascotas">
+                    <label class="opcion-mascota"><input type="checkbox" name="tipos_mascotas_aceptadas" value="perro"> Perro</label>
+                    <label class="opcion-mascota"><input type="checkbox" name="tipos_mascotas_aceptadas" value="gato"> Gato</label>
+                    <label class="opcion-mascota"><input type="checkbox" name="tipos_mascotas_aceptadas" value="ave"> Ave</label>
+                    <label class="opcion-mascota"><input type="checkbox" name="tipos_mascotas_aceptadas" value="tortuga"> Tortuga</label>
+                    <label class="opcion-mascota"><input type="checkbox" name="tipos_mascotas_aceptadas" value="conejo"> Conejo</label>
+                    <label class="opcion-mascota"><input type="checkbox" name="tipos_mascotas_aceptadas" value="pez"> Pez</label>
+                    <label class="opcion-mascota"><input type="checkbox" name="tipos_mascotas_aceptadas" value="otro"> Otro</label>
+                </div>
+                <p id="aviso-mascotas-anteriores" class="aviso-mascotas" role="status" hidden>Esta publicación acepta mascotas, pero aún no especifica cuáles. Puedes conservar este dato al guardar; si actualizas las preferencias, selecciona los animales aceptados.</p>
+                <div class="grupo-input">
+                    <label for="condiciones-mascotas">Condiciones para mascotas <span id="condiciones-mascotas-indicacion">(opcional)</span></label>
+                    <textarea id="condiciones-mascotas" name="condiciones_mascotas" rows="3" maxlength="2000" placeholder="Ej: Máximo dos mascotas. Si marcas Otro, indica qué animal se acepta." aria-describedby="ayuda-condiciones-mascotas"></textarea>
+                    <small id="ayuda-condiciones-mascotas" class="ayuda-mascotas">Hasta 2000 caracteres. Si seleccionas Otro, debes indicar cuál.</small>
+                </div>
+            </fieldset>
+            <div class="grupo-input campo-full tw:col-span-full!">
+                <label for="imagen"><i class="fa-solid fa-camera tw:mr-[5px]"></i> Subir imagen (opcional)</label>
+                <input type="file" id="imagen" name="imagen" accept="image/png, image/jpeg, image/webp" class="tw:cursor-pointer! tw:border-2! tw:border-dashed! tw:border-[#ccc]! tw:bg-white! tw:p-2.5!">
+                <small class="tw:-mt-1 tw:text-xs tw:text-[#888]">Formatos permitidos: JPG, PNG o WEBP.</small>
             </div>
-            <div class="grupo-input campo-full">
+            <div class="grupo-input campo-full tw:col-span-full!">
                 <label for="contenido">Descripción detallada</label>
                 <textarea id="contenido" name="contenido" rows="5" placeholder="Describe los detalles de lo que buscas o el lugar que ofreces..." required></textarea>
             </div>
@@ -137,8 +157,8 @@
             <!-- Checkbox oculto para que el JS no lance error -->
             <input type="checkbox" id="comentarios" name="comentarios" checked style="display: none;">
 
-            <div class="grupo-input campo-full">
-                <button type="submit" class="btn-publicar">Publicar ahora</button>
+            <div class="grupo-input campo-full tw:col-span-full!">
+                <button type="submit" class="btn-publicar tw:mt-5! tw:w-full! tw:cursor-pointer! tw:rounded-[10px]! tw:border-0! tw:bg-[#382384]! tw:p-4! tw:text-base! tw:font-extrabold! tw:text-white! tw:transition! tw:hover:opacity-95! tw:active:scale-[0.98]!">Publicar ahora</button>
             </div>
 
         </form>

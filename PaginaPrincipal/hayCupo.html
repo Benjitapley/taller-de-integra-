@@ -7,6 +7,7 @@
     
     <link rel="stylesheet" href="/static_principal/estilo_HayCupo.css">
     <link rel="stylesheet" href="/Iconos/sidebar.css">
+    <link rel="stylesheet" href="/static_principal/tailwind.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body>
@@ -19,7 +20,7 @@
         <div class="sidebar-logo">
             <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
             <h2>Roomies</h2>
-            <button id="btn-cerrar-menu" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
+            <button id="btn-cerrar-menu" type="button" aria-label="Cerrar menú" class="tw:ml-auto! tw:w-auto! tw:min-h-11! tw:border-0! tw:bg-transparent! tw:p-2! tw:text-lg! tw:text-[#5b5872]! tw:cursor-pointer!">✖</button>
         </div>
 
         <ul class="sidebar-menu">
@@ -41,28 +42,30 @@
     </nav>
 
     <!-- 3. Header Principal Morado -->
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 12px 30px; background-color: #382384; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-            <i class="fa-solid fa-house" style="font-size: 20px; color: white;"></i>
-            <h1 style="margin: 0; font-size: 20px; font-weight: 800;">¿Hay cupo?</h1>
-        </div>
+    <header class="tw:flex! tw:flex-wrap! tw:items-center! tw:justify-between! tw:gap-3! tw:bg-[#382384]! tw:px-4! tw:py-3! tw:text-white! tw:shadow-md! tw:sm:flex-nowrap! tw:sm:px-[30px]!">
+        <h1 class="tw:m-0! tw:shrink-0! tw:text-xl! tw:font-extrabold!">
+            <button id="btn-abrir-menu" type="button" aria-label="Abrir menú de navegación" aria-controls="menu-lateral" aria-expanded="false" class="tw:flex! tw:w-auto! tw:items-center! tw:gap-3! tw:border-0! tw:bg-transparent! tw:p-0! tw:text-xl! tw:font-extrabold! tw:text-white! tw:cursor-pointer!">
+                <i class="fa-solid fa-house" aria-hidden="true"></i>
+                <span>¿Hay cupo?</span>
+            </button>
+        </h1>
         
-        <div style="display: flex; align-items: center; gap: 20px;">
-            <a href="/crear" style="background-color: white; color: #382384; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: 0.2s;">
-                <i class="fa-solid fa-plus"></i> Crear publicación
+        <div class="tw:flex! tw:w-full! tw:min-w-0! tw:items-center! tw:justify-between! tw:gap-3! tw:sm:w-auto! tw:sm:gap-5!">
+            <a href="/crear" class="tw:flex! tw:min-h-11! tw:items-center! tw:justify-center! tw:gap-2! tw:rounded-lg! tw:bg-white! tw:px-3! tw:py-2! tw:text-center! tw:text-sm! tw:font-bold! tw:text-[#382384]! tw:no-underline! tw:transition-colors! tw:hover:bg-purple-50! tw:focus-visible:outline-2! tw:focus-visible:outline-offset-4! tw:focus-visible:outline-white! tw:sm:px-4!">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i> Crear publicación
             </a>
 
-            <div id="menu-usuario-container" style="position: relative; display: inline-block;">
-                <div id="perfil-usuario" style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(255,255,255,0.15); padding: 5px 12px 5px 5px; border-radius: 20px; transition: 0.2s;">
-                    <div id="avatar-letra" style="width: 32px; height: 32px; background-color: white; color: #382384; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
+            <div id="menu-usuario-container" class="tw:relative! tw:inline-block! tw:min-w-0!">
+                <button id="perfil-usuario" type="button" aria-controls="dropdown-menu" aria-expanded="false" class="tw:flex! tw:w-auto! tw:max-w-full! tw:items-center! tw:gap-2.5! tw:rounded-full! tw:border-0! tw:bg-white/15! tw:py-[5px]! tw:pr-3! tw:pl-[5px]! tw:cursor-pointer! tw:transition-colors! tw:hover:bg-white/25!">
+                    <span id="avatar-letra" aria-hidden="true" class="tw:flex! tw:size-8! tw:shrink-0! tw:items-center! tw:justify-center! tw:rounded-full! tw:bg-white! tw:text-sm! tw:font-bold! tw:text-[#382384]!">
                         ?
-                    </div>
-                    <span id="nombre-usuario-nav" style="font-weight: 700; font-size: 14px; color: white;">Cargando...</span>
-                    <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: white;"></i>
-                </div>
+                    </span>
+                    <span id="nombre-usuario-nav" class="tw:max-w-20! tw:truncate! tw:text-sm! tw:font-bold! tw:text-white! tw:sm:max-w-40!">Cargando...</span>
+                    <i class="fa-solid fa-chevron-down tw:text-[10px]! tw:text-white!" aria-hidden="true"></i>
+                </button>
                 
-                <div id="dropdown-menu" style="display: none; position: absolute; right: 0; top: 110%; background: white; border: 1px solid #ddd; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; z-index: 1000; min-width: 150px;">
-                    <button id="btn-cerrar-sesion" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; font-size: 14px; color: #cf3b3b; font-weight: bold;">
+                <div id="dropdown-menu" style="display: none;" class="tw:absolute! tw:top-[110%]! tw:right-0! tw:z-[1000]! tw:min-w-[150px]! tw:overflow-hidden! tw:rounded-lg! tw:border! tw:border-solid! tw:border-[#ddd]! tw:bg-white! tw:shadow-lg!">
+                    <button id="btn-cerrar-sesion" type="button" class="tw:w-full! tw:border-0! tw:bg-transparent! tw:px-4! tw:py-3! tw:text-left! tw:text-sm! tw:font-bold! tw:text-[#cf3b3b]! tw:cursor-pointer! tw:hover:bg-red-50! tw:focus-visible:-outline-offset-4!">
                         Cerrar sesión
                     </button>
                 </div>
@@ -78,7 +81,7 @@
 
             <form id="form-busqueda">
                 <div class="busqueda">
-                    <label>Ubicación</label>
+                    <label for="filtro-ubicacion">Ubicación</label>
                     <div class="barra-busqueda">
                         <input type="text" id="filtro-ubicacion" placeholder="Ej: Temuco">
                         <button type="button" id="btn-consultar">Consultar</button>
@@ -87,7 +90,7 @@
 
                 <div class="filtros">
                     <div class="filtro">
-                        <label>¿Para cuántas personas?</label>
+                        <label for="filtro-personas">¿Para cuántas personas?</label>
                         <select id="filtro-personas">
                             <option value="">Cualquiera</option>
                             <option value="1">1</option>
@@ -96,7 +99,7 @@
                         </select>
                     </div>
                     <div class="filtro">
-                        <label>Casa o departamento</label>
+                        <label for="filtro-tipo">Casa o departamento</label>
                         <select id="filtro-tipo">
                             <option value="">Cualquiera</option>
                             <option value="casa">Casa</option>
@@ -104,7 +107,7 @@
                         </select>
                     </div>
                     <div class="filtro">
-                        <label>¿Tiene mascotas?</label>
+                        <label for="filtro-mascotas">¿Acepta mascotas?</label>
                         <select id="filtro-mascotas">
                             <option value="">Cualquiera</option>
                             <option value="si">Sí</option>
@@ -116,7 +119,7 @@
         </div>
 
         <!-- Contenedor dinámico de las tarjetas -->
-        <div id="contenedor-publicaciones" class="espacio-futuro" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 24px;">
+        <div id="contenedor-publicaciones" class="espacio-futuro tw:grid! tw:grid-cols-1! tw:gap-5! tw:mt-6! tw:sm:grid-cols-[repeat(auto-fill,minmax(340px,1fr))]!">
         </div>
     </main>
 
@@ -125,55 +128,59 @@
     </footer>
 
     <!-- 5. Modal de Detalles de Publicación -->
-    <div id="modal-detalle" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
-        <div style="background: white; width: 90%; max-width: 600px; border-radius: 12px; padding: 24px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
-            <button onclick="cerrarDetalle()" style="position: absolute; top: 20px; right: 20px; background: transparent; border: none; font-size: 24px; cursor: pointer; color: #888; line-height: 1;">&times;</button>
+    <div id="modal-detalle" role="dialog" aria-modal="true" aria-labelledby="modal-titulo" style="display: none;" class="tw:fixed! tw:inset-0! tw:z-[2000]! tw:items-center! tw:justify-center! tw:bg-black/50! tw:p-4!">
+        <div class="tw:relative! tw:max-h-[90dvh]! tw:w-full! tw:max-w-[600px]! tw:overflow-y-auto! tw:rounded-xl! tw:bg-white! tw:p-5! tw:shadow-xl! tw:sm:p-6!">
+            <button onclick="cerrarDetalle()" type="button" aria-label="Cerrar detalles" class="tw:absolute! tw:top-3! tw:right-3! tw:w-11! tw:min-h-11! tw:border-0! tw:bg-transparent! tw:p-0! tw:text-2xl! tw:leading-none! tw:text-[#888]! tw:cursor-pointer! tw:hover:text-[#382384]!">&times;</button>
             
-            <h2 id="modal-titulo" style="color: #382384; margin-top: 0; font-size: 24px; font-weight: 800; padding-right: 30px;">Cargando...</h2>
-            <p id="modal-categoria-badge" style="display: inline-block; background: #382384; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-top: -10px; margin-bottom: 15px;"></p>
+            <h2 id="modal-titulo" class="tw:mt-0! tw:pr-10! tw:text-2xl! tw:font-extrabold! tw:text-[#382384]! tw:wrap-anywhere!">Cargando...</h2>
+            <p id="modal-categoria-badge" class="tw:mt-0! tw:mb-[15px]! tw:inline-block! tw:rounded-full! tw:bg-[#382384]! tw:px-3! tw:py-1! tw:text-xs! tw:font-bold! tw:text-white!"></p>
             
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 0 0 16px 0;">
+            <hr class="tw:m-0! tw:mb-4! tw:border-0! tw:border-t! tw:border-solid! tw:border-[#eee]!">
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+            <div class="tw:mb-6! tw:grid! tw:grid-cols-1! tw:gap-5! tw:sm:grid-cols-2!">
                 <div>
-                    <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 4px;">Tipo de vivienda:</p>
-                    <p style="margin: 0; color: #555; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-building" style="color: #382384; width: 16px; text-align: center;"></i>
+                    <p class="tw:m-0! tw:mb-1! tw:text-sm! tw:font-extrabold! tw:text-[#382384]!">Tipo de vivienda:</p>
+                    <p class="tw:m-0! tw:flex! tw:items-center! tw:gap-2! tw:text-[#555]! tw:wrap-anywhere!">
+                        <i class="fa-solid fa-building tw:w-4! tw:shrink-0! tw:text-center! tw:text-[#382384]!" aria-hidden="true"></i>
                         <span id="modal-tipo">...</span>
                     </p>
                 </div>
                 <div>
-                    <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 4px;">Ubicación:</p>
-                    <p style="margin: 0; color: #555; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-location-dot" style="color: #382384; width: 16px; text-align: center;"></i>
+                    <p class="tw:m-0! tw:mb-1! tw:text-sm! tw:font-extrabold! tw:text-[#382384]!">Ubicación:</p>
+                    <p class="tw:m-0! tw:flex! tw:items-center! tw:gap-2! tw:text-[#555]! tw:wrap-anywhere!">
+                        <i class="fa-solid fa-location-dot tw:w-4! tw:shrink-0! tw:text-center! tw:text-[#382384]!" aria-hidden="true"></i>
                         <span id="modal-ubi">...</span>
                     </p>
                 </div>
                 <div>
-                    <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 4px;">Precio:</p>
-                    <p style="margin: 0; color: #555; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-money-bill" style="color: #382384; width: 16px; text-align: center;"></i>
+                    <p class="tw:m-0! tw:mb-1! tw:text-sm! tw:font-extrabold! tw:text-[#382384]!">Precio:</p>
+                    <p class="tw:m-0! tw:flex! tw:items-center! tw:gap-2! tw:text-[#555]! tw:wrap-anywhere!">
+                        <i class="fa-solid fa-money-bill tw:w-4! tw:shrink-0! tw:text-center! tw:text-[#382384]!" aria-hidden="true"></i>
                         <span id="modal-precio">...</span>
                     </p>
                 </div>
                 <div>
-                    <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 4px;">Personas:</p>
-                    <p style="margin: 0; color: #555; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-user" style="color: #382384; width: 16px; text-align: center;"></i>
+                    <p class="tw:m-0! tw:mb-1! tw:text-sm! tw:font-extrabold! tw:text-[#382384]!">Personas:</p>
+                    <p class="tw:m-0! tw:flex! tw:items-center! tw:gap-2! tw:text-[#555]! tw:wrap-anywhere!">
+                        <i class="fa-solid fa-user tw:w-4! tw:shrink-0! tw:text-center! tw:text-[#382384]!" aria-hidden="true"></i>
                         <span id="modal-personas">...</span>
                     </p>
                 </div>
                 <div>
-                    <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 4px;">Mascotas:</p>
-                    <p style="margin: 0; color: #555; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-paw" style="color: #382384; width: 16px; text-align: center;"></i>
+                    <p class="tw:m-0! tw:mb-1! tw:text-sm! tw:font-extrabold! tw:text-[#382384]!">Mascotas:</p>
+                    <p class="tw:m-0! tw:flex! tw:items-center! tw:gap-2! tw:text-[#555]! tw:wrap-anywhere!">
+                        <i class="fa-solid fa-paw tw:w-4! tw:shrink-0! tw:text-center! tw:text-[#382384]!" aria-hidden="true"></i>
                         <span id="modal-mascotas">...</span>
                     </p>
                 </div>
+                <div id="modal-condiciones-mascotas-contenedor" class="tw:col-span-full!" hidden>
+                    <p class="tw:m-0! tw:mb-1! tw:text-sm! tw:font-extrabold! tw:text-[#382384]!">Condiciones para mascotas:</p>
+                    <p id="modal-condiciones-mascotas" class="tw:m-0! tw:leading-normal! tw:whitespace-pre-wrap! tw:text-[#555]! tw:wrap-anywhere!"></p>
+                </div>
             </div>
             
-            <p style="margin: 0; font-weight: 800; color: #382384; font-size: 14px; margin-bottom: 8px;">Descripción detallada:</p>
-            <p id="modal-desc" style="color: #555; line-height: 1.5; margin: 0; background: #f4f5f9; padding: 15px; border-radius: 8px; border: 1px solid #eae8f0;"></p>
+            <p class="tw:m-0! tw:mb-2! tw:text-sm! tw:font-extrabold! tw:text-[#382384]!">Descripción detallada:</p>
+            <p id="modal-desc" class="tw:m-0! tw:rounded-lg! tw:border! tw:border-solid! tw:border-[#eae8f0]! tw:bg-[#f4f5f9]! tw:p-[15px]! tw:leading-normal! tw:text-[#555]! tw:whitespace-pre-wrap! tw:wrap-anywhere!"></p>
         </div>
     </div>
 

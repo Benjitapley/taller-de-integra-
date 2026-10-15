@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/Iconos/sidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="/static_principal/PublicacionesU/mis_publicaciones.css">
+    <link rel="stylesheet" href="/static_principal/tailwind.css">
 </head>
 <body style="background-color: #f4f5f9; margin: 0; font-family: 'Mulish', sans-serif;">
 
@@ -35,7 +36,7 @@
     </nav>
 
     <!-- 3. Barra Morada Superior (Idéntica al inicio) -->
-    <header class="header-morado" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 30px; background-color: #382384; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <header class="header-morado tw:flex-wrap! tw:gap-3! tw:px-4! tw:sm:px-[30px]!" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 30px; background-color: #382384; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
         
         <!-- Botón para abrir el menú lateral -->
         <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
@@ -56,15 +57,16 @@
     </header>
 
     <!-- 4. Contenido Principal (CRUD) -->
-    <main style="padding: 20px; display: flex; justify-content: center;">
-        <div class="panel-crud" style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); width: 100%; max-width: 1000px; margin-top: 20px;">
+    <main class="tw:box-border! tw:min-w-0! tw:px-4! tw:sm:px-5!" style="padding: 20px; display: flex; justify-content: center;">
+        <div class="panel-crud tw:box-border! tw:min-w-0! tw:p-5! tw:sm:p-[30px]!" style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); width: 100%; max-width: 1000px; margin-top: 20px;">
             
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f5f9; padding-bottom: 15px;">
+            <div class="tw:flex-wrap! tw:gap-4!" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f5f9; padding-bottom: 15px;">
                 <h2 style="color: #1a1a1a; margin: 0; font-size: 24px; font-weight: 800;">Mis Anuncios</h2>
-                <a href="/crear" style="background: #382384; color: white; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 14px; transition: 0.2s;"><i class="fa-solid fa-plus"></i> Nueva</a>
+                <a href="/crear" class="tw:inline-flex! tw:items-center! tw:gap-2! tw:focus-visible:outline-2! tw:focus-visible:outline-offset-2!" style="background: #382384; color: white; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 14px; transition: 0.2s;"><i class="fa-solid fa-plus"></i> Nueva</a>
             </div>
 
-            <table class="tabla-crud" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+            <div class="tw:w-full! tw:overflow-x-auto!" role="region" aria-label="Tus publicaciones" tabindex="0">
+            <table class="tabla-crud tw:min-w-[640px]!" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                 <thead>
                     <tr>
                         <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Título</th>
@@ -78,6 +80,7 @@
                     <tr><td colspan="5" style="text-align: center; padding: 20px; color: #888;">Cargando tus publicaciones...</td></tr>
                 </tbody>
             </table>
+            </div>
         </div>
     </main>
 

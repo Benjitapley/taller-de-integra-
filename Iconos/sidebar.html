@@ -1,12 +1,13 @@
-<nav class="sidebar">
+<link rel="stylesheet" href="/static_principal/tailwind.css">
+<nav class="sidebar tw:box-border! tw:max-w-[calc(100vw-2rem)]! tw:overflow-y-auto!">
     <!-- Logo superior -->
-    <div class="sidebar-logo">
+    <div class="sidebar-logo tw:flex! tw:items-center! tw:gap-3!">
         <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
         <h2>Roomies</h2>
     </div>
 
     <!-- Menú de navegación -->
-    <ul class="sidebar-menu">
+    <ul class="sidebar-menu tw:flex! tw:flex-col! tw:gap-2!">
         <li>
             <a href="/inicio"><img src="/Iconos/casa.webp" alt="Inicio" class="icono"> Inicio</a>
         </li>
@@ -38,6 +39,6 @@
         <img src="/Iconos/sofa(login).webp" alt="Ilustración sala" class="ilustracion-card">
         <h3>¿Buscas algo para tu casa?</h3>
         <p>Publica o encuentra lo que necesites.</p>
-        <a href="/publicar" class="btn-sidebar">Ver publicaciones</a>
+        <a href="/publicar" class="btn-sidebar tw:focus-visible:outline-2! tw:focus-visible:outline-offset-2!">Ver publicaciones</a>
     </div>
 </nav>

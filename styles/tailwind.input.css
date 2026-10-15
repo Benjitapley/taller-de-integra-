@@ -1,0 +1,19 @@
+/* Tailwind convive con los estilos actuales; el reset Preflight se omite. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(tw) source(none);
+
+@source "../PaginaPrincipal/**/*.html";
+@source "../PaginaPrincipal/**/*.js";
+@source "../Creacion_De_publicacion/**/*.html";
+@source "../Creacion_De_publicacion/**/*.js";
+@source "../PerfilU/**/*.html";
+@source "../PerfilU/**/*.js";
+@source "../Iconos/**/*.html";
+
+@theme {
+    --color-roomies: #382384;
+    --color-roomies-dark: #291967;
+    --color-roomies-soft: #f4f1ff;
+    --font-roomies: "Mulish", "Segoe UI", Arial, sans-serif;
+}

@@ -59,16 +59,16 @@ document.addEventListener("DOMContentLoaded", () => {
             const ubiSafe = pub.ubicacion || "Ubicación no especificada";
 
             contenedor.innerHTML = `
-                <div class="tarjeta-pub" style="display: flex; border: 1px solid #eee; border-radius: 12px; overflow: hidden; margin-bottom: 15px;">
-                    <img src="${imagen}" class="img-pub" style="width: 200px; height: 160px; object-fit: cover; background: #ddd;">
-                    <div class="info-pub" style="padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                <div class="tarjeta-pub tw:flex-col! tw:sm:flex-row!" style="display: flex; border: 1px solid #eee; border-radius: 12px; overflow: hidden; margin-bottom: 15px;">
+                    <img src="${imagen}" class="img-pub tw:w-full! tw:shrink-0! tw:sm:w-[200px]!" style="width: 200px; height: 160px; object-fit: cover; background: #ddd;">
+                    <div class="info-pub tw:min-w-0! tw:wrap-anywhere!" style="padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
                             <span style="background: #e6f8eb; color: #1f8b41; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;">${tipo}</span>
                             <h4 style="margin: 10px 0 5px 0; color: #1a1a1a; font-size: 16px;">${pub.titulo}</h4>
                             <div style="color: #666; font-size: 13px; margin-bottom: 5px;"><i class="fa-solid fa-users"></i> ${cuposSafe} persona(s)</div>
                             <div style="color: #666; font-size: 13px;"><i class="fa-solid fa-location-dot"></i> ${ubiSafe}</div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
+                        <div class="tw:flex-wrap! tw:gap-3!" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
                             <span style="color: #382384; font-weight: 800; font-size: 16px;">$${precio} CLP</span>
                             <a href="/editar-publicacion?id=${pub.id}" style="background: #382384; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: bold;">Ver publicación</a>
                         </div>
