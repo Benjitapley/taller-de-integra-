@@ -2,11 +2,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image, StyleSheet, Text, View } from "react-native";
 import type { MensajeConvivencia } from "@/types/Convivencia";
 
+
 type Props = {
   mensaje: MensajeConvivencia;
 };
 
-export default function Mensaje({ mensaje }: Props) {
+export default function MensajeBurbuja({ mensaje }: Props) {
   return (
     <View style={[styles.filaMensaje, mensaje.esPropio && styles.filaMensajePropio]}>
       {!mensaje.esPropio && <Image source={{ uri: mensaje.autorFotoUrl }} style={styles.avatarMensaje} />}

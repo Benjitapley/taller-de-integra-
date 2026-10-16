@@ -1,9 +1,9 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import BarraEscribirMensaje from "@/components/BarraEscribirMensaje";
+import { ScrollView, StyleSheet, View } from "react-native";
+import CompositorMensaje from "@/components/chat/CompositorMensaje";
+import ListaMensajes from "@/components/chat/ListaMensajes";
 import EncabezadoConvivencia from "@/components/EncabezadoConvivencia";
-import Mensaje from "@/components/Mensaje";
 import NuestroLugar from "@/components/NuestroLugar";
 import OrganizacionCasaCard from "@/components/OrganizacionCasaCard";
 import {
@@ -42,7 +42,8 @@ export default function DashboardArriendo() {
     ]);
     setTexto("");
     // Nota: esto solo actualiza la lista en memoria. No hay backend ni
-    // socket detrás todavía — eso es MOB-10 / APIM-01 más adelante.
+    // socket detrás todavía — eso es la integración de Convivencia en
+    // Sprint 3 (ver M4-D11).
   }
 
   return (
@@ -51,16 +52,11 @@ export default function DashboardArriendo() {
       <NuestroLugar />
 
       <ScrollView contentContainerStyle={styles.contenedorScroll}>
-        <Text style={styles.divisorFecha}>Hoy</Text>
-
-        {mensajes.map((mensaje) => (
-          <Mensaje key={mensaje.id} mensaje={mensaje} />
-        ))}
-
+        <ListaMensajes mensajes={mensajes} />
         <OrganizacionCasaCard tareas={TAREAS_MOCK} onVerTodo={() => router.push("/convivencia/tareas")} />
       </ScrollView>
 
-      <BarraEscribirMensaje valor={texto} onCambiarValor={setTexto} onEnviar={enviarMensaje} />
+      <CompositorMensaje valor={texto} onCambiarValor={setTexto} onEnviar={enviarMensaje} />
     </View>
   );
 }
@@ -68,14 +64,4 @@ export default function DashboardArriendo() {
 const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: "#F9FAFB" },
   contenedorScroll: { padding: 16, gap: 10 },
-  divisorFecha: {
-    alignSelf: "center",
-    fontSize: 12,
-    color: "#9CA3AF",
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
-    marginBottom: 6,
-  },
 });

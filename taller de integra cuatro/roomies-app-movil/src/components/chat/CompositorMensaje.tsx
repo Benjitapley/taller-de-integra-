@@ -1,13 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
+
 type Props = {
   valor: string;
   onCambiarValor: (texto: string) => void;
   onEnviar: () => void;
 };
 
-export default function BarraEscribirMensaje({ valor, onCambiarValor, onEnviar }: Props) {
+export default function CompositorMensaje({ valor, onCambiarValor, onEnviar }: Props) {
   return (
     <View style={styles.barraEscribir}>
       <Ionicons name="add-circle" size={28} color="#4F46E5" />

@@ -16,14 +16,11 @@ import AuthFooter from "@/components/AuthFooter";
 import { CustomButton } from "@/components/CustomButton";
 import { CustomInput } from "@/components/CustomInput";
 import { useAuth } from "@/hooks/useAuth";
-import { formatearFechaNacimiento, validarFechaNacimiento } from "@/utils/fechaNacimiento";
 
 export default function Registro() {
   const { registrarCuenta } = useAuth();
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
-  const [fechaNacimiento, setFechaNacimiento] = useState("");
-  const [errorFecha, setErrorFecha] = useState("");
   const [password, setPassword] = useState("");
   const [confirmacion, setConfirmacion] = useState("");
   const [error, setError] = useState("");
@@ -34,12 +31,6 @@ export default function Registro() {
 
     if (!nombre.trim() || !email.trim() || !password || !confirmacion) {
       setError("Completa todos los campos.");
-      return;
-    }
-
-    const resultadoFecha = validarFechaNacimiento(fechaNacimiento);
-    if (!resultadoFecha.valido) {
-      setErrorFecha(resultadoFecha.error);
       return;
     }
 
@@ -54,12 +45,7 @@ export default function Registro() {
     }
 
     setCargando(true);
-    const creada = await registrarCuenta({
-      nombre,
-      email,
-      password,
-      fechaNacimiento: resultadoFecha.fechaISO,
-    });
+    const creada = await registrarCuenta({ nombre, email, password });
     setCargando(false);
 
     if (!creada) {
@@ -121,25 +107,6 @@ export default function Registro() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-          />
-
-          <CustomInput
-            etiqueta="Fecha de nacimiento"
-            icono="calendar-outline"
-            mostrarIconoInterior={false}
-            value={fechaNacimiento}
-            onChangeText={(valor) => {
-              setFechaNacimiento(formatearFechaNacimiento(valor));
-              setErrorFecha("");
-            }}
-            onBlur={() => {
-              const resultado = validarFechaNacimiento(fechaNacimiento);
-              setErrorFecha(resultado.valido ? "" : resultado.error);
-            }}
-            placeholder="DD/MM/AAAA"
-            keyboardType="number-pad"
-            maxLength={10}
-            error={errorFecha}
           />
 
           <CustomInput
