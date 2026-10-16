@@ -18,6 +18,18 @@ export default function RootLayout() {
             headerTintColor: "#4F46E5",
           }}
         />
+        <Stack.Screen
+          name="arriendo/index"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="chats/index"
+          options={{
+            headerShown: true,
+            title: "Chats",
+            headerTintColor: "#4F46E5",
+          }}
+        />
       </Stack>
     </AuthProvider>
   );

@@ -1,222 +1,110 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import OrganizacionCasaCard from "@/components/OrganizacionCasaCard";
-import {
-  INTEGRANTES_MOCK,
-  MENSAJES_MOCK,
-  TAREAS_MOCK,
-  USUARIO_ACTUAL_MOCK,
-} from "@/data/convivenciaMock";
-import type { IntegranteConvivencia, MensajeConvivencia } from "@/types/Convivencia";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { INTEGRANTES_MOCK } from "@/data/convivenciaMock";
 
-// ---------- Sub-componentes ----------
+const CHATS_SIN_LEER_MOCK = 3;
 
-function EncabezadoConvivencia({ integrantes }: { integrantes: IntegranteConvivencia[] }) {
-  return (
-    <View style={styles.encabezado}>
-      <View style={styles.avataresGrupo}>
-        {integrantes.map((integrante, indice) => (
-          <Image
-            key={integrante.id}
-            source={{ uri: integrante.fotoUrl }}
-            style={[styles.avatarGrupo, { marginLeft: indice === 0 ? 0 : -10 }]}
-          />
-        ))}
-      </View>
-      <View style={styles.encabezadoTextos}>
-        <View style={styles.filaNombreGrupo}>
-          <Text style={styles.nombreGrupo}>Roomies</Text>
-          <Ionicons name="home" size={16} color="#4F46E5" />
-        </View>
-        <Text style={styles.subtituloGrupo}>{integrantes.length} miembros • viviendo juntos</Text>
-      </View>
-      <View style={styles.encabezadoAcciones}>
-        <Ionicons name="call-outline" size={20} color="#4F46E5" />
-        <Ionicons name="ellipsis-vertical" size={20} color="#4F46E5" />
-      </View>
-    </View>
-  );
-}
+const COLORES_AVATAR = ["#C7D2FE", "#FBCFE8", "#BBF7D0", "#FDE68A"];
 
-function NuestroLugar() {
-  return (
-    <View style={styles.nuestroLugar}>
-      <Ionicons name="pin-outline" size={16} color="#4F46E5" />
-      <View style={{ flex: 1 }}>
-        <Text style={styles.nuestroLugarTitulo}>Nuestro lugar</Text>
-        <Text style={styles.nuestroLugarTexto}>Providencia, Santiago • Departamento 4D/2B</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-    </View>
-  );
-}
-
-function Mensaje({ mensaje }: { mensaje: MensajeConvivencia }) {
-  return (
-    <View style={[styles.filaMensaje, mensaje.esPropio && styles.filaMensajePropio]}>
-      {!mensaje.esPropio && <Image source={{ uri: mensaje.autorFotoUrl }} style={styles.avatarMensaje} />}
-      <View style={{ maxWidth: "78%" }}>
-        {!mensaje.esPropio && <Text style={styles.autorMensaje}>{mensaje.autorNombre}</Text>}
-        <View style={[styles.burbuja, mensaje.esPropio ? styles.burbujaPropia : styles.burbujaAjena]}>
-          <Text style={styles.textoMensaje}>{mensaje.texto}</Text>
-          <View style={styles.filaHora}>
-            <Text style={styles.horaMensaje}>{mensaje.hora}</Text>
-            {mensaje.esPropio && <Ionicons name="checkmark-done" size={14} color="#4F46E5" />}
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function horaActualTexto(): string {
-  const ahora = new Date();
-  const horas = String(ahora.getHours()).padStart(2, "0");
-  const minutos = String(ahora.getMinutes()).padStart(2, "0");
-  return `${horas}:${minutos}`;
-}
-
-// ---------- Pantalla ----------
-
-export default function Mensajes() {
-  const [mensajes, setMensajes] = useState<MensajeConvivencia[]>(MENSAJES_MOCK);
-  const [texto, setTexto] = useState("");
-
-  function enviarMensaje() {
-    const contenido = texto.trim();
-    if (contenido === "") return;
-
-    setMensajes((actuales) => [
-      ...actuales,
-      {
-        id: `local-${Date.now()}`,
-        autorNombre: USUARIO_ACTUAL_MOCK.nombre,
-        autorFotoUrl: USUARIO_ACTUAL_MOCK.fotoUrl,
-        texto: contenido,
-        hora: horaActualTexto(),
-        esPropio: true,
-      },
-    ]);
-    setTexto("");
-    // Nota: esto solo actualiza la lista en memoria. No hay backend ni
-    // socket detrás todavía — eso es MOB-10 / APIM-01 más adelante.
-  }
-
+export default function SelectorChatArriendo() {
   return (
     <View style={styles.pantalla}>
-      <EncabezadoConvivencia integrantes={INTEGRANTES_MOCK} />
-      <NuestroLugar />
+      <Text style={styles.titulo}>Chat</Text>
+      <Text style={styles.subtitulo}>Elige dónde quieres entrar</Text>
 
-      <ScrollView contentContainerStyle={styles.contenedorScroll}>
-        <Text style={styles.divisorFecha}>Hoy</Text>
+      <Pressable style={styles.tarjeta} onPress={() => router.push("/chats")}>
+        <View style={styles.iconoCirculo}>
+          <Ionicons name="chatbubble-outline" size={22} color="#4F46E5" />
+        </View>
+        <View style={styles.tarjetaTextos}>
+          <Text style={styles.tarjetaTitulo}>Chats</Text>
+          <Text style={styles.tarjetaSubtitulo}>Tus conversaciones</Text>
+        </View>
+        {CHATS_SIN_LEER_MOCK > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeTexto}>{CHATS_SIN_LEER_MOCK}</Text>
+          </View>
+        )}
+        <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
+      </Pressable>
 
-        {mensajes.map((mensaje) => (
-          <Mensaje key={mensaje.id} mensaje={mensaje} />
-        ))}
-
-        <OrganizacionCasaCard tareas={TAREAS_MOCK} onVerTodo={() => router.push("/convivencia/tareas")} />
-      </ScrollView>
-
-      <View style={styles.barraEscribir}>
-        <Ionicons name="add-circle" size={28} color="#4F46E5" />
-        <TextInput
-          value={texto}
-          onChangeText={setTexto}
-          placeholder="Escribe un mensaje..."
-          placeholderTextColor="#9CA3AF"
-          style={styles.inputEscribir}
-          onSubmitEditing={enviarMensaje}
-          returnKeyType="send"
-        />
-        <Ionicons name="happy-outline" size={22} color="#9CA3AF" />
-        <Pressable style={styles.botonEnviar} onPress={enviarMensaje}>
-          <Ionicons name="send" size={16} color="#fff" />
-        </Pressable>
-      </View>
+      <Pressable style={styles.tarjeta} onPress={() => router.push("/arriendo")}>
+        <View style={styles.iconoCirculo}>
+          <Ionicons name="home-outline" size={22} color="#4F46E5" />
+        </View>
+        <View style={styles.tarjetaTextos}>
+          <Text style={styles.tarjetaTitulo}>Arriendo</Text>
+          <Text style={styles.tarjetaSubtitulo} numberOfLines={1}>
+            Tu espacio de convivencia
+          </Text>
+        </View>
+        <View style={styles.grupoAvatares}>
+          {INTEGRANTES_MOCK.map((integrante, indice) => (
+            <View
+              key={integrante.id}
+              style={[
+                styles.avatarInicial,
+                {
+                  backgroundColor: COLORES_AVATAR[indice % COLORES_AVATAR.length],
+                  marginLeft: indice === 0 ? 0 : -8,
+                },
+              ]}
+            >
+              <Text style={styles.avatarInicialTexto}>{integrante.nombre.charAt(0)}</Text>
+            </View>
+          ))}
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  pantalla: { flex: 1, backgroundColor: "#F9FAFB" },
-  encabezado: {
+  pantalla: { flex: 1, backgroundColor: "#F9FAFB", padding: 20, gap: 16 },
+  titulo: { fontSize: 30, fontWeight: "700", color: "#4F46E5", marginTop: 8 },
+  subtitulo: { fontSize: 14, color: "#6B7280", marginBottom: 8 },
+  tarjeta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 10,
+    gap: 12,
     backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  avataresGrupo: { flexDirection: "row" },
-  avatarGrupo: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: "#fff" },
-  encabezadoTextos: { flex: 1 },
-  filaNombreGrupo: { flexDirection: "row", alignItems: "center", gap: 4 },
-  nombreGrupo: { fontSize: 16, fontWeight: "700", color: "#111827" },
-  subtituloGrupo: { fontSize: 12, color: "#059669" },
-  encabezadoAcciones: { flexDirection: "row", gap: 14 },
-  nuestroLugar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#F5F3FF",
-    marginHorizontal: 12,
-    marginTop: 10,
-    borderRadius: 12,
-    padding: 12,
-  },
-  nuestroLugarTitulo: { fontSize: 13, fontWeight: "700", color: "#111827" },
-  nuestroLugarTexto: { fontSize: 12, color: "#6B7280" },
-  contenedorScroll: { padding: 16, gap: 10 },
-  divisorFecha: {
-    alignSelf: "center",
-    fontSize: 12,
-    color: "#9CA3AF",
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
-    marginBottom: 6,
-  },
-  filaMensaje: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginBottom: 10 },
-  filaMensajePropio: { flexDirection: "row-reverse" },
-  avatarMensaje: { width: 28, height: 28, borderRadius: 14 },
-  autorMensaje: { fontSize: 11, color: "#6B7280", marginBottom: 2, marginLeft: 4 },
-  burbuja: { borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 },
-  burbujaAjena: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E7EB", borderBottomLeftRadius: 4 },
-  burbujaPropia: { backgroundColor: "#EEF2FF", borderBottomRightRadius: 4 },
-  textoMensaje: { fontSize: 14, color: "#111827" },
-  filaHora: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-end", marginTop: 2 },
-  horaMensaje: { fontSize: 10, color: "#9CA3AF" },
-  barraEscribir: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-  },
-  inputEscribir: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    fontSize: 14,
-    color: "#111827",
-  },
-  botonEnviar: {
-    backgroundColor: "#4F46E5",
     borderRadius: 16,
-    width: 32,
-    height: 32,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 16,
+  },
+  iconoCirculo: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#EEF2FF",
     alignItems: "center",
     justifyContent: "center",
   },
+  tarjetaTextos: { flex: 1 },
+  tarjetaTitulo: { fontSize: 16, fontWeight: "700", color: "#111827" },
+  tarjetaSubtitulo: { fontSize: 13, color: "#6B7280", marginTop: 2 },
+  badge: {
+    backgroundColor: "#4F46E5",
+    borderRadius: 11,
+    minWidth: 22,
+    height: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  badgeTexto: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  grupoAvatares: { flexDirection: "row" },
+  avatarInicial: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  avatarInicialTexto: { fontSize: 11, fontWeight: "700", color: "#3730A3" },
 });
