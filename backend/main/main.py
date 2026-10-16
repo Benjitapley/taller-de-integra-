@@ -7,36 +7,46 @@ import logging
 from pathlib import Path
 from typing import Annotated, Literal
 from uuid import uuid4
+from dotenv import load_dotenv
 
 import httpx
 import psycopg
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, Depends, Cookie
-from match_conexion_service.routes import router as conexion_router
+from backend.match_conexion_service.routes import router as conexion_router
+from backend.auth_service.main import auth_router
 
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
-from auth_service.main import auth_router
 
-
+load_dotenv()
 # ==========================================
 # 1. CONFIGURACIÓN DE CARPETAS
 # ==========================================
-BASE = Path(__file__).resolve().parent
-FRONTEND_CREACION = BASE.parent / "Creacion_De_publicacion"
-FRONTEND_PRINCIPAL = BASE.parent / "PaginaPrincipal"
-IMAGENES = BASE / "imagenes"
 
+BASE = Path(__file__).resolve().parent
+RAIZ_PROYECTO = BASE.parent.parent
+
+FRONTEND = RAIZ_PROYECTO / "frontend"
+FRONTEND_CREACION = FRONTEND / "Creacion_De_publicacion"
+FRONTEND_PRINCIPAL = FRONTEND / "PaginaPrincipal"
+FRONTEND_ICONOS = FRONTEND / "Iconos"
+FRONTEND_PERFIL = FRONTEND / "PerfilU"
+
+IMAGENES = BASE / "imagenes"
 IMAGENES.mkdir(parents=True, exist_ok=True)
+
 
 
 # ==========================================
 # 2. CONEXIÓN CON POSTGRESQL (SUPABASE)
 # ==========================================
-def conectar():
-    url = "postgresql://postgres.erefnpvdjondjpcyjrpb:Hcupo2223xd@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
-    return psycopg.connect(url, connect_timeout=10)
 
+def conectar():
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise RuntimeError("Falta configurar DATABASE_URL en .env")
+    return psycopg.connect(url, connect_timeout=10)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -69,9 +79,8 @@ app.include_router(auth_router)
 app.mount("/static_creacion", StaticFiles(directory=FRONTEND_CREACION), name="static_creacion")
 app.mount("/static_principal", StaticFiles(directory=FRONTEND_PRINCIPAL), name="static_principal")
 app.mount("/imagenes", StaticFiles(directory=IMAGENES), name="imagenes")
-app.mount("/Iconos", StaticFiles(directory="Iconos"), name="iconos")
-app.mount("/PerfilU", StaticFiles(directory="PerfilU"), name="perfil_u")
-
+app.mount("/Iconos", StaticFiles(directory=FRONTEND_ICONOS), name="iconos")
+app.mount("/PerfilU", StaticFiles(directory=FRONTEND_PERFIL), name="perfil_u")
 
 # Ahora lee la Cookie dinámica, pero si no hay, asume que es el usuario 1 para que no se caiga
 def autor_de_prueba(roomies_id: str = Cookie(default="1")):
@@ -95,7 +104,7 @@ def mostrar_formulario_creacion():
 
 @app.get("/perfil")
 def mostrar_pantalla_perfil():
-    return FileResponse("PerfilU/perfil.html")
+    return FileResponse(FRONTEND_PERFIL / "perfil.html")
 
 @app.get("/mis-publicaciones")
 def mostrar_mis_publicaciones():

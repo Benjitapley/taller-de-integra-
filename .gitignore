@@ -1,1 +1,15 @@
+# Variables y secretos locales
+.env
+.env.*
+!.env.example
+
+# Entornos virtuales
 venv/
+.venv/
+
+# Archivos temporales de Python
+__pycache__/
+*.py[cod]
+
+# Configuración local de editores
+.vscode/
