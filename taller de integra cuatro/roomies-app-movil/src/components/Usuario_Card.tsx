@@ -1,4 +1,5 @@
 import React from 'react';
+import { useRouter } from 'expo-router';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from './Card';
@@ -30,9 +31,15 @@ function calcularEdad(fechaNacimiento: string): number {
 export const UsuarioCard: React.FC<UsuarioCardProps> = ({ usuario, onPress }) => {
     const verificado = usuario.estadoVerificacion === 'Verificada';
     const colorEstado = verificado ? colors.success : colors.warning;
+    const router = useRouter();
+    const irAlPerfil = () =>
+        router.push({
+            pathname: '/usuario/[id]',
+            params: { id: String(usuario.idUsuario) },
+        });
 
     return (
-        <Card onPress={onPress} style={styles.card}>
+        <Card onPress={onPress ?? irAlPerfil} style={styles.card}>
             <View style={styles.cuerpo}>
                 <View style={styles.cabecera}>
                     {usuario.fotoPerfilUrl ? (
