@@ -1,28 +1,20 @@
 import { Stack, useRouter } from "expo-router";
-import { useState } from "react";
 import { Alert, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FormularioPublicacion } from "@/components/publicaciones/FormularioPublicacion";
+import { useFormularioPublicacion } from "@/hooks/useFormularioPublicacion";
 import { colors } from "@/theme/colors";
-import { formularioPublicacionInicialConOrigen, type FormularioPublicacionValores } from "@/types/Publicacion";
 
 export default function Arrendador() {
   const router = useRouter();
 
   // Se usa el mismo formulario que Compartida, solo cambia el origen, y los
   // textos y campos que muestra.
-  const [valores, setValores] = useState<FormularioPublicacionValores>(() =>
-    formularioPublicacionInicialConOrigen("Arrendador"),
-  );
-
-  function cambiarCampo<K extends keyof FormularioPublicacionValores>(
-    campo: K,
-    valor: FormularioPublicacionValores[K],
-  ) {
-    setValores((anterior) => ({ ...anterior, [campo]: valor }));
-  }
+  const { valores, errores, cambiarCampo, validarFormulario } =
+    useFormularioPublicacion("Arrendador");
 
   function continuar() {
+    if (!validarFormulario()) return;
     Alert.alert(
       "Siguiente Paso: Vista Previa y Fotos",
       "Se habilitará en la tarea M4-C05.",
@@ -52,6 +44,7 @@ export default function Arrendador() {
       <Stack.Screen options={opcionesHeader} />
       <FormularioPublicacion
         valores={valores}
+        errores={errores}
         onCambiar={cambiarCampo}
         onContinuar={continuar}
       />

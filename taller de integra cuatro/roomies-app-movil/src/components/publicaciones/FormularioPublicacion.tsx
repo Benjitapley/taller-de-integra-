@@ -4,10 +4,11 @@ import { CustomButton } from "@/components/CustomButton";
 import { CustomInput } from "@/components/CustomInput";
 import { paletaPublicacion, textosFormularioPorOrigen } from "@/constants/origenPublicacion";
 import { colors } from "@/theme/colors";
-import type { FormularioPublicacionValores } from "@/types/Publicacion";
+import type { ErroresFormularioPublicacion, FormularioPublicacionValores } from "@/types/Publicacion";
 
 interface FormularioPublicacionProps {
   valores: FormularioPublicacionValores;
+  errores?: ErroresFormularioPublicacion;
   onCambiar: <K extends keyof FormularioPublicacionValores>(
     campo: K,
     valor: FormularioPublicacionValores[K],
@@ -22,7 +23,7 @@ const formatearMiles = (digitos: string) =>
 
 export const FormularioPublicacion: React.FC<
   FormularioPublicacionProps
-> = ({ valores, onCambiar, onContinuar }) => {
+> = ({ valores, errores = {}, onCambiar, onContinuar }) => {
   const textos = textosFormularioPorOrigen[valores.tipo];
   const scrollRef = useRef<ScrollView>(null);
 
@@ -57,6 +58,7 @@ export const FormularioPublicacion: React.FC<
             onChangeText={(t) => onCambiar("titulo", t)}
             placeholder={textos.placeholderTitulo}
             maxLength={80}
+            error={errores.titulo}
           />
 
           <CustomInput
@@ -68,6 +70,7 @@ export const FormularioPublicacion: React.FC<
             placeholder="190.000"
             keyboardType="number-pad"
             maxLength={9}
+            error={errores.precio}
           />
 
           <CustomInput
@@ -78,6 +81,7 @@ export const FormularioPublicacion: React.FC<
             onChangeText={(t) => onCambiar("ubicacion", t)}
             placeholder="Temuco Centro"
             autoCapitalize="words"
+            error={errores.ubicacion}
           />
 
           <CustomInput
@@ -89,6 +93,7 @@ export const FormularioPublicacion: React.FC<
             placeholder="1"
             keyboardType="number-pad"
             maxLength={2}
+            error={errores.cupos}
           />
 
           <CustomInput
@@ -100,6 +105,7 @@ export const FormularioPublicacion: React.FC<
             placeholder="Describe el lugar y la convivencia..."
             multilinea
             maxLength={500}
+            error={errores.descripcion}
             onFocus={bajarAlFinal}
           />
 
@@ -114,6 +120,7 @@ export const FormularioPublicacion: React.FC<
               keyboardType="url"
               autoCapitalize="none"
               autoCorrect={false}
+              error={errores.enlaceReferencia}
               onFocus={bajarAlFinal}
             />
           )}
@@ -124,7 +131,6 @@ export const FormularioPublicacion: React.FC<
             </View>
           )}
         </View>
-
         <CustomButton
           titulo="Continuar"
           iconoDerecho="arrow-forward"

@@ -49,3 +49,7 @@ export const formularioPublicacionInicialConOrigen = (
   descripcion: '',
   enlaceReferencia: '',
 });
+
+export type ErroresFormularioPublicacion = Partial<
+  Record<keyof FormularioPublicacionValores, string>
+>;
