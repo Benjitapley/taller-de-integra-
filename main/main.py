@@ -13,7 +13,11 @@ import psycopg
 from pydantic import ValidationError
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, Depends, Cookie
 from match_conexion_service.routes import router as conexion_router
-from publicaciones_service.schemas import preferencias_desde_formulario
+from publicaciones_service.schemas import (
+    PublicacionCreada,
+    PublicacionResumen,
+    preferencias_desde_formulario,
+)
 
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -146,19 +150,74 @@ async def buscar_ubicaciones(texto: str = Query(min_length=3, max_length=250)):
     return [lugar["formatted"] for lugar in datos.get("results", []) if lugar.get("formatted")]
 
 
-# OBTENER TODAS LAS PUBLICACIONES (Para el inicio)
-@app.get("/api/publicaciones")
-def obtener_publicaciones():
+# LISTAR Y BUSCAR PUBLICACIONES (Para el inicio)
+# La ruta estática /buscar se registra antes de /{id_pub}.
+@app.get("/api/publicaciones", response_model=list[PublicacionResumen],
+         tags=["Publicaciones"], summary="Listar arriendos")
+@app.get("/api/publicaciones/buscar", response_model=list[PublicacionResumen],
+         tags=["Publicaciones"], summary="Buscar arriendos con filtros")
+def obtener_publicaciones(
+    consulta: Annotated[str | None, Query(max_length=250, description="Parte de la ubicación")] = None,
+    personas: Annotated[Literal["1", "2", "3"] | None, Query(description="1, 2 o 3 (tres o más personas)")] = None,
+    tipo: Annotated[Literal["casa", "departamento", "habitacion"] | None, Query(description="Tipo de vivienda")] = None,
+    mascotas: Annotated[Literal["si", "no"] | None, Query()] = None,
+    precio_min: Annotated[Decimal | None, Query(ge=0, max_digits=14, decimal_places=2)] = None,
+    precio_max: Annotated[Decimal | None, Query(ge=0, max_digits=14, decimal_places=2)] = None,
+    categoria: Annotated[Literal["busco", "ofrezco"] | None, Query()] = None,
+    limite: Annotated[int | None, Query(ge=1, le=100, description="Máximo de resultados; omitir para listar todos")] = None,
+    offset: Annotated[int, Query(ge=0, le=9223372036854775807, description="Resultados a omitir para paginar")] = 0,
+):
+    if precio_min is not None and precio_max is not None and precio_min > precio_max:
+        raise HTTPException(status_code=422, detail="El precio mínimo no puede superar al máximo.")
+
+    filtros = []
+    parametros = []
+    if consulta and consulta.strip():
+        # %, _ y la barra se buscan como texto, no como comodines de LIKE.
+        ubicacion = consulta.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        filtros.append("p.ubicacion ILIKE %s")
+        parametros.append(f"%{ubicacion}%")
+    if personas is not None:
+        filtros.append("p.cupos_totales >= %s" if personas == "3" else "p.cupos_totales = %s")
+        parametros.append(int(personas))
+    if tipo is not None:
+        filtros.append("p.tipo_vivienda = %s")
+        parametros.append(tipo)
+    if mascotas is not None:
+        filtros.append("p.mascota = %s")
+        parametros.append(mascotas)
+    if precio_min is not None:
+        filtros.append("p.precio >= %s")
+        parametros.append(precio_min)
+    if precio_max is not None:
+        filtros.append("p.precio <= %s")
+        parametros.append(precio_max)
+    if categoria is not None:
+        filtros.append("p.categoria = %s")
+        parametros.append(categoria)
+
+    sql = """
+        SELECT p.id_publicacion, p.titulo, p.precio, p.ubicacion, p.cupos_totales,
+               p.tipo_vivienda,
+               (SELECT i.url FROM haycupo.imagen_publicacion i
+                WHERE i.id_publicacion = p.id_publicacion
+                ORDER BY i.orden, i.id_imagen LIMIT 1) AS imagen_url,
+               p.categoria, p.descripcion, p.mascota, p.contenido,
+               p.tipos_mascotas_aceptadas, p.condiciones_mascotas
+        FROM haycupo.publicacion p
+    """
+    if filtros:
+        sql += " WHERE " + " AND ".join(filtros)
+    sql += " ORDER BY p.id_publicacion DESC"
+    if limite is not None:
+        sql += " LIMIT %s"
+        parametros.append(limite)
+    sql += " OFFSET %s"
+    parametros.append(offset)
+
     try:
         with conectar() as conexion:
-            registros = conexion.execute("""
-                SELECT p.id_publicacion, p.titulo, p.precio, p.ubicacion, p.cupos_totales, 
-                       p.tipo_vivienda, i.url as imagen_url, p.categoria, p.descripcion, p.mascota, p.contenido,
-                       p.tipos_mascotas_aceptadas, p.condiciones_mascotas
-                FROM haycupo.publicacion p
-                LEFT JOIN haycupo.imagen_publicacion i ON p.id_publicacion = i.id_publicacion
-                ORDER BY p.id_publicacion DESC
-            """).fetchall()
+            registros = conexion.execute(sql, tuple(parametros)).fetchall()
             
             publicaciones = []
             for row in registros:
@@ -215,7 +274,8 @@ def obtener_una_publicacion(id_pub: int):
 
 
 # CREAR PUBLICACIÓN NUEVA
-@app.post("/api/publicaciones", status_code=201)
+@app.post("/api/publicaciones", status_code=201, response_model=PublicacionCreada,
+          tags=["Publicaciones"], summary="Publicar un arriendo")
 def crear_publicacion(
     titulo: Annotated[str, Form(min_length=1, max_length=200)],
     categoria: Annotated[Literal["busco", "ofrezco"], Form()],
@@ -228,12 +288,14 @@ def crear_publicacion(
     mascota: Annotated[str, Form()] = "no",
     tipos_mascotas_aceptadas: Annotated[str | None, Form(max_length=1000)] = None,
     condiciones_mascotas: Annotated[str | None, Form(max_length=2000)] = None,
-    permitir_comentarios: Annotated[str, Form()] = "false",
+    permitir_comentarios: Annotated[bool, Form()] = False,
     imagen: Annotated[UploadFile | None, File()] = None,
     id_usuario: int = Depends(autor_de_prueba)
 ):
+    titulo = titulo.strip()
+    ubicacion = ubicacion.strip()
     texto_desc = descripcion.strip()
-    permitir = True if permitir_comentarios.lower() == "true" else False
+    permitir = permitir_comentarios
 
     if not all([titulo.strip(), ubicacion.strip(), texto_desc]):
         raise HTTPException(status_code=422, detail="Completa el título, ubicación y descripción.")

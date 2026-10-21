@@ -163,6 +163,69 @@ class ApiPublicacionesTests(unittest.TestCase):
         self.assertEqual(respuesta.status_code, 422)
         conectar.assert_not_called()
 
+    def test_crear_normaliza_textos_y_guarda_booleano(self):
+        for valor, esperado in (("true", True), ("false", False), ("on", True), ("0", False)):
+            with self.subTest(valor=valor):
+                conexion = ConexionFalsa((42,))
+                with patch.object(self.api, "conectar", return_value=conexion):
+                    respuesta = self.cliente.post("/api/publicaciones", data=self.formulario(
+                        titulo="  Un lugar  ", ubicacion="  Temuco  ",
+                        descripcion="  Cerca del centro  ", permitir_comentarios=valor))
+                self.assertEqual(respuesta.status_code, 201, respuesta.text)
+                self.assertEqual(respuesta.json(), {"id": 42, "mensaje": "Publicación creada"})
+                parametros = conexion.consultas[0][1]
+                self.assertEqual(parametros[2:6], (
+                    "Un lugar", "Cerca del centro", Decimal("150000"), "Temuco"))
+                self.assertIs(parametros[9], esperado)
+
+    def test_crear_rechaza_datos_invalidos_antes_de_conectar_o_escribir_archivos(self):
+        casos = (
+            {"titulo": "   "}, {"titulo": "x" * 201},
+            {"ubicacion": "   "}, {"ubicacion": "x" * 251},
+            {"descripcion": "   "}, {"descripcion": "x" * 5001},
+            {"categoria": "venta"}, {"tipo": "propietario"},
+            {"tipo_vivienda": "oficina"}, {"precio": "-1"},
+            {"precio": "1.001"}, {"precio": "1000000000000"},
+            {"precio": "NaN"}, {"precio": "Infinity"},
+            {"cupos_totales": "0"}, {"cupos_totales": "2147483648"},
+            {"cupos_totales": "1.5"}, {"mascota": "tal vez"},
+            {"permitir_comentarios": "tal vez"},
+        )
+        for cambios in casos:
+            with self.subTest(cambios=cambios):
+                with patch.object(self.api, "conectar") as conectar, \
+                        patch.object(Path, "write_bytes") as escribir:
+                    respuesta = self.cliente.post("/api/publicaciones", data=self.formulario(**cambios))
+                self.assertEqual(respuesta.status_code, 422, respuesta.text)
+                conectar.assert_not_called()
+                escribir.assert_not_called()
+
+    def test_crear_exige_campos_obligatorios(self):
+        for campo in ("titulo", "categoria", "ubicacion", "precio", "tipo",
+                      "cupos_totales", "tipo_vivienda", "descripcion"):
+            with self.subTest(campo=campo):
+                datos = self.formulario()
+                del datos[campo]
+                with patch.object(self.api, "conectar") as conectar:
+                    respuesta = self.cliente.post("/api/publicaciones", data=datos)
+                self.assertEqual(respuesta.status_code, 422, respuesta.text)
+                conectar.assert_not_called()
+
+    def test_crear_rechaza_imagen_invalida_sin_escrituras(self):
+        with patch.object(self.api, "conectar") as conectar, \
+                patch.object(Path, "write_bytes") as escribir:
+            respuesta = self.cliente.post("/api/publicaciones", data=self.formulario(),
+                                          files={"imagen": ("foto.png", b"no es una imagen", "image/png")})
+        self.assertEqual(respuesta.status_code, 422, respuesta.text)
+        conectar.assert_not_called()
+        escribir.assert_not_called()
+
+    def test_crear_error_de_base_de_datos_no_expone_detalles(self):
+        with patch.object(self.api, "conectar", side_effect=RuntimeError("detalle privado de PostgreSQL")):
+            respuesta = self.cliente.post("/api/publicaciones", data=self.formulario())
+        self.assertEqual(respuesta.status_code, 500, respuesta.text)
+        self.assertEqual(respuesta.json(), {"detail": "Error al guardar."})
+
     def test_actualizar_conserva_publicacion_legacy(self):
         conexion = ConexionFalsa(("si", None, None), None)
         with patch.object(self.api, "conectar", return_value=conexion):
@@ -212,6 +275,116 @@ class ApiPublicacionesTests(unittest.TestCase):
             respuesta = self.cliente.get("/api/publicaciones")
         self.assertEqual(respuesta.status_code, 200, respuesta.text)
         self.assertEqual(respuesta.json()[0]["tipos_mascotas_aceptadas"], [])
+
+    def test_listar_y_buscar_devuelven_mismo_formato_y_descripcion_compatible(self):
+        filas = [
+            (42, "Habitación", Decimal("150000.50"), "Temuco", 3, "casa", "/imagenes/casa.png",
+             "ofrezco", "Descripción antigua", "si", "Descripción actual", ["ave"], "Solo una"),
+            (41, "Departamento", Decimal("0"), "Valdivia", 1, "departamento", None,
+             "busco", "Descripción antigua", "no", None, None, None),
+        ]
+        esperado = [
+            {"id": 42, "titulo": "Habitación", "precio": 150000.5, "ubicacion": "Temuco",
+             "cupos_totales": 3, "tipo_vivienda": "casa", "imagen": "/imagenes/casa.png",
+             "categoria": "ofrezco", "descripcion": "Descripción actual", "mascota": "si",
+             "tipos_mascotas_aceptadas": ["ave"], "condiciones_mascotas": "Solo una"},
+            {"id": 41, "titulo": "Departamento", "precio": 0.0, "ubicacion": "Valdivia",
+             "cupos_totales": 1, "tipo_vivienda": "departamento", "imagen": None,
+             "categoria": "busco", "descripcion": "Descripción antigua", "mascota": "no",
+             "tipos_mascotas_aceptadas": [], "condiciones_mascotas": None},
+        ]
+        for ruta in ("/api/publicaciones", "/api/publicaciones/buscar"):
+            with self.subTest(ruta=ruta):
+                with patch.object(self.api, "conectar", return_value=ConexionFalsa(filas)):
+                    respuesta = self.cliente.get(ruta)
+                self.assertEqual(respuesta.status_code, 200, respuesta.text)
+                self.assertEqual(respuesta.json(), esperado)
+
+    def test_listado_sin_filtros_no_limita_y_selecciona_una_portada_ordenada(self):
+        conexion = ConexionFalsa([])
+        with patch.object(self.api, "conectar", return_value=conexion):
+            respuesta = self.cliente.get("/api/publicaciones")
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        self.assertEqual(respuesta.json(), [])
+        self.assertEqual(len(conexion.consultas), 1)
+        sql, parametros = conexion.consultas[0]
+        sql = " ".join(sql.split())
+        self.assertIn("ORDER BY i.orden, i.id_imagen LIMIT 1", sql)
+        self.assertNotIn("JOIN", sql)
+        self.assertNotIn("LIMIT %s", sql)
+        self.assertTrue(sql.endswith("ORDER BY p.id_publicacion DESC OFFSET %s"))
+        self.assertEqual(parametros, (0,))
+
+    def test_buscar_combina_filtros_y_parametriza_texto_literal(self):
+        consulta = "  Temuco%_\\' OR 1=1 --  "
+        conexion = ConexionFalsa([])
+        with patch.object(self.api, "conectar", return_value=conexion):
+            respuesta = self.cliente.get("/api/publicaciones/buscar", params={
+                "consulta": consulta, "personas": "3", "tipo": "habitacion",
+                "mascotas": "si", "precio_min": "100000.25", "precio_max": "200000.50",
+                "categoria": "ofrezco", "limite": 15, "offset": 30,
+            })
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        self.assertEqual(respuesta.json(), [])
+        self.assertEqual(len(conexion.consultas), 1)
+        sql, parametros = conexion.consultas[0]
+        sql = " ".join(sql.split())
+        self.assertIn("WHERE p.ubicacion ILIKE %s AND p.cupos_totales >= %s "
+                      "AND p.tipo_vivienda = %s AND p.mascota = %s "
+                      "AND p.precio >= %s AND p.precio <= %s AND p.categoria = %s", sql)
+        self.assertTrue(sql.endswith("ORDER BY p.id_publicacion DESC LIMIT %s OFFSET %s"))
+        self.assertNotIn("Temuco", sql)
+        self.assertNotIn("OR 1=1", sql)
+        self.assertEqual(parametros, (
+            "%Temuco\\%\\_\\\\' OR 1=1 --%", 3, "habitacion", "si",
+            Decimal("100000.25"), Decimal("200000.50"), "ofrezco", 15, 30,
+        ))
+
+    def test_buscar_uno_o_dos_cupos_exactos(self):
+        for cantidad in (1, 2):
+            with self.subTest(cantidad=cantidad):
+                conexion = ConexionFalsa([])
+                with patch.object(self.api, "conectar", return_value=conexion):
+                    respuesta = self.cliente.get("/api/publicaciones/buscar", params={"personas": cantidad})
+                self.assertEqual(respuesta.status_code, 200, respuesta.text)
+                sql, parametros = conexion.consultas[0]
+                self.assertIn("p.cupos_totales = %s", sql)
+                self.assertEqual(parametros, (cantidad, 0))
+
+    def test_consulta_en_blanco_no_agrega_filtro(self):
+        conexion = ConexionFalsa([])
+        with patch.object(self.api, "conectar", return_value=conexion):
+            respuesta = self.cliente.get("/api/publicaciones/buscar", params={"consulta": "   "})
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        sql, parametros = conexion.consultas[0]
+        self.assertNotIn("ILIKE", sql)
+        self.assertEqual(parametros, (0,))
+
+    def test_listar_y_buscar_rechazan_filtros_invalidos_sin_conectar(self):
+        casos = (
+            {"consulta": "x" * 251}, {"personas": "0"}, {"personas": "4"},
+            {"tipo": "oficina"}, {"mascotas": "tal vez"}, {"categoria": "venta"},
+            {"precio_min": "-1"}, {"precio_max": "-1"}, {"precio_min": "1.001"},
+            {"precio_max": "1000000000000"}, {"precio_min": "NaN"},
+            {"precio_max": "Infinity"}, {"precio_min": "200", "precio_max": "100"},
+            {"limite": "0"}, {"limite": "101"}, {"limite": "muchos"},
+            {"offset": "-1"}, {"offset": "1.5"}, {"offset": "9223372036854775808"},
+        )
+        for ruta in ("/api/publicaciones", "/api/publicaciones/buscar"):
+            for filtros in casos:
+                with self.subTest(ruta=ruta, filtros=filtros):
+                    with patch.object(self.api, "conectar") as conectar:
+                        respuesta = self.cliente.get(ruta, params=filtros)
+                    self.assertEqual(respuesta.status_code, 422, respuesta.text)
+                    conectar.assert_not_called()
+
+    def test_listar_y_buscar_no_exponen_errores_de_base_de_datos(self):
+        for ruta in ("/api/publicaciones", "/api/publicaciones/buscar"):
+            with self.subTest(ruta=ruta):
+                with patch.object(self.api, "conectar", side_effect=RuntimeError("detalle privado de PostgreSQL")):
+                    respuesta = self.cliente.get(ruta)
+                self.assertEqual(respuesta.status_code, 500, respuesta.text)
+                self.assertEqual(respuesta.json(), {"detail": "Error al cargar publicaciones"})
 
     def test_salud_microservicio_independiente(self):
         with TestClient(servicio) as cliente:

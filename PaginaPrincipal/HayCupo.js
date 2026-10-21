@@ -152,6 +152,26 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     };
 
+    let ultimaSolicitud = 0;
+
+    const cargarPublicaciones = async (url) => {
+        const solicitud = ++ultimaSolicitud;
+        try {
+            const respuesta = await fetch(url);
+            if (!respuesta.ok) throw new Error("No se pudieron cargar las publicaciones.");
+            const publicaciones = await respuesta.json();
+            if (!Array.isArray(publicaciones)) throw new Error("Respuesta de publicaciones no válida.");
+            if (solicitud !== ultimaSolicitud) return;
+
+            if (url === "/api/publicaciones") window.todasLasPublicaciones = publicaciones;
+            renderizarPublicaciones(publicaciones);
+        } catch (error) {
+            if (solicitud !== ultimaSolicitud) return;
+            window.publicacionesVisibles = [];
+            contenedorPubs.innerHTML = '<p role="alert" class="tw:col-span-full! tw:text-red-700!">Error al cargar las publicaciones. Vuelve a consultar para intentarlo de nuevo.</p>';
+        }
+    };
+
     if (contenedorPubs) {
         contenedorPubs.addEventListener("keydown", (event) => {
             const tarjeta = event.target.closest('[role="button"]');
@@ -160,45 +180,28 @@ document.addEventListener("DOMContentLoaded", async () => {
                 tarjeta.click();
             }
         });
-        try {
-            const respuesta = await fetch("/api/publicaciones");
-            window.todasLasPublicaciones = await respuesta.json();
-            renderizarPublicaciones(window.todasLasPublicaciones);
-        } catch (error) {
-            contenedorPubs.innerHTML = '<p role="alert" class="tw:col-span-full! tw:text-red-700!">Error al cargar las publicaciones.</p>';
-        }
     }
 
-    // 4. MOTOR DE FILTROS ACTUALIZADO A LAS VARIABLES DEL BACKEND
+    // 4. BÚSQUEDA DE PUBLICACIONES EN EL BACKEND
     const btnConsultar = document.getElementById("btn-consultar");
-    if (btnConsultar) {
+    if (btnConsultar && contenedorPubs) {
         btnConsultar.addEventListener("click", () => {
-            const txtUbicacion = document.getElementById("filtro-ubicacion").value.toLowerCase().trim();
-            const valPersonas = document.getElementById("filtro-personas").value;
-            const valTipo = document.getElementById("filtro-tipo").value;
-            const valMascotas = document.getElementById("filtro-mascotas").value;
-
-            const filtradas = window.todasLasPublicaciones.filter(pub => {
-                const pubUbi = (pub.ubicacion || "").toLowerCase();
-                const coincideUbicacion = txtUbicacion === "" || pubUbi.includes(txtUbicacion);
-                
-                // Usando cupos_totales
-                const pubPersonas = String(pub.cupos_totales || "").trim();
-                const coincidePersonas = valPersonas === "" || (valPersonas === "3" ? Number(pubPersonas) >= 3 : pubPersonas === valPersonas);
-                
-                // Usando tipo_vivienda
-                const pubTipo = String(pub.tipo_vivienda || "").toLowerCase().trim();
-                const coincideTipo = valTipo === "" || pubTipo === valTipo;
-                
-                const pubMascotas = String(pub.mascota || "").toLowerCase().trim();
-                const coincideMascotas = valMascotas === "" || pubMascotas === valMascotas;
-
-                return coincideUbicacion && coincidePersonas && coincideTipo && coincideMascotas;
+            const parametros = new URLSearchParams();
+            const filtros = {
+                consulta: document.getElementById("filtro-ubicacion").value.trim(),
+                personas: document.getElementById("filtro-personas").value,
+                tipo: document.getElementById("filtro-tipo").value,
+                mascotas: document.getElementById("filtro-mascotas").value
+            };
+            Object.entries(filtros).forEach(([nombre, valor]) => {
+                if (valor) parametros.set(nombre, valor);
             });
-
-            renderizarPublicaciones(filtradas);
+            const consulta = parametros.toString();
+            cargarPublicaciones(`/api/publicaciones/buscar${consulta ? `?${consulta}` : ""}`);
         });
     }
+
+    if (contenedorPubs) await cargarPublicaciones("/api/publicaciones");
 });
 
 // LÓGICA DEL MODAL: Inyecta TODA la información corregida

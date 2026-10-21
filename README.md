@@ -77,6 +77,15 @@ Pruebas locales de validación, API y estado del microservicio, sin conexión a 
 python -B -m unittest discover -s tests -v
 ```
 
+## API de arriendos
+
+La aplicación principal expone `POST /api/publicaciones` para publicar,
+`GET /api/publicaciones` para listar y `GET /api/publicaciones/buscar` para
+buscar con filtros. El botón **Consultar** del inicio usa la búsqueda del backend.
+
+Consulta los campos, ejemplos de PowerShell y respuestas en
+[la guía de endpoints de arriendos](./main/README.md).
+
 ## Pruebas Manuales (QA)
 Para consultar y registrar las pruebas manuales de los flujos de **Autenticacion** y **Publicaciones**, revisa el documento en:
 - [Guia de Pruebas Manuales: Auth y Publicaciones](./taller%20de%20integra%20dos/endpoint/manual-testing-auth-publicaciones.md)

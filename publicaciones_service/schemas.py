@@ -101,3 +101,25 @@ class PublicacionCrear(PreferenciasMascotas):
     tipo_vivienda: Literal["casa", "departamento", "habitacion"]
     cupos_totales: int = Field(ge=1, le=2147483647)
     permitir_comentarios: bool = False
+
+
+class PublicacionCreada(BaseModel):
+    id: int
+    mensaje: str
+
+
+class PublicacionResumen(BaseModel):
+    """Formato compartido por el listado y los resultados de búsqueda."""
+
+    id: int
+    titulo: str
+    precio: float
+    ubicacion: str
+    cupos_totales: int
+    tipo_vivienda: str
+    imagen: str | None
+    categoria: str
+    descripcion: str | None
+    mascota: str
+    tipos_mascotas_aceptadas: list[str] = Field(default_factory=list)
+    condiciones_mascotas: str | None
