@@ -2,8 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from match_conexion_service.database import get_db
-from match_conexion_service.models import Conexion, EstadoConexion, Usuario, Publicacion
-from match_conexion_service.schemas import ConexionCreate, ConexionResponse, ConexionUpdate, UsuarioBusqueda, PublicacionBusqueda
+from match_conexion_service.models import Conexion, EstadoConexion, Match, Usuario, Publicacion
+from match_conexion_service.schemas import (
+    ConexionCreate,
+    ConexionResponse,
+    ConexionUpdate,
+    MatchResponse,
+    PublicacionBusqueda,
+    UsuarioBusqueda,
+)
 
 router = APIRouter(
     prefix="/conexiones",
@@ -13,10 +20,21 @@ router = APIRouter(
 # 1. ENVIAR solicitud de conexión
 @router.post("/", response_model=ConexionResponse, status_code=status.HTTP_201_CREATED)
 def enviar_solicitud(conexion: ConexionCreate, db: Session = Depends(get_db)):
+    if conexion.id_solicitante_FK == conexion.id_receptor_FK:
+        raise HTTPException(status_code=400, detail="No puedes enviarte una solicitud a ti mismo.")
+
     conexion_existente = db.query(Conexion).filter(
-        Conexion.id_solicitante_FK == conexion.id_solicitante_FK,
-        Conexion.id_receptor_FK == conexion.id_receptor_FK,
-        Conexion.estado == EstadoConexion.Pendiente
+        (
+            (Conexion.id_solicitante_FK == conexion.id_solicitante_FK)
+            & (Conexion.id_receptor_FK == conexion.id_receptor_FK)
+        )
+        | (
+            (Conexion.id_solicitante_FK == conexion.id_receptor_FK)
+            & (Conexion.id_receptor_FK == conexion.id_solicitante_FK)
+        ),
+        Conexion.estado.in_(
+            (EstadoConexion.Pendiente, EstadoConexion.Aceptada)
+        ),
     ).first()
 
     if conexion_existente:
@@ -43,7 +61,9 @@ def responder_solicitud(id_conexion: int, respuesta: ConexionUpdate, db: Session
     if conexion_db.estado != EstadoConexion.Pendiente:
         raise HTTPException(status_code=400, detail=f"Esta solicitud ya fue {conexion_db.estado.value}.")
 
-    conexion_db.estado = respuesta.estado
+    conexion_db.estado = EstadoConexion(respuesta.estado.value)
+    if respuesta.estado.value == EstadoConexion.Aceptada.value:
+        db.add(Match(id_conexion_FK=id_conexion))
     db.commit()
     db.refresh(conexion_db)
     return conexion_db
@@ -57,6 +77,51 @@ def ver_solicitudes_recibidas(id_usuario: int, db: Session = Depends(get_db)):
         Conexion.estado == EstadoConexion.Pendiente
     ).all()
     return solicitudes  
+
+
+@router.get("/enviadas/{id_usuario}", response_model=list[ConexionResponse])
+def ver_solicitudes_enviadas(id_usuario: int, db: Session = Depends(get_db)):
+    return db.query(Conexion).filter(
+        Conexion.id_solicitante_FK == id_usuario
+    ).order_by(Conexion.fecha_solicitud.desc()).all()
+
+
+@router.get("/matches/{id_usuario}", response_model=list[ConexionResponse])
+def ver_matches(id_usuario: int, db: Session = Depends(get_db)):
+    return db.query(Conexion).filter(
+        (
+            (Conexion.id_solicitante_FK == id_usuario)
+            | (Conexion.id_receptor_FK == id_usuario)
+        ),
+        Conexion.estado == EstadoConexion.Aceptada,
+    ).order_by(Conexion.fecha_solicitud.desc()).all()
+
+
+@router.get("/admin/verificaciones", response_model=list[ConexionResponse])
+def listar_verificaciones(
+    solo_pendientes: bool = Query(True),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Conexion)
+    if solo_pendientes:
+        query = query.filter(Conexion.verificada.is_(False))
+    return query.order_by(Conexion.fecha_solicitud.asc()).all()
+
+
+@router.put("/admin/verificaciones/{id_conexion}", response_model=ConexionResponse)
+def verificar_conexion(id_conexion: int, db: Session = Depends(get_db)):
+    conexion_db = db.query(Conexion).filter(Conexion.id_conexion == id_conexion).first()
+    if not conexion_db:
+        raise HTTPException(status_code=404, detail="Solicitud de conexión no encontrada.")
+    if conexion_db.estado != EstadoConexion.Aceptada:
+        raise HTTPException(
+            status_code=409,
+            detail="Solo se pueden verificar conexiones aceptadas.",
+        )
+    conexion_db.verificada = True
+    db.commit()
+    db.refresh(conexion_db)
+    return conexion_db
 
 
 # 4. BÚSQUEDA DE USUARIOS (ROOMIES)

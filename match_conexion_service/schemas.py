@@ -22,6 +22,16 @@ class ConexionResponse(ConexionBase):
     id_conexion: int
     estado: EstadoConexion
     fecha_solicitud: datetime
+    verificada: bool
+
+    class Config:
+        from_attributes = True
+
+
+class MatchResponse(BaseModel):
+    id_match: int
+    id_conexion_FK: int
+    fecha_creacion: datetime
 
     class Config:
         from_attributes = True
