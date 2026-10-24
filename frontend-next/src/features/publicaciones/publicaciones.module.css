@@ -1,0 +1,7 @@
+.publishContent { max-width: 811px; padding-top: 15px; }
+.typeGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 21px; }
+.publishInfo { margin-top: 26px; padding: 25px; }
+.publishInfo h2 { font-size: 17px; color: var(--primary); margin: 0 0 9px; }
+.publishInfo p { font-size: 13px; color: var(--muted); margin: 0; }
+.legacyLink { display: inline-block; margin-top: 18px; font-size: 13px; }
+@media (max-width: 767px) { .typeGrid { grid-template-columns: minmax(0, 1fr); } }
