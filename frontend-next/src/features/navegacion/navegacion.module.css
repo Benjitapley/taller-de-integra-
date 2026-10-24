@@ -1,0 +1,6 @@
+.guide { max-width: 811px; }
+.guideCard { padding: 26px; margin-bottom: 20px; }
+.guideCard h2 { color: var(--primary); font-size: 20px; margin: 0 0 12px; }
+.guideCard p, .guideCard li { font-size: 14px; }
+.guideCard a { display: inline-block; padding: 6px 0; }
+.guideLinks { display: flex; flex-wrap: wrap; gap: 10px 24px; padding: 0; list-style: none; }

@@ -1,0 +1,195 @@
+import assert from "node:assert/strict";
+import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
+import { cp, mkdtemp, readFile, rm, symlink, unlink } from "node:fs/promises";
+import { createServer } from "node:http";
+import { join, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
+
+const project = fileURLToPath(new URL("../", import.meta.url));
+const legacyRoot = new URL("../../frontend/", import.meta.url);
+const html = new Map([
+  ["/", "PaginaPrincipal/Auth_app(login)/auth_app.html"],
+  ["/inicio", "PaginaPrincipal/hayCupo.html"],
+  ["/crear", "Creacion_De_publicacion/publicacion.html"],
+  ["/editar-publicacion", "Creacion_De_publicacion/publicacion.html"],
+  ["/perfil", "PerfilU/perfil.html"],
+  ["/mis-publicaciones", "PaginaPrincipal/PublicacionesU/mis_publicaciones.html"],
+]);
+const assets = new Map([
+  ["/static_principal/HayCupo.js", "PaginaPrincipal/HayCupo.js"],
+  ["/static_principal/estilo_HayCupo.css", "PaginaPrincipal/estilo_HayCupo.css"],
+  ["/static_principal/Auth_app(login)/auth_app.css", "PaginaPrincipal/Auth_app(login)/auth_app.css"],
+  ["/static_principal/Auth_app(login)/auth_app.js", "PaginaPrincipal/Auth_app(login)/auth_app.js"],
+  ["/static_principal/PublicacionesU/MisPublicaciones.js", "PaginaPrincipal/PublicacionesU/MisPublicaciones.js"],
+  ["/static_creacion/publicacion.js", "Creacion_De_publicacion/publicacion.js"],
+  ["/static_creacion/estilo_de_publicacion.css", "Creacion_De_publicacion/estilo_de_publicacion.css"],
+  ["/PerfilU/perfil.js", "PerfilU/perfil.js"],
+  ["/Iconos/sidebar.css", "Iconos/sidebar.css"],
+]);
+
+test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos", { timeout: 120_000 }, async (t) => {
+  // No ocupar el puerto de un servidor existente ni detener procesos ajenos.
+  const portCheck = createServer();
+  portCheck.listen(3000, "127.0.0.1");
+  await once(portCheck, "listening");
+  await new Promise((resolve) => portCheck.close(resolve));
+
+  // Aplicación temporal: no comparte el lock de next dev ni copia archivos .env.
+  const isolated = await mkdtemp(join(project, ".proxy-test-"));
+  for (const name of ["next.config.ts", "package.json", "tsconfig.json", "src", "public"]) {
+    await cp(join(project, name), join(isolated, name), { recursive: true });
+  }
+  await symlink(join(project, "node_modules"), join(isolated, "node_modules"), process.platform === "win32" ? "junction" : "dir");
+
+  const received = [];
+  const upstream = createServer(async (request, response) => {
+    const url = new URL(request.url, "http://fixture.invalid");
+    const path = decodeURIComponent(url.pathname);
+    received.push(path + url.search);
+    response.setHeader("X-Proxy-Fixture", "transport-only");
+    const file = html.get(path) ?? assets.get(path);
+    if (file) {
+      response.setHeader("Content-Type", html.has(path) ? "text/html; charset=utf-8" : path.endsWith(".css") ? "text/css" : "application/javascript");
+      response.end(await readFile(new URL(file, legacyRoot)));
+      return;
+    }
+    // Solo respuestas sintéticas de transporte; no hay login ni sesión de prueba.
+    response.setHeader("Content-Type", "application/json");
+    if (path === "/auth/__proxy_probe") {
+      response.statusCode = 401;
+      response.setHeader("Set-Cookie", [
+        "proxy_transport_probe=synthetic; HttpOnly; Path=/; SameSite=lax",
+        "proxy_transport_clear=; Max-Age=0; Path=/; SameSite=lax",
+      ]);
+      response.end(JSON.stringify({ detail: "Transport fixture: no authentication" }));
+      return;
+    }
+    if (path === "/api/__validation_probe") response.statusCode = 422;
+    response.end(JSON.stringify({ path, search: url.search, cookie: request.headers.cookie ?? null }));
+  });
+  upstream.listen(0, "127.0.0.1");
+  await once(upstream, "listening");
+  const upstreamOrigin = `http://127.0.0.1:${upstream.address().port}`;
+  let output = "";
+  const next = spawn(process.execPath, [join(project, "node_modules/next/dist/bin/next"), "dev", "--hostname", "127.0.0.1", "--port", "3000"], {
+    cwd: isolated,
+    env: { ...process.env, FASTAPI_ORIGIN: upstreamOrigin, NEXT_TELEMETRY_DISABLED: "1" },
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  next.stdout.on("data", (chunk) => { output += chunk.toString(); });
+  next.stderr.on("data", (chunk) => { output += chunk.toString(); });
+  t.after(async () => {
+    if (next.exitCode === null) {
+      if (process.platform === "win32") {
+        const stopped = spawnSync("taskkill", ["/pid", String(next.pid), "/t", "/f"], { windowsHide: true, encoding: "utf8" });
+        if (stopped.status !== 0) {
+          next.stdout.destroy();
+          next.stderr.destroy();
+          next.unref();
+          upstream.closeAllConnections();
+          upstream.close();
+          throw new Error(`No se pudo cerrar el servidor temporal PID ${next.pid}: ${stopped.stderr || stopped.error || stopped.stdout}`);
+        }
+      } else next.kill("SIGTERM");
+    }
+    if (next.exitCode === null) await once(next, "exit");
+    upstream.closeAllConnections();
+    await new Promise((resolve) => upstream.close(resolve));
+    // Desvincular dependencias antes de borrar; nunca recorrer node_modules real.
+    if (!resolve(isolated).startsWith(resolve(project) + sep + ".proxy-test-")) throw new Error("Directorio de limpieza fuera del proyecto");
+    await unlink(join(isolated, "node_modules"));
+    await rm(isolated, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  });
+
+  const base = "http://127.0.0.1:3000";
+  let ready = false;
+  for (let attempt = 0; attempt < 120; attempt++) {
+    if (next.exitCode !== null) throw new Error(`Next.js no pudo arrancar:\n${output}`);
+    try {
+      const response = await fetch(`${base}/api/__ready_probe`, { signal: AbortSignal.timeout(1000) });
+      if (response.status === 200 && response.headers.get("x-proxy-fixture")) { ready = true; break; }
+    } catch { /* Esperar el arranque del servidor, sin acceder a servicios reales. */ }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  assert.ok(ready, `Next.js no estuvo disponible:\n${output}`);
+
+  await t.test("las rutas Next.js y los iconos locales no pasan al upstream", async () => {
+    for (const path of ["/", "/inicio", "/inicio?vista=personas", "/publicar", "/navegacion", "/Iconos/casa.webp"]) {
+      const response = await fetch(`${base}${path}`);
+      assert.equal(response.status, 200, path);
+      assert.equal(response.headers.get("x-proxy-fixture"), null, path);
+      if (path !== "/Iconos/casa.webp") assert.match(await response.text(), /¿Hay cupo\?/);
+    }
+  });
+
+  await t.test("páginas HTML y alias de acceso conservan sus bytes", async () => {
+    for (const [path, file] of html) {
+      const aliases = path === "/" ? ["/acceso", "/legacy/acceso"] : path === "/inicio" ? ["/legacy/inicio"] : [path, `/legacy${path}`];
+      for (const alias of aliases) {
+        const response = await fetch(`${base}${alias}`);
+        assert.equal(response.status, 200, alias);
+        assert.equal(await response.text(), await readFile(new URL(file, legacyRoot), "utf8"), alias);
+      }
+    }
+  });
+
+  await t.test("recursos antiguos, incluyendo paréntesis y mayúsculas", async () => {
+    for (const [path, file] of assets) {
+      const response = await fetch(`${base}${path}`);
+      assert.equal(response.status, 200, path);
+      assert.equal(await response.text(), await readFile(new URL(file, legacyRoot), "utf8"), path);
+    }
+  });
+
+  await t.test("conserva parámetros, cookie sintética, rutas e imágenes", async () => {
+    for (const path of ["/api/__proxy_probe?texto=Temuco&limite=5", "/editar-publicacion?id=123", "/legacy/editar-publicacion?id=123", "/imagenes/__proxy_probe.png", "/conexiones/usuarios/buscar?zona=Centro"]) {
+      const response = await fetch(`${base}${path}`, { headers: { Cookie: "proxy_transport_probe=synthetic" }, redirect: "manual" });
+      assert.equal(response.status, 200, path);
+      if (path.includes("/editar-publicacion")) { assert.ok(received.includes(path.replace("/legacy", ""))); continue; }
+      const body = await response.json();
+      const expected = new URL(path, base);
+      assert.equal(body.path, expected.pathname);
+      assert.equal(body.search, expected.search);
+      assert.equal(body.cookie, "proxy_transport_probe=synthetic");
+    }
+    for (const path of ["/conexiones", "/conexiones/"]) {
+      const response = await fetch(`${base}${path}`, { redirect: "manual" });
+      assert.equal(response.status, 200, path);
+      assert.equal((await response.json()).path, "/conexiones/");
+    }
+  });
+
+  await t.test("conserva status de error, JSON y múltiples Set-Cookie", async () => {
+    const response = await fetch(`${base}/auth/__proxy_probe`);
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { detail: "Transport fixture: no authentication" });
+    assert.deepEqual(response.headers.getSetCookie(), [
+      "proxy_transport_probe=synthetic; HttpOnly; Path=/; SameSite=lax",
+      "proxy_transport_clear=; Max-Age=0; Path=/; SameSite=lax",
+    ]);
+    assert.equal((await fetch(`${base}/api/__validation_probe`)).status, 422);
+  });
+
+  await t.test("una ruta inexistente no se envía al backend", async () => {
+    for (const path of ["/__not_implemented", "/legacy/__not_implemented"]) {
+      const response = await fetch(`${base}${path}`);
+      assert.equal(response.status, 404);
+      assert.equal(received.includes(path), false);
+    }
+  });
+
+  await t.test("el acceso no hereda Sidebar ni presenta autenticación operativa", async () => {
+    const response = await fetch(base);
+    const body = await response.text();
+    assert.match(body, /Iniciar sesión o registrarse/);
+    assert.match(body, /Acceso pendiente de integración/);
+    assert.doesNotMatch(body, /<aside\b|<form\b|type="password"|aria-label="Navegación principal"/);
+    assert.match(body, /href="\/acceso"/);
+    const home = await (await fetch(`${base}/inicio`)).text();
+    assert.match(home, /aria-label="Navegación principal"/);
+    assert.match(home, /role="tablist"|Cargando navegación/);
+  });
+});

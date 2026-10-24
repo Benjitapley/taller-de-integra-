@@ -13,3 +13,16 @@ __pycache__/
 
 # Configuración local de editores
 .vscode/
+
+# Next.js / Node.js
+node_modules/
+.next/
+/frontend-next/out/
+/frontend-next/build/
+/frontend-next/coverage/
+/frontend-next/.vercel/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*

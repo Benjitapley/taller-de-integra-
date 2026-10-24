@@ -1,0 +1,14 @@
+.layout { min-height: 100svh; display: grid; place-items: center; padding: 32px 20px; }
+.main { width: 100%; max-width: 560px; }
+.card { padding: clamp(24px, 5vw, 44px); }
+.brand { display: flex; align-items: center; gap: 12px; color: var(--primary); font-size: 22px; font-weight: 750; }
+.card h1 { font-size: clamp(25px, 4vw, 30px); margin: 28px 0 12px; color: var(--primary); }
+.card > p { color: var(--muted); font-size: 14px; }
+.notice { border: 1px solid var(--line); background: var(--soft); border-radius: 16px; padding: 20px; margin: 24px 0; }
+.notice h2 { font-size: 17px; margin: 0 0 10px; }
+.notice p { font-size: 14px; margin: 0; color: var(--muted); }
+.legacy { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 12px 18px; border-radius: 14px; background: var(--primary); color: white; text-decoration: none; font-weight: 700; font-size: 14px; }
+.card .help { font-size: 12px; margin-bottom: 24px; }
+.card > a:last-child { display: inline-block; font-size: 13px; padding-block: 8px; }
+.skipLink { position: fixed; top: 8px; left: 8px; padding: 12px; background: white; border: 1px solid var(--primary); border-radius: 10px; transform: translateY(-200%); }
+.skipLink:focus { transform: translateY(0); }
