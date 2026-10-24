@@ -1,9 +1,57 @@
+// ==========================================
+// Perfil - Roomies
+// Carga, edición de perfil y publicaciones del usuario
+// Todas las peticiones incluyen JWT para autenticación real
+// ==========================================
+
+/**
+ * Obtiene los headers de autenticación con el JWT almacenado.
+ * Si no hay token, redirige al login.
+ */
+function getAuthHeaders() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        window.location.href = '/';
+        return null;
+    }
+    return { 'Authorization': `Bearer ${token}` };
+}
+
+/**
+ * Fetch autenticado: agrega el JWT automáticamente.
+ * Si recibe 401, redirige al login.
+ */
+async function fetchAuth(url, options = {}) {
+    const headers = getAuthHeaders();
+    if (!headers) return null;
+
+    options.headers = { ...options.headers, ...headers };
+    const respuesta = await fetch(url, options);
+
+    if (respuesta.status === 401) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('nombre_usuario');
+        localStorage.removeItem('user_id');
+        window.location.href = '/';
+        return null;
+    }
+
+    return respuesta;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     
+    // Protección de ruta: si no hay token, ir al login
+    if (!localStorage.getItem('access_token')) {
+        window.location.href = '/';
+        return;
+    }
+
     // 1. Cargar Perfil y llenar la información visual
     async function cargarPerfil() {
         try {
-            const respuesta = await fetch("/api/perfil");
+            const respuesta = await fetchAuth("/api/perfil");
+            if (!respuesta) return;
             const data = await respuesta.json();
 
             // Llenar textos del perfil
@@ -39,7 +87,8 @@ document.addEventListener("DOMContentLoaded", () => {
     async function cargarMisTarjetas() {
         const contenedor = document.getElementById("contenedor-publicaciones-perfil");
         try {
-            const respuesta = await fetch("/api/mis-publicaciones");
+            const respuesta = await fetchAuth("/api/mis-publicaciones");
+            if (!respuesta) return;
             const pubs = await respuesta.json();
 
             if (pubs.length === 0) {
@@ -87,12 +136,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const formData = new FormData(e.target);
         
         try {
-            const respuesta = await fetch("/api/perfil", { 
+            const respuesta = await fetchAuth("/api/perfil", { 
                 method: "PUT", 
                 body: formData 
             });
             
-            if (respuesta.ok) {
+            if (respuesta && respuesta.ok) {
                 document.getElementById("modal-editar").style.display = "none";
                 cargarPerfil(); // Recarga los datos actualizados sin refrescar la página
             } else {

@@ -1,5 +1,11 @@
 document.addEventListener("DOMContentLoaded", async () => {
     
+    // PROTECCIÓN DE RUTA: si no hay token, redirigir al login
+    if (!localStorage.getItem('access_token')) {
+        window.location.href = '/';
+        return;
+    }
+
     // 1. MENÚ Y HEADER
     const btnAbrir = document.getElementById("btn-abrir-menu");
     const btnCerrar = document.getElementById("btn-cerrar-menu");
@@ -47,8 +53,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const btnCerrarSesion = document.getElementById("btn-cerrar-sesion");
     if (btnCerrarSesion) {
-        btnCerrarSesion.addEventListener("click", () => {
-            localStorage.clear();
+        btnCerrarSesion.addEventListener("click", async () => {
+            // Notificar al backend (informativo, el JWT se invalida del lado del cliente)
+            try {
+                const token = localStorage.getItem('access_token');
+                await fetch('/auth/logout', {
+                    method: 'POST',
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
+            } catch (e) { /* ignorar errores de red */ }
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('nombre_usuario');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('pending_verify_email');
             window.location.href = "/";
         });
     }

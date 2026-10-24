@@ -6,7 +6,11 @@ from match_conexion_service.database import engine
 
 Base = declarative_base()
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    import logging
+    logging.getLogger(__name__).warning("No se pudo sincronizar metadata con la BD (¿Supabase pausado o sin conexión?): %s", e)
 
 class EstadoConexion(enum.Enum):
     Pendiente = "Pendiente"

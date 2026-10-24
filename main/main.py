@@ -5,18 +5,22 @@ from io import BytesIO
 from decimal import Decimal
 import logging
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional
 from uuid import uuid4
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import httpx
 import psycopg
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, Depends, Cookie
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, Depends, Cookie, Header
 from match_conexion_service.routes import router as conexion_router
 
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
 from auth_service.main import auth_router
+from auth_service.security import get_current_user, decode_access_token
 
 
 # ==========================================
@@ -34,20 +38,26 @@ IMAGENES.mkdir(parents=True, exist_ok=True)
 # 2. CONEXIÓN CON POSTGRESQL (SUPABASE)
 # ==========================================
 def conectar():
-    url = "postgresql://postgres.erefnpvdjondjpcyjrpb:Hcupo2223xd@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise RuntimeError("DATABASE_URL no está configurada en el archivo .env")
     return psycopg.connect(url, connect_timeout=10)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    with conectar() as conexion:
-        conexion.execute("""
-            SELECT id_publicacion, id_usuario, tipo, titulo, descripcion,
-                   precio, ubicacion, estado, cupos_totales,
-                   categoria, tipo_vivienda, permitir_comentarios
-            FROM haycupo.publicacion LIMIT 0
-        """)
-        conexion.execute("SELECT id_imagen, id_publicacion, url, orden FROM haycupo.imagen_publicacion LIMIT 0")
+    try:
+        with conectar() as conexion:
+            conexion.execute("""
+                SELECT id_publicacion, id_usuario, tipo, titulo, descripcion,
+                       precio, ubicacion, estado, cupos_totales,
+                       categoria, tipo_vivienda, permitir_comentarios
+                FROM haycupo.publicacion LIMIT 0
+            """)
+            conexion.execute("SELECT id_imagen, id_publicacion, url, orden FROM haycupo.imagen_publicacion LIMIT 0")
+        logging.info("Conexión con PostgreSQL (Supabase) verificada con éxito.")
+    except Exception as e:
+        logging.warning("No se pudo conectar a la base de datos durante el inicio (¿Supabase en pausa o sin conexión?): %s", e)
     yield
 
 
@@ -73,8 +83,21 @@ app.mount("/Iconos", StaticFiles(directory="Iconos"), name="iconos")
 app.mount("/PerfilU", StaticFiles(directory="PerfilU"), name="perfil_u")
 
 
-# Ahora lee la Cookie dinámica, pero si no hay, asume que es el usuario 1 para que no se caiga
-def autor_de_prueba(roomies_id: str = Cookie(default="1")):
+# Autenticación: intenta extraer usuario del JWT.
+# Si no hay token, usa la cookie legacy o el valor por defecto (modo desarrollo).
+def autor_de_prueba(
+    authorization: Optional[str] = Header(default=None),
+    roomies_id: str = Cookie(default="1")
+) -> int:
+    # Intentar JWT primero (Header: Authorization: Bearer <token>)
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1]
+        payload = decode_access_token(token)
+        user_id = payload.get("sub")
+        if user_id:
+            return int(user_id)
+    
+    # Fallback: cookie legacy (compatibilidad / desarrollo)
     return int(roomies_id)
 
 
