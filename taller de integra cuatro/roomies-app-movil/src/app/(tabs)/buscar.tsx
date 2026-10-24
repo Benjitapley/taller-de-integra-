@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Text, View, StyleSheet, TouchableOpacity, FlatList} from "react-native";
+import { Text, View, StyleSheet, TouchableOpacity, FlatList, ScrollView} from "react-native";
 import { UsuarioCard } from "@/components/Usuario_Card";
 import { usuariosMock } from "@/mocks/usuarios";
 import { colors } from "@/theme/colors";
 import { paletaPublicacion } from "@/constants/origenPublicacion";
+import BuscadorPublicaciones from '@/components/BuscadorPublicaciones';
+
 
 export default function Buscar() {
   const [tab, setTab] = useState<'arriendos' | 'personas'>('arriendos');
@@ -30,9 +32,9 @@ export default function Buscar() {
       </View>
 
       {tab === 'arriendos' ? (
-        <View style={styles.contenido}>
-          <Text style={styles.nota}>Listado de arriendos (MOB-06)</Text>
-        </View>
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <BuscadorPublicaciones />
+        </ScrollView>
       ) : (
         <FlatList
           data={usuariosMock}
