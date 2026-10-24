@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { CustomButton } from "@/components/CustomButton";
 import { CustomInput } from "@/components/CustomInput";
+import { PasoPublicacion } from "@/components/publicaciones/PasoPublicacion";
 import { paletaPublicacion, textosFormularioPorOrigen } from "@/constants/origenPublicacion";
 import { colors } from "@/theme/colors";
 import type { ErroresFormularioPublicacion, FormularioPublicacionValores } from "@/types/Publicacion";
@@ -47,6 +48,9 @@ export const FormularioPublicacion: React.FC<
       >
         <View style={styles.encabezado}>
           <Text style={styles.titulo}>{textos.tituloPantalla}</Text>
+          <View style={styles.paso}>
+            <PasoPublicacion paso={1} etiqueta="Información" />
+          </View>
         </View>
 
         <View style={styles.campos}>
@@ -158,6 +162,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "800",
     color: colors.primary,
+  },
+  paso: {
+    marginTop: 6,
   },
   campos: {
     width: "100%",
