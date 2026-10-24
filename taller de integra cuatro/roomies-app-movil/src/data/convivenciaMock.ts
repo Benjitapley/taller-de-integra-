@@ -67,3 +67,9 @@ export const RECORDATORIOS_MOCK: Recordatorio[] = [
 // dashboard ("Chat del arriendo"). Se deriva del propio MENSAJES_MOCK en
 // vez de duplicar el texto a mano, para no desincronizarse si cambia.
 export const ULTIMO_MENSAJE_ARRIENDO_MOCK = MENSAJES_MOCK[MENSAJES_MOCK.length - 1];
+
+// M4-D06 — no hay endpoint real de "arriendo activo" todavía (Sprint 3).
+// Este flag simula esa respuesta: en true, el usuario ve el dashboard
+// normal; en false, ve el estado "Sin arriendo". Para probar el estado
+// vacío, cambia este valor a false.
+export const USUARIO_TIENE_ARRIENDO_MOCK = true;

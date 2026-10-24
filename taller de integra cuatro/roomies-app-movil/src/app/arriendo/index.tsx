@@ -10,10 +10,33 @@ import {
   RECORDATORIOS_MOCK,
   TAREAS_MOCK,
   ULTIMO_MENSAJE_ARRIENDO_MOCK,
+  USUARIO_TIENE_ARRIENDO_MOCK,
 } from "@/data/convivenciaMock";
 
 
+function SinArriendo() {
+  return (
+    <View style={styles.sinArriendoContenedor}>
+      <View style={styles.sinArriendoIconoFondo}>
+        <Ionicons name="home-outline" size={36} color="#9CA3AF" />
+      </View>
+      <Text style={styles.sinArriendoTitulo}>Todavía no tienes un arriendo activo</Text>
+      <Text style={styles.sinArriendoTexto}>
+        Cuando te unas a un arriendo o encuentres compañeros de casa, vas a poder ver acá la
+        convivencia, las tareas y el chat del grupo.
+      </Text>
+      <Pressable style={styles.sinArriendoBoton} onPress={() => router.push("/(tabs)/buscar")}>
+        <Text style={styles.sinArriendoBotonTexto}>Ir a Buscar</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function DashboardArriendo() {
+  if (!USUARIO_TIENE_ARRIENDO_MOCK) {
+    return <SinArriendo />;
+  }
+
   return (
     <ScrollView style={styles.pantalla} contentContainerStyle={styles.contenedor}>
       <ResumenArriendo info={INFO_ARRIENDO_MOCK} cantidadIntegrantes={INTEGRANTES_MOCK.length} />
@@ -61,4 +84,45 @@ const styles = StyleSheet.create({
   avatarChat: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: "#fff" },
   tarjetaChatTitulo: { fontSize: 14, fontWeight: "700", color: "#111827" },
   tarjetaChatSubtitulo: { fontSize: 12, color: "#6B7280", marginTop: 2 },
+  sinArriendoContenedor: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F9FAFB",
+    paddingHorizontal: 32,
+    gap: 10,
+  },
+  sinArriendoIconoFondo: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  sinArriendoTitulo: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+    textAlign: "center",
+  },
+  sinArriendoTexto: {
+    fontSize: 13,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 19,
+  },
+  sinArriendoBoton: {
+    backgroundColor: "#4F46E5",
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    marginTop: 10,
+  },
+  sinArriendoBotonTexto: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
+  },
 });
