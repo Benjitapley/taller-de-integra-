@@ -27,3 +27,17 @@ export interface MensajeConvivencia {
   hora: string;
   esPropio: boolean;
 }
+
+// M4-D05 — dashboard "Mi arriendo".
+
+export interface Recordatorio {
+  id: string;
+  titulo: string;
+  fechaTexto: string; // "Viernes"
+  horaTexto: string; // "19:00"
+}
+
+export interface InfoArriendo {
+  direccion: string; // "Providencia, Santiago"
+  numeroDepto: string; // "Depto 4D/2B"
+}

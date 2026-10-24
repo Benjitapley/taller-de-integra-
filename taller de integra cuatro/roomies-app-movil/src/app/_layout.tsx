@@ -20,6 +20,14 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="arriendo/index"
+          options={{
+            headerShown: true,
+            title: "Arriendo",
+            headerTintColor: "#4F46E5",
+          }}
+        />
+        <Stack.Screen
+          name="arriendo/chat"
           options={{ headerShown: false }}
         />
         <Stack.Screen

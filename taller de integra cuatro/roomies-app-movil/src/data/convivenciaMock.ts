@@ -1,6 +1,8 @@
 import type {
+  InfoArriendo,
   IntegranteConvivencia,
   MensajeConvivencia,
+  Recordatorio,
   TareaConvivencia,
 } from "@/types/Convivencia";
 
@@ -48,3 +50,20 @@ export const MENSAJES_MOCK: MensajeConvivencia[] = [
   { id: "m7", autorNombre: VALE.nombre, autorFotoUrl: VALE.fotoUrl, texto: "Y yo el viernes! hacemos algo rico 😊", hora: "10:19", esPropio: false },
   { id: "m8", autorNombre: MELI.nombre, autorFotoUrl: MELI.fotoUrl, texto: "Equipo top 💜", hora: "10:20", esPropio: true },
 ];
+
+// M4-D05 — datos para el dashboard "Mi arriendo" (mockup
+// n_m_chat_convivencia_03, "Dashboard de Arriendo").
+
+export const INFO_ARRIENDO_MOCK: InfoArriendo = {
+  direccion: "Providencia, Santiago",
+  numeroDepto: "Depto 4D/2B",
+};
+
+export const RECORDATORIOS_MOCK: Recordatorio[] = [
+  { id: "r1", titulo: "Pagar internet", fechaTexto: "Viernes", horaTexto: "19:00" },
+];
+
+// Último mensaje del chat grupal, para la tarjeta de vista previa del
+// dashboard ("Chat del arriendo"). Se deriva del propio MENSAJES_MOCK en
+// vez de duplicar el texto a mano, para no desincronizarse si cambia.
+export const ULTIMO_MENSAJE_ARRIENDO_MOCK = MENSAJES_MOCK[MENSAJES_MOCK.length - 1];
