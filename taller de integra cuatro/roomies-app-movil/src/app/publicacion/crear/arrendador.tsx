@@ -1,9 +1,10 @@
 import { Stack, useRouter } from "expo-router";
-import { Alert, Pressable } from "react-native";
+import { Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FormularioPublicacion } from "@/components/publicaciones/FormularioPublicacion";
 import { useFormularioPublicacion } from "@/hooks/useFormularioPublicacion";
 import { colors } from "@/theme/colors";
+import { armarParametrosBorrador } from "@/utils/borradorPublicacion";
 
 export default function Arrendador() {
   const router = useRouter();
@@ -15,10 +16,11 @@ export default function Arrendador() {
 
   function continuar() {
     if (!validarFormulario()) return;
-    Alert.alert(
-      "Siguiente Paso: Vista Previa y Fotos",
-      "Se habilitará en la tarea M4-C05.",
-    );
+    // Paso 2 de 3: fotos. La vista previa viene después de las fotos.
+    router.push({
+      pathname: "/publicacion/crear/fotos",
+      params: armarParametrosBorrador(valores),
+    });
   }
 
   const opcionesHeader = {
