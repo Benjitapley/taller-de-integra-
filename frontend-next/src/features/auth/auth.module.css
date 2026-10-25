@@ -1,14 +1,60 @@
-.layout { min-height: 100svh; display: grid; place-items: center; padding: 32px 20px; }
-.main { width: 100%; max-width: 560px; }
-.card { padding: clamp(24px, 5vw, 44px); }
-.brand { display: flex; align-items: center; gap: 12px; color: var(--primary); font-size: 22px; font-weight: 750; }
-.card h1 { font-size: clamp(25px, 4vw, 30px); margin: 28px 0 12px; color: var(--primary); }
-.card > p { color: var(--muted); font-size: 14px; }
-.notice { border: 1px solid var(--line); background: var(--soft); border-radius: 16px; padding: 20px; margin: 24px 0; }
-.notice h2 { font-size: 17px; margin: 0 0 10px; }
-.notice p { font-size: 14px; margin: 0; color: var(--muted); }
-.legacy { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 12px 18px; border-radius: 14px; background: var(--primary); color: white; text-decoration: none; font-weight: 700; font-size: 14px; }
-.card .help { font-size: 12px; margin-bottom: 24px; }
-.card > a:last-child { display: inline-block; font-size: 13px; padding-block: 8px; }
-.skipLink { position: fixed; top: 8px; left: 8px; padding: 12px; background: white; border: 1px solid var(--primary); border-radius: 10px; transform: translateY(-200%); }
+.layout { min-height: 100svh; background: linear-gradient(135deg, #f3eeff, #fcfbff 65%); }
+.topbar { min-height: 88px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px clamp(20px, 5vw, 80px); border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--primary); font-size: clamp(19px, 3vw, 26px); font-weight: 800; text-decoration: none; }
+.headerLink { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border: 1px solid var(--primary); border-radius: 12px; padding: 10px 18px; font-size: 14px; font-weight: 700; text-decoration: none; }
+.main { width: min(1160px, 100%); margin-inline: auto; padding: 44px 28px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 460px); gap: clamp(32px, 6vw, 90px); align-items: center; }
+.hero { min-width: 0; }
+.eyebrow { color: var(--primary); font-size: 13px; font-weight: 750; letter-spacing: .04em; }
+.hero h2 { margin: 14px 0 20px; color: var(--primary); font-size: clamp(32px, 4.4vw, 52px); letter-spacing: -.04em; }
+.hero > p:not(.eyebrow) { color: var(--muted); max-width: 340px; }
+.sofa { display: block; width: 100%; height: auto; max-height: 285px; object-fit: contain; mix-blend-mode: multiply; margin-block: 16px; }
+.benefits { padding: 0; margin: 20px 0 0; list-style: none; display: grid; gap: 16px; font-size: 14px; }
+.benefits li { display: flex; align-items: center; gap: 14px; }
+.benefits svg { color: var(--primary); }
+.card { min-width: 0; padding: clamp(22px, 3vw, 36px); box-shadow: 0 12px 45px #563bdd0c; }
+.card h1 { margin: 0 0 12px; font-size: clamp(25px, 3vw, 30px); color: var(--foreground); }
+.subtitle { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
+.notice { border: 1px solid var(--line); border-radius: 12px; background: var(--soft); padding: 13px 15px; margin-bottom: 22px; font-size: 13px; }
+.notice strong { color: var(--primary); }
+.notice p { margin: 5px 0 0; color: var(--muted); }
+.fields { display: grid; gap: 18px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.field { min-width: 0; }
+.field label { display: block; font-size: 14px; font-weight: 650; margin-bottom: 7px; }
+.inputWrap { display: flex; border: 1px solid #aaa3be; border-radius: 11px; background: white; }
+.inputWrap:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+.inputWrap:has(input[aria-invalid="true"]) { border-color: #a62435; }
+.inputWrap input { width: 100%; min-width: 0; min-height: 46px; padding: 11px 12px; border: 0; border-radius: inherit; color: var(--foreground); background: transparent; font-size: 16px; }
+.inputWrap input:focus-visible { outline: none; }
+.inputWrap input::placeholder { color: var(--muted); }
+.toggle { border: 0; border-left: 1px solid var(--line); border-radius: 0 10px 10px 0; background: var(--soft); color: var(--primary); padding: 8px 12px; min-height: 44px; font-size: 13px; font-weight: 650; cursor: pointer; }
+.hint, .fieldError { font-size: 12px; margin: 6px 0 0; }
+.hint { color: var(--muted); }
+.fieldError { color: #a62435; }
+.submit { width: 100%; margin-top: 2px; font-size: 15px; justify-content: space-between; }
+.formMessage, .errorMessage { font-size: 13px; overflow-wrap: anywhere; }
+.formMessage:not(:empty), .errorMessage:not(:empty) { margin-top: 16px; padding: 12px; border-radius: 10px; }
+.formMessage:not(:empty) { color: var(--primary); background: var(--lavender); }
+.errorMessage:not(:empty) { color: #a62435; background: #fff1f2; }
+.switch { text-align: center; color: var(--muted); font-size: 14px; margin: 22px 0 0; }
+.switch a { display: inline-block; padding-block: 10px; font-weight: 700; }
+.flowLinks { display: grid; gap: 4px; margin-top: 16px; text-align: center; font-size: 14px; }
+.flowLinks a { padding: 10px 4px; overflow-wrap: anywhere; }
+.footer { text-align: center; padding: 0 20px 24px; font-size: 13px; }
+.footer a { display: inline-block; padding: 12px; }
+.skipLink { position: fixed; z-index: 10; top: 8px; left: 8px; padding: 12px; background: white; border: 1px solid var(--primary); border-radius: 10px; transform: translateY(-200%); }
 .skipLink:focus { transform: translateY(0); }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.spinner { width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+@media (max-width: 900px) {
+  .main { grid-template-columns: minmax(0, 1fr); max-width: 520px; padding: 28px 20px; gap: 24px; }
+  .hero { text-align: center; }
+  .hero h2 { font-size: 32px; margin: 8px 0 12px; }
+  .hero h2 br { display: none; }
+  .hero > p:not(.eyebrow) { margin-inline: auto; }
+  .sofa { max-height: 150px; margin-block: 8px; }
+  .benefits { display: none; }
+  .topbar { min-height: 76px; padding: 14px 20px; }
+  .headerLink { padding-inline: 12px; font-size: 13px; }
+}

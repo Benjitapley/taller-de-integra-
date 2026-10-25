@@ -1,8 +1,8 @@
 # ¿Hay cupo? — frontend Next.js
 
-Base de SCRUM-66: TypeScript, App Router, componentes WEB compartidos y convivencia
-con FastAPI. La autenticación real pertenece a SCRUM-72, coordinada con F.
-No hay autenticación simulada ni acceso directo desde Next.js a PostgreSQL.
+Base de SCRUM-66: TypeScript, App Router, componentes compartidos y convivencia con FastAPI. SCRUM-72 añade formularios de login, registro y verificación con validación local y transporte de servidor bajo `/web-api/auth/`.
+
+La integración permanece desactivada por defecto. Requiere habilitación explícita de un entorno aislado; si el backend no responde, devuelve un error y no simula éxito. Next.js no accede directamente a PostgreSQL. El JWT se conserva en cookie HttpOnly y nunca en localStorage ni en JSON enviado al navegador. Los detalles de configuración y límites están en «SCRUM-72: transporte web de autenticación preparado».
 
 ## Ejecución en VS Code
 
@@ -30,9 +30,7 @@ requirements: el archivo principal está vacío y el de auth no declara todos
 los paquetes importados. El backend necesita su propia `DATABASE_URL`; Geoapify
 utiliza `GEOAPIFY_API_KEY`. No copiar estas variables a Next.js.
 
-**Atención al arrancar FastAPI:** un módulo ejecuta `Base.metadata.create_all`
-al importar y el lifespan consulta PostgreSQL. No iniciarlo contra una base real
-para una prueba que prohíba escrituras.
+**Atención al arrancar FastAPI:** el lifespan consulta PostgreSQL. Las pruebas deben usar los runners aislados; no iniciar el servicio con credenciales del proyecto para probar autenticación.
 
 Next.js usa `FASTAPI_ORIGIN=http://127.0.0.1:8000` por defecto. Para personalizarlo,
 crear `frontend-next/.env.local` a partir de `.env.example`, sin sobrescribir un
@@ -45,21 +43,23 @@ compilar, por lo que se debe volver a compilar y reiniciar.
 
 | URL en el puerto 3000 | Responsable actual |
 | --- | --- |
-| `/` | Acceso estructural de Next.js: sin Sidebar, formulario ni sesión |
-| `/inicio` | Inicio React con Sidebar y pestaña Arriendos |
-| `/inicio?vista=personas` | Inicio React, pestaña Personas |
-| `/publicar` | Selector visual existente; formularios pendientes |
-| `/navegacion` | Guía de revisión, ejemplo de modal y accesos al HTML antiguo |
+| `/` | Login React sin Sidebar; envío al adaptador web |
+| `/registro` | Registro React; envío al adaptador web |
+| `/verificar` | Verificación y reenvío mediante adaptador web |
+| `/inicio` | Inicio React protegido, con Sidebar y pestaña Arriendos |
+| `/inicio?vista=personas` | Inicio React protegido, pestaña Personas |
+| `/publicar` | Selector visual protegido; formularios pendientes |
+| `/navegacion` | Guía protegida, ejemplo de modal y accesos al HTML antiguo |
 | `/acceso`, `/legacy/acceso` | Login/registro HTML original, FastAPI `/` |
 | `/legacy/inicio` | Inicio HTML original, FastAPI `/inicio` |
 | `/crear`, `/legacy/crear` | FastAPI `/crear` |
-| `/perfil`, `/legacy/perfil` | FastAPI `/perfil` |
+| `/perfil` | Perfil React autenticado, solo lectura |
+| `/legacy/perfil` | HTML original de FastAPI `/perfil` |
+| `/web-api/perfil` | Handler de servidor para consultar el perfil propio |
 | `/mis-publicaciones`, `/legacy/mis-publicaciones` | FastAPI `/mis-publicaciones` |
 | `/editar-publicacion?id=…`, `/legacy/editar-publicacion?id=…` | FastAPI `/editar-publicacion?id=…` |
 
-El flujo preparado es acceso → login/registro futuro → `/inicio` → funcionalidades.
-**No está protegido por sesión:** se puede abrir `/inicio` directamente.
-Los grupos `(auth)` y `(app)` solo separan layouts y no aparecen en las URL.
+Flujo preparado: registro confirmado → `/verificar`; verificación confirmada → `/`; login confirmado → `/inicio`. Las rutas del grupo `(app)` comprueban la sesión con FastAPI en cada petición; ante sesión ausente redirigen a `/` y ante indisponibilidad bloquean el contenido. Los grupos `(auth)` y `(app)` mantienen layouts separados y no aparecen en las URL.
 
 El acceso HTML se conserva para compatibilidad y se identifica como sistema
 anterior con limitaciones de seguridad. Su redirección de login a `/inicio`
@@ -81,9 +81,10 @@ src/
 │   ├── globals.css
 │   ├── (auth)/
 │   │   ├── layout.tsx               # Acceso, sin AppShell
-│   │   └── page.tsx                 # /
+│   │   ├── page.tsx                 # /, login React
+│   │   └── registro/page.tsx        # /registro, registro React
 │   └── (app)/
-│       ├── layout.tsx               # AppShell; no autentica ni autoriza
+│       ├── layout.tsx               # AppShell con validación de sesión en servidor
 │       ├── inicio/page.tsx
 │       ├── publicar/page.tsx
 │       └── navegacion/page.tsx
@@ -92,7 +93,7 @@ src/
 │   │                                # UserMenu, PageHeader y PromoCard
 │   └── ui/                          # Icon, Button, Card, EmptyState, Tabs, Modal
 ├── features/
-│   ├── auth/                        # AccessPlaceholder y estilos de acceso
+│   ├── auth/                        # Pantallas, formulario, campos y validación
 │   ├── inicio/                      # HomeContent y estilos del Inicio WEB
 │   ├── publicaciones/               # PublicationTypeCard y estilos; entrega a G
 │   └── navegacion/                   # ModalDemo y estilos de la guía
@@ -112,7 +113,8 @@ Los ocho WebP originales y los SVG de ejemplo siguen en `public/`.
 
 ## Contratos con FastAPI conservados
 
-- `/api/:path*` y `/auth/:path*`: proxy sin cambiar los contratos.
+- `/api/:path*`: proxy para los contratos de datos.
+- `/auth/:path*`: retirado del proxy; ruta local con 410 para no filtrar JWT. Usar `/web-api/auth/*`.
 - `/imagenes/:path*`: archivos servidos por FastAPI.
 - `/static_creacion/:path*`, `/static_principal/:path*` y `/PerfilU/:path*`:
   recursos originales; conservar mayúsculas y paréntesis.
@@ -127,10 +129,10 @@ Los ocho WebP originales y los SVG de ejemplo siguen en `public/`.
 
 Endpoints actuales: registro/login con JSON; publicaciones y perfil con
 `FormData`; ubicaciones con query `texto`; conexiones y búsquedas según los
-contratos existentes. No se modificó ningún endpoint.
+contratos existentes. El detalle de edición `/api/publicaciones/{id}` ahora exige Bearer y propietario (401/404); el catálogo público conserva su acceso.
 
 `apiRequest<T>` está destinado a futuras llamadas desde el navegador con rutas
-relativas de `/api/`, `/auth/` y `/conexiones/`. Usa `credentials: same-origin`,
+relativas de `/api/` y `/conexiones/`. El helper aún admite `/auth/` sintácticamente, pero esas URL devuelven 410; para autenticación usar el cliente de `features/auth`. Usa `credentials: same-origin`,
 `cache: no-store`, devuelve `undefined` con cuerpo vacío/204 y conserva errores
 en `ApiError.status` y `ApiError.payload`, incluidos los detail de validación.
 Para JSON, indicar Content-Type y JSON.stringify; para FormData no fijar
@@ -144,15 +146,9 @@ sin compartir caché de datos personales.
 
 El proxy transmite Cookie al upstream y devuelve múltiples Set-Cookie. No
 reescribe sus atributos Domain/Path ni cabeceras Location absolutas.
-La cookie actual `roomies_id` tiene HttpOnly y Path=/, sin Domain ni Secure,
-con SameSite=lax predeterminado de Starlette. Su presencia no acredita identidad.
-El backend acepta un identificador sin firma e incluso usa el usuario 1 si falta.
-`demo_cookie_token` tampoco acredita identidad.
+El backend JWT adaptado rechaza `roomies_id`, tokens demo y el usuario predeterminado. El nuevo transporte web utiliza una cookie HttpOnly y envía Bearer exclusivamente desde servidor. Los clientes HTML anteriores requieren adaptar su transporte; conservar los rewrites no les proporciona autenticación JWT automáticamente.
 
-No se añadió middleware, guard, proveedor de sesión ni redirección basada en
-cookies/localStorage. Cambiar localhost por 127.0.0.1 cambia el host de las
-cookies; usar un origen consistente. El proxy del mismo origen no corrige el
-CORS actual del backend, que combina wildcard y credenciales.
+Usar un origen consistente: localhost y 127.0.0.1 tienen cookies distintas. El adaptador web valida un origen configurado, exige cabecera CSRF y no habilita CORS. Los permisos siempre se comprueban en FastAPI; el layout solo controla el acceso a las páginas React.
 
 ## Reparto y siguientes tareas
 
@@ -172,8 +168,7 @@ Antes de integrar en dev-web, acordar las URL nuevas y los contratos de sesión.
 Después de incorporar esta base, actualizar las ramas de trabajo y desarrollar
 por dominio. Coordinar cambios en layouts, navegación, estilos globales,
 configuración y archivo de bloqueo; evitar reorganizaciones o reformateos masivos
-en paralelo. Las futuras páginas de perfil, registro y administración no se
-crearon como placeholders que pudieran interceptar HTML o aparentar funciones.
+en paralelo. La consulta de perfil está disponible en React; edición de perfil (SCRUM-78) y administración siguen pendientes. Registro usa el adaptador web y requiere habilitar el entorno de pruebas.
 
 ## Diseño y accesibilidad
 
@@ -195,6 +190,9 @@ npm run lint
 npm run typecheck
 npm run build
 npm run test:api
+npm run test:auth
+npm run test:session
+npm run test:profile
 npm run test:proxy
 ```
 
@@ -203,10 +201,12 @@ desarrollo del puerto 3000. ESLint se ejecuta separado del build.
 
 - Lint, typecheck y build comprueban la estructura reorganizada.
 - test:api: seis casos en memoria, sin red ni base de datos.
-- test:proxy: siete casos HTTP más el contenedor de Node. Next.js usa 3000 y un
+- test:auth: trece pruebas de validación y navegación en memoria, sin red, usuarios ni sesiones.
+- test:session: 15 casos de autenticación web con transporte simulado y HTTP local.
+- test:proxy: diez casos HTTP más el contenedor de Node. Next.js usa 3000 y un
   upstream aislado usa un puerto libre. Se comprueban React, aliases HTML,
   recursos, parámetros, cookies sintéticas, estados 401/422, rutas desconocidas
-  y ausencia de Sidebar/formulario operativo en el acceso.
+  formularios sin Sidebar, cookie HttpOnly y protección de rutas con un doble del backend.
 - La fixture lee los archivos HTML originales sin ejecutarlos. No inicia FastAPI,
   no usa credenciales, no emite roomies_id y no abre conexiones a PostgreSQL.
 - Las carpetas .proxy-test-* son temporales e ignoradas; no copian .env y se
@@ -216,7 +216,95 @@ desarrollo del puerto 3000. ESLint se ejecuta separado del build.
   .next/dev/types. Detener el servidor de desarrollo y regenerar los tipos;
   no cambiar tsconfig ni excluir errores reales para ocultarlo.
 
-Quedan pendientes la validación con FastAPI real y las pruebas de autenticación,
-CRUD, roles y base de datos en un entorno autorizado. Las pruebas aisladas
-no garantizan esos flujos. backend/, frontend/, docs/ y la base de datos no se
-modifican en esta tarea.
+La prueba conjunta navegador → Next.js → FastAPI → PostgreSQL con SMTP local STARTTLS está implementada en `../tests/e2e/`. Ejercita el lifespan y SQL reales sin servicios externos. Resultados y límites: `../tests/e2e/RESULTS.md`. El detalle de edición y el passthrough de auth se corrigieron tras detectar accesos inseguros. No se modifica el frontend original ni se conecta a Supabase.
+
+## SCRUM-72: transporte web de autenticación preparado
+
+La implementación actual reemplaza los avisos de validación local de etapas anteriores. Por defecto permanece deshabilitada: `WEB_AUTH_ENABLED=false` (también si falta). No se cambió la configuración del backend ni se activó producción.
+
+- `POST /web-api/auth/registro`, `/verificar`, `/reenviar-codigo`, `/login`, `/logout`.
+- `GET /web-api/auth/sesion`: consulta `/api/perfil` con Bearer; devuelve únicamente `{ authenticated: true, user: { nombre } }`. No existe `/auth/sesion` en FastAPI.
+- Login confirma la vigencia con FastAPI antes de establecer cookie. El JSON del navegador no contiene JWT ni credenciales de respuesta.
+- Cookie host-only, HttpOnly, SameSite=Strict, Path=/, Secure y prefijo `__Host-` en HTTPS. Expira como máximo al `exp` del token (tope de retención 24 horas). La lectura de `exp` no autoriza: firma, vigencia y revocación siempre se validan en FastAPI.
+- HTTP solo se permite en loopback para desarrollo; usa nombre distinto `haycupo_dev_session`. Con `NODE_ENV=production` se exige HTTPS para la web. No hay refresh token: al expirar se exige iniciar sesión nuevamente.
+- Operaciones POST exigen Origin exacto configurado, cabecera `X-Haycupo-CSRF: 1`, JSON y Fetch Metadata compatible cuando está presente. Se ignoran Host, X-Forwarded-*, Authorization y cookies ajenas aportadas por el navegador al construir la petición upstream. No se habilita CORS.
+- El backend es un origen fijo, sin credenciales/rutas/query, configurado exclusivamente en servidor mediante `WEB_AUTH_FASTAPI_ORIGIN`. Transporte sin caché, timeout y sin seguir redirecciones.
+- `/inicio`, `/publicar`, `/navegacion` requieren sesión válida en el layout dinámico `(app)`. Si no hay sesión redirigen a `/`; ante fallo del servicio muestran acceso no disponible, sin presentar contenido privado. Cada futura operación con datos deberá volver a autorizarse en servidor; un layout no sustituye esa comprobación.
+- Logout revoca la sesión en FastAPI antes de borrar cookie. Un 401/403 limpia una sesión ya inválida. Un 503 conserva cookie y muestra que la revocación no se confirmó; no afirma haber cerrado sesión.
+- Se conservan validaciones, accesibilidad, layouts y diseños. Se envían formularios solo tras validación; registro confirmado navega a `/verificar`, verificación confirmada a `/`, login confirmado a `/inicio`. No se pasan correo/códigos/contraseñas por URL ni almacenamiento persistente del navegador. Reenvío respeta `Retry-After` cuando el backend lo proporciona.
+- Errores 401, 403, 409, 422, 429 y 503 se conservan con mensajes controlados. Fallos de red, respuestas inválidas o fallos internos son 503 y no generan cookie. Ante fallo SMTP el backend puede haber conservado una cuenta pendiente: no se afirma que no se haya creado.
+
+### Pruebas y habilitación en un entorno aislado
+
+`npm run test:session` usa contratos y transporte HTTP contra un doble local de FastAPI; todos sus tokens y perfiles son fixtures. `npm run test:proxy` arranca una copia temporal de Next.js sin archivos .env, con entorno permitido explícitamente, y verifica rewrites, handlers reales, cookies y acceso a rutas privadas con ese doble. En Windows puede requerir permisos para cerrar exclusivamente el árbol del servidor temporal. Ninguno inicia FastAPI real ni SMTP.
+
+Ejecutar lint, typecheck, build, test:api, test:auth, test:session y test:proxy. El build no debe precalcular las rutas privadas: su layout tiene `dynamic=force-dynamic`, independientemente de la bandera de activación en build.
+
+Para una prueba manual completa: preparar PostgreSQL dedicado con esquema aprobado y migración V2; usar secretos generados solo para pruebas y SMTP capturado localmente; arrancar FastAPI con JWT habilitado únicamente allí. Configurar Next.js con los tres parámetros `WEB_AUTH_ENABLED=true`, `WEB_AUTH_ORIGIN` exacto y `WEB_AUTH_FASTAPI_ORIGIN` de ese servicio. En build/start usar HTTPS para la web; la excepción HTTP es solo para `next dev` en loopback. Mantener producción deshabilitada.
+
+Los rewrites de datos y recursos se conservan; el namespace `/auth/*` se retiró deliberadamente por exponer el JWT. El contrato FastAPI servidor-servidor se conserva. Los clientes HTML y el cliente API genérico de publicaciones/conexiones NO reciben automáticamente el Bearer: requieren su propia migración a transporte autenticado de servidor. No se expone JWT a JavaScript para mantenerlos funcionando. No se implementó recuperación de cuentas antiguas, OAuth, edición de perfil ni un endpoint backend de sesión nuevo. Coordinar esos contratos antes de habilitar consumidores antiguos.
+
+
+## Prueba conjunta con servicios reales desechables
+
+Consultar `../tests/e2e/README.md` para el comando, requisitos, aislamiento y recorridos. Se utiliza Edge headless con contexto nuevo, FastAPI/Uvicorn real, PostgreSQL 18.6 temporal y SMTP local con STARTTLS/AUTH. No se utiliza .env, Supabase ni credenciales reales. Las pruebas de permisos de perfil/CRUD usan HTTP con Bearer únicamente en el driver de pruebas, sin entregar ese token al JavaScript de la aplicación. Los formularios de autenticación y la consulta de sesión sí se ejercitan desde navegador real.
+
+Cambios que requieren coordinación: consumidores web de `/auth/*` reciben ahora 410 y deben migrar a `/web-api/auth/*`; detalle privado de edición exige JWT y propietario. El catálogo de descubrimiento sigue siendo público. Falta adaptar el transporte del HTML antiguo y repetir en HTTPS con el reverse proxy definitivo antes de producción.
+
+
+## Perfil autenticado — consulta de SCRUM-72
+
+`/perfil` vive en `(app)` y reutiliza AppShell, Sidebar, PageHeader, Card, Icon,
+Button y EmptyState. Sidebar y «Ver mi perfil» del menú de cuenta apuntan a React;
+`/legacy/perfil` y los archivos HTML originales permanecen disponibles como referencia.
+No hay formularios ni operaciones de edición: pertenecen a SCRUM-78.
+
+El cliente solicita únicamente `GET /web-api/perfil` con credenciales del mismo
+origen. El handler `src/lib/perfil/server.ts` lee la cookie HttpOnly existente y
+consulta la URL fija FastAPI `GET /api/perfil` con `Authorization: Bearer`.
+No acepta una identidad del cliente, no reenvía query/Authorization/Cookie del
+navegador, no guarda tokens en JS ni altera contratos de autenticación.
+FastAPI sigue verificando firma, expiración, usuario verificado y sesión revocada.
+La respuesta web contiene solo nombre, edad, ocupación, ciudad, descripción breve,
+sobre mí, fotografía y total de publicaciones. No incluye correo, contraseña, IDs
+ni campos extra del upstream. Respuesta y transporte usan `no-store`, `Vary: Cookie`
+y rutas dinámicas, sin caché compartida entre usuarios.
+
+Estados de interfaz: carga accesible; datos confirmados; campos vacíos con «Sin
+indicar»; 404 como perfil no disponible; error de servicio con Reintentar; 401/403
+como sesión expirada con enlace a login y eliminación de cookie inválida. Una
+petición abortada por navegación no actualiza la vista y el timeout se maneja
+como error. Cero publicaciones se muestra como cero, sin inventar estadísticas.
+La fotografía admite los recursos actuales `/imagenes/*.png|jpg|jpeg|webp`; URLs
+externas u otros formatos no se cargan. Si falta/falla se muestra un avatar. No se
+usa HTML sin escapar para nombres o descripciones.
+
+La edad se normaliza desde número o texto numérico del contrato anterior; el
+backend representa valores ausentes con cadena vacía. El adaptador web usa null
+para campos opcionales vacíos y devuelve 503 controlado ante un cuerpo incompatible,
+un error del backend, timeout o fallo de red, sin reflejar detalles internos.
+
+Pruebas unitarias del adaptador: `npm run test:profile` (10 casos). La suite
+`test:proxy` incluye la prioridad de React sobre fallback HTML, el handler real,
+rechazo anónimo y de escrituras, y conservación del alias original. Para activar
+además las comprobaciones de navegador contra el mismo backend HTTP simulado:
+
+```powershell
+$env:PROFILE_BROWSER_TESTS='1'
+$env:PROFILE_PLAYWRIGHT_PATH='C:/Users/gerla/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'
+$env:PROFILE_BROWSER_PATH='C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
+npm run test:proxy
+```
+
+El navegador comprueba carga, datos/foto, dos identidades aisladas, campos vacíos,
+perfil inexistente, error/reintento y sesión expirada. También verifica navegación
+por teclado, ausencia de tokens accesibles y anchuras 1440/768/390 sin desborde.
+La copia temporal de Next no incluye .env; no se arranca PostgreSQL ni se ejecuta
+SQL. Las rutas de Playwright/Edge deben apuntar a instalaciones locales existentes.
+Se requiere permiso para cerrar exclusivamente los procesos temporales en Windows.
+
+La validación final volvió a ejecutar `tests/e2e/run_e2e.py` con autorización para aplicar la migración V2 exclusivamente en su base desechable: **27/27 recorridos aprobados**, incluyendo `/perfil`, `/web-api/perfil`, ambas cuentas, cambio de cuenta en el mismo navegador, expiración, revocación y logout. La ejecución anterior del perfil había omitido este runner porque entonces no estaban autorizadas migraciones. No se consultó Supabase.
+
+Antes de habilitar un entorno real siguen pendientes HTTPS/proxy, revisión de ACL/RLS y esquema aprobado, y recuperación de cuentas antiguas. La edición sigue fuera de SCRUM-72 y corresponde a SCRUM-78. El layout aún consulta `/api/perfil` para comprobar sesión: un fallo del
+servicio en la carga inicial puede mostrar «Sesión no disponible» antes de montar
+la página; la vista maneja fallos posteriores de su propia consulta.

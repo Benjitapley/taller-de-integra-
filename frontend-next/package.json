@@ -9,7 +9,10 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test:api": "node --test tests/api-client.test.mjs",
-    "test:proxy": "node --test tests/proxy.test.mjs"
+    "test:auth": "node --test tests/auth-validation.test.mjs",
+    "test:proxy": "node --test tests/proxy.test.mjs",
+    "test:session": "node --test tests/auth-gateway.test.mjs",
+    "test:profile": "node --test tests/profile.test.mjs"
   },
   "dependencies": {
     "next": "16.4.3",
