@@ -11,12 +11,16 @@ from dotenv import load_dotenv
 
 import httpx
 import psycopg
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, Depends, Cookie
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, Depends
 from backend.match_conexion_service.routes import router as conexion_router
 from backend.auth_service.main import auth_router
+from backend.auth_service.security import get_current_user
+from backend.auth_service.config import get_settings
 
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from PIL import Image, UnidentifiedImageError
 
 load_dotenv()
@@ -34,7 +38,6 @@ FRONTEND_ICONOS = FRONTEND / "Iconos"
 FRONTEND_PERFIL = FRONTEND / "PerfilU"
 
 IMAGENES = BASE / "imagenes"
-IMAGENES.mkdir(parents=True, exist_ok=True)
 
 
 
@@ -50,6 +53,9 @@ def conectar():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Deshabilitado por defecto; si se habilita, validar secretos antes de la BD.
+    auth_settings = get_settings()
+    IMAGENES.mkdir(parents=True, exist_ok=True)
     with conectar() as conexion:
         conexion.execute("""
             SELECT id_publicacion, id_usuario, tipo, titulo, descripcion,
@@ -58,16 +64,41 @@ async def lifespan(app: FastAPI):
             FROM haycupo.publicacion LIMIT 0
         """)
         conexion.execute("SELECT id_imagen, id_publicacion, url, orden FROM haycupo.imagen_publicacion LIMIT 0")
+        if auth_settings.enabled:
+            conexion.execute("SELECT id_usuario, verificado FROM haycupo.usuario LIMIT 0")
+            conexion.execute("SELECT id, id_usuario, codigo_hash, intentos, usado, creado_en, expira_en, enviado_en FROM haycupo.codigo_verificacion LIMIT 0")
+            conexion.execute("SELECT jti, id_usuario, expira_en, revocado FROM haycupo.sesion_jwt LIMIT 0")
     yield
 
 
 app = FastAPI(lifespan=lifespan)
 
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request, exc):
+    # Conservar detail/loc/msg/type sin reflejar passwords, códigos o ctx.
+    return JSONResponse(status_code=422, content={"detail": [
+        {"loc": list(error["loc"]), "msg": error["msg"], "type": error["type"]}
+        for error in exc.errors()
+    ]})
+
+
+@app.middleware("http")
+async def private_no_store(request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if (path.startswith(("/auth/", "/conexiones"))
+        or path in {"/api/perfil", "/api/mis-publicaciones"}
+        or path.startswith("/api/publicaciones/")
+        or (path.startswith("/api/publicaciones") and request.method != "GET")):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
 # CONFIGURACIÓN DE CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
+    allow_origins=[origin.strip() for origin in os.getenv("WEB_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if origin.strip() and origin.strip() != "*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -78,14 +109,9 @@ app.include_router(auth_router)
 # MONTAJE DE CARPETAS ESTÁTICAS
 app.mount("/static_creacion", StaticFiles(directory=FRONTEND_CREACION), name="static_creacion")
 app.mount("/static_principal", StaticFiles(directory=FRONTEND_PRINCIPAL), name="static_principal")
-app.mount("/imagenes", StaticFiles(directory=IMAGENES), name="imagenes")
+app.mount("/imagenes", StaticFiles(directory=IMAGENES, check_dir=False), name="imagenes")
 app.mount("/Iconos", StaticFiles(directory=FRONTEND_ICONOS), name="iconos")
 app.mount("/PerfilU", StaticFiles(directory=FRONTEND_PERFIL), name="perfil_u")
-
-# Ahora lee la Cookie dinámica, pero si no hay, asume que es el usuario 1 para que no se caiga
-def autor_de_prueba(roomies_id: str = Cookie(default="1")):
-    return int(roomies_id)
-
 
 # ==========================================
 # 3. RUTAS PARA MOSTRAR LOS HTML (FRONTEND)
@@ -170,7 +196,7 @@ def obtener_publicaciones():
 
 # OBTENER SOLO MIS PUBLICACIONES (Para el CRUD)
 @app.get("/api/mis-publicaciones")
-def obtener_mis_publicaciones(id_usuario: int = Depends(autor_de_prueba)):
+def obtener_mis_publicaciones(id_usuario: int = Depends(get_current_user)):
     try:
         with conectar() as conexion:
             registros = conexion.execute("""
@@ -188,12 +214,12 @@ def obtener_mis_publicaciones(id_usuario: int = Depends(autor_de_prueba)):
 
 # OBTENER UNA SOLA PUBLICACIÓN (Para rellenar el formulario al editar)
 @app.get("/api/publicaciones/{id_pub}")
-def obtener_una_publicacion(id_pub: int):
+def obtener_una_publicacion(id_pub: int, id_usuario: int = Depends(get_current_user)):
     with conectar() as conexion:
         r = conexion.execute("""
             SELECT titulo, categoria, tipo_vivienda, ubicacion, precio, cupos_totales, mascota, descripcion 
-            FROM haycupo.publicacion WHERE id_publicacion = %s
-        """, (id_pub,)).fetchone()
+            FROM haycupo.publicacion WHERE id_publicacion = %s AND id_usuario = %s
+        """, (id_pub, id_usuario)).fetchone()
         
         if r:
             return {
@@ -218,7 +244,7 @@ def crear_publicacion(
     mascota: Annotated[str, Form()] = "no",
     permitir_comentarios: Annotated[str, Form()] = "false",
     imagen: Annotated[UploadFile | None, File()] = None,
-    id_usuario: int = Depends(autor_de_prueba)
+    id_usuario: int = Depends(get_current_user)
 ):
     texto_desc = descripcion.strip()
     permitir = True if permitir_comentarios.lower() == "true" else False
@@ -294,36 +320,45 @@ def actualizar_publicacion(
     mascota: Annotated[str, Form()] = "no",
     permitir_comentarios: Annotated[str, Form()] = "false",
     imagen: Annotated[UploadFile | None, File()] = None,
-    id_usuario: int = Depends(autor_de_prueba)
+    id_usuario: int = Depends(get_current_user)
 ):
     try:
         with conectar() as conexion:
-            conexion.execute("""
+            updated = conexion.execute("""
                 UPDATE haycupo.publicacion 
                 SET titulo=%s, categoria=%s, ubicacion=%s, precio=%s, 
                     tipo_vivienda=%s, descripcion=%s, cupos_totales=%s, mascota=%s, contenido=%s
                 WHERE id_publicacion=%s AND id_usuario=%s
             """, (titulo, categoria, ubicacion, precio, tipo_vivienda, descripcion, cupos_totales, mascota, descripcion, id_pub, id_usuario))
+            if updated.rowcount == 0:
+                raise HTTPException(404, "Publicación no encontrada o sin permiso.")
         return {"mensaje": "Publicación actualizada correctamente"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail="No se pudo actualizar la base de datos")
 
 
 # ELIMINAR UNA PUBLICACIÓN
 @app.delete("/api/publicaciones/{id_pub}")
-def borrar_publicacion(id_pub: int, id_usuario: int = Depends(autor_de_prueba)):
+def borrar_publicacion(id_pub: int, id_usuario: int = Depends(get_current_user)):
     try:
         with conectar() as conexion:
+            owner = conexion.execute("SELECT id_publicacion FROM haycupo.publicacion WHERE id_publicacion = %s AND id_usuario = %s FOR UPDATE", (id_pub, id_usuario)).fetchone()
+            if owner is None:
+                raise HTTPException(404, "Publicación no encontrada o sin permiso.")
             conexion.execute("DELETE FROM haycupo.imagen_publicacion WHERE id_publicacion = %s", (id_pub,))
             conexion.execute("DELETE FROM haycupo.publicacion WHERE id_publicacion = %s AND id_usuario = %s", (id_pub, id_usuario))
         return {"mensaje": "Publicación eliminada"}
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=500, detail="Error al eliminar")
 
 
 # OBTENER DATOS DEL PERFIL
 @app.get("/api/perfil")
-def obtener_perfil(id_usuario: int = Depends(autor_de_prueba)):
+def obtener_perfil(id_usuario: int = Depends(get_current_user)):
     try:
         with conectar() as conexion:
             user = conexion.execute("SELECT nombre, edad, ocupacion, ciudad, breve_descripcion, sobre_mi, foto_perfil FROM haycupo.usuario WHERE id_usuario = %s", (id_usuario,)).fetchone()
@@ -342,6 +377,8 @@ def obtener_perfil(id_usuario: int = Depends(autor_de_prueba)):
                 "foto_perfil": user[6] or None, 
                 "total_publicaciones": pubs
             }
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=500, detail="Error al cargar el perfil")
 
@@ -351,7 +388,7 @@ def actualizar_perfil(
     edad: Annotated[str, Form()] = "", ocupacion: Annotated[str, Form()] = "",
     ciudad: Annotated[str, Form()] = "", breve_descripcion: Annotated[str, Form()] = "",
     sobre_mi: Annotated[str, Form()] = "", foto: Annotated[UploadFile | None, File()] = None,
-    id_usuario: int = Depends(autor_de_prueba)
+    id_usuario: int = Depends(get_current_user)
 ):
     url_foto = None
 

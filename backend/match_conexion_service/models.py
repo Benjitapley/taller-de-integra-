@@ -1,12 +1,9 @@
 from sqlalchemy import Column, Integer, DateTime, Enum, String, Float
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 import enum
 from datetime import datetime
-from backend.match_conexion_service.database import engine
 
 Base = declarative_base()
-
-Base.metadata.create_all(bind=engine)
 
 class EstadoConexion(enum.Enum):
     Pendiente = "Pendiente"
@@ -15,6 +12,7 @@ class EstadoConexion(enum.Enum):
 
 class Conexion(Base):
     __tablename__ = "conexion"
+    __table_args__ = {"schema": "haycupo"}
 
     id_conexion = Column(Integer, primary_key=True, index=True)
     id_solicitante_FK = Column(Integer, nullable=False)
@@ -25,7 +23,8 @@ class Conexion(Base):
 
 class Usuario(Base):
     __tablename__ = "usuario"
-    id_usuario_PK = Column(Integer, primary_key=True, index=True)
+    __table_args__ = {"schema": "haycupo"}
+    id_usuario_PK = Column("id_usuario", Integer, primary_key=True, index=True)
     nombre = Column(String)
     presupuesto = Column(Integer)
     zona_interes = Column(String)
@@ -33,8 +32,9 @@ class Usuario(Base):
 
 class Publicacion(Base):
     __tablename__ = "publicacion"
+    __table_args__ = {"schema": "haycupo"}
     
-    id_publicacion_PK = Column(Integer, primary_key=True, index=True)
+    id_publicacion_PK = Column("id_publicacion", Integer, primary_key=True, index=True)
     titulo = Column(String)
     precio = Column(Float)
     ubicacion = Column(String)
@@ -44,4 +44,4 @@ class Publicacion(Base):
     # Nuevos campos agregados para los filtros del frontend
     cupos_totales = Column(Integer)
     tipo_vivienda = Column(String)
-    mascotas = Column(String)
+    mascotas = Column("mascota", String)
