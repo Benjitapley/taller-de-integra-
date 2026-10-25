@@ -1,0 +1,4 @@
+# Test-only dependencies in addition to the isolated backend environment.
+uvicorn>=0.49,<1
+aiosmtpd==1.4.6
+cryptography>=46,<51

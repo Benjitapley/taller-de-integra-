@@ -20,7 +20,9 @@ const nextConfig: NextConfig = {
   async rewrites() {
     // Solo configuración del servidor; nunca usar env: ni NEXT_PUBLIC_ aquí.
     const origin = fastApiOrigin();
-    const namespaces = ["api", "auth", "imagenes", "static_creacion", "static_principal", "PerfilU"];
+    // /auth is intentionally NOT proxied: FastAPI login returns a raw JWT.
+    // Browser authentication must use /web-api/auth (HttpOnly + CSRF).
+    const namespaces = ["api", "imagenes", "static_creacion", "static_principal", "PerfilU"];
     const legacyPages = ["inicio", "crear", "perfil", "mis-publicaciones", "editar-publicacion"];
 
     return {

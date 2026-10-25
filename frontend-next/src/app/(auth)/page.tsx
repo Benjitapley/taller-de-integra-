@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import AccessPlaceholder from "@/features/auth/AccessPlaceholder";
+import AuthScreen from "@/features/auth/AuthScreen";
 
 export const metadata: Metadata = { title: "Acceso | ¿Hay cupo?" };
 
 export default function AccessPage() {
-  return <AccessPlaceholder />;
+  return <AuthScreen mode="login" />;
 }

@@ -4,15 +4,18 @@ from typing import List, Optional
 from backend.match_conexion_service.database import get_db
 from backend.match_conexion_service.models import Conexion, EstadoConexion, Usuario, Publicacion
 from backend.match_conexion_service.schemas import ConexionCreate, ConexionResponse, ConexionUpdate, UsuarioBusqueda, PublicacionBusqueda
+from backend.auth_service.security import get_current_user
 
 router = APIRouter(
     prefix="/conexiones",
-    tags=["Conexiones"]
+    tags=["Conexiones"],
 )
 
 # 1. ENVIAR solicitud de conexión
 @router.post("/", response_model=ConexionResponse, status_code=status.HTTP_201_CREATED)
-def enviar_solicitud(conexion: ConexionCreate, db: Session = Depends(get_db)):
+def enviar_solicitud(conexion: ConexionCreate, id_actual: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    if conexion.id_solicitante_FK != id_actual:
+        raise HTTPException(403, "No puedes enviar solicitudes en nombre de otro usuario.")
     conexion_existente = db.query(Conexion).filter(
         Conexion.id_solicitante_FK == conexion.id_solicitante_FK,
         Conexion.id_receptor_FK == conexion.id_receptor_FK,
@@ -34,11 +37,14 @@ def enviar_solicitud(conexion: ConexionCreate, db: Session = Depends(get_db)):
 
 # 2. ACEPTAR o RECHAZAR solicitud de conexión
 @router.put("/{id_conexion}", response_model=ConexionResponse)
-def responder_solicitud(id_conexion: int, respuesta: ConexionUpdate, db: Session = Depends(get_db)):
-    conexion_db = db.query(Conexion).filter(Conexion.id_conexion == id_conexion).first()
+def responder_solicitud(id_conexion: int, respuesta: ConexionUpdate, id_actual: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    conexion_db = db.query(Conexion).filter(Conexion.id_conexion == id_conexion).with_for_update().first()
 
     if not conexion_db:
         raise HTTPException(status_code=404, detail="Solicitud de conexión no encontrada.")
+
+    if conexion_db.id_receptor_FK != id_actual:
+        raise HTTPException(403, "Solo el destinatario puede responder la solicitud.")
 
     if conexion_db.estado != EstadoConexion.Pendiente:
         raise HTTPException(status_code=400, detail=f"Esta solicitud ya fue {conexion_db.estado.value}.")
@@ -51,7 +57,9 @@ def responder_solicitud(id_conexion: int, respuesta: ConexionUpdate, db: Session
 
 # 3. Ver las solicitudes que me han llegado
 @router.get("/recibidas/{id_usuario}", response_model=list[ConexionResponse])
-def ver_solicitudes_recibidas(id_usuario: int, db: Session = Depends(get_db)):
+def ver_solicitudes_recibidas(id_usuario: int, id_actual: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    if id_usuario != id_actual:
+        raise HTTPException(403, "No puedes consultar solicitudes de otro usuario.")
     solicitudes = db.query(Conexion).filter(
         Conexion.id_receptor_FK == id_usuario,
         Conexion.estado == EstadoConexion.Pendiente
