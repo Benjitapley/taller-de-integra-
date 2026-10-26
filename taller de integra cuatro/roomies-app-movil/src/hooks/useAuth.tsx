@@ -1,28 +1,45 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import * as Linking from "expo-linking";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { estaSupabaseConfigurado, getSupabaseClient } from "@/lib/supabase";
+import { confirmarRegistroSupabase, registrarCuentaSupabase } from "@/services/authService";
+import type {
+  DatosRegistro,
+  ResultadoConfirmacion,
+  ResultadoRegistro,
+  SesionSupabase,
+  UsuarioActual,
+} from "@/types/Auth";
 import type { UsuarioPerfil } from "@/types/Usuario";
 import { credencialesMock } from "@/mocks/auth";
 
 interface AuthContextValue {
+  /** Perfil del login de demostración; se retirará al integrar M4-A05. */
   usuario: UsuarioPerfil | null;
+  sesion: SesionSupabase | null;
+  usuarioActual: UsuarioActual | null;
   estaAutenticado: boolean;
   iniciarSesion: (email: string, password: string) => Promise<boolean>;
-  registrarCuenta: (datos: {
-    nombre: string;
-    email: string;
-    password: string;
-    fechaNacimiento: string;
-  }) => Promise<boolean>;
-  cerrarSesion: () => void;
+  registrarCuenta: (datos: DatosRegistro) => Promise<ResultadoRegistro>;
+  confirmarRegistro: (enlace: string) => Promise<ResultadoConfirmacion>;
+  cerrarSesion: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<UsuarioPerfil | null>(null);
-  const [credenciales, setCredenciales] = useState(credencialesMock);
+  const [sesion, setSesion] = useState<SesionSupabase | null>(null);
 
-  async function iniciarSesion(email: string, password: string) {
-    const credencial = credenciales.find(
+  // M4-A05 reemplazará este login. El registro real nunca añade contraseñas al mock.
+  const iniciarSesion = useCallback(async (email: string, password: string) => {
+    const credencial = credencialesMock.find(
       (item) =>
         item.usuario.email.toLowerCase() === email.trim().toLowerCase() &&
         item.password === password,
@@ -34,58 +51,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setUsuario(credencial.usuario);
     return true;
-  }
+  }, []);
 
-  async function registrarCuenta(datos: {
-    nombre: string;
-    email: string;
-    password: string;
-    fechaNacimiento: string;
-  }) {
-    const correoExiste = credenciales.some(
-      (item) => item.usuario.email.toLowerCase() === datos.email.trim().toLowerCase(),
-    );
+  const registrarCuenta = useCallback(async (datos: DatosRegistro) => {
+    const resultado = await registrarCuentaSupabase(datos, Linking.createURL("/auth/callback"));
+    if (resultado.exito) {
+      setUsuario(null);
+      setSesion(resultado.estado === "sesion_iniciada" ? resultado.sesion : null);
+    }
+    return resultado;
+  }, []);
 
-    if (correoExiste) {
+  const confirmarRegistro = useCallback(async (enlace: string) => {
+    const resultado = await confirmarRegistroSupabase(enlace);
+    if (resultado.exito) {
+      setUsuario(null);
+      setSesion(resultado.sesion);
+    }
+    return resultado;
+  }, []);
+
+  // Permite cerrar también una sesión obtenida desde el enlace de registro.
+  const cerrarSesion = useCallback(async () => {
+    try {
+      if (estaSupabaseConfigurado()) {
+        const { error } = await getSupabaseClient().auth.signOut();
+        if (error) return false;
+      }
+      setSesion(null);
+      setUsuario(null);
+      return true;
+    } catch {
       return false;
     }
-
-    const nuevoUsuario: UsuarioPerfil = {
-      idUsuario: Date.now(),
-      rol: "Usuario",
-      nombre: datos.nombre.trim(),
-      email: datos.email.trim(),
-      fechaNacimiento: datos.fechaNacimiento,
-      estadoVerificacion: "Pendiente",
-      presupuesto: 0,
-      zonaInteres: "",
-      ocupacion: "Estudiante",
-      fotoPerfilUrl: undefined,
-      calificacionPromedio: undefined,
-      cantidadEvaluaciones: 0,
-    };
-
-    setCredenciales((actuales) => [
-      ...actuales,
-      { usuario: nuevoUsuario, password: datos.password },
-    ]);
-    setUsuario(nuevoUsuario);
-    return true;
-  }
-
-  function cerrarSesion() {
-    setUsuario(null);
-  }
+  }, []);
 
   const value = useMemo(
     () => ({
       usuario,
-      estaAutenticado: usuario !== null,
+      sesion,
+      usuarioActual: sesion ? { identidad: sesion.user, perfil: null } : null,
+      estaAutenticado: sesion !== null || usuario !== null,
       iniciarSesion,
       registrarCuenta,
+      confirmarRegistro,
       cerrarSesion,
     }),
-    [usuario],
+    [usuario, sesion, iniciarSesion, registrarCuenta, confirmarRegistro, cerrarSesion],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

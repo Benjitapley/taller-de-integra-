@@ -13,6 +13,7 @@ export default function RootLayout() {
         <Stack.Screen name="publicacion/[id]/index" />
         <Stack.Screen name="login" />
         <Stack.Screen name="registro" />
+        <Stack.Screen name="auth/callback" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="convivencia/tareas"

@@ -48,6 +48,8 @@ export function getSupabaseClient(): SupabaseClient {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
+      // /auth/callback procesa explícitamente los tokens del enlace de registro.
+      flowType: "implicit",
     },
   });
 

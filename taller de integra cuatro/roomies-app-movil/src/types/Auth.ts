@@ -16,3 +16,22 @@ export interface UsuarioActual {
   identidad: IdentidadSupabase;
   perfil: UsuarioPerfil | null;
 }
+
+export interface DatosRegistro {
+  nombre: string;
+  email: string;
+  password: string;
+  /** AAAA-MM-DD, enviada como user_metadata.fecha_nacimiento. */
+  fechaNacimiento: string;
+}
+
+export type ErrorAutenticacion = { exito: false; error: string };
+
+export type ResultadoRegistro =
+  | ErrorAutenticacion
+  | { exito: true; estado: "confirmacion_pendiente" }
+  | { exito: true; estado: "sesion_iniciada"; sesion: SesionSupabase };
+
+export type ResultadoConfirmacion =
+  | ErrorAutenticacion
+  | { exito: true; sesion: SesionSupabase };
