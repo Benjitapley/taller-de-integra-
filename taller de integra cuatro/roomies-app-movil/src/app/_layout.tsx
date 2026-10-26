@@ -1,7 +1,11 @@
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
+import { iniciarCicloSesionSupabase } from "@/lib/supabase";
 
 export default function RootLayout() {
+  useEffect(() => iniciarCicloSesionSupabase(), []);
+
   return (
     <AuthProvider>
       <Stack screenOptions={{ headerShown: false }}>
