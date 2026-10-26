@@ -53,9 +53,9 @@ compilar, por lo que se debe volver a compilar y reiniciar.
 | `/acceso`, `/legacy/acceso` | Login/registro HTML original, FastAPI `/` |
 | `/legacy/inicio` | Inicio HTML original, FastAPI `/inicio` |
 | `/crear`, `/legacy/crear` | FastAPI `/crear` |
-| `/perfil` | Perfil React autenticado, solo lectura |
+| `/perfil` | Perfil React autenticado, edición y estado de verificación del correo |
 | `/legacy/perfil` | HTML original de FastAPI `/perfil` |
-| `/web-api/perfil` | Handler de servidor para consultar el perfil propio |
+| `/web-api/perfil` | GET/PUT de servidor para consultar y editar el perfil propio |
 | `/mis-publicaciones`, `/legacy/mis-publicaciones` | FastAPI `/mis-publicaciones` |
 | `/editar-publicacion?id=…`, `/legacy/editar-publicacion?id=…` | FastAPI `/editar-publicacion?id=…` |
 
@@ -168,7 +168,7 @@ Antes de integrar en dev-web, acordar las URL nuevas y los contratos de sesión.
 Después de incorporar esta base, actualizar las ramas de trabajo y desarrollar
 por dominio. Coordinar cambios en layouts, navegación, estilos globales,
 configuración y archivo de bloqueo; evitar reorganizaciones o reformateos masivos
-en paralelo. La consulta de perfil está disponible en React; edición de perfil (SCRUM-78) y administración siguen pendientes. Registro usa el adaptador web y requiere habilitar el entorno de pruebas.
+en paralelo. SCRUM-78 incorpora la edición de perfil y confirmación de correo en React; administración sigue pendiente. Registro usa el adaptador web y requiere habilitar el entorno de pruebas aislado descrito en [MANUAL.md](../tests/e2e/MANUAL.md).
 
 ## Diseño y accesibilidad
 
@@ -242,7 +242,7 @@ Ejecutar lint, typecheck, build, test:api, test:auth, test:session y test:proxy.
 
 Para una prueba manual completa: preparar PostgreSQL dedicado con esquema aprobado y migración V2; usar secretos generados solo para pruebas y SMTP capturado localmente; arrancar FastAPI con JWT habilitado únicamente allí. Configurar Next.js con los tres parámetros `WEB_AUTH_ENABLED=true`, `WEB_AUTH_ORIGIN` exacto y `WEB_AUTH_FASTAPI_ORIGIN` de ese servicio. En build/start usar HTTPS para la web; la excepción HTTP es solo para `next dev` en loopback. Mantener producción deshabilitada.
 
-Los rewrites de datos y recursos se conservan; el namespace `/auth/*` se retiró deliberadamente por exponer el JWT. El contrato FastAPI servidor-servidor se conserva. Los clientes HTML y el cliente API genérico de publicaciones/conexiones NO reciben automáticamente el Bearer: requieren su propia migración a transporte autenticado de servidor. No se expone JWT a JavaScript para mantenerlos funcionando. No se implementó recuperación de cuentas antiguas, OAuth, edición de perfil ni un endpoint backend de sesión nuevo. Coordinar esos contratos antes de habilitar consumidores antiguos.
+Los rewrites de datos y recursos se conservan; el namespace `/auth/*` se retiró deliberadamente por exponer el JWT. El contrato FastAPI servidor-servidor se conserva. Los clientes HTML y el cliente API genérico de publicaciones/conexiones NO reciben automáticamente el Bearer: requieren su propia migración a transporte autenticado de servidor. No se expone JWT a JavaScript para mantenerlos funcionando. No se implementó recuperación de cuentas antiguas, OAuth ni un endpoint backend de sesión nuevo. La edición del perfil se añade en SCRUM-78. Coordinar los contratos de consumidores antiguos antes de habilitarlos.
 
 
 ## Prueba conjunta con servicios reales desechables
@@ -252,21 +252,26 @@ Consultar `../tests/e2e/README.md` para el comando, requisitos, aislamiento y re
 Cambios que requieren coordinación: consumidores web de `/auth/*` reciben ahora 410 y deben migrar a `/web-api/auth/*`; detalle privado de edición exige JWT y propietario. El catálogo de descubrimiento sigue siendo público. Falta adaptar el transporte del HTML antiguo y repetir en HTTPS con el reverse proxy definitivo antes de producción.
 
 
-## Perfil autenticado — consulta de SCRUM-72
+## Perfil autenticado — SCRUM-72 y SCRUM-78
 
 `/perfil` vive en `(app)` y reutiliza AppShell, Sidebar, PageHeader, Card, Icon,
 Button y EmptyState. Sidebar y «Ver mi perfil» del menú de cuenta apuntan a React;
 `/legacy/perfil` y los archivos HTML originales permanecen disponibles como referencia.
-No hay formularios ni operaciones de edición: pertenecen a SCRUM-78.
+SCRUM-78 añade el formulario de edición y la sección «Verificación de cuenta».
+El contrato, límites, pruebas y aprobación pendiente del cambio de Jira se
+documentan en [SCRUM-78.md](../docs/SCRUM-78.md).
 
-El cliente solicita únicamente `GET /web-api/perfil` con credenciales del mismo
+El cliente consulta `GET /web-api/perfil` con credenciales del mismo
 origen. El handler `src/lib/perfil/server.ts` lee la cookie HttpOnly existente y
 consulta la URL fija FastAPI `GET /api/perfil` con `Authorization: Bearer`.
 No acepta una identidad del cliente, no reenvía query/Authorization/Cookie del
 navegador, no guarda tokens en JS ni altera contratos de autenticación.
 FastAPI sigue verificando firma, expiración, usuario verificado y sesión revocada.
+La edición envía `FormData` a `PUT /web-api/perfil`, con validación de Origin y
+cabecera CSRF. Next.js usa la misma cookie para transmitir Bearer al PUT de
+FastAPI; el cliente no puede elegir otro usuario ni editar `verificado`.
 La respuesta web contiene solo nombre, edad, ocupación, ciudad, descripción breve,
-sobre mí, fotografía y total de publicaciones. No incluye correo, contraseña, IDs
+sobre mí, fotografía, total de publicaciones y estado `verificado`. No incluye correo, contraseña, IDs
 ni campos extra del upstream. Respuesta y transporte usan `no-store`, `Vary: Cookie`
 y rutas dinámicas, sin caché compartida entre usuarios.
 
@@ -284,9 +289,9 @@ backend representa valores ausentes con cadena vacía. El adaptador web usa null
 para campos opcionales vacíos y devuelve 503 controlado ante un cuerpo incompatible,
 un error del backend, timeout o fallo de red, sin reflejar detalles internos.
 
-Pruebas unitarias del adaptador: `npm run test:profile` (10 casos). La suite
+Pruebas unitarias del adaptador: `npm run test:profile`. La suite
 `test:proxy` incluye la prioridad de React sobre fallback HTML, el handler real,
-rechazo anónimo y de escrituras, y conservación del alias original. Para activar
+rechazo anónimo, protección de escrituras y conservación del alias original. Para activar
 además las comprobaciones de navegador contra el mismo backend HTTP simulado:
 
 ```powershell
@@ -303,8 +308,8 @@ La copia temporal de Next no incluye .env; no se arranca PostgreSQL ni se ejecut
 SQL. Las rutas de Playwright/Edge deben apuntar a instalaciones locales existentes.
 Se requiere permiso para cerrar exclusivamente los procesos temporales en Windows.
 
-La validación final volvió a ejecutar `tests/e2e/run_e2e.py` con autorización para aplicar la migración V2 exclusivamente en su base desechable: **27/27 recorridos aprobados**, incluyendo `/perfil`, `/web-api/perfil`, ambas cuentas, cambio de cuenta en el mismo navegador, expiración, revocación y logout. La ejecución anterior del perfil había omitido este runner porque entonces no estaban autorizadas migraciones. No se consultó Supabase.
+La base de SCRUM-72 aprobó 27 recorridos E2E. SCRUM-78 amplía esa suite a **31/31** con edición, fotografía, estado del correo y protección CSRF. La migración V2 se aplica exclusivamente en la base desechable; no se consulta Supabase. Los resultados finales y el inventario para commits están en [SCRUM-78-final-review.md](../docs/SCRUM-78-final-review.md).
 
-Antes de habilitar un entorno real siguen pendientes HTTPS/proxy, revisión de ACL/RLS y esquema aprobado, y recuperación de cuentas antiguas. La edición sigue fuera de SCRUM-72 y corresponde a SCRUM-78. El layout aún consulta `/api/perfil` para comprobar sesión: un fallo del
+Antes de habilitar un entorno real siguen pendientes HTTPS/proxy, revisión de ACL/RLS y esquema aprobado, y recuperación de cuentas antiguas. La edición está implementada en SCRUM-78; confirmar el correo no verifica la identidad legal y sustituir el requisito documental de Jira requiere aprobación del equipo/profesor. El layout aún consulta `/api/perfil` para comprobar sesión: un fallo del
 servicio en la carga inicial puede mostrar «Sesión no disponible» antes de montar
 la página; la vista maneja fallos posteriores de su propia consulta.
