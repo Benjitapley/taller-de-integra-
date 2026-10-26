@@ -12,7 +12,7 @@ import type { VerificacionRequest } from "./contracts";
 import { validateVerification, type VerificationErrors } from "./validation";
 import styles from "./auth.module.css";
 
-export default function VerificationForm() {
+export default function VerificationForm({ onVerified, showFlowLinks = true }: { onVerified?: () => void; showFlowLinks?: boolean } = {}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -45,7 +45,10 @@ export default function VerificationForm() {
       setFailed(!result.ok);
       setMessage(result.message);
       if (result.retryAfter) setRetryAt(Date.now() + result.retryAfter * 1000);
-      if (result.ok && action === "verify") { router.push("/"); router.refresh(); }
+      if (result.ok && action === "verify") {
+        if (onVerified) onVerified();
+        else { router.push("/"); router.refresh(); }
+      }
 
     }
   }
@@ -60,6 +63,6 @@ export default function VerificationForm() {
     </fieldset>
     <noscript><p>Activa JavaScript para validar el formulario. No se enviará el formulario sin JavaScript.</p></noscript>
     <FormMessage error={failed || Object.values(errors).some(Boolean)}>{message}</FormMessage>
-    <AuthFlowLinks screen="verify" />
+    {showFlowLinks && <AuthFlowLinks screen="verify" />}
   </form>;
 }

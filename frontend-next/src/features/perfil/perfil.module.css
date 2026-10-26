@@ -14,4 +14,12 @@
 .state { max-width: 750px; color: var(--muted); }
 .state p { margin-top: 0; }
 .retry { margin-top: 18px; }
+.verified { display: inline-block; margin-top: 0; padding: 8px 12px; border-radius: 12px; color: #17663c; background: #e8f5ed; font-weight: 600; }
+.editFields { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.legend { font-weight: 600; margin-bottom: 16px; }
+.editField { display: grid; gap: 8px; margin-bottom: 8px; }
+.editFields input, .editFields textarea { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.editFields small { color: var(--muted); }
+.preview { border-radius: 12px; object-fit: cover; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
 @media (max-width: 767px) { .grid { grid-template-columns: minmax(0, 1fr); gap: 18px; } .details { gap: 18px; } }

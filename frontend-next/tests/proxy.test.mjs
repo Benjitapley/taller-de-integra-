@@ -45,6 +45,7 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
 
   const received = [];
   let profileMode = "ok";
+  let verificationMode = "ok";
   let profileCookie = "";
   const upstream = createServer(async (request, response) => {
     const url = new URL(request.url, "http://fixture.invalid");
@@ -58,6 +59,23 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
       return;
     }
     // Double of FastAPI, available only in this isolated test process.
+    if (["/auth/verificar", "/auth/reenviar-codigo"].includes(path)) {
+      response.setHeader("Content-Type", "application/json");
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      const data = JSON.parse(Buffer.concat(chunks).toString());
+      assert.equal(data.correo, "pending@example.com");
+      if (path === "/auth/verificar") assert.equal(data.codigo, "012345");
+      const status = { invalid: 400, limited: 429, unavailable: 503 }[verificationMode] ?? 200;
+      response.statusCode = status;
+      if (status === 429) response.setHeader("Retry-After", "60");
+      if (status === 200 && path === "/auth/verificar") {
+        if (verificationMode === "ok") profileMode = "ok";
+        if (verificationMode === "expire-after-verify") profileMode = "expired";
+      }
+      response.end(JSON.stringify(status === 200 ? { success: true } : { detail: "do-not-leak-upstream-details" }));
+      return;
+    }
     if (path === "/auth/login") {
       response.setHeader("Content-Type", "application/json");
       const jwt = `fixture.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now()/1000)+3600 })).toString("base64url")}.signature`;
@@ -69,7 +87,7 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
       const authorized = /^Bearer fixture(?:-b)?\./.test(request.headers.authorization ?? "");
       response.statusCode = authorized ? profileMode === "error" ? 500 : profileMode === "expired" ? 401 : profileMode === "empty" ? 404 : 200 : 401;
       const second = request.headers.authorization?.startsWith("Bearer fixture-b.");
-      response.end(JSON.stringify({nombre:second ? "Cuenta B privada" : "Cuenta HTTP sintética", edad:profileMode === "partial" ? "" : 25, ocupacion:profileMode === "partial" ? "" : "Estudiante", ciudad:profileMode === "partial" ? "" : second ? "Ciudad B" : "Ciudad A", breve_descripcion:"Descripción del perfil", sobre_mi:"Datos exclusivos de esta cuenta", foto_perfil:profileMode === "partial" ? null : "/imagenes/fixture-avatar.png", total_publicaciones:profileMode === "partial" ? 0 : second ? 4 : 2, access_token:"should-not-leak",contrasena:"should-not-leak"}));
+      response.end(JSON.stringify({nombre:second ? "Cuenta B privada" : "Cuenta HTTP sintética", edad:profileMode === "partial" ? "" : 25, ocupacion:profileMode === "partial" ? "" : "Estudiante", ciudad:profileMode === "partial" ? "" : second ? "Ciudad B" : "Ciudad A", breve_descripcion:"Descripción del perfil", sobre_mi:"Datos exclusivos de esta cuenta", foto_perfil:profileMode === "partial" ? null : "/imagenes/fixture-avatar.png", verificado:profileMode === "pending" ? false : profileMode === "unknown" ? null : true,total_publicaciones:profileMode === "partial" ? 0 : second ? 4 : 2, access_token:"should-not-leak",contrasena:"should-not-leak"}));
       return;
     }
     if (path === "/imagenes/fixture-avatar.png") {
@@ -189,13 +207,13 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
     assert.equal(response.headers.get("cache-control"),"no-store");
     assert.equal(body.access_token,undefined);
     assert.equal(body.contrasena,undefined);
-    for(const method of ["POST","PUT","DELETE"]) assert.equal((await fetch(`${base}/web-api/perfil`,{method,headers:{cookie:profileCookie}})).status,405);
+    for(const method of ["POST","DELETE"]) assert.equal((await fetch(`${base}/web-api/perfil`,{method,headers:{cookie:profileCookie}})).status,405);
     assert.equal(received.includes("/api/perfil?id_usuario=999"),false);
   });
   if (process.env.PROFILE_BROWSER_TESTS === "1") {
     await t.test("perfil en navegador: carga, identidad, errores, teclado y resoluciones", async () => {
       const { profileBrowser } = await import("./profile-browser.mjs");
-      await profileBrowser({base,cookie:profileCookie,setProfileMode:(mode)=>{profileMode=mode;},playwrightPath:process.env.PROFILE_PLAYWRIGHT_PATH,browserPath:process.env.PROFILE_BROWSER_PATH});
+      await profileBrowser({base,cookie:profileCookie,setProfileMode:(mode)=>{profileMode=mode;},setVerificationMode:(mode)=>{verificationMode=mode;},playwrightPath:process.env.PROFILE_PLAYWRIGHT_PATH,browserPath:process.env.PROFILE_BROWSER_PATH});
     });
   }
 
