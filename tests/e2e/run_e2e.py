@@ -10,6 +10,7 @@ import ipaddress
 import json
 import os
 from pathlib import Path
+import queue
 import re
 import secrets
 import shutil
@@ -32,10 +33,14 @@ HERE = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--node', required=True)
-parser.add_argument('--playwright', required=True, help='Absolute path to installed Playwright package')
-parser.add_argument('--browser', required=True, help='Installed Chromium/Edge binary; never uses a personal profile')
+parser.add_argument('--manual', action='store_true', help='Keep the isolated services alive until salir/EOF/Ctrl+C')
+parser.add_argument('--no-open', action='store_true', help='Do not open the manual URL in the default browser')
+parser.add_argument('--playwright', help='Absolute path to installed Playwright package (E2E only)')
+parser.add_argument('--browser', help='Installed Chromium/Edge binary (E2E only)')
 args = parser.parse_args()
-for supplied in (args.pg_bin, args.node, args.playwright, args.browser):
+if not args.manual and (not args.playwright or not args.browser):
+    parser.error('--playwright and --browser are required unless --manual is used')
+for supplied in filter(None, (args.pg_bin, args.node, args.playwright, args.browser)):
     if not Path(supplied).exists():
         raise RuntimeError('Missing local test dependency: ' + supplied)
 
@@ -102,6 +107,7 @@ class Mailbox:
         self.codes = {}
         self.fail = False
         self.deliveries = 0
+        self.lock = threading.Lock()
 
     async def handle_DATA(self, server, session, envelope):
         if self.fail:
@@ -112,12 +118,53 @@ class Mailbox:
         match = re.search(r'código de verificación es ([0-9]{6})', message.get_body(preferencelist=('plain',)).get_content())
         if not match or any(not address.endswith('@example.com') for address in envelope.rcpt_tos):
             return '550 5.1.0 Synthetic recipients only'
-        for recipient in envelope.rcpt_tos:
-            self.codes.setdefault(recipient, []).append(match[1])
-        self.deliveries += 1
+        with self.lock:
+            for recipient in envelope.rcpt_tos:
+                self.codes.setdefault(recipient, []).append(match[1])
+                if args.manual:
+                    print(f'CORREO LOCAL {json.dumps(recipient)} | código: {match[1]}', flush=True)
+            self.deliveries += 1
         return '250 2.0.0 Captured locally; never relayed'
 
-with tempfile.TemporaryDirectory(prefix='haycupo-e2e-') as temporary:
+
+def manual_session(origin, mailbox, processes, pgdata):
+    """Terminal only: no fixture HTTP API or authentication bypass is exposed."""
+    print(f'MANUAL_URL={origin}/registro', flush=True)
+    print('Solo datos ficticios y correos @example.com. Ejemplo: roomie@example.com', flush=True)
+    print(f'Contraseña sugerida SOLO PARA PRUEBAS: {secrets.token_urlsafe(18)}', flush=True)
+    print('Los códigos aparecen aquí al recibir SMTP. Comandos: correos | salir. Ctrl+C también limpia.', flush=True)
+    if not args.no_open:
+        os.startfile(origin + '/registro')
+    commands = queue.Queue()
+    def read_commands():
+        for line in sys.stdin:
+            value = line.strip().lower()
+            commands.put(value)
+            if value in {'salir', 'exit', 'q'}:
+                return
+        commands.put('salir')  # EOF also guarantees teardown for a piped launcher.
+    threading.Thread(target=read_commands, daemon=True).start()
+    while True:
+        if any(process.poll() is not None for process in processes) or not (pgdata / 'postmaster.pid').exists():
+            raise RuntimeError('Un servicio aislado se detuvo; cerrando el resto.')
+        try:
+            command_name = commands.get(timeout=.5)
+        except queue.Empty:
+            continue
+        if command_name in {'salir', 'exit', 'q'}:
+            return
+        if command_name == 'correos':
+            with mailbox.lock:
+                if not mailbox.codes:
+                    print('Sin correos capturados todavía.', flush=True)
+                for recipient, codes in mailbox.codes.items():
+                    print(f'CORREO LOCAL {json.dumps(recipient)} | último código: {codes[-1]} | recibidos: {len(codes)}', flush=True)
+        elif command_name:
+            print('Comandos disponibles: correos | salir', flush=True)
+
+fixture_prefix = 'haycupo-manual-' if args.manual else 'haycupo-e2e-'
+application_prefix = '.proxy-test-manual-' if args.manual else '.proxy-test-e2e-'
+with tempfile.TemporaryDirectory(prefix=fixture_prefix) as temporary:
     fixture = Path(temporary).resolve()
     pgdata = fixture / 'postgres'
     ports = set()
@@ -136,6 +183,8 @@ with tempfile.TemporaryDirectory(prefix='haycupo-e2e-') as temporary:
     owner_dsn = f'host=127.0.0.1 port={pg_port} user=e2e_owner dbname=postgres connect_timeout=3'
     app_dsn = f'postgresql://e2e_backend:{pg_password}@127.0.0.1:{pg_port}/postgres'
     try:
+        command(args.node, HERE / 'isolation-checks.cjs')
+        print('PASS Next isolation guards: external DNS and sockets blocked', flush=True)
         command(Path(args.pg_bin) / 'initdb.exe', '-D', pgdata, '-U', 'e2e_owner', '--auth-local=trust', '--auth-host=trust', '--encoding=UTF8', '--no-locale')
         command(pg_ctl, '-D', pgdata, '-l', fixture / 'postgres.log', '-o', f'-h 127.0.0.1 -p {pg_port}', '-w', 'start')
         # All rows and business tables are synthetic. Real lifespan is exercised.
@@ -234,9 +283,10 @@ with tempfile.TemporaryDirectory(prefix='haycupo-e2e-') as temporary:
                 self.send_header('Content-Length',str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
-        control = ThreadingHTTPServer(('127.0.0.1',0),Control)
-        control_thread = threading.Thread(target=control.serve_forever,daemon=True)
-        control_thread.start()
+        if not args.manual:
+            control = ThreadingHTTPServer(('127.0.0.1',0),Control)
+            control_thread = threading.Thread(target=control.serve_forever,daemon=True)
+            control_thread.start()
 
         def launch(executable,arguments,environment,name,cwd):
             log = (fixture / f'{name}.log').open('wb')
@@ -250,10 +300,15 @@ with tempfile.TemporaryDirectory(prefix='haycupo-e2e-') as temporary:
                    'JWT_EXPIRATION_MINUTES':'15','SMTP_HOST':'127.0.0.1','SMTP_PORT':str(smtp_port),
                    'SMTP_USER':smtp_user,'SMTP_PASSWORD':smtp_password,'SSL_CERT_FILE':str(cert_file),
                    'E2E_API_PORT':str(api_port),'E2E_IMAGE_DIR':str(fixture / 'images'),'WEB_ORIGINS':web_origin}
+        if args.manual:
+            api_env['HAYCUPO_MANUAL'] = 'synthetic-only'
         api = launch(sys.executable,['-I','-B',HERE / 'backend_server.py'],api_env,'fastapi',ROOT)
         wait_http(api_origin+'/openapi.json',api)
+        if 'PASS backend isolation guards:' not in (fixture / 'fastapi.log').read_text(encoding='utf-8'):
+            raise RuntimeError('Backend isolation checks did not complete')
+        print('PASS backend isolation guards: dotenv, external DNS, database and SMTP blocked', flush=True)
 
-        application = Path(tempfile.mkdtemp(prefix='.proxy-test-e2e-',dir=FRONT)).resolve()
+        application = Path(tempfile.mkdtemp(prefix=application_prefix,dir=FRONT)).resolve()
         for name in ('src','public','package.json','tsconfig.json','next.config.ts'):
             origin, target = FRONT / name, application / name
             if origin.is_dir():
@@ -267,24 +322,27 @@ with tempfile.TemporaryDirectory(prefix='haycupo-e2e-') as temporary:
         wait_http(web_origin+'/',web)
         print('PASS isolated FastAPI lifespan, local STARTTLS SMTP and Next.js started',flush=True)
 
-        browser_config = {'web':web_origin,'playwright':str(Path(args.playwright).resolve()),'browser':str(Path(args.browser).resolve()),
-                          'control':f'http://127.0.0.1:{control.server_address[1]}/fixture','controlKey':control_key}
-        result_file = fixture / 'browser-result.json'
-        driver = launch(args.node,[HERE / 'browser.mjs',result_file],base_env,'browser',ROOT)
-        # JSON travels over a temporary file accessible only to the fixture driver,
-        # never through Next.js or the browser's application environment.
-        # The driver waits for this generated file (no inherited .env).
-        (fixture / 'browser-config.json').write_text(json.dumps(browser_config),encoding='utf-8')
-        driver.wait(timeout=240)
-        if result_file.exists():
-            report = json.loads(result_file.read_text(encoding='utf-8'))
-            for item in report['checks']:
-                print(('PASS ' if item['passed'] else 'FAIL ')+item['name'],flush=True)
-            print(f"Browser/HTTP checks: {sum(item['passed'] for item in report['checks'])}/{len(report['checks'])}; external browser requests: {report['externalRequests']}",flush=True)
-        if driver.returncode:
-            # Only fixture errors; driver never logs tokens/passwords/code values.
-            print((fixture / 'browser.log').read_text(encoding='utf-8',errors='replace'),flush=True)
-            raise RuntimeError('E2E browser assertions failed')
+        if args.manual:
+            print('MANUAL_PORTS=' + json.dumps({'postgres': pg_port, 'fastapi': api_port, 'next': web_port, 'smtp': smtp_port}), flush=True)
+            manual_session(web_origin, mailbox, processes, pgdata)
+        else:
+            browser_config = {'web':web_origin,'playwright':str(Path(args.playwright).resolve()),'browser':str(Path(args.browser).resolve()),
+                              'control':f'http://127.0.0.1:{control.server_address[1]}/fixture','controlKey':control_key}
+            result_file = fixture / 'browser-result.json'
+            driver = launch(args.node,[HERE / 'browser.mjs',result_file],base_env,'browser',ROOT)
+            # JSON is private to the fixture driver, never browser application code.
+            (fixture / 'browser-config.json').write_text(json.dumps(browser_config),encoding='utf-8')
+            driver.wait(timeout=240)
+            if result_file.exists():
+                report = json.loads(result_file.read_text(encoding='utf-8'))
+                for item in report['checks']:
+                    print(('PASS ' if item['passed'] else 'FAIL ')+item['name'],flush=True)
+                print(f"Browser/HTTP checks: {sum(item['passed'] for item in report['checks'])}/{len(report['checks'])}; external browser requests: {report['externalRequests']}",flush=True)
+            if driver.returncode:
+                print((fixture / 'browser.log').read_text(encoding='utf-8',errors='replace'),flush=True)
+                raise RuntimeError('E2E browser assertions failed')
+    except KeyboardInterrupt:
+        print('\nSesión interrumpida; retirando servicios y datos temporales.', flush=True)
     except Exception:
         # Read only sanitized application startup errors. Never include env/SMTP data.
         for name in ('fastapi','next'):
@@ -315,7 +373,7 @@ with tempfile.TemporaryDirectory(prefix='haycupo-e2e-') as temporary:
             log.close()
         if application:
             # Checked scope, remove dependency junction first, never walk real modules.
-            if application.parent != FRONT.resolve() or not application.name.startswith('.proxy-test-e2e-'):
+            if application.parent != FRONT.resolve() or not application.name.startswith(application_prefix):
                 raise RuntimeError('Unsafe fixture cleanup path')
             link = application / 'node_modules'
             if link.exists():
