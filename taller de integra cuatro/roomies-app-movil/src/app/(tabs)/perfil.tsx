@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { router } from "expo-router";
+import { useRef, useState } from "react";
 import {
   FlatList,
   Image,
@@ -15,11 +16,12 @@ import {
 } from "react-native";
 import AppHeader from "@/components/AppHeader";
 import BarraBusqueda from "@/components/BarraBusqueda";
+import { CustomButton } from "@/components/CustomButton";
 import { PublicacionCard } from "@/components/Publicacion_Card";
 import { configPorOrigen } from "@/constants/origenPublicacion";
+import { useAuth } from "@/hooks/useAuth";
 import type { Evaluacion } from "@/types/Evaluacion";
-import type { Publicacion } from "@/types/Publicacion";
-import type { TipoPublicacion } from "@/types/Publicacion";
+import type { Publicacion, TipoPublicacion } from "@/types/Publicacion";
 import type { UsuarioPerfil } from "@/types/Usuario";
 
 
@@ -415,9 +417,35 @@ function TarjetaEditarPerfil({
 
 
 export default function Perfil() {
+  const { cerrarSesion } = useAuth();
   const [usuario, setUsuario] = useState<PerfilUsuario>(USUARIO_MOCK);
   const [editando, setEditando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [cerrandoSesion, setCerrandoSesion] = useState(false);
+  const [errorCierre, setErrorCierre] = useState("");
+  const cierreEnCurso = useRef(false);
+
+  async function manejarCierreSesion() {
+    if (cierreEnCurso.current) return;
+    cierreEnCurso.current = true;
+    setCerrandoSesion(true);
+    setErrorCierre("");
+    try {
+      const resultado = await cerrarSesion();
+      if (resultado.exito) {
+        router.replace("/login");
+      } else if (resultado.sesionLocalCerrada) {
+        router.replace({ pathname: "/login", params: { aviso: "cierre_local" } });
+      } else {
+        setErrorCierre(resultado.error);
+      }
+    } catch {
+      setErrorCierre("No pudimos cerrar sesión. Inténtalo nuevamente.");
+    } finally {
+      cierreEnCurso.current = false;
+      setCerrandoSesion(false);
+    }
+  }
 
   return (
     <ScrollView style={styles.pantalla} contentContainerStyle={styles.contenedor}>
@@ -442,6 +470,17 @@ export default function Perfil() {
           <TarjetaEvaluaciones evaluaciones={EVALUACIONES_MOCK} />
         </>
       )}
+
+      {errorCierre ? (
+        <Text accessibilityRole="alert" style={styles.errorCierre}>{errorCierre}</Text>
+      ) : null}
+      <CustomButton
+        titulo="Cerrar sesión"
+        iconoIzquierdo="log-out-outline"
+        variante="contorno"
+        onPress={manejarCierreSesion}
+        cargando={cerrandoSesion}
+      />
     </ScrollView>
   );
 }
@@ -449,6 +488,7 @@ export default function Perfil() {
 const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: "#F9FAFB" },
   contenedor: { padding: 16, gap: 16 },
+  errorCierre: { color: "#B42318", fontSize: 13, textAlign: "center" },
   tarjeta: {
     backgroundColor: "#fff",
     borderRadius: 16,

@@ -35,3 +35,11 @@ export type ResultadoRegistro =
 export type ResultadoConfirmacion =
   | ErrorAutenticacion
   | { exito: true; sesion: SesionSupabase };
+
+export type ResultadoInicioSesion =
+  | ErrorAutenticacion
+  | { exito: true; sesion: SesionSupabase };
+
+export type ResultadoCierreSesion =
+  | { exito: true }
+  | (ErrorAutenticacion & { sesionLocalCerrada: boolean });

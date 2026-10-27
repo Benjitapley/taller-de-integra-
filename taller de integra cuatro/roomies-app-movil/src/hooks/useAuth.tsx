@@ -7,56 +7,46 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { estaSupabaseConfigurado, getSupabaseClient } from "@/lib/supabase";
-import { confirmarRegistroSupabase, registrarCuentaSupabase } from "@/services/authService";
+import {
+  cerrarSesionSupabase,
+  confirmarRegistroSupabase,
+  iniciarSesionSupabase,
+  registrarCuentaSupabase,
+} from "@/services/authService";
 import type {
   DatosRegistro,
+  ResultadoCierreSesion,
   ResultadoConfirmacion,
+  ResultadoInicioSesion,
   ResultadoRegistro,
   SesionSupabase,
   UsuarioActual,
 } from "@/types/Auth";
-import type { UsuarioPerfil } from "@/types/Usuario";
-import { credencialesMock } from "@/mocks/auth";
 
 interface AuthContextValue {
-  /** Perfil del login de demostración; se retirará al integrar M4-A05. */
-  usuario: UsuarioPerfil | null;
   sesion: SesionSupabase | null;
   usuarioActual: UsuarioActual | null;
   estaAutenticado: boolean;
-  iniciarSesion: (email: string, password: string) => Promise<boolean>;
+  iniciarSesion: (email: string, password: string) => Promise<ResultadoInicioSesion>;
   registrarCuenta: (datos: DatosRegistro) => Promise<ResultadoRegistro>;
   confirmarRegistro: (enlace: string) => Promise<ResultadoConfirmacion>;
-  cerrarSesion: () => Promise<boolean>;
+  cerrarSesion: () => Promise<ResultadoCierreSesion>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<UsuarioPerfil | null>(null);
   const [sesion, setSesion] = useState<SesionSupabase | null>(null);
 
-  // M4-A05 reemplazará este login. El registro real nunca añade contraseñas al mock.
   const iniciarSesion = useCallback(async (email: string, password: string) => {
-    const credencial = credencialesMock.find(
-      (item) =>
-        item.usuario.email.toLowerCase() === email.trim().toLowerCase() &&
-        item.password === password,
-    );
-
-    if (!credencial) {
-      return false;
-    }
-
-    setUsuario(credencial.usuario);
-    return true;
+    const resultado = await iniciarSesionSupabase(email, password);
+    if (resultado.exito) setSesion(resultado.sesion);
+    return resultado;
   }, []);
 
   const registrarCuenta = useCallback(async (datos: DatosRegistro) => {
     const resultado = await registrarCuentaSupabase(datos, Linking.createURL("/auth/callback"));
     if (resultado.exito) {
-      setUsuario(null);
       setSesion(resultado.estado === "sesion_iniciada" ? resultado.sesion : null);
     }
     return resultado;
@@ -65,39 +55,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const confirmarRegistro = useCallback(async (enlace: string) => {
     const resultado = await confirmarRegistroSupabase(enlace);
     if (resultado.exito) {
-      setUsuario(null);
       setSesion(resultado.sesion);
     }
     return resultado;
   }, []);
 
-  // Permite cerrar también una sesión obtenida desde el enlace de registro.
   const cerrarSesion = useCallback(async () => {
-    try {
-      if (estaSupabaseConfigurado()) {
-        const { error } = await getSupabaseClient().auth.signOut();
-        if (error) return false;
-      }
+    const resultado = await cerrarSesionSupabase();
+    if (resultado.exito || resultado.sesionLocalCerrada) {
       setSesion(null);
-      setUsuario(null);
-      return true;
-    } catch {
-      return false;
     }
+    return resultado;
   }, []);
 
-  const value = useMemo(
+  const value = useMemo<AuthContextValue>(
     () => ({
-      usuario,
       sesion,
       usuarioActual: sesion ? { identidad: sesion.user, perfil: null } : null,
-      estaAutenticado: sesion !== null || usuario !== null,
+      estaAutenticado: sesion !== null,
       iniciarSesion,
       registrarCuenta,
       confirmarRegistro,
       cerrarSesion,
     }),
-    [usuario, sesion, iniciarSesion, registrarCuenta, confirmarRegistro, cerrarSesion],
+    [sesion, iniciarSesion, registrarCuenta, confirmarRegistro, cerrarSesion],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
