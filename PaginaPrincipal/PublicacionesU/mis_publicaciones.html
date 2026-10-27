@@ -28,6 +28,7 @@
             <li><a href="/explorar"><img src="/Iconos/lupa_busqueda.webp" alt="Explorar" class="icono"> Explorar</a></li>
             <li><a href="/chat"><img src="/Iconos/icono_chat.webp" alt="Chat" class="icono"> Chat <span class="punto-notificacion"></span></a></li>
             <li class="activo"><a href="/mis-publicaciones"><img src="/Iconos/icono_publicaciones.webp" alt="Mis publicaciones" class="icono"> Mis publicaciones</a></li>
+            <li><a href="/mis-postulaciones"><img src="/Iconos/icono_publicaciones.webp" alt="Mis postulaciones" class="icono"> Mis postulaciones</a></li>
             <li><a href="/favoritos"><img src="/Iconos/favorito.webp" alt="Favoritos" class="icono"> Favoritos</a></li>
             <li><a href="/perfil"><img src="/Iconos/icono_perfil.webp" alt="Perfil" class="icono"> Perfil</a></li>
             <li><a href="/ajustes"><img src="/Iconos/engrane_ajustes.webp" alt="Ajustes" class="icono"> Ajustes</a></li>
@@ -60,7 +61,7 @@
         <div class="panel-crud" style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); width: 100%; max-width: 1000px; margin-top: 20px;">
             
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f5f9; padding-bottom: 15px;">
-                <h2 style="color: #1a1a1a; margin: 0; font-size: 24px; font-weight: 800;">Mis Anuncios</h2>
+                <h2 style="color: #1a1a1a; margin: 0; font-size: 24px; font-weight: 800;">Mis publicaciones</h2>
                 <a href="/crear" style="background: #382384; color: white; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 14px; transition: 0.2s;"><i class="fa-solid fa-plus"></i> Nueva</a>
             </div>
 
@@ -92,6 +93,14 @@
                 <button id="btn-confirmar-borrar" style="padding: 10px 20px; border-radius: 6px; border: none; background: #cf3b3b; color: rgb(238, 231, 231); cursor: pointer; font-weight: bold;">Sí, eliminar</button>
             </div>
         </div>
+    </div>
+
+    <div id="modal-postulaciones" class="modal-postulaciones" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-postulaciones">
+        <section class="contenido-modal-postulaciones">
+            <button type="button" class="cerrar-modal-postulaciones" onclick="cerrarPostulaciones()" aria-label="Cerrar">×</button>
+            <h2 id="titulo-modal-postulaciones">Postulaciones recibidas</h2>
+            <div id="lista-postulaciones-publicacion"></div>
+        </section>
     </div>
 
     <!-- Scripts clave -->

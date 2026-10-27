@@ -141,3 +141,224 @@ body {
 .enlace-volver:hover {
     color: #382384;
 }
+
+.panel-listado {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.panel-crud {
+    box-sizing: border-box;
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    width: 100%;
+    max-width: 1100px;
+    margin-top: 20px;
+}
+
+.encabezado-listado {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 2px solid #f4f5f9;
+    padding-bottom: 15px;
+}
+
+.encabezado-listado h2 {
+    color: #1a1a1a;
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.encabezado-listado p {
+    color: #666;
+    margin-bottom: 0;
+}
+
+.enlace-primario {
+    background: #382384;
+    color: white;
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.tabla-contenedor {
+    overflow-x: auto;
+}
+
+.tabla-crud th,
+.tabla-crud td {
+    text-align: left;
+    padding: 14px;
+    border-bottom: 1px solid #eee;
+}
+
+.tabla-crud th {
+    color: #382384;
+    font-weight: 800;
+}
+
+.tabla-crud {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.tabla-crud td {
+    color: #444;
+}
+
+.btn-accion {
+    border: 0;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 3px;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-editar {
+    background: #382384;
+}
+
+.btn-eliminar {
+    background: #cf3b3b;
+}
+
+.estado-badge {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 20px;
+    background: #eee9ff;
+    color: #382384;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.mensaje-tabla {
+    text-align: center;
+    padding: 20px;
+    color: #888;
+}
+
+.mensaje-tabla.error {
+    color: #cf3b3b;
+}
+
+.acciones-publicacion {
+    min-width: 270px;
+}
+
+.btn-postulaciones {
+    background: #382384;
+    color: white;
+}
+
+.modal-postulaciones {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.contenido-modal-postulaciones {
+    position: relative;
+    width: 100%;
+    max-width: 620px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 28px;
+    background: white;
+    border-radius: 12px;
+}
+
+.contenido-modal-postulaciones h2 {
+    color: #382384;
+    margin-top: 0;
+    padding-right: 30px;
+}
+
+.cerrar-modal-postulaciones {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    border: 0;
+    background: transparent;
+    font-size: 28px;
+    cursor: pointer;
+}
+
+.postulacion-recibida {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.postulacion-recibida p {
+    margin: 5px 0;
+    color: #666;
+}
+
+.estado-postulacion {
+    color: #382384;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.btn-aceptar,
+.btn-rechazar {
+    border: 0;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-aceptar {
+    background: #24824a;
+}
+
+.btn-rechazar {
+    background: #cf3b3b;
+}
+
+.avatar-letra {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: white;
+    color: #382384;
+    font-weight: bold;
+}
+
+@media (max-width: 700px) {
+    .panel-crud {
+        padding: 18px;
+    }
+
+    .encabezado-listado,
+    .postulacion-recibida {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

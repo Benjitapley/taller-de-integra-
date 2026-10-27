@@ -1,3 +1,5 @@
+let publicacionDetalleActual = null;
+
 document.addEventListener("DOMContentLoaded", async () => {
     
     // 1. MENÚ Y HEADER
@@ -167,7 +169,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 // LÓGICA DEL MODAL: Inyecta TODA la información corregida
 window.abrirDetalle = function(index) {
     const pub = window.todasLasPublicaciones[index];
+    publicacionDetalleActual = pub.id;
     const modal = document.getElementById("modal-detalle");
+    const botonPostular = document.getElementById("btn-postular");
+    if (botonPostular) {
+        botonPostular.disabled = false;
+        botonPostular.textContent = "Postular a esta publicación";
+    }
     
     let textoPersonas = "No especificado";
     if (pub.cupos_totales) {
@@ -195,4 +203,21 @@ window.abrirDetalle = function(index) {
 
 window.cerrarDetalle = function() {
     document.getElementById("modal-detalle").style.display = "none";
+};
+
+window.postularPublicacion = async function() {
+    if (!publicacionDetalleActual) return;
+    const boton = document.getElementById("btn-postular");
+    boton.disabled = true;
+    try {
+        const respuesta = await fetch(`/api/publicaciones/${publicacionDetalleActual}/postulaciones`, {
+            method: "POST"
+        });
+        const resultado = await respuesta.json();
+        if (!respuesta.ok) throw new Error(resultado.detail || "No se pudo enviar la postulación.");
+        boton.textContent = "Postulación enviada";
+    } catch (error) {
+        alert(error.message);
+        boton.disabled = false;
+    }
 };

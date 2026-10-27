@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis postulaciones - Hay cupo</title>
+    <link rel="stylesheet" href="/static_principal/estilo_HayCupo.css">
+    <link rel="stylesheet" href="/Iconos/sidebar.css">
+    <link rel="stylesheet" href="/static_principal/PublicacionesU/mis_publicaciones.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+    <div id="fondo-menu" class="fondo-oscuro"></div>
+    <nav id="menu-lateral" class="sidebar">
+        <div class="sidebar-logo">
+            <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
+            <h2>Roomies</h2>
+            <button id="btn-cerrar-menu" aria-label="Cerrar menú" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="/inicio"><img src="/Iconos/casa.webp" alt="Inicio" class="icono"> Inicio</a></li>
+            <li><a href="/mis-publicaciones"><img src="/Iconos/icono_publicaciones.webp" alt="Mis publicaciones" class="icono"> Mis publicaciones</a></li>
+            <li class="activo"><a href="/mis-postulaciones"><img src="/Iconos/icono_publicaciones.webp" alt="Mis postulaciones" class="icono"> Mis postulaciones</a></li>
+            <li><a href="/perfil"><img src="/Iconos/icono_perfil.webp" alt="Perfil" class="icono"> Perfil</a></li>
+        </ul>
+    </nav>
+    <header class="header-morado">
+        <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+            <i class="fa-solid fa-house" aria-hidden="true"></i>
+            <h1>¿Hay cupo?</h1>
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div id="perfil-usuario" style="display: flex; align-items: center; gap: 10px;">
+                <span id="avatar-letra" class="avatar-letra">?</span>
+                <span id="nombre-usuario-nav">Usuario</span>
+            </div>
+        </div>
+    </header>
+    <main class="panel-listado">
+        <section class="panel-crud">
+            <div class="encabezado-listado">
+                <div>
+                    <h2>Mis postulaciones</h2>
+                    <p>Revisa el estado de tus postulaciones a publicaciones.</p>
+                </div>
+                <a class="enlace-primario" href="/inicio">Explorar publicaciones</a>
+            </div>
+            <div class="tabla-contenedor">
+                <table class="tabla-crud">
+                    <thead>
+                        <tr>
+                            <th>Publicación</th>
+                            <th>Ubicación</th>
+                            <th>Precio</th>
+                            <th>Publicado por</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-mis-postulaciones">
+                        <tr><td colspan="7" class="mensaje-tabla">Cargando tus postulaciones...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <script src="/static_principal/HayCupo.js"></script>
+    <script src="/static_principal/PublicacionesU/MisPostulaciones.js"></script>
+</body>
+</html>
