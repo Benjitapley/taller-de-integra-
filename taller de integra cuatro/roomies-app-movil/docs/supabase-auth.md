@@ -1,6 +1,6 @@
 # Supabase Auth: preparación móvil
 
-Responsable: Gustavo Martínez. Tareas: M4-A02, M4-A03 y M4-A04.
+Responsable: Gustavo Martínez. Tareas: M4-A02, M4-A03, M4-A04 y M4-A05.
 
 ## Proyecto de pruebas y proyecto compartido
 
@@ -45,7 +45,7 @@ clave publishable. No colocar contraseña de BD, claves secret ni service_role.
 ## Qué prepara M4-A02
 
 - `src/lib/supabase.ts` mantiene una instancia única y valida la configuración.
-- `getSupabaseClient()` entrega esa instancia a los futuros servicios de Auth.
+- `getSupabaseClient()` entrega esa instancia a los servicios de Auth.
 - En Android/iOS, AsyncStorage guarda la sesión; en web se usa el almacenamiento
   del SDK. AsyncStorage no es una bóveda cifrada: esta elección sigue la guía de
   React Native de Supabase y deberá revisarse si cambia el requisito de almacenamiento.
@@ -57,8 +57,8 @@ clave publishable. No colocar contraseña de BD, claves secret ni service_role.
   de correo y sus enlaces requieren definir el flujo en las tareas de registro.
 
 La preparación de M4-A02 no sustituye por sí sola la autenticación simulada.
-M4-A04 conecta el registro. El login y la restauración del estado visual siguen
-pendientes en M4-A05 y M4-A06, respectivamente.
+M4-A04 conecta el registro y M4-A05 conecta login/logout. La restauración del
+estado visual al abrir o recargar la app sigue pendiente en M4-A06.
 
 ## Qué define M4-A03
 
@@ -84,15 +84,14 @@ El perfil se obtendrá desde la API de TI2 y no se inventará al crear una sesi�
 ## Comprobar desde Expo
 
 Con URL y clave reales, abrir Expo y confirmar que la instancia inicializa sin
-errores. Después, al conectar M4-A04-M4-A06, comprobar registro con confirmación,
-login, logout y sesión tras reiniciar en dispositivo. Una comprobación de tipos
+errores. Comprobar registro con confirmación, login y logout; al conectar M4-A06,
+comprobar también sesión tras reiniciar en dispositivo. Una comprobación de tipos
 o un bundle web no acreditan una sesión real ni persistencia nativa.
 
 Después de configurar `.env.local`, ejecutar `npx expo start` desde la raíz móvil
 y abrir la app en Expo Go/dispositivo o web. El layout inicializa el cliente
 cuando existen ambas variables. No hay una pantalla nueva ni un aviso visual de
-conexión. El registro real se incorporó en M4-A04; el login continúa utilizando
-el mock hasta M4-A05.
+conexión. El registro real se incorporó en M4-A04 y el login/logout real en M4-A05.
 
 ## M4-A04: registro real y confirmación
 
@@ -133,10 +132,8 @@ y muestra el resultado sin registrarlos en consola. Solo admite enlaces de regis
 contraseña y OAuth necesitan sus propios flujos. Una visita sin enlace válido
 no se anuncia como confirmación correcta.
 
-La confirmación puede iniciar una sesión real. **El login de la pantalla /login
-sigue siendo de demostración hasta M4-A05**, por lo que las cuentas nuevas todavía
-no pueden entrar mediante esa pantalla. `cerrarSesion` ya puede cerrar una sesión
-real obtenida desde el registro; falta integrar el flujo completo de M4-A05.
+La confirmación puede iniciar una sesión real. Desde M4-A05, la pantalla `/login`
+también inicia sesión con Supabase y el botón al final de Perfil cierra la sesión actual.
 La sincronización al recargar/abrir la app corresponde a M4-A06. El avatar, perfil
 y publicaciones visibles siguen siendo mocks independientes de Auth.
 
@@ -269,11 +266,101 @@ Las dos comprobaciones pendientes de esta sesión quedan resueltas: M4-A04 está
 implementada y validada manualmente en **web y el proyecto personal**, lista para
 revisión y commit. La validación funcional en Android/iOS y la coordinación del
 proyecto compartido con TI2 siguen sin acreditarse con esta evidencia de web.
-El login de M4-A05 y la restauración de M4-A06 corresponden a sus propias tareas.
+Esta evidencia de M4-A04 no acredita el login/logout de M4-A05 ni la restauración
+de M4-A06, que tienen comprobaciones independientes.
 
 La limpieza observada corresponde a la barra de direcciones y al estado del router.
 La captura del historial del navegador todavía muestra la URL original de entrada;
 no se acredita que esa limpieza elimine registros del historial global del navegador.
+
+## M4-A05: login y logout reales
+
+`authService` utiliza `auth.signInWithPassword()` y `auth.signOut({ scope: "local" })`
+directamente con Supabase Auth, según TI2 AUTH-01. No interviene FastAPI. No se
+necesitan nuevas tablas, migraciones, proveedores ni configuración de correo para
+esta tarea; se utiliza una cuenta creada y confirmada en el mismo proyecto de A04.
+
+- El correo se recorta y normaliza a minúsculas. La contraseña se envía tal como
+  se escribió: la política de creación de contraseñas no se aplica al login de
+  cuentas existentes.
+- Los resultados de login/logout están tipados en `src/types/Auth.ts`. El servicio
+  traduce errores conocidos de credenciales, correo sin confirmar, límites y conexión
+  a mensajes para la pantalla, sin mostrar detalles internos.
+- `useAuth` conserva únicamente la sesión real. `estaAutenticado` depende de ella
+  y `usuarioActual` contiene su identidad, con `perfil: null` hasta integrar TI2.
+- Se elimina `src/mocks/auth.ts`: sus credenciales y perfiles ficticios ya no
+  intervienen en autenticación. Los mocks de las pantallas permanecen independientes.
+- Login muestra carga, bloquea envíos simultáneos y limpia la contraseña al entrar.
+  Google y recuperación de contraseña siguen pendientes; sus controles lo indican
+  y no simulan una sesión.
+- El botón **Cerrar sesión** está al final de Perfil, ubicación acordada con Gustavo.
+  Utiliza alcance `local`, conservando las demás sesiones de la cuenta.
+- Si falla el cierre, se consulta si el SDK retiró la sesión local. Si todavía
+  existe, se muestra el error en Perfil. Si ya no existe, se limpia el contexto y
+  se vuelve al login con un aviso de que no se pudo confirmar el cierre remoto.
+  No se anuncia un cierre remoto correcto ante ese error.
+- `Stack.Protected` limita las pestañas y `convivencia/tareas` a una sesión del
+  contexto. Al cerrar sesión se retiran esas pantallas de la navegación; volver
+  atrás no debe reabrirlas. Este control de UI no sustituye la autorización de la API.
+
+El alcance local revoca la sesión actual según el proveedor; un access token ya
+emitido puede seguir siendo válido hasta su vencimiento. No equivale a cerrar
+todas las sesiones ni a revocar inmediatamente todos los JWT de la cuenta.
+
+### Comprobación manual de A05
+
+Desde la raíz móvil, ejecutar `npx expo start --web --port 8081` y abrir `/login`.
+Usar la cuenta real y confirmada del proyecto personal, sin borrarla ni volver a
+registrarla. No compartir su contraseña ni los tokens.
+
+1. Probar campos vacíos: se muestra el mensaje de campos requeridos.
+2. Probar una contraseña incorrecta: permanece en login y muestra el error del
+   proveedor. Las antiguas credenciales de Sofía no deben abrir una sesión, salvo
+   que alguien haya creado realmente esa cuenta en el proyecto.
+3. Usar las credenciales correctas: se muestra carga y luego se abren las pestañas.
+   En Supabase, `last_sign_in_at` permite corroborar un nuevo inicio de sesión.
+4. Ir a Perfil y pulsar **Cerrar sesión** al final: vuelve a `/login`.
+5. Probar Atrás y abrir `/perfil` directamente: no debe mostrarse la pantalla
+   protegida sin una nueva sesión. Después comprobar que se puede iniciar sesión otra vez.
+6. Para observar el error de conexión, cerrar sesión con conexión, desconectar la
+   red y probar un login. Debe mostrar error y permitir reintentar al recuperar la red.
+
+El caso de correo sin confirmar puede comprobarse con una cuenta de pruebas ya
+creada que siga pendiente de confirmación. No hace falta eliminar la cuenta confirmada.
+La conservación de otra sesión puede comprobarse con un segundo navegador/perfil
+independiente, cuando esté disponible la restauración de M4-A06.
+
+**Límite entre tareas:** A02 configura la persistencia del SDK, pero A05 no carga
+esa sesión en el contexto al arrancar ni suscribe cambios externos de Auth. Una
+recarga completa puede devolver al login hasta M4-A06. Tampoco se obtiene todavía
+el perfil Roomies: seguir viendo Sofía no significa que las credenciales sean simuladas.
+
+El 27 de octubre de 2026, Gustavo comprobó A05 en web con su cuenta real de A04 y reportó:
+
+- Una contraseña incorrecta muestra error y no permite entrar.
+- Las credenciales correctas permiten iniciar sesión y abrir el inicio.
+- **Cerrar sesión** al final de Perfil regresa al login.
+- Pulsar Atrás después del cierre no reabre Perfil.
+
+Estos resultados cubren los criterios funcionales de login/logout de A05 en web.
+La devolución al login tras recargar sigue siendo un pendiente de A06. No se dan
+por probados los casos adicionales de red, correo sin confirmar o dos navegadores
+por estos cuatro resultados.
+
+Gustavo también reportó que su teléfono no abre la app: la captura indica Expo Go
+para SDK 58 y proyecto SDK 57. `package.json` conserva Expo `~57.0.24`; A05 no cambia
+dependencias. Falta repetir el recorrido en un dispositivo/emulador compatible,
+como pide el criterio general del backlog para tareas móviles. Para Android se
+puede instalar la versión compatible desde
+[Expo Go para SDK 57](https://expo.dev/go?sdkVersion=57&platform=android&device=true),
+reiniciar el servidor y volver a escanear el QR. No se migra el SDK como parte de A05.
+
+En la misma revisión repitió el registro con un correo ya confirmado y observó
+**Revisa tu correo**. La respuesta genérica de A04 contempla que Supabase oculte
+la existencia de una cuenta; no acredita una nueva alta ni un nuevo envío de correo.
+El texto del cuerpo ya distingue ese caso y ofrece ir a iniciar sesión. Mejorar
+el título/subtítulo para que no sugieran siempre una confirmación pendiente es un
+ajuste de usabilidad de A04, no una función de login/logout pendiente de A05.
 
 ## Comprobaciones de código realizadas
 
@@ -301,8 +388,8 @@ comprobación de solo lectura obtuvo:
 Esa comprobación se ejecutó desde Node, no desde un dispositivo. Para acreditar
 el criterio completo de M4-A02 queda observar la inicialización en Expo/dispositivo.
 M4-A03 tiene implementado el contrato de tipos. M4-A04 empieza a utilizarlo en
-el hook para las sesiones del registro; el login y la restauración siguen
-pendientes en M4-A05 y M4-A06.
+el hook para las sesiones del registro; M4-A05 lo utiliza para login/logout y
+M4-A06 conectará la restauración.
 
 El 26 de octubre de 2026, durante M4-A04:
 
@@ -312,6 +399,20 @@ El 26 de octubre de 2026, durante M4-A04:
 - Compilación web: exportó las rutas, incluida `/auth/callback`.
 
 Estas comprobaciones no acreditan entrega del correo ni ejecución del hook remoto.
+
+El 27 de octubre de 2026, durante M4-A05:
+
+- `npx tsc --noEmit`: sin errores.
+- `npx expo lint`: sin errores ni advertencias; se unificaron los imports de
+  `Publicacion` y `TipoPublicacion` en Perfil.
+- `npx expo export --platform web --output-dir dist`: compilación y exportación
+  estática correctas, incluyendo login, Perfil y callback.
+- No quedan referencias a `credencialesMock`, `credencialesDemo` ni `mocks/auth`
+  en el código de la aplicación.
+- No se hicieron peticiones de login/logout contra el proyecto personal durante
+  estas comprobaciones ni se añadieron credenciales al repositorio.
+
+La compilación no acredita los recorridos funcionales descritos en la lista de A05.
 
 ## Referencias
 
@@ -325,3 +426,7 @@ Estas comprobaciones no acreditan entrega del correo ni ejecución del hook remo
 - [Permisos y errores de Auth Hooks](https://supabase.com/docs/guides/auth/auth-hooks)
 - [Política de contraseñas](https://supabase.com/docs/guides/auth/password-security)
 - [Envío de correo y SMTP](https://supabase.com/docs/guides/auth/auth-smtp)
+- [Login con signInWithPassword](https://supabase.com/docs/reference/javascript/auth-signinwithpassword)
+- [Cierre de sesión y alcances](https://supabase.com/docs/reference/javascript/auth-signout)
+- [Códigos de error de Auth](https://supabase.com/docs/guides/auth/debugging/error-codes)
+- [Rutas protegidas de Expo Router](https://docs.expo.dev/router/advanced/protected/)

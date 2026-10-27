@@ -2,11 +2,89 @@ import { isAuthError, isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 import type {
   DatosRegistro,
+  ResultadoCierreSesion,
   ResultadoConfirmacion,
+  ResultadoInicioSesion,
   ResultadoRegistro,
 } from "@/types/Auth";
 import { REQUISITOS_CONTRASENA, validarContrasena } from "@/utils/contrasena";
 import { validarFechaNacimiento } from "@/utils/fechaNacimiento";
+
+function mensajeErrorSesion(error: unknown, accion: "entrar" | "salir"): string {
+  if (isAuthError(error)) {
+    switch (error.code) {
+      case "invalid_credentials":
+      case "user_not_found":
+        return "El correo o la contraseña no son correctos.";
+      case "email_not_confirmed":
+        return "Confirma tu correo antes de iniciar sesión. Revisa el mensaje de confirmación que recibiste.";
+      case "email_address_invalid":
+      case "validation_failed":
+        return "Revisa el correo y los datos que ingresaste.";
+      case "over_request_rate_limit":
+        return "Se alcanzó el límite de intentos. Espera un momento y vuelve a intentarlo.";
+      case "email_provider_disabled":
+      case "provider_disabled":
+        return "El acceso por correo no está disponible en este momento.";
+      case "user_banned":
+        return "No se puede iniciar sesión con esta cuenta.";
+    }
+  }
+  if (isAuthRetryableFetchError(error) || error instanceof TypeError) {
+    return "No pudimos comunicarnos con el servicio. Revisa tu conexión e inténtalo otra vez.";
+  }
+  return accion === "entrar"
+    ? "No pudimos iniciar sesión. Inténtalo nuevamente."
+    : "No pudimos confirmar el cierre de sesión. Inténtalo nuevamente.";
+}
+
+/** M4-A05: el proveedor valida las credenciales, sin consultar usuarios de prueba. */
+export async function iniciarSesionSupabase(
+  email: string,
+  password: string,
+): Promise<ResultadoInicioSesion> {
+  if (!email.trim() || !password) {
+    return { exito: false, error: "Ingresa tu correo y contraseña." };
+  }
+  try {
+    const { data, error } = await getSupabaseClient().auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      // No recortar ni exigir la política del registro a contraseñas existentes.
+      password,
+    });
+    if (error) return { exito: false, error: mensajeErrorSesion(error, "entrar") };
+    if (!data.session) {
+      return { exito: false, error: "El servicio no entregó una sesión válida. Vuelve a intentarlo." };
+    }
+    return { exito: true, sesion: data.session };
+  } catch (error) {
+    return { exito: false, error: mensajeErrorSesion(error, "entrar") };
+  }
+}
+
+/** M4-A05: cerrar la sesión actual, conservando las de otros dispositivos. */
+export async function cerrarSesionSupabase(): Promise<ResultadoCierreSesion> {
+  try {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (!error) return { exito: true };
+
+    // El SDK puede haber retirado los tokens locales pese a fallar la petición.
+    // Consultarlo evita mantener la UI autenticada cuando ya no existe sesión.
+    const { data, error: errorSesion } = await supabase.auth.getSession();
+    return {
+      exito: false,
+      error: mensajeErrorSesion(error, "salir"),
+      sesionLocalCerrada: !errorSesion && data.session === null,
+    };
+  } catch (error) {
+    return {
+      exito: false,
+      error: mensajeErrorSesion(error, "salir"),
+      sesionLocalCerrada: false,
+    };
+  }
+}
 
 /** Solo traduce errores conocidos; evita mostrar detalles internos del servidor. */
 function mensajeErrorRegistro(error: unknown): string {
