@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/Iconos/sidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
-<body>
+<body class="pagina-inicio">
 
     <!-- 1. Overlay oscuro del menú lateral -->
     <div id="fondo-menu" class="fondo-oscuro"></div>
@@ -72,52 +72,74 @@
 
     <!-- 4. Contenido Principal -->
     <main>
-        <div class="consulta">
-            <h2>Consulta de cupos</h2>
-            <p>Busca la ubicación que más te interese</p>
+        <section class="consulta" aria-labelledby="titulo-consulta">
+            <div class="consulta-intro">
+                <span class="consulta-etiqueta">ROOMIES · CUPOS DISPONIBLES</span>
+                <h2 id="titulo-consulta">Encuentra tu próximo hogar</h2>
+                <p>Explora espacios para compartir y encuentra uno que se adapte a ti.</p>
+            </div>
 
             <form id="form-busqueda">
                 <div class="busqueda">
-                    <label>Ubicación</label>
+                    <label for="filtro-ubicacion">¿Dónde quieres vivir?</label>
                     <div class="barra-busqueda">
-                        <input type="text" id="filtro-ubicacion" placeholder="Ej: Temuco">
-                        <button type="button" id="btn-consultar">Consultar</button>
+                        <div class="campo-ubicacion">
+                            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                            <input type="text" id="filtro-ubicacion" placeholder="Ciudad o comuna, por ejemplo Temuco">
+                        </div>
+                        <button type="button" id="btn-consultar">
+                            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                            Buscar cupos
+                        </button>
                     </div>
                 </div>
 
-                <div class="filtros">
-                    <div class="filtro">
-                        <label>¿Para cuántas personas?</label>
-                        <select id="filtro-personas">
-                            <option value="">Cualquiera</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3 o más</option>
-                        </select>
+                <div class="filtros-panel">
+                    <div class="encabezado-filtros">
+                        <h3>Afina tu búsqueda</h3>
+                        <p>Selecciona las características que prefieres.</p>
                     </div>
-                    <div class="filtro">
-                        <label>Casa o departamento</label>
-                        <select id="filtro-tipo">
-                            <option value="">Cualquiera</option>
-                            <option value="casa">Casa</option>
-                            <option value="departamento">Departamento</option>
-                        </select>
-                    </div>
-                    <div class="filtro">
-                        <label>¿Tiene mascotas?</label>
-                        <select id="filtro-mascotas">
-                            <option value="">Cualquiera</option>
-                            <option value="si">Sí</option>
-                            <option value="no">No</option>
-                        </select>
+                    <div class="filtros">
+                        <div class="filtro">
+                            <label for="filtro-personas">Personas</label>
+                            <select id="filtro-personas">
+                                <option value="">Cualquier cantidad</option>
+                                <option value="1">1 persona</option>
+                                <option value="2">2 personas</option>
+                                <option value="3">3 o más personas</option>
+                            </select>
+                        </div>
+                        <div class="filtro">
+                            <label for="filtro-tipo">Tipo de vivienda</label>
+                            <select id="filtro-tipo">
+                                <option value="">Casa o departamento</option>
+                                <option value="casa">Casa</option>
+                                <option value="departamento">Departamento</option>
+                            </select>
+                        </div>
+                        <div class="filtro">
+                            <label for="filtro-mascotas">Mascotas</label>
+                            <select id="filtro-mascotas">
+                                <option value="">Indiferente</option>
+                                <option value="si">Se aceptan</option>
+                                <option value="no">No se aceptan</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </form>
-        </div>
+        </section>
 
-        <!-- Contenedor dinámico de las tarjetas -->
-        <div id="contenedor-publicaciones" class="espacio-futuro" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 24px;">
-        </div>
+        <section class="listado" aria-labelledby="titulo-listado">
+            <div class="encabezado-listado">
+                <div>
+                    <span class="listado-etiqueta">EXPLORA</span>
+                    <h2 id="titulo-listado">Cupos publicados</h2>
+                    <p>Opciones disponibles para encontrar tu próximo espacio.</p>
+                </div>
+            </div>
+            <div id="contenedor-publicaciones" class="espacio-futuro" aria-live="polite"></div>
+        </section>
     </main>
 
     <footer>

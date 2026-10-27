@@ -359,3 +359,227 @@ header {
     padding: 4px;
     color: #382384;
 }
+
+/* Estilos exclusivos de la página de inicio */
+.pagina-inicio main {
+  max-width: 1180px;
+  padding-top: 40px;
+  padding-bottom: 48px;
+}
+
+.pagina-inicio .consulta-intro {
+  margin-bottom: 24px;
+}
+
+.pagina-inicio .consulta-etiqueta,
+.pagina-inicio .listado-etiqueta {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #684bb2;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+}
+
+.pagina-inicio .consulta-intro h2 {
+  margin-bottom: 8px;
+  color: #29243e;
+  font-size: clamp(28px, 4vw, 38px);
+}
+
+.pagina-inicio .consulta-intro p,
+.pagina-inicio .encabezado-listado p,
+.pagina-inicio .encabezado-filtros p {
+  margin: 0;
+  color: #767086;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.pagina-inicio form {
+  gap: 14px;
+}
+
+.pagina-inicio .busqueda,
+.pagina-inicio .filtros-panel {
+  padding: 22px;
+  border: 1px solid #e8e3f1;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 26px #3927750b;
+}
+
+.pagina-inicio .busqueda label,
+.pagina-inicio .filtro label {
+  margin-bottom: 9px;
+  color: #39334e;
+}
+
+.pagina-inicio .barra-busqueda {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.pagina-inicio .campo-ubicacion {
+  position: relative;
+}
+
+.pagina-inicio .campo-ubicacion i {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  color: #7557c8;
+  transform: translateY(-50%);
+}
+
+.pagina-inicio .campo-ubicacion input {
+  min-height: 50px;
+  padding-left: 44px;
+  border-color: #e2ddef;
+  background: #fbfaff;
+}
+
+.pagina-inicio #btn-consultar {
+  display: inline-flex;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: 9px;
+}
+
+.pagina-inicio .filtros-panel {
+  padding: 20px 22px 22px;
+}
+
+.pagina-inicio .encabezado-filtros {
+  margin-bottom: 16px;
+}
+
+.pagina-inicio .encabezado-filtros h3 {
+  margin: 0 0 4px;
+  color: #39334e;
+  font-size: 16px;
+}
+
+.pagina-inicio .encabezado-filtros p {
+  font-size: 13px;
+}
+
+.pagina-inicio .filtros {
+  gap: 12px;
+}
+
+.pagina-inicio .filtro {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pagina-inicio .filtro select {
+  min-height: 48px;
+  border-radius: 9px;
+  background-color: #fbfaff;
+}
+
+.pagina-inicio .listado {
+  margin-top: 38px;
+}
+
+.pagina-inicio .encabezado-listado {
+  margin-bottom: 18px;
+}
+
+.pagina-inicio .encabezado-listado h2 {
+  margin-bottom: 6px;
+  font-size: clamp(22px, 3vw, 28px);
+}
+
+.pagina-inicio .encabezado-listado p {
+  font-size: 14px;
+}
+
+.pagina-inicio .espacio-futuro,
+.pagina-inicio .grid-publicaciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 20px;
+  min-height: 0;
+  margin-top: 0;
+}
+
+.pagina-inicio .tarjeta-mockup {
+  min-height: 230px;
+  border-color: #e9e5f2;
+  border-radius: 16px;
+  box-shadow: 0 5px 18px #3020600c;
+}
+
+.pagina-inicio .tarjeta-mockup:hover {
+  box-shadow: 0 12px 28px #30206018;
+}
+
+.pagina-inicio .tarjeta-contenido {
+  padding: 22px;
+}
+
+.pagina-inicio .tarjeta-icono-cat {
+  border-radius: 12px;
+}
+
+.pagina-inicio #contenedor-publicaciones > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 28px 20px;
+  border: 1px dashed #d8d0e9;
+  border-radius: 14px;
+  background: #fff;
+  color: #767086 !important;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .pagina-inicio main {
+    padding-top: 28px;
+    padding-bottom: 36px;
+  }
+
+  .pagina-inicio .filtros {
+    grid-template-columns: 1fr;
+  }
+
+  .pagina-inicio .tarjeta-mockup:not(.sin-imagen) {
+    min-height: 210px;
+  }
+}
+
+@media (max-width: 600px) {
+  .pagina-inicio .busqueda,
+  .pagina-inicio .filtros-panel {
+    padding: 18px;
+  }
+
+  .pagina-inicio .barra-busqueda {
+    grid-template-columns: 1fr;
+  }
+
+  .pagina-inicio #btn-consultar {
+    width: 100%;
+  }
+
+  .pagina-inicio .grid-publicaciones,
+  .pagina-inicio .espacio-futuro {
+    grid-template-columns: 1fr;
+  }
+
+  .pagina-inicio .tarjeta-mockup:not(.sin-imagen) {
+    flex-direction: column;
+  }
+
+  .pagina-inicio .tarjeta-img {
+    width: 100%;
+    min-height: 180px;
+  }
+}
