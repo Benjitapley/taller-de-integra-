@@ -135,16 +135,43 @@ async def buscar_ubicaciones(texto: str = Query(min_length=3, max_length=250)):
 
 # OBTENER TODAS LAS PUBLICACIONES (Para el inicio)
 @app.get("/api/publicaciones")
-def obtener_publicaciones():
+def obtener_publicaciones(
+    consulta: Annotated[str | None, Query(max_length=250)] = None,
+    personas: Annotated[int | None, Query(ge=1)] = None,
+    tipo: Annotated[Literal["casa", "departamento"] | None, Query()] = None,
+    mascotas: Annotated[Literal["si", "no"] | None, Query()] = None,
+):
     try:
         with conectar() as conexion:
-            registros = conexion.execute("""
+            filtros = []
+            parametros = []
+
+            if consulta and consulta.strip():
+                filtros.append("p.ubicacion ILIKE %s")
+                parametros.append(f"%{consulta.strip()}%")
+            if personas is not None:
+                if personas == 3:
+                    filtros.append("p.cupos_totales >= %s")
+                    parametros.append(3)
+                else:
+                    filtros.append("p.cupos_totales = %s")
+                    parametros.append(personas)
+            if tipo:
+                filtros.append("p.tipo_vivienda = %s")
+                parametros.append(tipo)
+            if mascotas:
+                filtros.append("p.mascota = %s")
+                parametros.append(mascotas)
+
+            where = f"WHERE {' AND '.join(filtros)}" if filtros else ""
+            registros = conexion.execute(f"""
                 SELECT p.id_publicacion, p.titulo, p.precio, p.ubicacion, p.cupos_totales, 
                        p.tipo_vivienda, i.url as imagen_url, p.categoria, p.descripcion, p.mascota, p.contenido
                 FROM haycupo.publicacion p
                 LEFT JOIN haycupo.imagen_publicacion i ON p.id_publicacion = i.id_publicacion
+                {where}
                 ORDER BY p.id_publicacion DESC
-            """).fetchall()
+            """, parametros).fetchall()
             
             publicaciones = []
             for row in registros:
@@ -274,30 +301,78 @@ def crear_publicacion(
 @app.put("/api/publicaciones/{id_pub}")
 def actualizar_publicacion(
     id_pub: int,
-    titulo: Annotated[str, Form()], 
-    categoria: Annotated[str, Form()],
-    ubicacion: Annotated[str, Form()], 
-    precio: Annotated[Decimal, Form()],
-    tipo_vivienda: Annotated[str, Form()], 
-    descripcion: Annotated[str, Form()],
-    tipo: Annotated[str, Form()],
-    cupos_totales: Annotated[int, Form()], 
+    titulo: Annotated[str, Form(min_length=1, max_length=200)],
+    categoria: Annotated[Literal["busco", "ofrezco"], Form()],
+    ubicacion: Annotated[str, Form(min_length=1, max_length=250)],
+    precio: Annotated[Decimal, Form(ge=0, max_digits=14, decimal_places=2)],
+    tipo_vivienda: Annotated[Literal["casa", "departamento", "habitacion"], Form()],
+    descripcion: Annotated[str, Form(min_length=1, max_length=5000)],
+    tipo: Annotated[Literal["Arrendador", "Compartida"], Form()],
+    cupos_totales: Annotated[int, Form(ge=1, le=2147483647)],
     mascota: Annotated[str, Form()] = "no",
     permitir_comentarios: Annotated[str, Form()] = "false",
     imagen: Annotated[UploadFile | None, File()] = None,
     id_usuario: int = Depends(autor_de_prueba)
 ):
+    texto_desc = descripcion.strip()
+    if not all([titulo.strip(), ubicacion.strip(), texto_desc]):
+        raise HTTPException(status_code=422, detail="Completa el título, ubicación y descripción.")
+
+    permitir = permitir_comentarios.lower() == "true"
+    nombre_imagen = None
+    ruta_imagen = None
+
+    if imagen and imagen.filename:
+        limite = 5 * 1024 * 1024
+        contenido_img = imagen.file.read(limite + 1)
+        if len(contenido_img) > limite:
+            raise HTTPException(status_code=413, detail="La imagen debe pesar como máximo 5 MB.")
+        try:
+            with Image.open(BytesIO(contenido_img)) as foto:
+                extensiones = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}
+                extension = extensiones.get(foto.format)
+                if not extension:
+                    raise HTTPException(status_code=422, detail="Usa una imagen JPG, PNG o WEBP.")
+                foto.verify()
+        except HTTPException:
+            raise
+        except (UnidentifiedImageError, OSError):
+            raise HTTPException(status_code=422, detail="El archivo no es válido.") from None
+
+        nombre_imagen = uuid4().hex + extension
+        ruta_imagen = IMAGENES / nombre_imagen
+
     try:
         with conectar() as conexion:
             conexion.execute("""
                 UPDATE haycupo.publicacion 
-                SET titulo=%s, categoria=%s, ubicacion=%s, precio=%s, 
-                    tipo_vivienda=%s, descripcion=%s, cupos_totales=%s, mascota=%s, contenido=%s
+                SET titulo=%s, tipo=%s, categoria=%s, ubicacion=%s, precio=%s,
+                    tipo_vivienda=%s, descripcion=%s, cupos_totales=%s, mascota=%s,
+                    permitir_comentarios=%s, contenido=%s
                 WHERE id_publicacion=%s AND id_usuario=%s
-            """, (titulo, categoria, ubicacion, precio, tipo_vivienda, descripcion, cupos_totales, mascota, descripcion, id_pub, id_usuario))
+            """, (titulo.strip(), tipo, categoria, ubicacion.strip(), precio, tipo_vivienda,
+                  texto_desc, cupos_totales, mascota, permitir, texto_desc, id_pub, id_usuario))
+
+            if ruta_imagen:
+                ruta_imagen.write_bytes(contenido_img)
+                imagen_actualizada = conexion.execute(
+                    "UPDATE haycupo.imagen_publicacion SET url=%s WHERE id_publicacion=%s AND orden=0",
+                    (f"/imagenes/{nombre_imagen}", id_pub),
+                )
+                if imagen_actualizada.rowcount == 0:
+                    conexion.execute(
+                        "INSERT INTO haycupo.imagen_publicacion (id_publicacion, url, orden) VALUES (%s, %s, 0)",
+                        (id_pub, f"/imagenes/{nombre_imagen}"),
+                    )
         return {"mensaje": "Publicación actualizada correctamente"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="No se pudo actualizar la base de datos")
+    except HTTPException:
+        if ruta_imagen:
+            ruta_imagen.unlink(missing_ok=True)
+        raise
+    except Exception:
+        if ruta_imagen:
+            ruta_imagen.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="No se pudo actualizar la base de datos") from None
 
 
 # ELIMINAR UNA PUBLICACIÓN

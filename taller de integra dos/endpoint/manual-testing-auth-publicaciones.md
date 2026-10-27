@@ -72,6 +72,8 @@ Este documento sirve como guia practica para realizar la **ejecucion de pruebas 
 | **CP-PUB-04** | Carga de imagen superando tamano maximo (>5MB) | Formulario de creacion abierto.                | 1. Seleccionar una imagen mayor a 5 MB.<br>2. Enviar formulario.                                                                                                                                      | Error HTTP 413 indicando "La imagen debe pesar como maximo 5 MB".                              | `[ ] PASS` / `[ ] FAIL` |
 | **CP-PUB-05** | Autocompletado de Ubicacion                    | `GEOAPIFY_API_KEY` configurada en el servidor. | 1. Escribir al menos 3 caracteres en la ubicacion.<br>2. Observar las opciones desplegadas.                                                                                                           | Se despliega la lista de sugerencias obtenida desde `/api/ubicaciones`.                        | `[ ] PASS` / `[ ] FAIL` |
 | **CP-PUB-06** | Intento de publicacion sin autor autenticado   | Servidor con `MODO_PRUEBA_LOCAL=0`.            | 1. Enviar publicacion sin credenciales ni autor de prueba configurado.                                                                                                                                | Error HTTP 503 indicando falta de integracion de login.                                        | `[ ] PASS` / `[ ] FAIL` |
+| **CP-PUB-07** | Filtrado de publicaciones desde FastAPI         | Tener publicaciones con ubicaciones, cupos, tipos de vivienda y mascotas distintos. | 1. Abrir el inicio.<br>2. Combinar ubicación, cantidad de personas, tipo y mascotas.<br>3. Consultar y luego limpiar los filtros. | El listado coincide con todos los filtros; la consulta se realiza en `/api/publicaciones` y al limpiar se muestran nuevamente todas. | `[ ] PASS` / `[ ] FAIL` |
+| **CP-PUB-08** | Guardado y edición de publicación con imagen    | Sesión activa y publicación propia disponible. | 1. Crear publicación con imagen y mascotas habilitadas.<br>2. Verificarla en el inicio.<br>3. Editarla y cambiar título, imagen y comentarios. | La publicación aparece en el listado y los cambios, incluida la imagen, quedan guardados en FastAPI. | `[ ] PASS` / `[ ] FAIL` |
 
 ---
 
@@ -94,6 +96,8 @@ Marcar con `[X]` cada prueba realizada durante la sesion de QA:
 - [ ] **CP-PUB-04**: Bloqueo de imagenes mayores a 5 MB
 - [ ] **CP-PUB-05**: Funcionamiento del autocompletado de ubicacion
 - [ ] **CP-PUB-06**: Proteccion de endpoint sin usuario autenticado
+- [ ] **CP-PUB-07**: Filtros conectados al listado de FastAPI
+- [ ] **CP-PUB-08**: Creacion y edicion de publicaciones con imagen
 
 ---
 

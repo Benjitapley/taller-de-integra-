@@ -122,44 +122,42 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     };
 
-    if (contenedorPubs) {
+    async function cargarPublicaciones(parametros = new URLSearchParams()) {
         try {
-            const respuesta = await fetch("/api/publicaciones");
+            const query = parametros.toString();
+            const respuesta = await fetch(query ? `/api/publicaciones?${query}` : "/api/publicaciones");
+            if (!respuesta.ok) {
+                throw new Error(`Error HTTP ${respuesta.status} al cargar publicaciones.`);
+            }
+
             window.todasLasPublicaciones = await respuesta.json();
             renderizarPublicaciones(window.todasLasPublicaciones);
         } catch (error) {
+            console.error("Error al cargar las publicaciones:", error);
             contenedorPubs.innerHTML = "<p style='color:red; grid-column: 1/-1;'>Error al cargar las publicaciones.</p>";
         }
     }
 
-    // 4. MOTOR DE FILTROS ACTUALIZADO A LAS VARIABLES DEL BACKEND
-    const btnConsultar = document.getElementById("btn-consultar");
-    if (btnConsultar) {
-        btnConsultar.addEventListener("click", () => {
-            const txtUbicacion = document.getElementById("filtro-ubicacion").value.toLowerCase().trim();
-            const valPersonas = document.getElementById("filtro-personas").value;
-            const valTipo = document.getElementById("filtro-tipo").value;
-            const valMascotas = document.getElementById("filtro-mascotas").value;
+    if (contenedorPubs) {
+        await cargarPublicaciones();
+    }
 
-            const filtradas = window.todasLasPublicaciones.filter(pub => {
-                const pubUbi = (pub.ubicacion || "").toLowerCase();
-                const coincideUbicacion = txtUbicacion === "" || pubUbi.includes(txtUbicacion);
-                
-                // Usando cupos_totales
-                const pubPersonas = String(pub.cupos_totales || "").trim();
-                const coincidePersonas = valPersonas === "" || (valPersonas === "3" ? Number(pubPersonas) >= 3 : pubPersonas === valPersonas);
-                
-                // Usando tipo_vivienda
-                const pubTipo = String(pub.tipo_vivienda || "").toLowerCase().trim();
-                const coincideTipo = valTipo === "" || pubTipo === valTipo;
-                
-                const pubMascotas = String(pub.mascota || "").toLowerCase().trim();
-                const coincideMascotas = valMascotas === "" || pubMascotas === valMascotas;
+    const formularioBusqueda = document.getElementById("form-busqueda");
+    if (formularioBusqueda) {
+        formularioBusqueda.addEventListener("submit", async (evento) => {
+            evento.preventDefault();
+            const parametros = new URLSearchParams();
+            const filtros = [
+                ["consulta", document.getElementById("filtro-ubicacion").value.trim()],
+                ["personas", document.getElementById("filtro-personas").value],
+                ["tipo", document.getElementById("filtro-tipo").value],
+                ["mascotas", document.getElementById("filtro-mascotas").value]
+            ];
 
-                return coincideUbicacion && coincidePersonas && coincideTipo && coincideMascotas;
+            filtros.forEach(([nombre, valor]) => {
+                if (valor) parametros.set(nombre, valor);
             });
-
-            renderizarPublicaciones(filtradas);
+            await cargarPublicaciones(parametros);
         });
     }
 });

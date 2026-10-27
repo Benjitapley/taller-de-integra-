@@ -55,6 +55,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         
         const mascota = formDataOriginal.get("mascota");
         if(mascota) formDataEnvio.append("mascota", mascota);
+        formDataEnvio.append(
+            "permitir_comentarios",
+            document.getElementById("comentarios").checked ? "true" : "false"
+        );
+
+        const imagen = formDataOriginal.get("imagen");
+        if (imagen instanceof File && imagen.size > 0) {
+            formDataEnvio.append("imagen", imagen);
+        }
 
         // Define si usas POST (crear) o PUT (actualizar)
         const url = idEdicion ? `/api/publicaciones/${idEdicion}` : "/api/publicaciones";
