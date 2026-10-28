@@ -18,7 +18,10 @@ export default function Modal({ open, onClose, title, children, drawer = false }
     return () => { dialog?.close(); document.body.style.overflow = previous; };
   }, [open]);
 
-  return <dialog ref={ref} className={`${styles.modal} ${drawer ? styles.drawer : ""}`} aria-labelledby={titleId} onCancel={(event) => { event.preventDefault(); onClose(); }} onClose={() => { if (open) onClose(); }} onKeyDown={(event) => {
+  return <dialog ref={ref} className={`${styles.modal} ${drawer ? styles.drawer : ""}`} aria-labelledby={titleId} onCancel={(event) => { event.preventDefault(); onClose(); }} onClose={(event) => {
+    // Strict Mode can queue a close event during effect cleanup, then reopen.
+    if (open && !event.currentTarget.open) onClose();
+  }} onKeyDown={(event) => {
     if (event.key !== "Tab") return;
     const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]')).filter((item) => item.tabIndex >= 0 && item.getClientRects().length > 0);
     const first = controls[0]; const last = controls[controls.length - 1];

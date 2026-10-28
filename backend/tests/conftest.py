@@ -103,7 +103,7 @@ class Connection:
             return Cursor()
         if q.startswith("select nombre, edad"):
             u = d.users.get(params[0])
-            return Cursor([(u["nombre"], 25, "Estudiante", "Ciudad", "Descripción", "Sobre mí", None)] if u else [])
+            return Cursor([(u["nombre"], u.get("edad", 25), u.get("ocupacion", "Estudiante"), u.get("ciudad", "Ciudad"), u.get("breve_descripcion", "Descripción"), u.get("sobre_mi", "Sobre mí"), u.get("foto_perfil"), u["verificado"])] if u else [])
         if q.startswith("select count(*)"):
             return Cursor([(0,)])
         if q.startswith("select id_publicacion from haycupo.publicacion"):
@@ -116,6 +116,11 @@ class Connection:
             d.publications[i] = params[0]
             return Cursor([(i,)])
         if q.startswith("update haycupo.usuario set edad"):
+            if params[-1] in d.users:
+                fields = ["edad", "ocupacion", "ciudad", "breve_descripcion", "sobre_mi"]
+                if "foto_perfil=%s" in q:
+                    fields.append("foto_perfil")
+                d.users[params[-1]].update(zip(fields, params[:-1]))
             return Cursor(rowcount=1 if params[-1] in d.users else 0)
         if q.startswith("delete from haycupo.imagen_publicacion"):
             d.images_deleted = True

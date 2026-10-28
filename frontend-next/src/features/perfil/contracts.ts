@@ -1,4 +1,4 @@
-/** Read-only web shape. No identity parameter, credentials or editing contract. */
+/** Public web shape. Identity always comes from the server session. */
 export type Profile = {
   nombre: string;
   edad: number | null;
@@ -8,4 +8,5 @@ export type Profile = {
   sobre_mi: string | null;
   foto_perfil: string | null;
   total_publicaciones: number;
+  verificado: boolean | null;
 };

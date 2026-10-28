@@ -361,7 +361,7 @@ def borrar_publicacion(id_pub: int, id_usuario: int = Depends(get_current_user))
 def obtener_perfil(id_usuario: int = Depends(get_current_user)):
     try:
         with conectar() as conexion:
-            user = conexion.execute("SELECT nombre, edad, ocupacion, ciudad, breve_descripcion, sobre_mi, foto_perfil FROM haycupo.usuario WHERE id_usuario = %s", (id_usuario,)).fetchone()
+            user = conexion.execute("SELECT nombre, edad, ocupacion, ciudad, breve_descripcion, sobre_mi, foto_perfil, verificado FROM haycupo.usuario WHERE id_usuario = %s", (id_usuario,)).fetchone()
             pubs = conexion.execute("SELECT COUNT(*) FROM haycupo.publicacion WHERE id_usuario = %s", (id_usuario,)).fetchone()[0]
             
             if not user:
@@ -369,12 +369,13 @@ def obtener_perfil(id_usuario: int = Depends(get_current_user)):
                 
             return {
                 "nombre": user[0] or "Usuario", 
-                "edad": user[1] or "", 
+                "edad": user[1] if user[1] is not None else "",
                 "ocupacion": user[2] or "",
                 "ciudad": user[3] or "", 
-                "breve_descripcion": user[4] or "Aún no hay una descripción breve.",
-                "sobre_mi": user[5] or "No hay detalles adicionales.",
+                "breve_descripcion": user[4] or "",
+                "sobre_mi": user[5] or "",
                 "foto_perfil": user[6] or None, 
+                "verificado": user[7],
                 "total_publicaciones": pubs
             }
     except HTTPException:
@@ -390,23 +391,54 @@ def actualizar_perfil(
     sobre_mi: Annotated[str, Form()] = "", foto: Annotated[UploadFile | None, File()] = None,
     id_usuario: int = Depends(get_current_user)
 ):
-    url_foto = None
-
+    # Full form replacement, as in the original HTML. Empty age maps to SQL NULL.
+    edad = edad.strip()
+    if edad and (len(edad) > 3 or not edad.isascii() or not edad.isdecimal() or not 0 <= int(edad) <= 120):
+        raise HTTPException(422, "La edad debe ser un número entre 0 y 120, o quedar vacía.")
+    edad_db = int(edad) if edad else None
+    ocupacion, ciudad = ocupacion.strip(), ciudad.strip()
+    breve_descripcion, sobre_mi = breve_descripcion.strip(), sobre_mi.strip()
+    if any(len(value) > limit or "\x00" in value for value, limit in
+           [(ocupacion, 100), (ciudad, 100), (breve_descripcion, 255), (sobre_mi, 5000)]):
+        raise HTTPException(422, "Revisa los límites de los campos del perfil.")
+    url_foto = ruta_foto = None
     if foto and foto.filename:
-        contenido_img = foto.file.read(5 * 1024 * 1024)
-        nombre_imagen = uuid4().hex + ".png"
+        contenido_img = foto.file.read(5 * 1024 * 1024 + 1)
+        if len(contenido_img) > 5 * 1024 * 1024:
+            raise HTTPException(413, "La fotografía debe pesar como máximo 5 MB.")
+        try:
+            with Image.open(BytesIO(contenido_img)) as image:
+                extension = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}.get(image.format)
+                if not extension or image.width * image.height > 20_000_000:
+                    raise ValueError("Unsupported image")
+                image.verify()
+            # verify() checks structure but does not decode JPEG pixel data.
+            # Reopen after verify(), which consumes the decoder, and load every
+            # frame before any permanent file or profile update is attempted.
+            with Image.open(BytesIO(contenido_img)) as image:
+                for frame in range(getattr(image, "n_frames", 1)):
+                    image.seek(frame)
+                    if image.width * image.height > 20_000_000:
+                        raise ValueError("Unsupported image dimensions")
+                    image.load()
+        except Exception:
+            raise HTTPException(422, "Usa una fotografía JPG, PNG o WEBP válida de hasta 20 megapíxeles.") from None
+        nombre_imagen = uuid4().hex + extension
         ruta_foto = IMAGENES / nombre_imagen
-        ruta_foto.write_bytes(contenido_img)
         url_foto = f"/imagenes/{nombre_imagen}"
 
     try:
         with conectar() as conexion:
+            if ruta_foto:
+                ruta_foto.write_bytes(contenido_img)
             if url_foto:
                 conexion.execute("UPDATE haycupo.usuario SET edad=%s, ocupacion=%s, ciudad=%s, breve_descripcion=%s, sobre_mi=%s, foto_perfil=%s WHERE id_usuario=%s", 
-                                 (edad, ocupacion, ciudad, breve_descripcion, sobre_mi, url_foto, id_usuario))
+                                 (edad_db, ocupacion, ciudad, breve_descripcion, sobre_mi, url_foto, id_usuario))
             else:
                 conexion.execute("UPDATE haycupo.usuario SET edad=%s, ocupacion=%s, ciudad=%s, breve_descripcion=%s, sobre_mi=%s WHERE id_usuario=%s", 
-                                 (edad, ocupacion, ciudad, breve_descripcion, sobre_mi, id_usuario))
+                                 (edad_db, ocupacion, ciudad, breve_descripcion, sobre_mi, id_usuario))
         return {"mensaje": "Perfil actualizado permanentemente"}
     except Exception:
+        if ruta_foto:
+            ruta_foto.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail="Error al guardar en la base de datos")

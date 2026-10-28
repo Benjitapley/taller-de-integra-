@@ -60,7 +60,38 @@ class LocalSMTP(SMTP):
 smtplib.SMTP = LocalSMTP
 smtplib.SMTP_SSL = forbidden
 
+# Verify the barriers before importing the app. All attempts fail before I/O.
+for probe in (
+    lambda: dotenv.dotenv_values('.env'),
+    lambda: open('.env', 'rb'),
+    lambda: socket.getaddrinfo('blocked.invalid', 443),
+    lambda: psycopg.connect('host=blocked.invalid dbname=postgres'),
+    lambda: smtplib.SMTP('blocked.invalid', 587),
+):
+    try:
+        probe()
+    except RuntimeError:
+        continue
+    raise RuntimeError('An isolation guard did not reject its startup probe')
+print('PASS backend isolation guards: dotenv, external DNS, database and SMTP blocked', flush=True)
+
 from backend.main import main as web
+if os.environ.get('HAYCUPO_MANUAL') == 'synthetic-only':
+    from fastapi.responses import JSONResponse
+
+    @web.app.middleware('http')
+    async def synthetic_mail_only(request, call_next):
+        # This entry point is test infrastructure; production never imports it.
+        if request.url.path in {'/auth/registro', '/auth/login', '/auth/verificar', '/auth/reenviar-codigo'} and request.method == 'POST':
+            try:
+                data = await request.json()
+                correo = data.get('correo') if isinstance(data, dict) else None
+                if isinstance(correo, str) and not correo.strip().lower().endswith('@example.com'):
+                    return JSONResponse({'detail': 'El entorno manual solo admite correos sintéticos @example.com.'}, status_code=422)
+            except (ValueError, UnicodeError):
+                pass  # FastAPI retains its normal malformed-input validation.
+        return await call_next(request)
+
 # Redirect both writes and static images to the fixture, including real lifespan.
 web.IMAGENES = Path(os.environ['E2E_IMAGE_DIR'])
 for route in web.app.routes:

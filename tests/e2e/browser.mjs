@@ -16,6 +16,9 @@ const checks = [], external = [], leaks = [], browserErrors = [], contexts = [],
 const pass = async(name,fn)=> {
   try { await fn(); checks.push({name,passed:true}); }
   catch(error) { checks.push({name,passed:false,error:String(error.message).replace(/[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,"[redacted JWT]").slice(0,600)}); }
+  const check=checks.at(-1);
+  console.log(`${check.passed ? "PASS" : "FAIL"} ${name}${check.error ? ": "+check.error : ""}`);
+  await writeFile(resultFile,JSON.stringify({checks,externalRequests:external.length},null,2));
 };
 const fixture = async(action,body={})=>{
   const response = await fetch(config.control,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${config.controlKey}`},body:JSON.stringify({action,...body})});
@@ -172,12 +175,12 @@ try {
     await pageA.waitForURL(config.web+"/perfil");
     await pageA.getByRole("heading",{name:A.nombre,exact:true}).waitFor();
     const body=await (await response).json();
-    assert.deepEqual(Object.keys(body).sort(),["nombre","edad","ocupacion","ciudad","breve_descripcion","sobre_mi","foto_perfil","total_publicaciones"].sort());
+    assert.deepEqual(Object.keys(body).sort(),["nombre","edad","ocupacion","ciudad","breve_descripcion","sobre_mi","foto_perfil","total_publicaciones","verificado"].sort());
     assert.equal(body.nombre,A.nombre);
     assert.equal(body.total_publicaciones,0);
     assert.equal(body.edad,null);
     assert.equal(await pageA.getByRole("img",{name:"Sin fotografía de perfil"}).isVisible(),true);
-    assert.equal(await pageA.getByRole("button",{name:/Editar perfil/}).count(),0);
+    assert.equal(await pageA.getByRole("button",{name:/Editar perfil/}).count(),1);
     await pageA.goto(config.web+"/inicio");
     await pageA.getByRole("button",{name:"Información de cuenta",exact:true}).click();
     await pageA.getByRole("link",{name:"Ver mi perfil",exact:true}).click();
@@ -194,7 +197,7 @@ try {
     assert.match(a.vary,/Cookie/);assert.match(b.vary,/Cookie/);
     assert.doesNotMatch(await pageA.locator("main").innerText(),/Cuenta B E2E/);
     assert.doesNotMatch(await pageB.locator("main").innerText(),/Cuenta A E2E/);
-    for(const method of ["POST","PUT","DELETE"]) {
+    for(const method of ["POST","DELETE"]) {
       const status=await pageA.evaluate(async(method)=>(await fetch("/web-api/perfil",{method})).status,method);
       assert.equal(status,405);
     }
@@ -230,6 +233,81 @@ try {
     assert.equal(b.body.ciudad,null);
     assert.equal(b.body.edad,null);
     assert.equal(b.body.total_publicaciones,1);
+  });
+  await pass("verification section confirms email without requesting another code or claiming legal identity",async()=>{
+    assert.equal((await webProfile(pageA)).body.verificado,true);
+    await pageA.getByRole("heading",{name:"Verificación de cuenta",exact:true}).waitFor();
+    assert.equal(await pageA.getByText("Correo verificado",{exact:true}).isVisible(),true);
+    assert.match(await pageA.locator("main").innerText(),/No verifica tu identidad legal/);
+    assert.equal(await pageA.getByRole("link",{name:"Completar verificación de correo"}).count(),0);
+  });
+  await pass("profile editor preloads fields, previews photo and discards cancelled edits",async()=>{
+    await pageA.getByRole("button",{name:"Editar perfil",exact:true}).click();
+    assert.equal(await pageA.getByLabel("Ciudad",{exact:true}).inputValue(),"Ciudad A");
+    await pageA.getByLabel("Ciudad",{exact:true}).fill("Cancelada");
+    await pageA.getByRole("button",{name:"Cancelar",exact:true}).click();
+    assert.equal((await webProfile(pageA)).body.ciudad,"Ciudad A");
+    await pageA.getByRole("button",{name:"Editar perfil",exact:true}).click();
+    assert.equal(await pageA.getByLabel("Ciudad",{exact:true}).inputValue(),"Ciudad A");
+    await pageA.keyboard.press("Escape");
+    assert.equal(await pageA.getByRole("dialog").isVisible(),false);
+  });
+  await pass("profile editing validates, retains fields after failure and persists photo through real HttpOnly PUT",async()=>{
+    await pageA.getByRole("button",{name:"Editar perfil",exact:true}).click();
+    await pageA.getByLabel("Edad",{exact:true}).fill("121");
+    await pageA.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+    await pageA.getByRole("alert").filter({hasText:"La edad"}).waitFor();
+    await pageA.getByLabel("Edad",{exact:true}).fill("25");
+    await pageA.getByLabel("Ocupación",{exact:true}).fill("Profesional E2E");
+    await pageA.getByLabel("Descripción breve",{exact:true}).fill("Descripción guardada");
+    await pageA.getByLabel("Sobre mí (biografía)",{exact:true}).fill("Biografía guardada");
+    await pageA.getByLabel("Fotografía",{exact:true}).setInputFiles({name:"photo.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAE0lEQVR4nGNsYGhggAEmOAsvBwAzBAEI14KrBQAAAABJRU5ErkJggg==","base64")});
+    const preview=pageA.getByRole("img",{name:"Vista previa de fotografía"});
+    await preview.waitFor();
+    assert.equal(await preview.evaluate(async image=>{await image.decode();return image.naturalWidth;}),4);
+    await pageA.setViewportSize({width:390,height:844});
+    assert.equal(await pageA.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    let releaseFailure;
+    const failureGate=new Promise(resolve=>{releaseFailure=resolve;});
+    await pageA.route("**/web-api/perfil",async route=>{
+      if(route.request().method()!=="PUT") return route.continue();
+      await failureGate;
+      return route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({detail:"Fallo sintético de guardado"})});
+    });
+    await pageA.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+    await pageA.getByRole("button",{name:"Guardando…",exact:true}).waitFor();
+    assert.equal(await pageA.getByRole("button",{name:"Guardando…",exact:true}).isDisabled(),true);
+    assert.equal(await pageA.getByRole("button",{name:"Cancelar",exact:true}).isDisabled(),true);
+    releaseFailure();
+    await pageA.getByRole("alert").filter({hasText:"Fallo sintético"}).waitFor();
+    assert.equal(await pageA.getByLabel("Ocupación",{exact:true}).inputValue(),"Profesional E2E");
+    await pageA.unroute("**/web-api/perfil");
+    const saved=pageA.waitForResponse(r=>new URL(r.url()).pathname==="/web-api/perfil"&&r.request().method()==="PUT");
+    await pageA.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+    assert.equal((await saved).status(),200);
+    await pageA.getByText("Perfil guardado correctamente.",{exact:true}).waitFor();
+    await pageA.getByText("Profesional E2E",{exact:true}).waitFor();
+    const after=(await webProfile(pageA)).body;
+    assert.equal(after.sobre_mi,"Biografía guardada");
+    assert.match(after.foto_perfil,/^\/imagenes\/[a-f0-9]+\.png$/);
+    assert.equal((await webProfile(pageB)).body.ciudad,null);
+    await pageA.reload();
+    await pageA.getByText("Profesional E2E",{exact:true}).waitFor();
+    await pageA.getByRole("img",{name:`Fotografía de ${A.nombre}`}).evaluate(async image=>{await image.decode();});
+    await pageA.setViewportSize({width:1440,height:1000});
+  });
+  await pass("profile PUT rejects cross origin, missing CSRF and foreign identity fields before mutation",async()=>{
+    const statuses=await pageA.evaluate(async()=>{
+      const send=async(headers,extra={})=>{
+        const form=new FormData();
+        for(const [k,v] of Object.entries({edad:"25",ocupacion:"",ciudad:"Sin permiso",breve_descripcion:"",sobre_mi:"",...extra}))form.set(k,v);
+        return (await fetch("/web-api/perfil?id_usuario=2",{method:"PUT",headers,body:form})).status;
+      };
+      return [await send({}),await send({"X-Haycupo-CSRF":"1"},{id_usuario:"2"}),await send({"X-Haycupo-CSRF":"1"},{verificado:"true"})];
+    });
+    assert.deepEqual(statuses,[403,422,422]);
+    assert.equal((await webProfile(pageA)).body.ciudad,"Ciudad A");
+    assert.equal((await webProfile(pageB)).body.ciudad,null);
   });
   await pass("publication editing detail requires authentication and owner",async()=>{
     assert.equal((await privateAPI(`/api/publicaciones/${pubA}`,null)).status,401);
@@ -336,7 +414,7 @@ try {
       "/api/..%2fauth/login", "/api/%2e%2e%2fauth/login",
       "/static_principal/..%2f..%2fauth/login", "/conexiones/..%2fauth/login"]) {
       const status=await pageC.evaluate(async({path,credentials})=>{
-        const response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(credentials)});
+        const response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(credentials),signal:AbortSignal.timeout(10_000)});
         const text=await response.text();
         return {status:response.status,leaked:/access_token|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./.test(text)};
       },{path,credentials:{correo:C.correo,contrasena:C.contrasena}});
@@ -354,6 +432,9 @@ try {
         assert.doesNotMatch(state.cookie,/haycupo.*session|eyJ/);
       }
     }
+    // End development RSC/prefetch streams before awaiting their body readers.
+    // Completed public responses have already been inspected by the listener.
+    await Promise.all(contexts.map(ctx=>ctx.close()));
     await Promise.all(pending);
     assert.deepEqual(leaks,[]);
   });

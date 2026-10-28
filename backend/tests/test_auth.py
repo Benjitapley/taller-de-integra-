@@ -279,7 +279,7 @@ def test_publication_create_update_and_profile_contracts(client, payload, mail, 
     assert client.put("/api/publicaciones/1", headers=headers, data=data).status_code == 404
     profile = client.get("/api/perfil", headers=headers)
     assert profile.status_code == 200
-    assert set(profile.json()) == {"nombre", "edad", "ocupacion", "ciudad", "breve_descripcion", "sobre_mi", "foto_perfil", "total_publicaciones"}
+    assert set(profile.json()) == {"nombre", "edad", "ocupacion", "ciudad", "breve_descripcion", "sobre_mi", "foto_perfil", "total_publicaciones", "verificado"}
     assert client.put("/api/perfil", headers=headers, data={"ciudad": "Ciudad"}).json() == {"mensaje": "Perfil actualizado permanentemente"}
 
 

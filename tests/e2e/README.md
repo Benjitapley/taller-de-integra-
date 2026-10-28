@@ -1,5 +1,9 @@
 # SCRUM-72 — integración real desechable
 
+Para explorar el sistema desde tu navegador y mantener los servicios activos,
+consulta [MANUAL.md](MANUAL.md). Usa el mismo arranque aislado con `--manual`,
+códigos SMTP en terminal y limpieza al escribir `salir` o presionar `Ctrl+C`.
+
 Este lanzador prueba Edge/Chromium → Next.js → FastAPI/Uvicorn → PostgreSQL nativo
 y el envío real de `email_service.py` a un receptor SMTP local con STARTTLS y AUTH.
 El receptor captura los correos; no los retransmite. No usa TestClient ni dobles
