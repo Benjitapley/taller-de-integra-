@@ -108,7 +108,12 @@ test("PUT transmite multipart y Bearer solo al perfil propio sin ID ni credencia
 });
 test("PUT rechaza CSRF, campos ajenos, repetidos, edad y fotos inválidas antes de acceder al servicio",async()=>{
   const noNetwork=()=>{throw new Error("no network expected");};
-  for(const headers of [{Origin:"https://evil.example.com"},{"X-Haycupo-CSRF":""},{"Sec-Fetch-Site":"cross-site"}]) assert.equal((await handleProfile(putRequest(validForm(),headers),config,noNetwork)).status,403);
+  for(const headers of [{Origin:"https://evil.example.com"},{"X-Haycupo-CSRF":""},{"Sec-Fetch-Site":"cross-site"}]) {
+    const rejected=await handleProfile(putRequest(validForm(),headers),config,noNetwork);
+    assert.equal(rejected.status,403);
+    assert.equal((await rejected.json()).code,"CSRF_REJECTED");
+    assert.equal(rejected.headers.get("Set-Cookie"),null);
+  }
   assert.equal((await handleProfile(putRequest(validForm(),{},""),config,noNetwork)).status,401);
   for(const [key,value] of [["id_usuario","999"],["verificado","true"],["edad","21 años"],["edad","121"],["ciudad","x".repeat(101)],["sobre_mi","x".repeat(5001)]]) {
     const form=validForm();form.set(key,value);
@@ -128,6 +133,17 @@ test("PUT conserva errores útiles y no filtra detalles internos; expiración bo
     const response=await handleProfile(putRequest(),config,async()=>Response.json({detail:"database-secret"},{status}));
     assert.equal(response.status,status===500?503:status);
     assert.doesNotMatch(await response.text(),/database-secret/);
-    assert.equal(Boolean(response.headers.get("Set-Cookie")),[401,403].includes(status));
+    assert.equal(Boolean(response.headers.get("Set-Cookie")),status===401);
   }
+});
+
+test("PUT distingue permiso denegado de sesión inválida sin exponer el error del backend",async()=>{
+  const forbidden=await handleProfile(putRequest(),config,async()=>Response.json({detail:"private permission error"},{status:403}));
+  assert.equal(forbidden.status,403);
+  assert.equal(forbidden.headers.get("Set-Cookie"),null);
+  assert.deepEqual(await forbidden.json(),{code:"FORBIDDEN",detail:"No tienes permiso para guardar estos cambios."});
+  const expired=await handleProfile(putRequest(),config,async()=>Response.json({detail:"private session error"},{status:401}));
+  assert.equal(expired.status,401);
+  assert.match(expired.headers.get("Set-Cookie"),/Max-Age=0/);
+  assert.match((await expired.json()).detail,/sesión ha expirado/);
 });

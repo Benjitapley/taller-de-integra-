@@ -62,6 +62,47 @@ export async function profileBrowser({base,cookie,setProfileMode,setVerification
     }
     assert.deepEqual(await page.evaluate(()=>({local:{...localStorage},session:{...sessionStorage}})),{local:{},session:{}});
     assert.doesNotMatch(await page.evaluate(()=>document.cookie),/haycupo_dev_session|fixture\./);
+    // Exercise the real gateway's CSRF rejections, then independent permission
+    // and expired-session responses. A forbidden save must retain the editor.
+    await page.getByRole("button",{name:"Editar perfil",exact:true}).click();
+    await page.getByLabel("Ciudad",{exact:true}).fill("Cambios todavía sin guardar");
+    await page.getByLabel("Sobre mí (biografía)",{exact:true}).fill("Biografía que se debe conservar");
+    const selectedPhoto={name:"draft.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAE0lEQVR4nGNsYGhggAEmOAsvBwAzBAEI14KrBQAAAABJRU5ErkJggg==","base64")};
+    await page.getByLabel("Fotografía",{exact:true}).setInputFiles(selectedPhoto);
+    await page.getByRole("img",{name:"Vista previa de fotografía"}).evaluate(async image=>{await image.decode();});
+    for(const mode of ["missing-csrf","foreign-origin","forbidden"]) {
+      const intercept=async route=>{
+        if(route.request().method()!=="PUT") return route.fallback();
+        if(mode==="forbidden") return route.fulfill({status:403,contentType:"application/json",body:JSON.stringify({code:"FORBIDDEN"})});
+        const headers={...await route.request().allHeaders()};
+        if(mode==="missing-csrf") delete headers["x-haycupo-csrf"];
+        else headers.origin="https://blocked.invalid";
+        // Preserve HttpOnly cookies, and inject headers at the local server
+        // boundary without changing the browser's own same-origin request.
+        return route.fulfill({response:await route.fetch({headers,maxRedirects:0})});
+      };
+      await page.route("**/web-api/perfil",intercept);
+      const savedResponse=page.waitForResponse(response=>new URL(response.url()).pathname==="/web-api/perfil" && response.request().method()==="PUT");
+      await page.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+      const rejected=await savedResponse;
+      assert.equal(rejected.status(),403,mode);
+      assert.equal((await rejected.json()).code,mode==="forbidden"?"FORBIDDEN":"CSRF_REJECTED",mode);
+      await page.getByRole("alert").filter({hasText:mode==="forbidden"?"No tienes permiso":"No se pudo validar el origen"}).waitFor();
+      assert.equal(await page.getByRole("dialog",{name:"Editar perfil",exact:true}).isVisible(),true);
+      assert.equal(await page.getByLabel("Ciudad",{exact:true}).inputValue(),"Cambios todavía sin guardar");
+      assert.equal(await page.getByLabel("Sobre mí (biografía)",{exact:true}).inputValue(),"Biografía que se debe conservar");
+      assert.equal(await page.getByLabel("Fotografía",{exact:true}).evaluate(input=>input.files[0].name),"draft.png");
+      assert.equal(await page.getByRole("button",{name:"Guardar cambios",exact:true}).isEnabled(),true);
+      assert.equal((await ctx.cookies()).find(c=>c.name==="haycupo_dev_session")?.value,cookie.split("=")[1]);
+      assert.equal(await page.getByText("Tu sesión ha expirado o ya no está disponible.",{exact:true}).count(),0);
+      await page.unroute("**/web-api/perfil",intercept);
+    }
+    await page.route("**/web-api/perfil",route=>route.request().method()==="PUT"
+      ? route.fulfill({status:401,contentType:"application/json",body:JSON.stringify({detail:"Sesión inválida"})})
+      : route.fallback());
+    await page.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+    await page.getByRole("link",{name:"Volver a iniciar sesión",exact:true}).waitFor();
+    assert.equal(await page.getByRole("dialog").count(),0);
     await ctx.close();
 
     // Same route, independent cookie; no state/cache from A reaches B.

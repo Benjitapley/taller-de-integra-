@@ -57,14 +57,15 @@ runpy.run_path(sys.argv[0],run_name='__main__')`;
   let output = '';
   child.stdout.on('data', value => { output += value; });
   child.stderr.on('data', value => { output += value; });
+  let base, ports;
   try {
     await until(() => {
       if (child.exitCode !== null) throw new Error(`Manual startup failed: ${output.slice(-3000)}`);
       return /MANUAL_URL=(http:\/\/127\.0\.0\.1:\d+)\/registro/.exec(output);
     });
+    base = /MANUAL_URL=(http:\/\/127\.0\.0\.1:\d+)\/registro/.exec(output)[1];
+    ports = JSON.parse(/MANUAL_PORTS=(.+)/.exec(output)[1]);
   } catch (error) { child.stdin.end(); await exited; throw error; }
-  const base = /MANUAL_URL=(http:\/\/127\.0\.0\.1:\d+)\/registro/.exec(output)[1];
-  const ports = JSON.parse(/MANUAL_PORTS=(.+)/.exec(output)[1]);
   return { base, child, output: () => output, async stop(command = 'salir\n') {
     if (command !== 'interrupt') {
       if (command === null) child.stdin.end(); else child.stdin.end(command);
@@ -79,11 +80,19 @@ runpy.run_path(sys.argv[0],run_name='__main__')`;
   }};
 }
 
-test('manual: real registration, captured mail, verification, HttpOnly login, profile/photo persistence and salir cleanup', { timeout: 150_000 }, async () => {
+async function withManualSession(run) {
   const running = await session();
-  const { chromium } = createRequire(import.meta.url)(playwrightPath);
+  try {
+    return await run(running);
+  } finally {
+    await running.stop();
+  }
+}
+
+test('manual: real registration, captured mail, verification, HttpOnly login, profile/photo persistence and salir cleanup', { timeout: 150_000 }, () => withManualSession(async running => {
   let browser;
   try {
+    const { chromium } = createRequire(import.meta.url)(playwrightPath);
     assert.match(running.output(), /PASS Next isolation guards/);
     assert.match(running.output(), /PASS backend isolation guards/);
     browser = await chromium.launch({ executablePath: browserPath, headless: true, args: ['--disable-background-networking','--disable-component-update','--disable-sync','--no-proxy-server'] });
@@ -144,7 +153,25 @@ test('manual: real registration, captured mail, verification, HttpOnly login, pr
     assert.deepEqual(errors,[]);
   } finally {
     if (browser) await browser.close();
-    await running.stop();
+  }
+}));
+
+test('manual: missing Playwright cleans up started services and temporary resources', { timeout: 90_000 }, async () => {
+  const before = await snapshot();
+  let running;
+  try {
+    await assert.rejects(withManualSession(async value => {
+      running = value;
+      createRequire(import.meta.url)(join(root, 'tests/e2e/missing-playwright-' + randomBytes(12).toString('hex') + '.cjs'));
+    }), { code: 'MODULE_NOT_FOUND' });
+    assert.equal(running.child.exitCode, 0);
+    assert.match(running.output(), /PASS cleanup:/);
+    const ports = JSON.parse(/MANUAL_PORTS=(.+)/.exec(running.output())[1]);
+    for (const port of Object.values(ports)) assert.equal(await closed(port), true);
+    assert.deepEqual(await snapshot(), before);
+  } finally {
+    // A regression in the helper must not leave the test's own services alive.
+    if (running && running.child.exitCode === null) await running.stop();
   }
 });
 

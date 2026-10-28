@@ -29,7 +29,14 @@ export default function ProfileEditor({ profile, onClose, onSaved, onExpired }: 
       const response = await fetch("/web-api/perfil", {
         method: "PUT", body: data, credentials: "same-origin", headers: { "X-Haycupo-CSRF": "1" }, signal: AbortSignal.timeout(20_000),
       });
-      if ([401, 403].includes(response.status)) { onExpired(); return; }
+      if (response.status === 401) { onExpired(); return; }
+      if (response.status === 403) {
+        const body = await response.json().catch(() => null);
+        setMessage(body?.code === "CSRF_REJECTED"
+          ? "No se pudo validar el origen de la solicitud. Tus cambios siguen en el formulario. Intenta nuevamente desde la dirección de la aplicación."
+          : "No tienes permiso para guardar estos cambios. Tus datos siguen en el formulario.");
+        return;
+      }
       if (!response.ok) {
         const body = await response.json();
         setMessage(body.detail || "No se confirmó el guardado. Intenta nuevamente.");

@@ -41,7 +41,7 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
   try {
     if (request.method === "PUT") {
       if (request.headers.get("origin") !== config.origin || request.headers.get("x-haycupo-csrf") !== "1" ||
-          (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) return authReply(403, { detail: "Origen de solicitud no permitido." });
+          (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) return authReply(403, { code: "CSRF_REJECTED", detail: "Origen de solicitud no permitido." });
       if (!request.headers.get("content-type")?.startsWith("multipart/form-data;")) return authReply(422, { detail: "Envía el formulario con su fotografía opcional." });
       const reader = request.body?.getReader();
       if (!reader) return authReply(422, { detail: "Formulario vacío." });
@@ -63,7 +63,8 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
         method: "PUT", body: form, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
         headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
       });
-      if ([401, 403].includes(saved.status)) return expired(saved.status);
+      if (saved.status === 401) return expired(401);
+      if (saved.status === 403) return authReply(403, { code: "FORBIDDEN", detail: "No tienes permiso para guardar estos cambios." });
       if ([413, 422].includes(saved.status)) return authReply(saved.status, { detail: saved.status === 413 ? "La fotografía supera los 5 MB." : "Revisa los campos y selecciona una imagen válida de hasta 20 megapíxeles." });
       if (!saved.ok) return authReply(503, { detail: "No se confirmó el guardado. Consulta tu perfil antes de volver a intentar." });
       // Saving and reloading are separate: a failed reload must not claim the save failed.

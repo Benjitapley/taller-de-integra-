@@ -412,6 +412,15 @@ def actualizar_perfil(
                 if not extension or image.width * image.height > 20_000_000:
                     raise ValueError("Unsupported image")
                 image.verify()
+            # verify() checks structure but does not decode JPEG pixel data.
+            # Reopen after verify(), which consumes the decoder, and load every
+            # frame before any permanent file or profile update is attempted.
+            with Image.open(BytesIO(contenido_img)) as image:
+                for frame in range(getattr(image, "n_frames", 1)):
+                    image.seek(frame)
+                    if image.width * image.height > 20_000_000:
+                        raise ValueError("Unsupported image dimensions")
+                    image.load()
         except Exception:
             raise HTTPException(422, "Usa una fotografía JPG, PNG o WEBP válida de hasta 20 megapíxeles.") from None
         nombre_imagen = uuid4().hex + extension

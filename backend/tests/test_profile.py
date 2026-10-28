@@ -53,6 +53,48 @@ def test_photo_upload_validation_preservation_and_auth(client, payload, mail, mo
     assert client.get("/api/perfil", headers=headers).json()["foto_perfil"] == photo
 
 
+@pytest.mark.parametrize("image_format,extension,mime", [("JPEG", "jpg", "image/jpeg"), ("PNG", "png", "image/png"), ("WEBP", "webp", "image/webp")])
+def test_supported_photos_decode_and_persist(client, payload, mail, monkeypatch, tmp_path, image_format, extension, mime):
+    headers = verified_login(client, payload, mail)
+    monkeypatch.setattr(web, "IMAGENES", tmp_path)
+    output = BytesIO()
+    Image.new("RGB", (4, 4), "purple").save(output, format=image_format)
+    response = client.put("/api/perfil", headers=headers, files={"foto": (f"photo.{extension}", output.getvalue(), mime)})
+    assert response.status_code == 200
+    photo = client.get("/api/perfil", headers=headers).json()["foto_perfil"]
+    assert photo.endswith("." + extension)
+    with Image.open(tmp_path / photo.rsplit("/", 1)[1]) as image:
+        image.load()
+        assert image.format == image_format
+
+
+def test_truncated_jpeg_preserves_existing_photo_without_profile_writes(client, payload, mail, monkeypatch, tmp_path):
+    headers = verified_login(client, payload, mail)
+    monkeypatch.setattr(web, "IMAGENES", tmp_path)
+    assert client.put("/api/perfil", headers=headers, data={"ciudad": "Anterior"},
+                      files={"foto": ("previous.png", png(), "image/png")}).status_code == 200
+    before = client.get("/api/perfil", headers=headers).json()
+    files_before = {path.name: path.read_bytes() for path in tmp_path.iterdir()}
+    output = BytesIO()
+    Image.new("RGB", (32, 32), "purple").save(output, format="JPEG")
+    damaged = output.getvalue()[:-2]
+    with Image.open(BytesIO(damaged)) as image:
+        image.verify()  # This is the case the old validation accepted.
+    with Image.open(BytesIO(damaged)) as image, pytest.raises(OSError):
+        image.load()
+
+    # Authentication uses its own connection; profile persistence must not start.
+    def unexpected_profile_connection():
+        pytest.fail("Invalid photo reached profile persistence")
+    with monkeypatch.context() as patch:
+        patch.setattr(web, "conectar", unexpected_profile_connection)
+        response = client.put("/api/perfil", headers=headers, data={"ciudad": "No guardar"},
+                              files={"foto": ("truncated.jpg", damaged, "image/jpeg")})
+    assert response.status_code == 422
+    assert client.get("/api/perfil", headers=headers).json() == before
+    assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == files_before
+
+
 def test_failed_transaction_removes_new_photo(client, payload, mail, monkeypatch, tmp_path, db):
     headers = verified_login(client, payload, mail)
     monkeypatch.setattr(web, "IMAGENES", tmp_path)
