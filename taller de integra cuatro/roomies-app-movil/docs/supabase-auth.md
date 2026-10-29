@@ -1,6 +1,6 @@
 # Supabase Auth: preparación móvil
 
-Responsable: Gustavo Martínez. Tareas: M4-A02, M4-A03, M4-A04 y M4-A05.
+Responsable: Gustavo Martínez. Tareas: M4-A02, M4-A03, M4-A04, M4-A05 y M4-A06.
 
 ## Proyecto de pruebas y proyecto compartido
 
@@ -57,8 +57,8 @@ clave publishable. No colocar contraseña de BD, claves secret ni service_role.
   de correo y sus enlaces requieren definir el flujo en las tareas de registro.
 
 La preparación de M4-A02 no sustituye por sí sola la autenticación simulada.
-M4-A04 conecta el registro y M4-A05 conecta login/logout. La restauración del
-estado visual al abrir o recargar la app sigue pendiente en M4-A06.
+M4-A04 conecta el registro y M4-A05 conecta login/logout. M4-A06 recupera la sesión
+guardada y sincroniza el contexto al abrir o recargar la app.
 
 ## Qué define M4-A03
 
@@ -84,8 +84,8 @@ El perfil se obtendrá desde la API de TI2 y no se inventará al crear una sesi�
 ## Comprobar desde Expo
 
 Con URL y clave reales, abrir Expo y confirmar que la instancia inicializa sin
-errores. Comprobar registro con confirmación, login y logout; al conectar M4-A06,
-comprobar también sesión tras reiniciar en dispositivo. Una comprobación de tipos
+errores. Comprobar registro con confirmación, login, logout y, desde M4-A06,
+sesión tras reiniciar en dispositivo. Una comprobación de tipos
 o un bundle web no acreditan una sesión real ni persistencia nativa.
 
 Después de configurar `.env.local`, ejecutar `npx expo start` desde la raíz móvil
@@ -134,7 +134,7 @@ no se anuncia como confirmación correcta.
 
 La confirmación puede iniciar una sesión real. Desde M4-A05, la pantalla `/login`
 también inicia sesión con Supabase y el botón al final de Perfil cierra la sesión actual.
-La sincronización al recargar/abrir la app corresponde a M4-A06. El avatar, perfil
+La sincronización al recargar/abrir la app se incorpora en M4-A06. El avatar, perfil
 y publicaciones visibles siguen siendo mocks independientes de Auth.
 
 En un development build móvil, autorizar el enlace del esquema configurado
@@ -328,12 +328,12 @@ registrarla. No compartir su contraseña ni los tokens.
 El caso de correo sin confirmar puede comprobarse con una cuenta de pruebas ya
 creada que siga pendiente de confirmación. No hace falta eliminar la cuenta confirmada.
 La conservación de otra sesión puede comprobarse con un segundo navegador/perfil
-independiente, cuando esté disponible la restauración de M4-A06.
+independiente. M4-A06 permite recuperar esa sesión al recargar cada instancia.
 
-**Límite entre tareas:** A02 configura la persistencia del SDK, pero A05 no carga
-esa sesión en el contexto al arrancar ni suscribe cambios externos de Auth. Una
-recarga completa puede devolver al login hasta M4-A06. Tampoco se obtiene todavía
-el perfil Roomies: seguir viendo Sofía no significa que las credenciales sean simuladas.
+**Límite entre tareas:** A02 configura la persistencia del SDK; A06 carga esa sesión
+en el contexto al arrancar y suscribe cambios externos de Auth. A05 implementa
+las operaciones de login/logout. El perfil Roomies sigue pendiente de integración:
+seguir viendo Sofía no significa que las credenciales sean simuladas.
 
 El 27 de octubre de 2026, Gustavo comprobó A05 en web con su cuenta real de A04 y reportó:
 
@@ -362,6 +362,86 @@ El texto del cuerpo ya distingue ese caso y ofrece ir a iniciar sesión. Mejorar
 el título/subtítulo para que no sugieran siempre una confirmación pendiente es un
 ajuste de usabilidad de A04, no una función de login/logout pendiente de A05.
 
+## M4-A06: restauración y cambios de sesión
+
+Implementación del 28 de octubre de 2026 en SCRUM-29, a partir de A05 fusionada.
+Gustavo confirmó que ya puede abrir la app en Expo Go tras resolver la incompatibilidad
+de SDK del teléfono. Después confirmó las comprobaciones de restauración con este código.
+
+`AuthProvider` expone `restaurandoSesion`, `errorRestauracion` y una acción para
+reintentar. La primera renderización, incluida la exportación estática web, empieza
+recuperando la sesión: `null` aún no significa que se haya comprobado su ausencia.
+
+- Se registra `onAuthStateChange` antes de leer `getSession()` en la misma instancia
+  del SDK configurada en A02. No se guarda otra copia de los tokens ni contraseñas.
+- `getSession()` recupera la sesión del almacenamiento del SDK y puede renovarla
+  cuando corresponda. Una respuesta sin sesión permite mostrar el login; un fallo
+  de recuperación muestra un mensaje con **Reintentar** y mantiene ocultas las rutas.
+- La notificación `INITIAL_SESSION` no decide el resultado inicial: no expone el
+  error de recuperación. La lectura explícita permite distinguir error y ausencia.
+- Las notificaciones posteriores, como `SIGNED_IN`, `SIGNED_OUT`, `TOKEN_REFRESHED`
+  y `USER_UPDATED`, actualizan el contexto con la sesión que entrega el SDK. El
+  callback es síncrono y no hace otras llamadas a Auth.
+- Si llega uno de esos cambios mientras la lectura inicial sigue pendiente, se
+  descarta su resultado antiguo. Una lectura tardía no debe resucitar una sesión
+  cerrada ni sustituir tokens recién renovados.
+- Al desmontar o reintentar se libera la suscripción y se ignoran respuestas del
+  intento anterior, incluyendo el montaje doble de desarrollo con StrictMode.
+- Las operaciones de A04/A05 siguen en `authService`; la suscripción mantiene el
+  contexto. Un registro pendiente no borra una sesión del SDK por devolver `session: null`.
+
+El layout muestra carga antes de montar las pantallas y tomar decisiones de ruta.
+La ruta raíz envía al inicio si hay sesión y al login si no la hay. Login y registro
+solo están disponibles sin sesión. Las pestañas y tareas de convivencia requieren
+sesión. Los detalles públicos conservan su acceso y `/auth/callback` sigue disponible
+para procesar el enlace de A04, incluso si existía otra sesión guardada. El estado de
+carga no modifica el enlace original ni los tokens del callback.
+
+No requiere cambios en el panel de Supabase, migraciones ni acceso a Gateway.
+La sesión recuperada sirve al estado de la interfaz; la API deberá validar el JWT
+para autorizar operaciones protegidas, como prevén las tareas de integración con TI2.
+Recuperar la identidad no carga el perfil Roomies ni transforma los mocks de Perfil.
+
+### Comprobación manual de A06
+
+Usar la cuenta real de A04, en el mismo proyecto configurado en `.env.local`:
+
+1. **Web con sesión:** iniciar sesión, ir a Perfil y recargar completamente la
+   página. Debe volver a la pantalla protegida sin mostrar antes el formulario de login.
+   Abrir `/` debe llevar al inicio; abrir `/login` con esa sesión también debe llevar al inicio.
+2. **Web sin sesión:** cerrar sesión y recargar. Debe quedarse en el login. Abrir
+   `/perfil` directamente tampoco debe mostrar contenido privado, ni brevemente.
+3. **Dos pestañas del mismo navegador/perfil:** con sesión iniciada, abrir otra
+   pestaña del mismo origen (`localhost:8081`). Cerrar sesión en una debe devolver
+   ambas al estado público. No confundir esto con cerrar otras sesiones independientes
+   de otros navegadores/dispositivos: A05 conserva alcance `local`.
+4. **Expo Go:** iniciar sesión, cerrar completamente la app y abrir de nuevo el
+   proyecto. Debe recuperar la sesión y mostrar el inicio. Repetir después de cerrar
+   sesión: esta vez debe mostrar login. Una recarga completa de JavaScript también
+   debe recuperar el estado; Fast Refresh por sí solo no acredita persistencia.
+5. **Carga/errores:** durante la recuperación solo debe verse la carga, nunca una
+   pantalla privada sin sesión. Si se presenta un error, recuperar la conexión y
+   pulsar Reintentar debe permitir continuar. Una sesión local vigente puede cargarse
+   sin red; una sesión que necesite renovación puede requerir conexión.
+
+La carga puede ser tan breve que no llegue a apreciarse. La persistencia normal no
+promete conservar una sesión después de borrar datos del navegador o reinstalar Expo Go.
+Las pruebas de código no acreditan por sí solas estos recorridos reales ni su ejecución
+en Android/iOS.
+
+Gustavo confirmó que pasaron las cuatro comprobaciones propuestas para A06:
+
+- Recargar la web con sesión conserva el acceso autenticado, sin adelantar el login.
+- Cerrar sesión y recargar mantiene el estado público y la protección de Perfil.
+- Cerrar completamente Expo Go y reabrir el proyecto recupera la sesión; después
+  de cerrarla, el mismo recorrido muestra login.
+- Cerrar sesión en una pestaña se refleja en otra del mismo navegador/perfil.
+
+Con las comprobaciones de código y estos resultados reportados, A06 cumple sus
+criterios de restauración, sincronización y navegación, lista para commit y PR.
+Esta confirmación no se cuenta como prueba de iOS ni del caso adicional de error/reintento
+de recuperación, que no se reportó por separado.
+
 ## Comprobaciones de código realizadas
 
 El 20 de octubre de 2026, sin credenciales Supabase configuradas:
@@ -389,7 +469,7 @@ Esa comprobación se ejecutó desde Node, no desde un dispositivo. Para acredita
 el criterio completo de M4-A02 queda observar la inicialización en Expo/dispositivo.
 M4-A03 tiene implementado el contrato de tipos. M4-A04 empieza a utilizarlo en
 el hook para las sesiones del registro; M4-A05 lo utiliza para login/logout y
-M4-A06 conectará la restauración.
+M4-A06 conecta la restauración.
 
 El 26 de octubre de 2026, durante M4-A04:
 
@@ -414,6 +494,21 @@ El 27 de octubre de 2026, durante M4-A05:
 
 La compilación no acredita los recorridos funcionales descritos en la lista de A05.
 
+El 28 de octubre de 2026, durante M4-A06:
+
+- `npx tsc --noEmit`: sin errores.
+- `npx expo lint`: sin errores ni advertencias.
+- `npx expo export --platform web --output-dir dist`: exportación correcta.
+- Se comprobó que el HTML inicial exportado de `/`, `/login`, `/perfil` y
+  `/auth/callback` contiene la carga de recuperación, sin adelantar el formulario
+  de login ni el perfil de demostración.
+- No se añadieron dependencias ni se cambiaron variables de entorno. No se hicieron
+  peticiones de login/logout ni se crearon usuarios para estas comprobaciones.
+
+La inspección del HTML comprueba el estado estático inicial. La recuperación real,
+la sincronización entre pestañas y el reinicio en Expo Go fueron comprobados por
+Gustavo, según los resultados reportados en la sección de A06.
+
 ## Referencias
 
 - [Supabase Auth con React Native](https://supabase.com/docs/guides/auth/quickstarts/react-native)
@@ -430,3 +525,6 @@ La compilación no acredita los recorridos funcionales descritos en la lista de 
 - [Cierre de sesión y alcances](https://supabase.com/docs/reference/javascript/auth-signout)
 - [Códigos de error de Auth](https://supabase.com/docs/guides/auth/debugging/error-codes)
 - [Rutas protegidas de Expo Router](https://docs.expo.dev/router/advanced/protected/)
+- [Recuperación de sesión del SDK](https://supabase.com/docs/reference/javascript/auth-getsession)
+- [Cambios de sesión del SDK](https://supabase.com/docs/reference/javascript/auth-onauthstatechange)
+- [Autenticación y carga inicial con Expo Router](https://docs.expo.dev/router/advanced/authentication/)
