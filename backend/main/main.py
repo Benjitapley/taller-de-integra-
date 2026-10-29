@@ -170,16 +170,53 @@ async def buscar_ubicaciones(texto: str = Query(min_length=3, max_length=250)):
 
 # OBTENER TODAS LAS PUBLICACIONES (Para el inicio)
 @app.get("/api/publicaciones")
-def obtener_publicaciones():
+def obtener_publicaciones(
+    consulta: str | None = Query(None, max_length=250),
+    precio_min: Decimal | None = Query(None, ge=0, max_digits=14, decimal_places=2),
+    precio_max: Decimal | None = Query(None, ge=0, max_digits=14, decimal_places=2),
+    cupos_min: int | None = Query(None, ge=1, le=2147483647),
+    categoria: Literal["busco", "ofrezco"] | None = Query(None),
+    tipo_vivienda: Literal["casa", "departamento", "habitacion"] | None = Query(None),
+    mascota: Literal["si", "no"] | None = Query(None),
+):
+    condiciones = []
+    parametros = []
+    if consulta and consulta.strip():
+        condiciones.append("(p.titulo ILIKE %s OR p.ubicacion ILIKE %s OR COALESCE(p.contenido, p.descripcion, '') ILIKE %s)")
+        termino = f"%{consulta.strip()}%"
+        parametros.extend([termino, termino, termino])
+    if precio_min is not None:
+        condiciones.append("p.precio >= %s")
+        parametros.append(precio_min)
+    if precio_max is not None:
+        condiciones.append("p.precio <= %s")
+        parametros.append(precio_max)
+    if cupos_min is not None:
+        condiciones.append("p.cupos_totales >= %s")
+        parametros.append(cupos_min)
+    if categoria is not None:
+        condiciones.append("p.categoria = %s")
+        parametros.append(categoria)
+    if tipo_vivienda is not None:
+        condiciones.append("p.tipo_vivienda = %s")
+        parametros.append(tipo_vivienda)
+    if mascota is not None:
+        condiciones.append("p.mascota = %s")
+        parametros.append(mascota)
+    where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
     try:
         with conectar() as conexion:
-            registros = conexion.execute("""
+            registros = conexion.execute(f"""
                 SELECT p.id_publicacion, p.titulo, p.precio, p.ubicacion, p.cupos_totales, 
-                       p.tipo_vivienda, i.url as imagen_url, p.categoria, p.descripcion, p.mascota, p.contenido
+                       p.tipo_vivienda,
+                       (SELECT i.url FROM haycupo.imagen_publicacion i
+                        WHERE i.id_publicacion = p.id_publicacion
+                        ORDER BY i.orden, i.id_imagen LIMIT 1) as imagen_url,
+                       p.categoria, p.descripcion, p.mascota, p.contenido
                 FROM haycupo.publicacion p
-                LEFT JOIN haycupo.imagen_publicacion i ON p.id_publicacion = i.id_publicacion
+                {where}
                 ORDER BY p.id_publicacion DESC
-            """).fetchall()
+            """, tuple(parametros)).fetchall()
             
             publicaciones = []
             for row in registros:

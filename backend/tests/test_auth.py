@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from copy import deepcopy
+from decimal import Decimal
 from unittest.mock import MagicMock
 
 import jwt
@@ -225,6 +226,20 @@ def test_public_read_and_static_routes_preserved(client):
     assert client.get("/api/publicaciones").json() == []
     assert client.get("/inicio").status_code == 200
     assert client.get("/Iconos/casa.webp").status_code == 200
+
+
+def test_publication_search_filters_are_bound_parameters(client, db):
+    response = client.get("/api/publicaciones", params={
+        "consulta": "Centro%'; --", "precio_min": "100", "precio_max": "900",
+        "cupos_min": "2", "categoria": "ofrezco", "tipo_vivienda": "departamento",
+        "mascota": "si",
+    })
+    assert response.status_code == 200
+    sql, params = db.calls[-1]
+    assert "p.titulo ilike %s" in sql and "p.precio >= %s" in sql
+    assert "p.cupos_totales >= %s" in sql and "p.mascota = %s" in sql
+    assert "select i.url from haycupo.imagen_publicacion" in sql
+    assert params == ("%Centro%'; --%", "%Centro%'; --%", "%Centro%'; --%", Decimal("100"), Decimal("900"), 2, "ofrezco", "departamento", "si")
 
 
 def test_cross_user_delete_cannot_remove_images(client, payload, db, mail):
