@@ -46,9 +46,9 @@ compilar, por lo que se debe volver a compilar y reiniciar.
 | `/` | Login React sin Sidebar; envío al adaptador web |
 | `/registro` | Registro React; envío al adaptador web |
 | `/verificar` | Verificación y reenvío mediante adaptador web |
-| `/inicio` | Inicio React protegido, con Sidebar y pestaña Arriendos |
-| `/inicio?vista=personas` | Inicio React protegido, pestaña Personas |
-| `/publicar` | Selector visual protegido; formularios pendientes |
+| `/inicio` | Inicio React protegido, listado de arriendos con búsqueda y filtros FastAPI |
+| `/inicio?vista=personas` | Inicio React protegido, búsqueda de personas por zona, presupuesto y ocupación |
+| `/publicar` | Selector y formulario React protegidos para crear publicaciones |
 | `/navegacion` | Guía protegida, ejemplo de modal y accesos al HTML antiguo |
 | `/acceso`, `/legacy/acceso` | Login/registro HTML original, FastAPI `/` |
 | `/legacy/inicio` | Inicio HTML original, FastAPI `/inicio` |
@@ -56,10 +56,13 @@ compilar, por lo que se debe volver a compilar y reiniciar.
 | `/perfil` | Perfil React autenticado, edición y estado de verificación del correo |
 | `/legacy/perfil` | HTML original de FastAPI `/perfil` |
 | `/web-api/perfil` | GET/PUT de servidor para consultar y editar el perfil propio |
+| `/web-api/publicaciones` | POST de servidor para crear publicaciones con JWT y formulario multipart |
 | `/mis-publicaciones`, `/legacy/mis-publicaciones` | FastAPI `/mis-publicaciones` |
 | `/editar-publicacion?id=…`, `/legacy/editar-publicacion?id=…` | FastAPI `/editar-publicacion?id=…` |
 
 Flujo preparado: registro confirmado → `/verificar`; verificación confirmada → `/`; login confirmado → `/inicio`. Las rutas del grupo `(app)` comprueban la sesión con FastAPI en cada petición; ante sesión ausente redirigen a `/` y ante indisponibilidad bloquean el contenido. Los grupos `(auth)` y `(app)` mantienen layouts separados y no aparecen en las URL.
+
+El listado de arriendos consulta `/api/publicaciones` y envía la búsqueda y filtros de precio, cupos, categoría, tipo de vivienda y mascotas a FastAPI. La pestaña Personas consulta `/conexiones/usuarios/buscar`. Crear una publicación envía `multipart/form-data` a `/web-api/publicaciones`; el adaptador valida los campos, obtiene el JWT desde la cookie HttpOnly y lo transmite al endpoint protegido de FastAPI.
 
 El acceso HTML se conserva para compatibilidad y se identifica como sistema
 anterior con limitaciones de seguridad. Su redirección de login a `/inicio`

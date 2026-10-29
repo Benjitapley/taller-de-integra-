@@ -14,7 +14,8 @@
     "test:auth-client": "node --test tests/auth-client.test.mjs",
     "test:proxy": "node --test tests/proxy.test.mjs",
     "test:session": "node --test tests/auth-gateway.test.mjs",
-    "test:profile": "node --test tests/profile.test.mjs"
+    "test:profile": "node --test tests/profile.test.mjs",
+    "test:publications": "node --test tests/publications.test.mjs"
   },
   "dependencies": {
     "next": "16.4.3",
