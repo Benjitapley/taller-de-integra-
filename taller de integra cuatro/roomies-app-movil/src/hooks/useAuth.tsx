@@ -3,10 +3,12 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import { estaSupabaseConfigurado, getSupabaseClient } from "@/lib/supabase";
 import {
   cerrarSesionSupabase,
   confirmarRegistroSupabase,
@@ -27,6 +29,9 @@ interface AuthContextValue {
   sesion: SesionSupabase | null;
   usuarioActual: UsuarioActual | null;
   estaAutenticado: boolean;
+  restaurandoSesion: boolean;
+  errorRestauracion: string | null;
+  reintentarRestauracion: () => void;
   iniciarSesion: (email: string, password: string) => Promise<ResultadoInicioSesion>;
   registrarCuenta: (datos: DatosRegistro) => Promise<ResultadoRegistro>;
   confirmarRegistro: (enlace: string) => Promise<ResultadoConfirmacion>;
@@ -37,48 +42,106 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [sesion, setSesion] = useState<SesionSupabase | null>(null);
+  const [restaurandoSesion, setRestaurandoSesion] = useState(true);
+  const [errorRestauracion, setErrorRestauracion] = useState<string | null>(null);
+  const [intentoRestauracion, setIntentoRestauracion] = useState(0);
 
-  const iniciarSesion = useCallback(async (email: string, password: string) => {
-    const resultado = await iniciarSesionSupabase(email, password);
-    if (resultado.exito) setSesion(resultado.sesion);
-    return resultado;
-  }, []);
+  useEffect(() => {
+    let vigente = true;
+    let sesionActualizadaPorEvento = false;
+    let desuscribir = () => {};
 
-  const registrarCuenta = useCallback(async (datos: DatosRegistro) => {
-    const resultado = await registrarCuentaSupabase(datos, Linking.createURL("/auth/callback"));
-    if (resultado.exito) {
-      setSesion(resultado.estado === "sesion_iniciada" ? resultado.sesion : null);
+    async function recuperarSesion() {
+      try {
+        if (!estaSupabaseConfigurado()) {
+          if (vigente) setSesion(null);
+          return;
+        }
+
+        const supabase = getSupabaseClient();
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          (evento, nuevaSesion) => {
+            if (!vigente || evento === "INITIAL_SESSION") return;
+            // Callback síncrono: no llamar métodos de Auth desde esta notificación.
+            sesionActualizadaPorEvento = true;
+            setSesion(nuevaSesion);
+            setErrorRestauracion(null);
+            setRestaurandoSesion(false);
+          },
+        );
+        desuscribir = () => subscription.unsubscribe();
+
+        // La lectura inicial permite distinguir un error de una sesión inexistente.
+        // INITIAL_SESSION se ignora porque no proporciona el error de recuperación.
+        const { data, error } = await supabase.auth.getSession();
+        if (!vigente || sesionActualizadaPorEvento) return;
+        if (error) throw error;
+        setSesion(data.session);
+        setErrorRestauracion(null);
+      } catch {
+        if (!vigente || sesionActualizadaPorEvento) return;
+        setSesion(null);
+        setErrorRestauracion("No pudimos recuperar tu sesión. Revisa tu conexión y vuelve a intentarlo.");
+      } finally {
+        // Un login/logout o una renovación posterior tienen prioridad sobre la lectura inicial.
+        if (vigente && !sesionActualizadaPorEvento) setRestaurandoSesion(false);
+      }
     }
-    return resultado;
+
+    void recuperarSesion();
+    return () => {
+      vigente = false;
+      desuscribir();
+    };
+  }, [intentoRestauracion]);
+
+  const reintentarRestauracion = useCallback(() => {
+    setErrorRestauracion(null);
+    setRestaurandoSesion(true);
+    setIntentoRestauracion((intento) => intento + 1);
   }, []);
 
-  const confirmarRegistro = useCallback(async (enlace: string) => {
-    const resultado = await confirmarRegistroSupabase(enlace);
-    if (resultado.exito) {
-      setSesion(resultado.sesion);
-    }
-    return resultado;
-  }, []);
+  // El servicio ejecuta la operación; la suscripción refleja la sesión del SDK.
+  const iniciarSesion = useCallback(
+    (email: string, password: string) => iniciarSesionSupabase(email, password),
+    [],
+  );
 
-  const cerrarSesion = useCallback(async () => {
-    const resultado = await cerrarSesionSupabase();
-    if (resultado.exito || resultado.sesionLocalCerrada) {
-      setSesion(null);
-    }
-    return resultado;
-  }, []);
+  const registrarCuenta = useCallback(
+    (datos: DatosRegistro) => registrarCuentaSupabase(datos, Linking.createURL("/auth/callback")),
+    [],
+  );
+
+  const confirmarRegistro = useCallback(
+    (enlace: string) => confirmarRegistroSupabase(enlace),
+    [],
+  );
+
+  const cerrarSesion = useCallback(() => cerrarSesionSupabase(), []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       sesion,
       usuarioActual: sesion ? { identidad: sesion.user, perfil: null } : null,
       estaAutenticado: sesion !== null,
+      restaurandoSesion,
+      errorRestauracion,
+      reintentarRestauracion,
       iniciarSesion,
       registrarCuenta,
       confirmarRegistro,
       cerrarSesion,
     }),
-    [sesion, iniciarSesion, registrarCuenta, confirmarRegistro, cerrarSesion],
+    [
+      sesion,
+      restaurandoSesion,
+      errorRestauracion,
+      reintentarRestauracion,
+      iniciarSesion,
+      registrarCuenta,
+      confirmarRegistro,
+      cerrarSesion,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
