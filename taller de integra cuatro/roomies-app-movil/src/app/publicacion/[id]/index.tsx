@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { Alert, ScrollView, View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
@@ -9,6 +9,7 @@ import {
     TITULO_PUBLICACION,
     configPorEstado,
     configPorOrigen,
+    ctaPorOrigen,
     estiloPorTipo,
     paletaPublicacion,
 } from '@/constants/origenPublicacion';
@@ -61,6 +62,11 @@ export default function PublicacionDetallePantalla() {
     const config = configPorOrigen[publicacion.tipo];
     const estilo = estiloPorTipo[publicacion.tipo];
     const estado = configPorEstado[publicacion.estado];
+    const cta = ctaPorOrigen[publicacion.tipo];
+    const cerrada = publicacion.estado === 'Cerrada';
+
+    // TODO M4-C10 (Arrendador) y Match de TI2 (Compartida): reemplazar por la acción real.
+    const accionPrincipal = () => Alert.alert(cta.etiqueta, cta.avisoPendiente);
     const autor = usuariosMock.find((u) => u.idUsuario === publicacion.idUsuario);
     const cuposTexto =
         publicacion.cuposDisponibles > 0
@@ -158,6 +164,15 @@ export default function PublicacionDetallePantalla() {
 
                 </View>
             </ScrollView>
+
+            <View style={styles.pie}>
+                <CustomButton
+                    titulo={cerrada ? 'Publicación cerrada' : cta.etiqueta}
+                    onPress={accionPrincipal}
+                    deshabilitado={cerrada}
+                />
+                {!cerrada ? <Text style={styles.pieNota}>{cta.nota}</Text> : null}
+            </View>
         </>
     );
 }
@@ -168,7 +183,19 @@ const styles = StyleSheet.create({
         backgroundColor: colors.background,
     },
     contenido: {
+        paddingBottom: 16,
+    },
+    pie: {
+        paddingHorizontal: 20,
+        paddingTop: 12,
         paddingBottom: 32,
+        backgroundColor: colors.background,
+    },
+    pieNota: {
+        fontSize: 12,
+        textAlign: 'center',
+        color: paletaPublicacion.textoSecundario,
+        marginTop: 8,
     },
     imagen: {
         width: '100%',

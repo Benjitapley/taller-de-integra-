@@ -61,4 +61,22 @@ export const textosFormularioPorOrigen: Record<
     mostrarEnlace: false, 
     nota: 'Las reglas y condiciones se completarán en los próximos pasos.',
   },
+
+  
+};
+
+export const ctaPorOrigen: Record<
+  TipoPublicacion,
+  { etiqueta: string; nota: string; avisoPendiente: string }
+> = {
+  Arrendador: {
+    etiqueta: 'Postular al arriendo',
+    nota: 'Chat disponible solo tras preselección',
+    avisoPendiente: 'La postulación se habilitará en la tarea M4-C10.',
+  },
+  Compartida: {
+    etiqueta: 'Contactar usuario',
+    nota: 'El contacto no habilita un chat por sí solo',
+    avisoPendiente: 'El contacto depende del servicio de conexión de TI2 (Match).',
+  },
 };
