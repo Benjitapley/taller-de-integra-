@@ -62,3 +62,10 @@ export interface UsuarioPerfil extends Usuario {
 
   buscaEn?: string[];
 }
+
+export interface FiltrosPersona {
+    presupuestoMaximo?: number;
+    zonaInteres?: string;
+    soloVerificados?: boolean;
+}
+

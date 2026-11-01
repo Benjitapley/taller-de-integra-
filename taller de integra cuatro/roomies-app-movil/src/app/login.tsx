@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
-import { useRef, useState } from "react";
+import { router } from "expo-router";
+import { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,15 +20,12 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Login() {
   const { iniciarSesion } = useAuth();
-  const { aviso } = useLocalSearchParams<{ aviso?: string }>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
-  const enviando = useRef(false);
 
   async function manejarInicioSesion() {
-    if (enviando.current) return;
     setError("");
 
     if (!email.trim() || !password) {
@@ -35,30 +33,30 @@ export default function Login() {
       return;
     }
 
-    enviando.current = true;
     setCargando(true);
-    try {
-      const resultado = await iniciarSesion(email, password);
-      if (!resultado.exito) {
-        setError(resultado.error);
-        return;
-      }
-      setPassword("");
-      router.replace("/(tabs)");
-    } catch {
-      setError("No pudimos iniciar sesión. Inténtalo nuevamente.");
-    } finally {
-      enviando.current = false;
-      setCargando(false);
+    const correcto = await iniciarSesion(email, password);
+    setCargando(false);
+
+    if (!correcto) {
+      setError("El correo o la contraseña no son correctos.");
+      return;
     }
+
+    router.replace("/(tabs)");
   }
 
   function mostrarRecuperacion() {
-    setError("La recuperación de contraseña todavía no está disponible.");
+    Alert.alert(
+      "Recuperar contraseña",
+      "Esta función se simula en MOB-05. En una versión conectada se enviaría un enlace al correo.",
+    );
   }
 
   function continuarConGoogle() {
-    setError("El acceso con Google todavía no está disponible. Usa tu correo y contraseña.");
+    Alert.alert(
+      "Continuar con Google",
+      "Inicio con Google simulado para validar la navegación de MOB-05.",
+    );
   }
 
   return (
@@ -82,13 +80,6 @@ export default function Login() {
         </View>
 
         <View style={styles.formulario}>
-          {aviso === "cierre_local" ? (
-            <Text accessibilityRole="alert" style={styles.aviso}>
-              La sesión se cerró en este dispositivo, pero no pudimos confirmar el
-              cierre con el servicio. Vuelve a iniciar sesión para continuar.
-            </Text>
-          ) : null}
-
           <CustomInput
             etiqueta="Correo electrónico"
             icono="person"
@@ -100,8 +91,6 @@ export default function Login() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            autoComplete="email"
-            editable={!cargando}
           />
 
           <CustomInput
@@ -113,23 +102,17 @@ export default function Login() {
             placeholder="••••••••"
             esContrasena
             autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="current-password"
-            editable={!cargando}
-            onSubmitEditing={manejarInicioSesion}
-            returnKeyType="go"
           />
 
           <Pressable
             onPress={mostrarRecuperacion}
             style={styles.enlaceRecuperacion}
             hitSlop={8}
-            disabled={cargando}
           >
             <Text style={styles.enlaceTexto}>¿Olvidaste tu contraseña?</Text>
           </Pressable>
 
-          {error ? <Text accessibilityRole="alert" style={styles.errorGeneral}>{error}</Text> : null}
+          {error ? <Text style={styles.errorGeneral}>{error}</Text> : null}
 
           <CustomButton
             titulo="Iniciar sesión"
@@ -140,7 +123,7 @@ export default function Login() {
 
           <AuthDivider />
 
-          <Pressable style={styles.botonGoogle} onPress={continuarConGoogle} disabled={cargando}>
+          <Pressable style={styles.botonGoogle} onPress={continuarConGoogle}>
             <Ionicons name="logo-google" size={21} color="#4285F4" />
             <Text style={styles.textoGoogle}>Continuar con Google</Text>
           </Pressable>
@@ -150,7 +133,6 @@ export default function Login() {
             iconoIzquierdo="people"
             variante="contorno"
             onPress={() => router.push("/registro")}
-            deshabilitado={cargando}
           />
         </View>
 
@@ -215,15 +197,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 10,
     textAlign: "center",
-  },
-  aviso: {
-    color: "#92400E",
-    backgroundColor: "#FFFBEB",
-    padding: 12,
-    borderRadius: 10,
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 16,
   },
   botonGoogle: {
     height: 48,

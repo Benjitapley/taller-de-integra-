@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,7 +17,6 @@ import { CustomButton } from "@/components/CustomButton";
 import { CustomInput } from "@/components/CustomInput";
 import { useAuth } from "@/hooks/useAuth";
 import { formatearFechaNacimiento, validarFechaNacimiento } from "@/utils/fechaNacimiento";
-import { REQUISITOS_CONTRASENA, validarContrasena } from "@/utils/contrasena";
 
 export default function Registro() {
   const { registrarCuenta } = useAuth();
@@ -25,18 +25,12 @@ export default function Registro() {
   const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [errorFecha, setErrorFecha] = useState("");
   const [password, setPassword] = useState("");
-  const [errorPassword, setErrorPassword] = useState("");
   const [confirmacion, setConfirmacion] = useState("");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
-  const [correoPendiente, setCorreoPendiente] = useState("");
-  const enviando = useRef(false);
 
   async function crearCuenta() {
-    if (enviando.current) return;
     setError("");
-    setErrorFecha("");
-    setErrorPassword("");
 
     if (!nombre.trim() || !email.trim() || !password || !confirmacion) {
       setError("Completa todos los campos.");
@@ -49,9 +43,8 @@ export default function Registro() {
       return;
     }
 
-    const errorContrasena = validarContrasena(password);
-    if (errorContrasena) {
-      setErrorPassword(errorContrasena);
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
 
@@ -60,33 +53,25 @@ export default function Registro() {
       return;
     }
 
-    enviando.current = true;
     setCargando(true);
-    try {
-      const resultado = await registrarCuenta({
-        nombre,
-        email,
-        password,
-        fechaNacimiento: resultadoFecha.fechaISO,
-      });
-      if (!resultado.exito) {
-        setError(resultado.error);
-        return;
-      }
+    const creada = await registrarCuenta({
+      nombre,
+      email,
+      password,
+      fechaNacimiento: resultadoFecha.fechaISO,
+    });
+    setCargando(false);
 
-      setPassword("");
-      setConfirmacion("");
-      if (resultado.estado === "confirmacion_pendiente") {
-        setCorreoPendiente(email.trim().toLowerCase());
-      } else {
-        router.replace("/(tabs)");
-      }
-    } catch {
-      setError("No pudimos completar el registro. Inténtalo nuevamente.");
-    } finally {
-      enviando.current = false;
-      setCargando(false);
+    if (!creada) {
+      setError("Ya existe una cuenta con ese correo.");
+      return;
     }
+
+    Alert.alert(
+      "Cuenta creada",
+      "Tu cuenta de prueba fue creada correctamente.",
+      [{ text: "Continuar", onPress: () => router.replace("/(tabs)") }],
+    );
   }
 
   return (
@@ -107,128 +92,94 @@ export default function Registro() {
         <AuthBranding />
 
         <View style={styles.bienvenida}>
-          <Text style={styles.titulo}>{correoPendiente ? "Revisa tu correo" : "¡Crea tu cuenta!"}</Text>
+          <Text style={styles.titulo}>¡Crea tu cuenta!</Text>
           <View style={styles.subrayado} />
           <Text style={styles.descripcion}>
-            {correoPendiente
-              ? "Confirma tu dirección para continuar."
-              : "Regístrate para comenzar a\nencontrar tu próximo hogar."}
+            Regístrate para comenzar a{"\n"}encontrar tu próximo hogar.
           </Text>
         </View>
 
-        {correoPendiente ? (
-          <View style={styles.confirmacion} accessibilityLiveRegion="polite">
-            <Ionicons name="mail-outline" size={40} color="#4B3FCA" />
-            <Text style={styles.mensajeConfirmacion}>
-              Si {correoPendiente} puede registrarse, recibirás un enlace de confirmación.
-              Revisa también la carpeta de spam. Todavía no has iniciado sesión.
-            </Text>
-            <Text style={styles.mensajeConfirmacion}>
-              Si ya tenías una cuenta, puedes iniciar sesión con ella.
-            </Text>
-            <CustomButton titulo="Ir a iniciar sesión" onPress={() => router.replace("/login")} />
-            <CustomButton
-              titulo="Volver al formulario"
-              variante="contorno"
-              onPress={() => setCorreoPendiente("")}
-            />
+        <View style={styles.formulario}>
+          <CustomInput
+            etiqueta="Nombre"
+            icono="person"
+            mostrarIconoInterior={false}
+            value={nombre}
+            onChangeText={setNombre}
+            placeholder="Tu nombre"
+            autoCapitalize="words"
+          />
+
+          <CustomInput
+            etiqueta="Correo electrónico"
+            icono="mail"
+            mostrarIconoInterior={false}
+            iconoDerecho="mail-outline"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="ejemplo@correo.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <CustomInput
+            etiqueta="Fecha de nacimiento"
+            icono="calendar-outline"
+            mostrarIconoInterior={false}
+            value={fechaNacimiento}
+            onChangeText={(valor) => {
+              setFechaNacimiento(formatearFechaNacimiento(valor));
+              setErrorFecha("");
+            }}
+            onBlur={() => {
+              const resultado = validarFechaNacimiento(fechaNacimiento);
+              setErrorFecha(resultado.valido ? "" : resultado.error);
+            }}
+            placeholder="DD/MM/AAAA"
+            keyboardType="number-pad"
+            maxLength={10}
+            error={errorFecha}
+          />
+
+          <CustomInput
+            etiqueta="Contraseña"
+            icono="lock-closed"
+            mostrarIconoInterior={false}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            esContrasena
+            autoCapitalize="none"
+          />
+
+          <CustomInput
+            etiqueta="Confirmar contraseña"
+            icono="lock-closed"
+            mostrarIconoInterior={false}
+            value={confirmacion}
+            onChangeText={setConfirmacion}
+            placeholder="••••••••"
+            esContrasena
+            autoCapitalize="none"
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <CustomButton
+            titulo="Crear mi cuenta"
+            iconoDerecho="arrow-forward"
+            onPress={crearCuenta}
+            cargando={cargando}
+          />
+
+          <View style={styles.yaTieneCuenta}>
+            <Text style={styles.textoCuenta}>¿Ya tienes cuenta?</Text>
+            <Pressable onPress={() => router.replace("/login")} hitSlop={8}>
+              <Text style={styles.enlaceLogin}> Iniciar sesión</Text>
+            </Pressable>
           </View>
-        ) : (
-          <View style={styles.formulario}>
-            <CustomInput
-              etiqueta="Nombre"
-              icono="person"
-              mostrarIconoInterior={false}
-              value={nombre}
-              onChangeText={setNombre}
-              placeholder="Tu nombre"
-              autoCapitalize="words"
-              editable={!cargando}
-            />
-
-            <CustomInput
-              etiqueta="Correo electrónico"
-              icono="mail"
-              mostrarIconoInterior={false}
-              iconoDerecho="mail-outline"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="ejemplo@correo.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!cargando}
-            />
-
-            <CustomInput
-              etiqueta="Fecha de nacimiento"
-              icono="calendar-outline"
-              mostrarIconoInterior={false}
-              value={fechaNacimiento}
-              onChangeText={(valor) => {
-                setFechaNacimiento(formatearFechaNacimiento(valor));
-                setErrorFecha("");
-              }}
-              onBlur={() => {
-                const resultado = validarFechaNacimiento(fechaNacimiento);
-                setErrorFecha(resultado.valido ? "" : resultado.error);
-              }}
-              placeholder="DD/MM/AAAA"
-              keyboardType="number-pad"
-              maxLength={10}
-              error={errorFecha}
-              editable={!cargando}
-            />
-
-            <CustomInput
-              etiqueta="Contraseña"
-              icono="lock-closed"
-              mostrarIconoInterior={false}
-              value={password}
-              onChangeText={(valor) => {
-                setPassword(valor);
-                setErrorPassword("");
-                setError("");
-              }}
-              placeholder="••••••••"
-              esContrasena
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!cargando}
-              error={errorPassword}
-              ayuda={REQUISITOS_CONTRASENA}
-            />
-
-            <CustomInput
-              etiqueta="Confirmar contraseña"
-              icono="lock-closed"
-              mostrarIconoInterior={false}
-              value={confirmacion}
-              onChangeText={setConfirmacion}
-              placeholder="••••••••"
-              esContrasena
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!cargando}
-            />
-
-            {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-
-            <CustomButton
-              titulo="Crear mi cuenta"
-              iconoDerecho="arrow-forward"
-              onPress={crearCuenta}
-              cargando={cargando}
-            />
-
-            <View style={styles.yaTieneCuenta}>
-              <Text style={styles.textoCuenta}>¿Ya tienes cuenta?</Text>
-              <Pressable onPress={() => router.replace("/login")} hitSlop={8}>
-                <Text style={styles.enlaceLogin}> Iniciar sesión</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
+        </View>
 
         <AuthFooter />
       </ScrollView>
@@ -287,19 +238,6 @@ const styles = StyleSheet.create({
   },
   formulario: {
     width: "100%",
-  },
-  confirmacion: {
-    width: "100%",
-    maxWidth: 520,
-    alignItems: "center",
-    gap: 16,
-    marginVertical: 16,
-  },
-  mensajeConfirmacion: {
-    color: "#374151",
-    fontSize: 15,
-    lineHeight: 23,
-    textAlign: "center",
   },
   error: {
     color: "#B42318",

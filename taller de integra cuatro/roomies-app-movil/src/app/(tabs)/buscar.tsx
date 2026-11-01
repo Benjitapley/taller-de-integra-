@@ -5,10 +5,13 @@ import { usuariosMock } from "@/mocks/usuarios";
 import { colors } from "@/theme/colors";
 import { paletaPublicacion } from "@/constants/origenPublicacion";
 import BuscadorPublicaciones from '@/components/BuscadorPublicaciones';
+import BuscadorPersonas from '@/components/BuscadorPersonas';
+import BarraBusqueda from '@/components/BarraBusqueda';
 
 
 export default function Buscar() {
   const [tab, setTab] = useState<'arriendos' | 'personas'>('arriendos');
+
   return (
     <View style={styles.container}>
       <View style={styles.tabs}>
@@ -36,13 +39,7 @@ export default function Buscar() {
             <BuscadorPublicaciones />
         </ScrollView>
       ) : (
-        <FlatList
-          data={usuariosMock}
-          keyExtractor={(u) => String(u.idUsuario)}
-          renderItem={({ item }) => <UsuarioCard usuario={item} />}
-          contentContainerStyle={{ padding: 16 }}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        />
+        <BuscadorPersonas />  
       )}
     </View>
   );

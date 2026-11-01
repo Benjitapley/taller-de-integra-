@@ -15,7 +15,6 @@ interface CustomInputProps extends TextInputProps {
   icono: keyof typeof Ionicons.glyphMap;
   esContrasena?: boolean;
   error?: string;
-  ayuda?: string;
   mostrarIconoInterior?: boolean;
   iconoDerecho?: keyof typeof Ionicons.glyphMap;
 }
@@ -25,7 +24,6 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   icono,
   esContrasena = false,
   error,
-  ayuda,
   mostrarIconoInterior = true,
   iconoDerecho,
   ...rest
@@ -82,11 +80,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         )}
       </View>
 
-      {error ? (
-        <Text accessibilityRole="alert" style={styles.textoError}>{error}</Text>
-      ) : ayuda ? (
-        <Text style={styles.textoAyuda}>{ayuda}</Text>
-      ) : null}
+      {error ? <Text style={styles.textoError}>{error}</Text> : null}
     </View>
   );
 };
@@ -132,11 +126,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#B42318",
     marginTop: 4,
-  },
-  textoAyuda: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 4,
-    lineHeight: 18,
   },
 });
