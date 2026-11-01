@@ -9,8 +9,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     const indicacionCondiciones = document.getElementById("condiciones-mascotas-indicacion");
     const avisoAnterior = document.getElementById("aviso-mascotas-anteriores");
     const btnSubmit = formulario.querySelector(".btn-publicar");
+    const estadoFormulario = document.getElementById("estado-formulario");
+    const imagenInput = document.getElementById("imagen");
+    const urlParams = new URLSearchParams(window.location.search);
+    const idEdicion = urlParams.get("id");
+    const modoEdicion = window.location.pathname === "/editar-publicacion" || urlParams.has("id");
+    let publicacionOriginal = null;
+    let publicacionLista = !modoEdicion;
+    let guardando = false;
     let aceptaSinEspecificar = false;
     let preferenciasModificadas = false;
+
+    const mostrarEstado = (mensaje, esError = false) => {
+        estadoFormulario.textContent = mensaje;
+        estadoFormulario.hidden = !mensaje;
+        estadoFormulario.classList.toggle("error", esError);
+    };
 
     const tiposSeleccionados = () => casillasMascotas.filter(casilla => casilla.checked).map(casilla => casilla.value);
 
@@ -54,56 +68,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         return "Revisa los campos de la publicación.";
     };
     
-    // 1. Detectar si estamos editando buscando el ID en la URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const idEdicion = urlParams.get('id');
-
-    // 2. Si hay un ID, cambiar la interfaz y cargar los datos
-    if (idEdicion) {
-        // Cambiar títulos para que diga "Editar" en lugar de "Crear"
-        document.title = "Editar publicación | Hay cupo";
-        const h2Titulo = document.querySelector(".texto-titulo h2");
-        if(h2Titulo) h2Titulo.textContent = "Editar publicación";
-        
-        if(btnSubmit) btnSubmit.textContent = "Guardar cambios";
-        btnSubmit.disabled = true;
-
-        // Obtener los datos y rellenar los inputs
-        try {
-            const respuesta = await fetch(`/api/publicaciones/${idEdicion}`);
-            if (respuesta.ok) {
-                const pub = await respuesta.json();
-                document.getElementById("titulo").value = pub.titulo;
-                document.getElementById("categoria").value = pub.categoria;
-                document.getElementById("tipo").value = pub.tipo_vivienda;
-                document.getElementById("ubicacion").value = pub.ubicacion;
-                document.getElementById("precio").value = pub.precio;
-                document.getElementById("cupos").value = pub.cupos_totales;
-                
-                mascotaSelect.value = pub.mascota === "si" ? "si" : "no";
-                const tiposGuardados = Array.isArray(pub.tipos_mascotas_aceptadas) ? pub.tipos_mascotas_aceptadas : [];
-                casillasMascotas.forEach(casilla => {
-                    casilla.checked = tiposGuardados.includes(casilla.value);
-                });
-                condicionesMascotas.value = pub.condiciones_mascotas || "";
-                aceptaSinEspecificar = mascotaSelect.value === "si" && tiposGuardados.length === 0;
-                actualizarPreferencias();
-                
-                document.getElementById("contenido").value = pub.descripcion;
-                btnSubmit.disabled = false;
-            } else {
-                const error = await respuesta.json().catch(() => ({}));
-                alert("No se pudo cargar la publicación: " + mensajeError(error));
-            }
-        } catch (error) {
-            console.error("Error al cargar la publicación", error);
-            alert("No se pudo cargar la publicación. Revisa tu conexión y vuelve a intentarlo.");
-        }
-    }
-
-    // 3. Controlar el envío (Crear o Actualizar)
     formulario.addEventListener("submit", async (evento) => {
-        evento.preventDefault(); 
+        evento.preventDefault();
+        if (!publicacionLista || guardando) return;
 
         const mascota = mascotaSelect.value;
         const tiposMascotas = mascota === "si" ? tiposSeleccionados() : [];
@@ -118,6 +85,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (tiposMascotas.includes("otro") && !condiciones) {
             condicionesMascotas.setCustomValidity("Indica qué otro animal se acepta.");
         }
+        const imagen = imagenInput.files[0];
+        imagenInput.setCustomValidity(imagen && imagen.size > 5 * 1024 * 1024
+            ? "La imagen debe pesar como máximo 5 MB." : "");
         if (!formulario.reportValidity()) return;
 
         const formDataOriginal = new FormData(formulario);
@@ -129,18 +99,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         formDataEnvio.append("precio", formDataOriginal.get("precio"));
         formDataEnvio.append("tipo_vivienda", formDataOriginal.get("tipo"));
         formDataEnvio.append("descripcion", formDataOriginal.get("contenido"));
-        formDataEnvio.append("tipo", "Compartida");
         formDataEnvio.append("cupos_totales", formDataOriginal.get("cupos"));
+        if (!modoEdicion || publicacionOriginal.tipo) {
+            formDataEnvio.append("tipo", modoEdicion ? publicacionOriginal.tipo : "Compartida");
+        }
+        if (!modoEdicion || typeof publicacionOriginal.permitir_comentarios === "boolean") {
+            formDataEnvio.append("permitir_comentarios", modoEdicion ? publicacionOriginal.permitir_comentarios : false);
+        }
+        if (imagen) formDataEnvio.append("imagen", imagen);
         
         formDataEnvio.append("mascota", mascota);
         formDataEnvio.append("tipos_mascotas_aceptadas", JSON.stringify(tiposMascotas));
         formDataEnvio.append("condiciones_mascotas", condiciones);
 
-        // Define si usas POST (crear) o PUT (actualizar)
-        const url = idEdicion ? `/api/publicaciones/${idEdicion}` : "/api/publicaciones";
-        const metodo = idEdicion ? "PUT" : "POST";
+        const url = modoEdicion ? `/api/publicaciones/${idEdicion}` : "/api/publicaciones";
+        const metodo = modoEdicion ? "PUT" : "POST";
 
+        guardando = true;
         btnSubmit.disabled = true;
+        btnSubmit.textContent = "Guardando...";
+        formulario.setAttribute("aria-busy", "true");
+        mostrarEstado("");
         try {
             const respuesta = await fetch(url, {
                 method: metodo,
@@ -148,16 +127,77 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
 
             if (respuesta.ok) {
-                // Al guardar, te devuelve a la lista de publicaciones o al inicio
-                window.location.href = idEdicion ? "/mis-publicaciones" : "/inicio";
+                window.location.href = modoEdicion ? "/mis-publicaciones" : "/inicio";
             } else {
                 const error = await respuesta.json().catch(() => ({}));
-                alert("Error al procesar: " + mensajeError(error));
+                mostrarEstado("No se pudo guardar: " + mensajeError(error), true);
             }
         } catch (error) {
-            alert("Error de conexión con el servidor.");
+            mostrarEstado("No se pudo guardar. Revisa tu conexión y vuelve a intentarlo.", true);
         } finally {
+            guardando = false;
             btnSubmit.disabled = false;
+            btnSubmit.textContent = modoEdicion ? "Guardar cambios" : "Publicar ahora";
+            formulario.setAttribute("aria-busy", "false");
         }
     });
+
+    imagenInput.addEventListener("change", () => imagenInput.setCustomValidity(""));
+
+    if (modoEdicion) {
+        document.title = "Editar publicación | Hay cupo";
+        document.querySelector(".texto-titulo h2").textContent = "Editar publicación";
+        const enlaceVolver = document.getElementById("enlace-volver");
+        enlaceVolver.href = "/mis-publicaciones";
+        enlaceVolver.textContent = "← Volver a mis publicaciones";
+        document.getElementById("ayuda-imagen").textContent = "Si no eliges otra imagen, se conserva la actual. JPG, PNG o WEBP; máximo 5 MB.";
+        btnSubmit.textContent = "Guardar cambios";
+        btnSubmit.disabled = true;
+        formulario.inert = true;
+        mostrarEstado("Cargando publicación...");
+
+        if (!/^[1-9]\d*$/.test(idEdicion || "") || Number(idEdicion) > 2147483647) {
+            mostrarEstado("El enlace de edición no es válido. Vuelve a Mis publicaciones y selecciona Editar.", true);
+            return;
+        }
+
+        formulario.setAttribute("aria-busy", "true");
+        try {
+            const respuesta = await fetch(`/api/publicaciones/${idEdicion}`);
+            if (!respuesta.ok) {
+                const error = await respuesta.json().catch(() => ({}));
+                mostrarEstado("No se pudo cargar la publicación: " + mensajeError(error), true);
+                return;
+            }
+            const pub = await respuesta.json();
+            publicacionOriginal = pub;
+            document.getElementById("titulo").value = pub.titulo;
+            document.getElementById("categoria").value = pub.categoria;
+            document.getElementById("tipo").value = pub.tipo_vivienda;
+            document.getElementById("ubicacion").value = pub.ubicacion;
+            document.getElementById("precio").value = pub.precio;
+            document.getElementById("cupos").value = pub.cupos_totales;
+            document.getElementById("contenido").value = pub.descripcion || "";
+
+            mascotaSelect.value = pub.mascota === "si" ? "si" : "no";
+            const tiposGuardados = Array.isArray(pub.tipos_mascotas_aceptadas) ? pub.tipos_mascotas_aceptadas : [];
+            casillasMascotas.forEach(casilla => {
+                casilla.checked = tiposGuardados.includes(casilla.value);
+            });
+            condicionesMascotas.value = pub.condiciones_mascotas || "";
+            aceptaSinEspecificar = mascotaSelect.value === "si" && tiposGuardados.length === 0;
+            actualizarPreferencias();
+
+            publicacionLista = true;
+            formulario.inert = false;
+            btnSubmit.disabled = false;
+            mostrarEstado(String(pub.estado).toLowerCase() === "cerrada"
+                ? "Esta publicación está cerrada. Puedes editar sus datos; al guardar seguirá cerrada y sin cupos disponibles."
+                : "");
+        } catch (error) {
+            mostrarEstado("No se pudo cargar la publicación. Revisa tu conexión y vuelve a abrirla desde Mis publicaciones.", true);
+        } finally {
+            formulario.setAttribute("aria-busy", "false");
+        }
+    }
 });

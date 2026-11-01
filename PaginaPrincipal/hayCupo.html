@@ -37,7 +37,7 @@
             <img src="/Iconos/sofa(login).webp" alt="Ilustración sala" class="ilustracion-card">
             <h3>¿Buscas algo para tu casa?</h3>
             <p>Publica o encuentra lo que necesites.</p>
-            <a href="/publicar" class="btn-sidebar">Ver publicaciones</a>
+            <a href="/mis-publicaciones" class="btn-sidebar">Mis publicaciones</a>
         </div>
     </nav>
 
@@ -84,7 +84,7 @@
                     <label for="filtro-ubicacion">Ubicación</label>
                     <div class="barra-busqueda">
                         <input type="text" id="filtro-ubicacion" placeholder="Ej: Temuco">
-                        <button type="button" id="btn-consultar">Consultar</button>
+                        <button type="submit" id="btn-consultar">Consultar</button>
                     </div>
                 </div>
 
@@ -160,11 +160,13 @@
                     </p>
                 </div>
                 <div>
-                    <p class="tw:m-0! tw:mb-1! tw:text-sm! tw:font-extrabold! tw:text-[#382384]!">Personas:</p>
-                    <p class="tw:m-0! tw:flex! tw:items-center! tw:gap-2! tw:text-[#555]! tw:wrap-anywhere!">
+                    <p class="tw:m-0! tw:mb-1! tw:text-sm! tw:font-extrabold! tw:text-[#382384]!">Cupos actuales:</p>
+                    <p role="status" class="tw:m-0! tw:flex! tw:items-center! tw:gap-2! tw:text-[#555]! tw:wrap-anywhere!">
                         <i class="fa-solid fa-user tw:w-4! tw:shrink-0! tw:text-center! tw:text-[#382384]!" aria-hidden="true"></i>
                         <span id="modal-personas">...</span>
                     </p>
+                    <p id="modal-estado"></p>
+                    <button id="btn-actualizar-cupos" type="button" onclick="consultarCuposDetalle()">Actualizar cupos</button>
                 </div>
                 <div>
                     <p class="tw:m-0! tw:mb-1! tw:text-sm! tw:font-extrabold! tw:text-[#382384]!">Mascotas:</p>

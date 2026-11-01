@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function cargarPerfil() {
         try {
             const respuesta = await fetch("/api/perfil");
+            if (!respuesta.ok) throw new Error("No se pudo cargar el perfil.");
             const data = await respuesta.json();
 
             // Llenar textos del perfil
@@ -18,9 +19,16 @@ document.addEventListener("DOMContentLoaded", () => {
             // Llenar imagen o dejar ícono por defecto
             const avatar = document.getElementById("avatar-img");
             if (data.foto_perfil) {
-                avatar.innerHTML = `<img src="${data.foto_perfil}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                const foto = document.createElement("img");
+                foto.src = data.foto_perfil;
+                foto.alt = "Foto de perfil";
+                foto.style.cssText = "width: 100%; height: 100%; object-fit: cover;";
+                avatar.replaceChildren(foto);
             } else {
-                avatar.innerHTML = `<i class="fa-solid fa-user"></i>`;
+                const icono = document.createElement("i");
+                icono.className = "fa-solid fa-user";
+                icono.setAttribute("aria-hidden", "true");
+                avatar.replaceChildren(icono);
             }
 
             // Llenar inputs del modal de edición para que no partan vacíos
@@ -31,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("input-sobre").value = data.sobre_mi || "";
 
         } catch (error) {
+            document.getElementById("perfil-nombre").textContent = "No se pudo cargar el perfil.";
             console.error("Error cargando perfil", error);
         }
     }
@@ -39,8 +48,10 @@ document.addEventListener("DOMContentLoaded", () => {
     async function cargarMisTarjetas() {
         const contenedor = document.getElementById("contenedor-publicaciones-perfil");
         try {
-            const respuesta = await fetch("/api/mis-publicaciones");
+            const respuesta = await fetch("/api/mis-publicaciones", { cache: "no-store" });
+            if (!respuesta.ok) throw new Error("No se pudo cargar la publicación.");
             const pubs = await respuesta.json();
+            if (!Array.isArray(pubs)) throw new Error("La respuesta de publicaciones no es válida.");
 
             if (pubs.length === 0) {
                 contenedor.innerHTML = "<p style='color: #888;'>No has subido ninguna publicación todavía.</p>";
@@ -51,30 +62,40 @@ document.addEventListener("DOMContentLoaded", () => {
             const pub = pubs[0];
 
             const precio = new Intl.NumberFormat("es-CL").format(pub.precio || 0);
-            const imagen = pub.imagen ? pub.imagen : "https://via.placeholder.com/200x150?text=Sin+Imagen";
             const tipo = pub.tipo ? pub.tipo.toUpperCase() : "VIVIENDA";
-            
-            // Fallbacks de seguridad por diferencias de nombres de variables
-            const cuposSafe = pub.cupos || pub.cupos_totales || "1";
+            const cerrada = String(pub.estado).toLowerCase() === "cerrada";
+            const cupos = cerrada ? 0 : (pub.cupos_disponibles ?? pub.cupos ?? pub.cupos_totales);
             const ubiSafe = pub.ubicacion || "Ubicación no especificada";
 
             contenedor.innerHTML = `
                 <div class="tarjeta-pub tw:flex-col! tw:sm:flex-row!" style="display: flex; border: 1px solid #eee; border-radius: 12px; overflow: hidden; margin-bottom: 15px;">
-                    <img src="${imagen}" class="img-pub tw:w-full! tw:shrink-0! tw:sm:w-[200px]!" style="width: 200px; height: 160px; object-fit: cover; background: #ddd;">
+                    <img class="img-pub tw:w-full! tw:shrink-0! tw:sm:w-[200px]!" style="width: 200px; height: 160px; object-fit: cover; background: #ddd;" alt="">
                     <div class="info-pub tw:min-w-0! tw:wrap-anywhere!" style="padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
-                            <span style="background: #e6f8eb; color: #1f8b41; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;">${tipo}</span>
-                            <h4 style="margin: 10px 0 5px 0; color: #1a1a1a; font-size: 16px;">${pub.titulo}</h4>
-                            <div style="color: #666; font-size: 13px; margin-bottom: 5px;"><i class="fa-solid fa-users"></i> ${cuposSafe} persona(s)</div>
-                            <div style="color: #666; font-size: 13px;"><i class="fa-solid fa-location-dot"></i> ${ubiSafe}</div>
+                            <span class="tipo-publicacion" style="background: #e6f8eb; color: #1f8b41; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;"></span>
+                            <h4 class="titulo-publicacion" style="margin: 10px 0 5px 0; color: #1a1a1a; font-size: 16px;"></h4>
+                            <p class="estado-publicacion" style="color: #666; font-size: 13px;"></p>
+                            <div style="color: #666; font-size: 13px; margin-bottom: 5px;"><i class="fa-solid fa-users"></i> <span class="cupos-publicacion"></span></div>
+                            <div style="color: #666; font-size: 13px;"><i class="fa-solid fa-location-dot"></i> <span class="ubicacion-publicacion"></span></div>
                         </div>
                         <div class="tw:flex-wrap! tw:gap-3!" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
-                            <span style="color: #382384; font-weight: 800; font-size: 16px;">$${precio} CLP</span>
-                            <a href="/editar-publicacion?id=${pub.id}" style="background: #382384; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: bold;">Ver publicación</a>
+                            <span class="precio-publicacion" style="color: #382384; font-weight: 800; font-size: 16px;"></span>
+                            <a class="editar-publicacion" style="background: #382384; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: bold;">Editar publicación</a>
                         </div>
                     </div>
                 </div>
             `;
+            const foto = contenedor.querySelector(".img-pub");
+            foto.hidden = !pub.imagen;
+            if (pub.imagen) foto.src = pub.imagen;
+            foto.alt = pub.titulo || "Foto de la publicación";
+            contenedor.querySelector(".tipo-publicacion").textContent = tipo;
+            contenedor.querySelector(".titulo-publicacion").textContent = pub.titulo || "Sin título";
+            contenedor.querySelector(".estado-publicacion").textContent = `Estado: ${pub.estado || "No especificado"}`;
+            contenedor.querySelector(".cupos-publicacion").textContent = `${cupos} ${cupos === 1 ? "cupo disponible" : "cupos disponibles"}`;
+            contenedor.querySelector(".ubicacion-publicacion").textContent = ubiSafe;
+            contenedor.querySelector(".precio-publicacion").textContent = `$${precio} CLP`;
+            contenedor.querySelector(".editar-publicacion").href = `/editar-publicacion?id=${encodeURIComponent(pub.id)}`;
         } catch (error) {
             contenedor.innerHTML = "<p style='color: red;'>Error al cargar la publicación.</p>";
         }

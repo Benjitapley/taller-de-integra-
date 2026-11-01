@@ -4,6 +4,9 @@ from fastapi import APIRouter, FastAPI, HTTPException, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 import psycopg
+from dotenv import load_dotenv
+
+load_dotenv()
 
 auth_router = APIRouter()
 
@@ -20,11 +23,11 @@ app.add_middleware(
 
 EDAD_MINIMA = 18
 
-# Mima conexión directa a tu base de datos que usa tu main principal
-DB_URL = "postgresql://postgres.erefnpvdjondjpcyjrpb:Hcupo2223xd@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
-
 def conectar():
-    return psycopg.connect(DB_URL, connect_timeout=10)
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise RuntimeError("Falta configurar DATABASE_URL.")
+    return psycopg.connect(url, connect_timeout=10)
 
 
 class RegistroRequest(BaseModel):

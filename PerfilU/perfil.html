@@ -38,7 +38,7 @@
         <div class="sidebar-logo">
             <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
             <h2>Roomies</h2>
-            <button id="btn-cerrar-menu" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
+            <button id="btn-cerrar-menu" type="button" aria-label="Cerrar menú" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
         </div>
         <ul class="sidebar-menu">
             <li><a href="/inicio"><img src="/Iconos/casa.webp" alt="Inicio" class="icono"> Inicio</a></li>
@@ -53,10 +53,12 @@
 
     <!-- HEADER MORADO -->
     <header class="header-morado tw:flex-wrap! tw:gap-3! tw:px-4! tw:sm:px-[30px]!" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 30px; background-color: #382384; color: white;">
-        <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-            <i class="fa-solid fa-house" style="font-size: 20px;"></i>
-            <h1 style="margin: 0; font-size: 20px; font-weight: 800;">¿Hay cupo?</h1>
-        </div>
+        <h1 style="margin: 0; font-size: 20px; font-weight: 800;">
+            <button id="btn-abrir-menu" type="button" aria-label="Abrir menú de navegación" aria-controls="menu-lateral" aria-expanded="false" style="display: flex; align-items: center; gap: 12px; cursor: pointer; width: auto; min-height: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit;">
+                <i class="fa-solid fa-house" style="font-size: 20px;" aria-hidden="true"></i>
+                <span>¿Hay cupo?</span>
+            </button>
+        </h1>
         <a href="/inicio" style="color: white; text-decoration: none; font-weight: bold;">Volver al Inicio</a>
     </header>
 
@@ -98,7 +100,7 @@
 
             <!-- COLUMNA PUBLICACIONES ACTIVAS -->
             <div class="caja-info tw:min-w-0!">
-                <h3 style="color: #382384; margin-top: 0; border-bottom: 2px solid #f4f5f9; padding-bottom: 10px;"><i class="fa-solid fa-list"></i> Publicaciones activas</h3>
+                <h3 style="color: #382384; margin-top: 0; border-bottom: 2px solid #f4f5f9; padding-bottom: 10px;"><i class="fa-solid fa-list"></i> Última publicación</h3>
                 <div id="contenedor-publicaciones-perfil"></div>
             </div>
         </div>

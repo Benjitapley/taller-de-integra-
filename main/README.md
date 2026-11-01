@@ -10,6 +10,10 @@ python -m uvicorn main.main:app --reload --port 8000
 
 La base debe incluir el esquema `haycupo`, las tablas existentes y la migración
 `publicaciones_service/migrations/001_mascotas_aceptadas.sql`.
+Configura `DATABASE_URL` en el entorno o en tu archivo `.env` local. La API de
+publicaciones, autenticación y conexiones utiliza esa misma variable; no hay una
+conexión remota de respaldo. Si falta, se debe corregir la configuración antes
+de iniciar. No incluyas sus credenciales en documentos ni capturas.
 Puedes probar las operaciones desde `http://127.0.0.1:8000/docs`, en
 **Publicaciones**. El proceso independiente `publicaciones_service.main:app`
 conserva su endpoint `/health`.
@@ -19,6 +23,42 @@ conserva su endpoint `/health`.
 | POST | `/api/publicaciones` | Publica un aviso; responde 201 con su ID. |
 | GET | `/api/publicaciones` | Lista avisos, del más reciente al más antiguo. |
 | GET | `/api/publicaciones/buscar` | Busca avisos con filtros combinables. |
+| GET | `/api/mis-publicaciones` | Lista los avisos propios, incluidos los cerrados. |
+| GET | `/api/publicaciones/{id}` | Consulta los datos del aviso para editarlo. |
+| PUT | `/api/publicaciones/{id}` | Guarda los cambios de un aviso propio. |
+| PATCH | `/api/publicaciones/{id}/cerrar` | Cierra un aviso propio y conserva sus datos. |
+| GET | `/api/publicaciones/{id}/cupos` | Consulta el estado y los cupos actuales. |
+
+## Editar, cerrar y consultar cupos
+
+Entra a **Mis publicaciones** desde el menú lateral. Cada fila permite editar
+el aviso, consultar sus cupos y cerrar la publicación con confirmación.
+El formulario de edición carga los datos actuales, acepta una nueva foto y
+conserva la portada si no se selecciona otra. Los cupos son una cantidad exacta,
+también cuando son más de tres. El PUT valida los mismos campos que la creación;
+`tipo` y `permitir_comentarios` conservan su valor si se omiten.
+
+Cerrar guarda `estado=Cerrada`, retira el aviso del listado y de la búsqueda
+pública y mantiene su información en Mis publicaciones. Repetir el cierre
+devuelve el mismo estado. Editar un aviso cerrado conserva el cierre. Las
+operaciones de edición y cierre comprueban el autor mediante la identidad
+de demostración descrita más abajo; un aviso inexistente o ajeno responde 404.
+
+La consulta de cupos devuelve, por ejemplo:
+
+```json
+{"id": 42, "estado": "Disponible", "cupos_totales": 4, "cupos_disponibles": 4}
+```
+
+`cupos_totales` es la cantidad anunciada por el autor. `cupos_disponibles`
+devuelve esa cantidad mientras el aviso está abierto y cero al estar cerrado.
+No se calculan reservas ni ocupantes. En el inicio, abrir el detalle consulta
+los cupos actuales y **Actualizar cupos** permite volver a consultarlos.
+Se utiliza la columna `estado` existente; este cambio no agrega columnas.
+Las publicaciones antiguas con `estado=NULL` se interpretan como `Disponible`.
+La última publicación del perfil también muestra su estado y cero cupos si
+está cerrada. El cierre de sesión espera la respuesta de `/auth/logout` para
+eliminar la cookie antes de redirigir; la identidad sigue siendo de demostración.
 
 ## Publicar
 
@@ -95,7 +135,7 @@ Los precios admiten hasta 14 dígitos y 2 decimales. El mínimo no puede superar
 al máximo. Todos los filtros se combinan con AND. La ubicación se recorta y
 una consulta vacía se ignora; `%` y `_` se buscan literalmente. Omite los
 filtros que no uses. Sin filtros, ambas rutas devuelven el mismo listado,
-incluidos avisos `busco` y `ofrezco`, sin filtrar por estado.
+incluidos avisos `busco` y `ofrezco`, excluyendo los de estado `Cerrada`.
 
 ```powershell
 Invoke-RestMethod 'http://127.0.0.1:8000/api/publicaciones'
@@ -115,6 +155,8 @@ ordenada por `orden` e `id_imagen` como portada (`null` si no tiene imágenes).
     "precio": 180000.0,
     "ubicacion": "Temuco",
     "cupos_totales": 1,
+    "cupos_disponibles": 1,
+    "estado": "Disponible",
     "tipo_vivienda": "casa",
     "imagen": null,
     "categoria": "ofrezco",
@@ -140,6 +182,13 @@ comparte este contrato.
 python -B -m unittest discover -s tests -v
 ```
 
-Las pruebas automatizadas validan el contrato HTTP, los filtros y la
-parametrización SQL con conexiones simuladas. No escriben en PostgreSQL;
-la comprobación contra la base configurada se realiza al levantar la aplicación.
+Con Node.js disponible, las comprobaciones de la interfaz se ejecutan con:
+
+```powershell
+node tests/test_publicaciones_ui.cjs
+```
+
+Las pruebas automatizadas validan el contrato HTTP, los filtros, la configuración
+y la parametrización SQL con conexiones simuladas. Las pruebas JavaScript usan
+DOM y red simulados para edición, cierre, consultas, sesión, perfil y navegación.
+No escriben en PostgreSQL ni sustituyen el recorrido en un navegador real.

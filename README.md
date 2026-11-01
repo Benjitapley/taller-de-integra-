@@ -86,6 +86,16 @@ buscar con filtros. El botón **Consultar** del inicio usa la búsqueda del back
 Consulta los campos, ejemplos de PowerShell y respuestas en
 [la guía de endpoints de arriendos](./main/README.md).
 
+Desde **Mis publicaciones** puedes editar un aviso, consultar sus cupos y
+cerrarlo sin borrar sus datos. Las publicaciones cerradas se conservan en tu
+gestión y muestran cero cupos disponibles; se ocultan del listado del inicio.
+Configura `DATABASE_URL` para que publicaciones, autenticación y conexiones
+utilicen la misma base de datos.
+
+El [informe de cambios y revisión](./output/pdf/informe_cambios_publicaciones.pdf)
+explica cada archivo modificado, los resultados de las pruebas y los pendientes
+antes de producción. La identidad de usuario actual sigue siendo de demostración.
+
 ## Pruebas Manuales (QA)
 Para consultar y registrar las pruebas manuales de los flujos de **Autenticacion** y **Publicaciones**, revisa el documento en:
 - [Guia de Pruebas Manuales: Auth y Publicaciones](./taller%20de%20integra%20dos/endpoint/manual-testing-auth-publicaciones.md)

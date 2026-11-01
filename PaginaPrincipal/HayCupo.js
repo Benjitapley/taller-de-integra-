@@ -1,3 +1,10 @@
+function describirCupos(cantidad, categoria) {
+    const texto = categoria === "busco"
+        ? (cantidad === 1 ? "cupo solicitado" : "cupos solicitados")
+        : (cantidad === 1 ? "cupo disponible" : "cupos disponibles");
+    return `${cantidad} ${texto}`;
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     
     // 1. MENÚ Y HEADER
@@ -7,23 +14,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     const fondoMenu = document.getElementById("fondo-menu");
 
     if (btnAbrir && btnCerrar && menuLateral && fondoMenu) {
+        menuLateral.inert = !menuLateral.classList.contains("abierto");
+        const cerrarMenu = () => {
+            menuLateral.classList.remove("abierto");
+            fondoMenu.style.display = "none";
+            btnAbrir.setAttribute("aria-expanded", "false");
+            btnAbrir.focus();
+            menuLateral.inert = true;
+        };
         btnAbrir.addEventListener("click", () => {
+            menuLateral.inert = false;
             menuLateral.classList.add("abierto");
             fondoMenu.style.display = "block";
             btnAbrir.setAttribute("aria-expanded", "true");
             btnCerrar.focus();
         });
-        btnCerrar.addEventListener("click", () => {
-            menuLateral.classList.remove("abierto");
-            fondoMenu.style.display = "none";
-            btnAbrir.setAttribute("aria-expanded", "false");
-            btnAbrir.focus();
-        });
-        fondoMenu.addEventListener("click", () => {
-            menuLateral.classList.remove("abierto");
-            fondoMenu.style.display = "none";
-            btnAbrir.setAttribute("aria-expanded", "false");
-        });
+        btnCerrar.addEventListener("click", cerrarMenu);
+        fondoMenu.addEventListener("click", cerrarMenu);
     }
 
     const perfilUsuario = document.getElementById("perfil-usuario");
@@ -48,9 +55,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (modal && modal.style.display === "flex") {
             if (event.key === "Escape") window.cerrarDetalle();
             if (event.key === "Tab") {
-                // El único control del detalle es su botón de cierre.
-                event.preventDefault();
-                modal.querySelector("button").focus();
+                const controles = [...modal.querySelectorAll("button:not(:disabled)")];
+                const primero = controles[0];
+                const ultimo = controles[controles.length - 1];
+                if (!controles.includes(document.activeElement)) {
+                    event.preventDefault();
+                    (event.shiftKey ? ultimo : primero).focus();
+                } else if (event.shiftKey && document.activeElement === primero) {
+                    event.preventDefault();
+                    ultimo.focus();
+                } else if (!event.shiftKey && document.activeElement === ultimo) {
+                    event.preventDefault();
+                    primero.focus();
+                }
             }
             return;
         }
@@ -74,9 +91,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const btnCerrarSesion = document.getElementById("btn-cerrar-sesion");
     if (btnCerrarSesion) {
-        btnCerrarSesion.addEventListener("click", () => {
-            localStorage.clear();
-            window.location.href = "/";
+        const errorSesion = document.createElement("p");
+        errorSesion.id = "error-cerrar-sesion";
+        errorSesion.setAttribute("role", "alert");
+        errorSesion.style.cssText = "margin: 0; padding: 0 16px 12px; color: #ac2323; font-size: 13px;";
+        errorSesion.hidden = true;
+        btnCerrarSesion.parentElement.append(errorSesion);
+        btnCerrarSesion.addEventListener("click", async () => {
+            if (btnCerrarSesion.disabled) return;
+            btnCerrarSesion.disabled = true;
+            errorSesion.hidden = true;
+            try {
+                const respuesta = await fetch("/auth/logout", { method: "POST" });
+                if (!respuesta.ok) throw new Error("No se pudo cerrar la sesión.");
+                ["nombre_usuario", "access_token", "user_id"].forEach(clave => localStorage.removeItem(clave));
+                window.location.href = "/";
+            } catch (error) {
+                errorSesion.textContent = "No se pudo cerrar la sesión. Revisa tu conexión e inténtalo de nuevo.";
+                errorSesion.hidden = false;
+            } finally {
+                btnCerrarSesion.disabled = false;
+            }
         });
     }
 
@@ -84,6 +119,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const contenedorPubs = document.getElementById("contenedor-publicaciones");
     window.todasLasPublicaciones = [];
     window.publicacionesVisibles = [];
+    const escaparHtml = (valor) => String(valor).replace(/[&<>"']/g, caracter => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[caracter]));
 
     const renderizarPublicaciones = (publicaciones) => {
         window.publicacionesVisibles = publicaciones;
@@ -107,19 +145,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             const claseTarjeta = tieneImagen
                 ? "tarjeta-mockup tw:flex-col! tw:sm:flex-row!"
                 : "tarjeta-mockup sin-imagen tw:flex-col!";
-            const imgHtml = tieneImagen ? `<div class="tarjeta-img tw:h-40! tw:w-full! tw:sm:h-auto! tw:sm:w-[40%]!" style="background-image: url('${pub.imagen}');"></div>` : "";
+            const imgHtml = tieneImagen ? '<div class="tarjeta-img tw:h-40! tw:w-full! tw:sm:h-auto! tw:sm:w-[40%]!" aria-hidden="true"></div>' : "";
             
-            const titulo = pub.titulo ? `<p class="tw:mb-2! tw:text-[15px]! tw:font-extrabold! tw:text-[#1a1a1a]! tw:wrap-anywhere!">${pub.titulo}</p>` : '';
-            
-            // Lógica exacta para el número de personas usando "cupos_totales" del backend
-            let textoPersonas = "No especificado";
-            if (pub.cupos_totales) {
-                if (String(pub.cupos_totales) === "3") {
-                    textoPersonas = "3 o más Personas";
-                } else {
-                    textoPersonas = `${pub.cupos_totales} Persona(s)`;
-                }
-            }
+            const titulo = pub.titulo ? `<p class="tw:mb-2! tw:text-[15px]! tw:font-extrabold! tw:text-[#1a1a1a]! tw:wrap-anywhere!">${escaparHtml(pub.titulo)}</p>` : '';
+            const cupos = pub.cupos_disponibles ?? pub.cupos_totales;
+            const textoPersonas = describirCupos(Number(cupos), pub.categoria);
 
             // En la tarjeta principal (Home) ya NO ponemos la descripción, solo los datos
             const tarjetaHtml = `
@@ -139,7 +169,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                             ${titulo}
                             <p><i class="fa-solid fa-user"></i> ${textoPersonas}</p>
                             <p><i class="fa-solid fa-money-bill"></i> <strong>${precioClp} CLP</strong></p>
-                            <p><i class="fa-solid fa-location-dot"></i> <span>${pub.ubicacion || "No especificada"}</span></p>
+                            <p><i class="fa-solid fa-location-dot"></i> <span>${escaparHtml(pub.ubicacion || "No especificada")}</span></p>
                         </div>
                         <div class="tarjeta-footer">
                             <span><i class="fa-regular fa-calendar"></i> Reciente</span>
@@ -148,7 +178,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                     </div>
                 </article>
             `;
-            contenedorPubs.innerHTML += tarjetaHtml;
+            contenedorPubs.insertAdjacentHTML("beforeend", tarjetaHtml);
+            if (tieneImagen) {
+                contenedorPubs.lastElementChild.querySelector(".tarjeta-img").style.backgroundImage = `url(${JSON.stringify(pub.imagen)})`;
+            }
         });
     };
 
@@ -185,7 +218,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 4. BÚSQUEDA DE PUBLICACIONES EN EL BACKEND
     const btnConsultar = document.getElementById("btn-consultar");
     if (btnConsultar && contenedorPubs) {
-        btnConsultar.addEventListener("click", () => {
+        document.getElementById("form-busqueda").addEventListener("submit", (evento) => {
+            evento.preventDefault();
             const parametros = new URLSearchParams();
             const filtros = {
                 consulta: document.getElementById("filtro-ubicacion").value.trim(),
@@ -206,17 +240,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // LÓGICA DEL MODAL: Inyecta TODA la información corregida
 let focoAntesDelDetalle = null;
+let publicacionEnDetalle = null;
+let consultaCuposActual = 0;
+
+window.consultarCuposDetalle = async function() {
+    const pub = publicacionEnDetalle;
+    if (!pub) return;
+    const solicitud = ++consultaCuposActual;
+    const resultado = document.getElementById("modal-personas");
+    const estado = document.getElementById("modal-estado");
+    const boton = document.getElementById("btn-actualizar-cupos");
+    resultado.textContent = "Consultando cupos…";
+    estado.textContent = "";
+    boton.disabled = true;
+    try {
+        const respuesta = await fetch(`/api/publicaciones/${pub.id}/cupos`, { cache: "no-store" });
+        if (!respuesta.ok) throw new Error("No se pudieron consultar los cupos.");
+        const datos = await respuesta.json();
+        if (solicitud !== consultaCuposActual) return;
+        const cupos = datos.cupos_disponibles;
+        resultado.textContent = describirCupos(cupos, pub.categoria);
+        estado.textContent = `Estado: ${datos.estado}`;
+    } catch (error) {
+        if (solicitud !== consultaCuposActual) return;
+        resultado.textContent = "No se pudieron consultar los cupos. Intenta actualizar nuevamente.";
+    } finally {
+        if (solicitud === consultaCuposActual) boton.disabled = false;
+    }
+};
 
 window.abrirDetalle = function(index) {
     const pub = window.publicacionesVisibles[index];
     const modal = document.getElementById("modal-detalle");
     if (!pub || !modal) return;
     
-    let textoPersonas = "No especificado";
-    if (pub.cupos_totales) {
-        textoPersonas = (String(pub.cupos_totales) === "3") ? "3 o más Personas" : `${pub.cupos_totales} Persona(s)`;
-    }
-
     const aceptaMascotas = String(pub.mascota || "").toLowerCase() === "si";
     const nombresMascotas = {
         perro: "perro", gato: "gato", ave: "ave", tortuga: "tortuga",
@@ -235,7 +292,6 @@ window.abrirDetalle = function(index) {
     document.getElementById("modal-tipo").textContent = tipoVivienda;
     document.getElementById("modal-ubi").textContent = pub.ubicacion || "No especificada";
     document.getElementById("modal-precio").textContent = new Intl.NumberFormat("es-CL").format(pub.precio || 0) + " CLP";
-    document.getElementById("modal-personas").textContent = textoPersonas;
     document.getElementById("modal-mascotas").textContent = textoMascotas;
     const condiciones = aceptaMascotas ? (pub.condiciones_mascotas || "") : "";
     document.getElementById("modal-condiciones-mascotas").textContent = condiciones;
@@ -247,9 +303,13 @@ window.abrirDetalle = function(index) {
     focoAntesDelDetalle = document.activeElement;
     modal.style.display = "flex";
     modal.querySelector("button").focus();
+    publicacionEnDetalle = pub;
+    window.consultarCuposDetalle();
 };
 
 window.cerrarDetalle = function() {
     document.getElementById("modal-detalle").style.display = "none";
+    publicacionEnDetalle = null;
+    ++consultaCuposActual;
     if (focoAntesDelDetalle && focoAntesDelDetalle.isConnected) focoAntesDelDetalle.focus();
 };

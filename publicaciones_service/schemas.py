@@ -116,6 +116,8 @@ class PublicacionResumen(BaseModel):
     precio: float
     ubicacion: str
     cupos_totales: int
+    cupos_disponibles: int
+    estado: str
     tipo_vivienda: str
     imagen: str | None
     categoria: str

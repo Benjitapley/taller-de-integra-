@@ -22,7 +22,7 @@
         <div class="sidebar-logo">
             <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
             <h2>Roomies</h2>
-            <button id="btn-cerrar-menu" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
+            <button id="btn-cerrar-menu" type="button" aria-label="Cerrar menú" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #5b5872;">✖</button>
         </div>
         <ul class="sidebar-menu">
             <li><a href="/inicio"><img src="/Iconos/casa.webp" alt="Inicio" class="icono"> Inicio</a></li>
@@ -39,18 +39,23 @@
     <header class="header-morado tw:flex-wrap! tw:gap-3! tw:px-4! tw:sm:px-[30px]!" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 30px; background-color: #382384; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
         
         <!-- Botón para abrir el menú lateral -->
-        <div id="btn-abrir-menu" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-            <i class="fa-solid fa-house" style="font-size: 20px;"></i>
-            <h1 style="margin: 0; font-size: 20px; font-weight: 800;">¿Hay cupo?</h1>
-        </div>
+        <h1 style="margin: 0; font-size: 20px; font-weight: 800;">
+            <button id="btn-abrir-menu" type="button" aria-label="Abrir menú de navegación" aria-controls="menu-lateral" aria-expanded="false" style="display: flex; align-items: center; gap: 12px; cursor: pointer; width: auto; min-height: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit;">
+                <i class="fa-solid fa-house" style="font-size: 20px;" aria-hidden="true"></i>
+                <span>¿Hay cupo?</span>
+            </button>
+        </h1>
         
         <!-- Perfil de usuario a la derecha -->
         <div style="display: flex; align-items: center; gap: 20px;">
             <div id="menu-usuario-container" style="position: relative; display: inline-block;">
-                <div id="perfil-usuario" style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(255,255,255,0.1); padding: 5px 12px 5px 5px; border-radius: 20px;">
-                    <div id="avatar-letra" style="width: 30px; height: 30px; background-color: white; color: #382384; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">?</div>
+                <button id="perfil-usuario" type="button" aria-label="Abrir menú de usuario" aria-controls="dropdown-menu" aria-expanded="false" style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(255,255,255,0.1); padding: 5px 12px 5px 5px; border-radius: 20px; width: auto; min-height: 0; border: 0; color: inherit; font: inherit;">
+                    <span id="avatar-letra" aria-hidden="true" style="width: 30px; height: 30px; background-color: white; color: #382384; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">?</span>
                     <span id="nombre-usuario-nav" style="font-weight: 700; font-size: 14px; color: white;">Cargando...</span>
                     <span style="font-size: 10px; color: white;">▼</span>
+                </button>
+                <div id="dropdown-menu" style="display: none; position: absolute; top: 110%; right: 0; z-index: 1000; min-width: 150px; overflow: hidden; border-radius: 8px; border: 1px solid #ddd; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <button id="btn-cerrar-sesion" type="button" style="width: 100%; padding: 12px 16px; border: 0; background: transparent; color: #cf3b3b; font-size: 14px; font-weight: 700; text-align: left;">Cerrar sesión</button>
                 </div>
             </div>
         </div>
@@ -61,10 +66,13 @@
         <div class="panel-crud tw:box-border! tw:min-w-0! tw:p-5! tw:sm:p-[30px]!" style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); width: 100%; max-width: 1000px; margin-top: 20px;">
             
             <div class="tw:flex-wrap! tw:gap-4!" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f5f9; padding-bottom: 15px;">
-                <h2 style="color: #1a1a1a; margin: 0; font-size: 24px; font-weight: 800;">Mis Anuncios</h2>
+                <h2 style="color: #1a1a1a; margin: 0; font-size: 24px; font-weight: 800;">Mis publicaciones</h2>
                 <a href="/crear" class="tw:inline-flex! tw:items-center! tw:gap-2! tw:focus-visible:outline-2! tw:focus-visible:outline-offset-2!" style="background: #382384; color: white; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 14px; transition: 0.2s;"><i class="fa-solid fa-plus"></i> Nueva</a>
             </div>
 
+            <p class="ayuda-publicaciones">Edita tus anuncios, consulta sus cupos o ciérralos cuando ya no estén disponibles. Los anuncios cerrados se conservan aquí.</p>
+            <p id="mensaje-publicaciones" role="status" aria-live="polite" aria-atomic="true"></p>
+            <button id="btn-reintentar-publicaciones" type="button" class="btn-accion btn-editar" hidden>Reintentar carga</button>
             <div class="tw:w-full! tw:overflow-x-auto!" role="region" aria-label="Tus publicaciones" tabindex="0">
             <table class="tabla-crud tw:min-w-[640px]!" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                 <thead>
@@ -73,29 +81,17 @@
                         <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Tipo</th>
                         <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Precio</th>
                         <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Estado</th>
+                        <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Cupos</th>
                         <th style="color: #382384; font-weight: 800; text-align: left; padding: 15px; border-bottom: 2px solid #eee;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="lista-mis-publicaciones">
-                    <tr><td colspan="5" style="text-align: center; padding: 20px; color: #888;">Cargando tus publicaciones...</td></tr>
+                    <tr><td colspan="6" style="text-align: center; padding: 20px; color: #888;">Cargando tus publicaciones...</td></tr>
                 </tbody>
             </table>
             </div>
         </div>
     </main>
-
-    <!-- Modal de confirmación para borrar -->
-    <div id="modal-borrar" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 9999;">
-        <div style="background: white; padding: 24px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%;">
-            <i class="fa-solid fa-triangle-exclamation" style="font-size: 40px; color: #cf3b3b; margin-bottom: 15px;"></i>
-            <h2 style="margin-top: 0; color: #1a1a1a;">¿Eliminar publicación?</h2>
-            <p style="color: #666; margin-bottom: 25px;">Esta acción no se puede deshacer.</p>
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button onclick="document.getElementById('modal-borrar').style.display='none'" style="padding: 10px 20px; border-radius: 6px; border: 1px solid #ccc; background: rgb(17, 16, 16); cursor: pointer; font-weight: bold;">Cancelar</button>
-                <button id="btn-confirmar-borrar" style="padding: 10px 20px; border-radius: 6px; border: none; background: #cf3b3b; color: rgb(238, 231, 231); cursor: pointer; font-weight: bold;">Sí, eliminar</button>
-            </div>
-        </div>
-    </div>
 
     <!-- Scripts clave -->
     <!-- HayCupo.js le da vida al menú lateral -->

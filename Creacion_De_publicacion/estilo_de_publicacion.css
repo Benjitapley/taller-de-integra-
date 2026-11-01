@@ -129,6 +129,27 @@ body {
     transform: scale(0.98);
 }
 
+.btn-publicar:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.estado-formulario {
+    margin: 0 0 20px;
+    padding: 12px;
+    border-radius: 8px;
+    background: #eee8f8;
+    color: #4e396f;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
+.estado-formulario.error {
+    background: #fff0f0;
+    color: #a32727;
+}
+
 .enlace-volver {
     display: inline-block;
     margin-bottom: 20px;

@@ -20,7 +20,7 @@
       <div class="sidebar-logo">
           <img src="/Iconos/casa.webp" alt="Roomies" class="icono">
           <h2>Roomies</h2>
-          <button id="btn-cerrar-menu" class="tw:ml-auto! tw:w-auto! tw:cursor-pointer! tw:border-0! tw:bg-transparent! tw:text-lg! tw:text-[#5b5872]!" aria-label="Cerrar menú">✖</button>
+          <button id="btn-cerrar-menu" type="button" class="tw:ml-auto! tw:w-auto! tw:cursor-pointer! tw:border-0! tw:bg-transparent! tw:text-lg! tw:text-[#5b5872]!" aria-label="Cerrar menú">✖</button>
       </div>
 
       <ul class="sidebar-menu">
@@ -35,23 +35,25 @@
   </nav>
 
   <header class="header-morado tw:flex! tw:flex-wrap tw:items-center! tw:justify-between! tw:gap-3! tw:bg-[#382384]! tw:px-5! tw:py-3! tw:text-white! tw:sm:px-[30px]!">
-      <div id="btn-abrir-menu" class="tw:flex tw:cursor-pointer tw:items-center tw:gap-3">
-          <i class="fa-solid fa-house tw:text-xl!"></i>
-          <h1 class="tw:m-0! tw:text-xl! tw:font-extrabold!">¿Hay cupo?</h1>
-      </div>
+      <h1 class="tw:m-0! tw:text-xl! tw:font-extrabold!">
+          <button id="btn-abrir-menu" type="button" aria-label="Abrir menú de navegación" aria-controls="menu-lateral" aria-expanded="false" class="tw:flex tw:cursor-pointer tw:items-center tw:gap-3" style="width: auto; min-height: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit;">
+              <i class="fa-solid fa-house tw:text-xl!" aria-hidden="true"></i>
+              <span>¿Hay cupo?</span>
+          </button>
+      </h1>
       
       <div class="tw:flex tw:items-center tw:gap-5">
           <div id="menu-usuario-container" class="tw:relative tw:inline-block">
-              <div id="perfil-usuario" class="tw:flex tw:cursor-pointer tw:items-center tw:gap-2.5 tw:rounded-[20px] tw:bg-white/10 tw:py-[5px] tw:pr-3 tw:pl-[5px]">
-                  <div id="avatar-letra" class="tw:flex tw:size-[30px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-white tw:text-sm tw:font-bold tw:text-[#382384]">
+              <button id="perfil-usuario" type="button" aria-label="Abrir menú de usuario" aria-controls="dropdown-menu" aria-expanded="false" class="tw:flex tw:cursor-pointer tw:items-center tw:gap-2.5 tw:rounded-[20px] tw:bg-white/10 tw:py-[5px] tw:pr-3 tw:pl-[5px]" style="width: auto; min-height: 0; padding: 5px 12px 5px 5px; border: 0; border-radius: 20px; background: rgba(255,255,255,0.1); color: inherit; font: inherit;">
+                  <span id="avatar-letra" aria-hidden="true" class="tw:flex tw:size-[30px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-white tw:text-sm tw:font-bold tw:text-[#382384]">
                       ?
-                  </div>
+                  </span>
                   <span id="nombre-usuario-nav" class="tw:text-sm tw:font-bold tw:text-white">Cargando...</span>
                   <span class="tw:text-[10px] tw:text-white">▼</span>
-              </div>
+              </button>
               
               <div id="dropdown-menu" class="tw:absolute tw:top-[110%] tw:right-0 tw:z-[1000] tw:min-w-[150px] tw:overflow-hidden tw:rounded-lg tw:border tw:border-solid tw:border-[#ddd] tw:bg-white tw:shadow-[0_4px_6px_rgba(0,0,0,0.1)]" style="display: none;">
-                  <button id="btn-cerrar-sesion" class="tw:w-full! tw:cursor-pointer! tw:border-0! tw:bg-transparent! tw:px-4! tw:py-3! tw:text-left! tw:text-sm! tw:font-bold! tw:text-[#cf3b3b]! tw:hover:bg-red-50!">
+                  <button id="btn-cerrar-sesion" type="button" class="tw:w-full! tw:cursor-pointer! tw:border-0! tw:bg-transparent! tw:px-4! tw:py-3! tw:text-left! tw:text-sm! tw:font-bold! tw:text-[#cf3b3b]! tw:hover:bg-red-50!">
                       Cerrar sesión
                   </button>
               </div>
@@ -61,7 +63,7 @@
 
   <main class="tw:px-5! tw:py-0!">
     <div class="tarjeta-formulario tw:mx-auto! tw:my-6! tw:max-w-[850px]! tw:rounded-2xl! tw:bg-white! tw:px-[18px]! tw:py-[22px]! tw:min-[601px]:my-10! tw:min-[601px]:p-10!">
-        <a class="enlace-volver tw:mb-5! tw:inline-block! tw:text-sm! tw:font-semibold! tw:text-[#666]! tw:no-underline! tw:hover:text-[#382384]!" href="/inicio"><i class="fa-solid fa-arrow-left"></i> Volver al inicio</a>
+        <a id="enlace-volver" class="enlace-volver tw:mb-5! tw:inline-block! tw:text-sm! tw:font-semibold! tw:text-[#666]! tw:no-underline! tw:hover:text-[#382384]!" href="/inicio"><i class="fa-solid fa-arrow-left"></i> Volver al inicio</a>
         
         <div class="titulo-seccion-form tw:mb-[30px]! tw:flex! tw:items-center! tw:gap-[15px]!">
             <div class="icono-circulo tw:shrink-0">
@@ -73,11 +75,13 @@
             </div>
         </div>
 
+        <p id="estado-formulario" class="estado-formulario" role="status" aria-live="polite" hidden></p>
+
         <form id="form-crear" enctype="multipart/form-data" class="form-grid tw:grid! tw:grid-cols-1! tw:gap-5! tw:min-[601px]:grid-cols-2! tw:min-[601px]:gap-6!">
             
             <div class="grupo-input campo-full tw:col-span-full!">
                 <label for="titulo">Título de la publicación</label>
-                <input type="text" id="titulo" name="titulo" placeholder="Ej: Busco habitación cerca del centro" required maxlength="120">
+                <input type="text" id="titulo" name="titulo" placeholder="Ej: Busco habitación cerca del centro" required maxlength="200">
             </div>
 
             <div class="grupo-input">
@@ -95,27 +99,24 @@
                     <option value="">Selecciona una opción</option>
                     <option value="casa">Casa</option>
                     <option value="departamento">Departamento</option>
+                    <option value="habitacion">Habitación</option>
                 </select>
             </div>
 
             <div class="grupo-input">
                 <label for="ubicacion">Ubicación</label>
-                <input type="text" id="ubicacion" name="ubicacion" placeholder="Ej: Barrio Universitario" required>
+                <input type="text" id="ubicacion" name="ubicacion" placeholder="Ej: Barrio Universitario" required maxlength="250">
             </div>
 
             <div class="grupo-input">
                 <label for="precio">Presupuesto / Precio (CLP)</label>
-                <input type="number" id="precio" name="precio" placeholder="Ej: 150000" required min="0">
+                <input type="number" id="precio" name="precio" placeholder="Ej: 150000" required min="0" max="999999999999.99" step="0.01">
             </div>
 
             <div class="grupo-input">
-                <label for="cupos">Cantidad de personas</label>
-                <select id="cupos" name="cupos" required>
-                    <option value="">Selecciona una opción</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3 o más</option>
-                </select>
+                <label for="cupos">Cantidad de cupos anunciados</label>
+                <input type="number" id="cupos" name="cupos" placeholder="Ej: 4" required min="1" max="2147483647" step="1" aria-describedby="ayuda-cupos">
+                <small id="ayuda-cupos" class="ayuda-mascotas">Indica la cantidad exacta de personas para este aviso.</small>
             </div>
 
             <div class="grupo-input">
@@ -147,15 +148,12 @@
             <div class="grupo-input campo-full tw:col-span-full!">
                 <label for="imagen"><i class="fa-solid fa-camera tw:mr-[5px]"></i> Subir imagen (opcional)</label>
                 <input type="file" id="imagen" name="imagen" accept="image/png, image/jpeg, image/webp" class="tw:cursor-pointer! tw:border-2! tw:border-dashed! tw:border-[#ccc]! tw:bg-white! tw:p-2.5!">
-                <small class="tw:-mt-1 tw:text-xs tw:text-[#888]">Formatos permitidos: JPG, PNG o WEBP.</small>
+                <small id="ayuda-imagen" class="tw:-mt-1 tw:text-xs tw:text-[#888]">Formatos permitidos: JPG, PNG o WEBP. Máximo 5 MB.</small>
             </div>
             <div class="grupo-input campo-full tw:col-span-full!">
                 <label for="contenido">Descripción detallada</label>
-                <textarea id="contenido" name="contenido" rows="5" placeholder="Describe los detalles de lo que buscas o el lugar que ofreces..." required></textarea>
+                <textarea id="contenido" name="contenido" rows="5" placeholder="Describe los detalles de lo que buscas o el lugar que ofreces..." required maxlength="5000"></textarea>
             </div>
-
-            <!-- Checkbox oculto para que el JS no lance error -->
-            <input type="checkbox" id="comentarios" name="comentarios" checked style="display: none;">
 
             <div class="grupo-input campo-full tw:col-span-full!">
                 <button type="submit" class="btn-publicar tw:mt-5! tw:w-full! tw:cursor-pointer! tw:rounded-[10px]! tw:border-0! tw:bg-[#382384]! tw:p-4! tw:text-base! tw:font-extrabold! tw:text-white! tw:transition! tw:hover:opacity-95! tw:active:scale-[0.98]!">Publicar ahora</button>

@@ -141,3 +141,101 @@ body {
 .enlace-volver:hover {
     color: #382384;
 }
+
+.ayuda-publicaciones, #mensaje-publicaciones {
+    color: #5b5872;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+#mensaje-publicaciones:empty {
+    display: none;
+}
+
+#mensaje-publicaciones.mensaje-error {
+    color: #ac2323;
+}
+
+.tabla-crud td {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    color: #4b485c;
+    font-size: 14px;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+
+.tabla-crud .titulo-publicacion {
+    font-weight: 800;
+    color: #1a1a1a;
+}
+
+.tabla-crud .tabla-mensaje {
+    text-align: center;
+    padding: 25px 15px;
+}
+
+.estado-badge {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 20px;
+    background: #e5f5ec;
+    color: #216442;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.estado-badge.estado-cerrada {
+    background: #eeedf2;
+    color: #5b5872;
+}
+
+.acciones-publicacion {
+    min-width: 165px;
+}
+
+.btn-accion {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-height: 40px;
+    margin: 3px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn-editar, .btn-editar:hover {
+    background: #eee9ff;
+    color: #382384;
+}
+
+.btn-cupos, .btn-cupos:hover {
+    background: #edf3fc;
+    color: #274d7b;
+}
+
+.btn-cerrar, .btn-cerrar:hover {
+    background: #fff0ed;
+    color: #a53626;
+}
+
+.btn-accion:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.btn-accion:focus-visible {
+    outline: 2px solid #382384;
+    outline-offset: 2px;
+}
+
+.btn-accion[hidden] {
+    display: none;
+}
