@@ -1,0 +1,565 @@
+{
+  "alcance": "Publicaciones y auth reales; router de conexiones sustituido; sin lifespan ni PostgreSQL",
+  "metodo": "ASGI TestClient en proceso; no es un navegador ni una prueba TCP",
+  "archivos_producto_modificados": false,
+  "totales": {
+    "total": 28,
+    "PASS": 20,
+    "FAIL": 6,
+    "INFO": 2
+  },
+  "criterio_salida": "0 sin FAIL; 1 si hay incumplimientos documentales o funcionales",
+  "casos": [
+    {
+      "id": "SW-DOC-01",
+      "criterio": "/docs entrega su HTML",
+      "estado": "PASS",
+      "esperado": "HTTP 200 y marcador HTML esperado",
+      "observado": {
+        "status": 200,
+        "marcador": true
+      }
+    },
+    {
+      "id": "SW-DOC-02",
+      "criterio": "/redoc entrega su HTML",
+      "estado": "PASS",
+      "esperado": "HTTP 200 y marcador HTML esperado",
+      "observado": {
+        "status": 200,
+        "marcador": true
+      }
+    },
+    {
+      "id": "SW-DOC-03",
+      "criterio": "/docs/oauth2-redirect entrega su HTML",
+      "estado": "PASS",
+      "esperado": "HTTP 200 y marcador HTML esperado",
+      "observado": {
+        "status": 200,
+        "marcador": true
+      }
+    },
+    {
+      "id": "SW-API-01",
+      "criterio": "OpenAPI disponible",
+      "estado": "PASS",
+      "esperado": "HTTP 200 y OpenAPI 3",
+      "observado": {
+        "status": 200,
+        "version": "3.1.0"
+      }
+    },
+    {
+      "id": "SW-INFO-01",
+      "criterio": "Alcance del esquema aislado",
+      "estado": "INFO",
+      "observado": {
+        "operaciones_api_auth": 15,
+        "info": {
+          "title": "FastAPI",
+          "version": "0.1.0"
+        },
+        "conexiones": "Router sustituido; no se auditan sus endpoints",
+        "assets_swagger": [
+          "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
+          "https://fastapi.tiangolo.com/img/favicon.png",
+          "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"
+        ],
+        "navegador": "No se verifica renderizado ni descarga de assets externos"
+      }
+    },
+    {
+      "id": "SW-CORE-01",
+      "criterio": "Contrato de POST /api/publicaciones",
+      "estado": "PASS",
+      "esperado": "Operación etiquetada y respuesta 201 con esquema",
+      "observado": {
+        "tags": [
+          "Publicaciones"
+        ],
+        "respuesta": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicacionCreada"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "SW-CORE-02",
+      "criterio": "Contrato de GET /api/publicaciones",
+      "estado": "PASS",
+      "esperado": "Operación etiquetada y respuesta 200 con esquema",
+      "observado": {
+        "tags": [
+          "Publicaciones"
+        ],
+        "respuesta": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PublicacionResumen"
+                },
+                "title": "Response Obtener Publicaciones Api Publicaciones Get"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "SW-CORE-03",
+      "criterio": "Contrato de GET /api/publicaciones/buscar",
+      "estado": "PASS",
+      "esperado": "Operación etiquetada y respuesta 200 con esquema",
+      "observado": {
+        "tags": [
+          "Publicaciones"
+        ],
+        "respuesta": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PublicacionResumen"
+                },
+                "title": "Response Obtener Publicaciones Api Publicaciones Buscar Get"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "SW-FORM-01",
+      "criterio": "Campos obligatorios de creación",
+      "estado": "PASS",
+      "esperado": [
+        "categoria",
+        "cupos_totales",
+        "descripcion",
+        "precio",
+        "tipo",
+        "tipo_vivienda",
+        "titulo",
+        "ubicacion"
+      ],
+      "observado": [
+        "titulo",
+        "categoria",
+        "ubicacion",
+        "precio",
+        "tipo",
+        "cupos_totales",
+        "tipo_vivienda",
+        "descripcion"
+      ]
+    },
+    {
+      "id": "SW-FORM-02",
+      "criterio": "Enums principales de creación",
+      "estado": "PASS",
+      "esperado": {
+        "categoria": [
+          "busco",
+          "ofrezco"
+        ],
+        "tipo": [
+          "Arrendador",
+          "Compartida"
+        ],
+        "tipo_vivienda": [
+          "casa",
+          "departamento",
+          "habitacion"
+        ]
+      },
+      "observado": {
+        "categoria": [
+          "busco",
+          "ofrezco"
+        ],
+        "tipo": [
+          "Arrendador",
+          "Compartida"
+        ],
+        "tipo_vivienda": [
+          "casa",
+          "departamento",
+          "habitacion"
+        ]
+      }
+    },
+    {
+      "id": "SW-FORM-03",
+      "criterio": "Límites de texto y cupos",
+      "estado": "PASS",
+      "esperado": "Título 200, ubicación 250, descripción 5000 y cupos 1..2147483647",
+      "observado": {
+        "textos": {
+          "titulo": 200,
+          "ubicacion": 250,
+          "descripcion": 5000
+        },
+        "cupos": {
+          "type": "integer",
+          "maximum": 2147483647.0,
+          "minimum": 1.0,
+          "title": "Cupos Totales"
+        }
+      }
+    },
+    {
+      "id": "SW-FORM-04",
+      "criterio": "Enum si/no de mascotas documentado",
+      "estado": "FAIL",
+      "esperado": [
+        "si",
+        "no"
+      ],
+      "observado": {
+        "type": "string",
+        "title": "Mascota",
+        "default": "no"
+      }
+    },
+    {
+      "id": "SW-FILTER-01",
+      "criterio": "Nueve filtros de búsqueda documentados",
+      "estado": "PASS",
+      "esperado": [
+        "categoria",
+        "consulta",
+        "limite",
+        "mascotas",
+        "offset",
+        "personas",
+        "precio_max",
+        "precio_min",
+        "tipo"
+      ],
+      "observado": [
+        "categoria",
+        "consulta",
+        "limite",
+        "mascotas",
+        "offset",
+        "personas",
+        "precio_max",
+        "precio_min",
+        "tipo"
+      ]
+    },
+    {
+      "id": "SW-FILTER-02",
+      "criterio": "Valores de los filtros",
+      "estado": "PASS",
+      "esperado": {
+        "personas": [
+          "1",
+          "2",
+          "3"
+        ],
+        "tipo": [
+          "casa",
+          "departamento",
+          "habitacion"
+        ],
+        "mascotas": [
+          "no",
+          "si"
+        ],
+        "categoria": [
+          "busco",
+          "ofrezco"
+        ]
+      },
+      "observado": {
+        "personas": [
+          "1",
+          "2",
+          "3"
+        ],
+        "tipo": [
+          "casa",
+          "departamento",
+          "habitacion"
+        ],
+        "mascotas": [
+          "no",
+          "si"
+        ],
+        "categoria": [
+          "busco",
+          "ofrezco"
+        ]
+      }
+    },
+    {
+      "id": "SW-API-02",
+      "criterio": "Identificadores de operación únicos",
+      "estado": "PASS",
+      "esperado": "operationId presente y único",
+      "observado": [
+        "registrar_usuario_auth_registro_post",
+        "iniciar_sesion_auth_login_post",
+        "cerrar_sesion_auth_logout_post",
+        "buscar_ubicaciones_api_ubicaciones_get",
+        "obtener_publicaciones_api_publicaciones_buscar_get",
+        "obtener_publicaciones_api_publicaciones_get",
+        "crear_publicacion_api_publicaciones_post",
+        "obtener_mis_publicaciones_api_mis_publicaciones_get",
+        "obtener_una_publicacion_api_publicaciones__id_pub__get",
+        "actualizar_publicacion_api_publicaciones__id_pub__put",
+        "borrar_publicacion_api_publicaciones__id_pub__delete",
+        "consultar_cupos_api_publicaciones__id_pub__cupos_get",
+        "cerrar_publicacion_api_publicaciones__id_pub__cerrar_patch",
+        "obtener_perfil_api_perfil_get",
+        "actualizar_perfil_api_perfil_put"
+      ]
+    },
+    {
+      "id": "SW-SEC-01",
+      "criterio": "Identidad representada como seguridad de la API",
+      "estado": "FAIL",
+      "esperado": "Esquema de seguridad y requisitos por operación protegida; verificar sesión en servidor",
+      "observado": {
+        "securitySchemes": {},
+        "operaciones_con_cookie": [
+          "POST /api/publicaciones",
+          "GET /api/mis-publicaciones",
+          "PUT /api/publicaciones/{id_pub}",
+          "DELETE /api/publicaciones/{id_pub}",
+          "PATCH /api/publicaciones/{id_pub}/cerrar",
+          "GET /api/perfil",
+          "PUT /api/perfil"
+        ],
+        "nota": "Declarar seguridad en OpenAPI no sustituye autenticar al usuario"
+      }
+    },
+    {
+      "id": "SW-RESPONSE-01",
+      "criterio": "Éxitos con estructura documentada",
+      "estado": "FAIL",
+      "esperado": "Todas las respuestas de éxito del alcance tienen un esquema útil",
+      "observado": [
+        "POST /auth/registro",
+        "POST /auth/login",
+        "POST /auth/logout",
+        "GET /api/ubicaciones",
+        "GET /api/mis-publicaciones",
+        "GET /api/publicaciones/{id_pub}",
+        "PUT /api/publicaciones/{id_pub}",
+        "DELETE /api/publicaciones/{id_pub}",
+        "GET /api/publicaciones/{id_pub}/cupos",
+        "PATCH /api/publicaciones/{id_pub}/cerrar",
+        "GET /api/perfil",
+        "PUT /api/perfil"
+      ]
+    },
+    {
+      "id": "SW-RESPONSE-02",
+      "criterio": "Estados de error reales documentados",
+      "estado": "FAIL",
+      "esperado": "401/404/413/500 y reglas de auth según la operación",
+      "observado": {
+        "POST /api/publicaciones": [
+          "401",
+          "413",
+          "500"
+        ],
+        "GET /api/publicaciones": [
+          "500"
+        ],
+        "GET /api/publicaciones/buscar": [
+          "500"
+        ],
+        "GET /api/publicaciones/{id_pub}": [
+          "404",
+          "500"
+        ],
+        "PUT /api/publicaciones/{id_pub}": [
+          "401",
+          "404",
+          "413",
+          "500"
+        ],
+        "DELETE /api/publicaciones/{id_pub}": [
+          "401",
+          "404",
+          "500"
+        ],
+        "GET /api/publicaciones/{id_pub}/cupos": [
+          "404",
+          "500"
+        ],
+        "PATCH /api/publicaciones/{id_pub}/cerrar": [
+          "401",
+          "404",
+          "500"
+        ],
+        "POST /auth/registro": [
+          "400",
+          "409",
+          "500"
+        ],
+        "POST /auth/login": [
+          "401",
+          "500"
+        ]
+      }
+    },
+    {
+      "id": "SW-FORM-05",
+      "criterio": "URL encoded aceptado también documentado",
+      "estado": "FAIL",
+      "esperado": "Si el formulario sin foto responde 201, documentar también su tipo de contenido",
+      "observado": {
+        "status_real": 201,
+        "content_type_enviado": "application/x-www-form-urlencoded",
+        "content_types_documentados": [
+          "multipart/form-data"
+        ]
+      }
+    },
+    {
+      "id": "SW-RUNTIME-01",
+      "criterio": "Filtro inválido rechazado",
+      "estado": "PASS",
+      "esperado": 422,
+      "observado": {
+        "status": 422,
+        "body": {
+          "detail": [
+            {
+              "type": "literal_error",
+              "loc": [
+                "query",
+                "tipo"
+              ],
+              "msg": "Input should be 'casa', 'departamento' or 'habitacion'",
+              "input": "oficina",
+              "ctx": {
+                "expected": "'casa', 'departamento' or 'habitacion'"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "SW-RUNTIME-02",
+      "criterio": "Rango inválido rechazado",
+      "estado": "PASS",
+      "esperado": 422,
+      "observado": {
+        "status": 422,
+        "body": {
+          "detail": "El precio mínimo no puede superar al máximo."
+        }
+      }
+    },
+    {
+      "id": "SW-RUNTIME-03",
+      "criterio": "Mascota inválida rechazada",
+      "estado": "PASS",
+      "esperado": 422,
+      "observado": {
+        "status": 422,
+        "body": {
+          "detail": "Input should be 'si' or 'no'"
+        }
+      }
+    },
+    {
+      "id": "SW-RUNTIME-04",
+      "criterio": "Cookie malformada rechazada",
+      "estado": "PASS",
+      "esperado": 401,
+      "observado": {
+        "status": 401,
+        "body": {
+          "detail": "Inicia sesión para continuar."
+        }
+      }
+    },
+    {
+      "id": "SW-RUNTIME-05",
+      "criterio": "Publicación inexistente",
+      "estado": "PASS",
+      "esperado": 404,
+      "observado": {
+        "status": 404,
+        "body": {
+          "detail": "Publicación no encontrada"
+        }
+      }
+    },
+    {
+      "id": "SW-RUNTIME-06",
+      "criterio": "Error de base genérico",
+      "estado": "PASS",
+      "esperado": 500,
+      "observado": {
+        "status": 500,
+        "body": {
+          "detail": "Error al cargar publicaciones"
+        }
+      }
+    },
+    {
+      "id": "SW-RESPONSE-03",
+      "criterio": "Forma de detail en errores 422 compatible",
+      "estado": "FAIL",
+      "esperado": [
+        "array",
+        "string"
+      ],
+      "observado": {
+        "tipos_documentados": [
+          "array"
+        ],
+        "tipos_reales": [
+          "array",
+          "string"
+        ]
+      }
+    },
+    {
+      "id": "SW-INFO-02",
+      "criterio": "Reglas adicionales no representadas por el formulario",
+      "estado": "INFO",
+      "observado": {
+        "mascotas": "Especies, JSON y condición otro requieren descripción/ejemplos",
+        "imagen": "Describir formatos y límite de 5 MB",
+        "tags_ausentes": [
+          "POST /auth/registro",
+          "POST /auth/login",
+          "POST /auth/logout",
+          "GET /api/ubicaciones",
+          "GET /api/mis-publicaciones",
+          "DELETE /api/publicaciones/{id_pub}",
+          "GET /api/perfil",
+          "PUT /api/perfil"
+        ]
+      }
+    },
+    {
+      "id": "SW-ISOLATION-01",
+      "criterio": "No se intentó conectar a PostgreSQL",
+      "estado": "PASS",
+      "esperado": 0,
+      "observado": 0
+    }
+  ]
+}

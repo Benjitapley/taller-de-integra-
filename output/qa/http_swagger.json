@@ -1,0 +1,100 @@
+{
+  "alcance": "HTTP TCP real sobre loopback; aplicación real con conexiones aisladas y lifespan desactivado",
+  "limites": "No navegador ni persistencia; los CDN se consultan sin ejecutar JavaScript",
+  "puerto_temporal": 53955,
+  "servidor_detenido": true,
+  "intentos_postgresql": 0,
+  "totales": {
+    "casos": 11,
+    "pass": 11,
+    "fail": 0,
+    "no_validado": 0
+  },
+  "casos": [
+    {
+      "grupo": "HTTP local",
+      "ruta": "/docs",
+      "esperado": "200 y contenido correcto",
+      "obtenido": 200,
+      "contenido_correcto": true,
+      "resultado": "PASS"
+    },
+    {
+      "grupo": "HTTP local",
+      "ruta": "/redoc",
+      "esperado": "200 y contenido correcto",
+      "obtenido": 200,
+      "contenido_correcto": true,
+      "resultado": "PASS"
+    },
+    {
+      "grupo": "HTTP local",
+      "ruta": "/openapi.json",
+      "esperado": "200 y contenido correcto",
+      "obtenido": 200,
+      "contenido_correcto": true,
+      "resultado": "PASS"
+    },
+    {
+      "grupo": "HTTP local",
+      "ruta": "/docs/oauth2-redirect",
+      "esperado": "200 y contenido correcto",
+      "obtenido": 200,
+      "contenido_correcto": true,
+      "resultado": "PASS"
+    },
+    {
+      "grupo": "HTTP local",
+      "ruta": "/inicio",
+      "esperado": "200 y contenido correcto",
+      "obtenido": 200,
+      "contenido_correcto": true,
+      "resultado": "PASS"
+    },
+    {
+      "grupo": "HTTP local",
+      "ruta": "/crear",
+      "esperado": "200 y contenido correcto",
+      "obtenido": 200,
+      "contenido_correcto": true,
+      "resultado": "PASS"
+    },
+    {
+      "grupo": "HTTP local",
+      "ruta": "/static_principal/HayCupo.js",
+      "esperado": "200 y contenido correcto",
+      "obtenido": 200,
+      "contenido_correcto": true,
+      "resultado": "PASS"
+    },
+    {
+      "grupo": "HTTP local",
+      "ruta": "/static_principal/tailwind.css",
+      "esperado": "200 y contenido correcto",
+      "obtenido": 200,
+      "contenido_correcto": true,
+      "resultado": "PASS"
+    },
+    {
+      "grupo": "CDN externo",
+      "ruta": "https://cdn.jsdelivr.net/npm/redoc@2/bundles/redoc.standalone.js",
+      "esperado": "200 y datos",
+      "obtenido": 200,
+      "resultado": "PASS"
+    },
+    {
+      "grupo": "CDN externo",
+      "ruta": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
+      "esperado": "200 y datos",
+      "obtenido": 200,
+      "resultado": "PASS"
+    },
+    {
+      "grupo": "CDN externo",
+      "ruta": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
+      "esperado": "200 y datos",
+      "obtenido": 200,
+      "resultado": "PASS"
+    }
+  ]
+}

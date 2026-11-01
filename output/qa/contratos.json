@@ -1,0 +1,570 @@
+{
+  "casos": [
+    {
+      "caso": "ID de detalle no entero",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/no-numero",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": [
+          {
+            "type": "int_parsing",
+            "loc": [
+              "path",
+              "id_pub"
+            ],
+            "msg": "Input should be a valid integer, unable to parse string as an integer",
+            "input": "no-numero"
+          }
+        ]
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "ID cupos no entero",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/no-numero/cupos",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": [
+          {
+            "type": "int_parsing",
+            "loc": [
+              "path",
+              "id_pub"
+            ],
+            "msg": "Input should be a valid integer, unable to parse string as an integer",
+            "input": "no-numero"
+          }
+        ]
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "ID cierre no entero",
+      "metodo": "PATCH",
+      "ruta": "/api/publicaciones/no-numero/cerrar",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": [
+          {
+            "type": "int_parsing",
+            "loc": [
+              "path",
+              "id_pub"
+            ],
+            "msg": "Input should be a valid integer, unable to parse string as an integer",
+            "input": "no-numero"
+          }
+        ]
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "ID eliminación no entero",
+      "metodo": "DELETE",
+      "ruta": "/api/publicaciones/no-numero",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": [
+          {
+            "type": "int_parsing",
+            "loc": [
+              "path",
+              "id_pub"
+            ],
+            "msg": "Input should be a valid integer, unable to parse string as an integer",
+            "input": "no-numero"
+          }
+        ]
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "ID edición no entero",
+      "metodo": "PUT",
+      "ruta": "/api/publicaciones/no-numero",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": [
+          {
+            "type": "int_parsing",
+            "loc": [
+              "path",
+              "id_pub"
+            ],
+            "msg": "Input should be a valid integer, unable to parse string as an integer",
+            "input": "no-numero"
+          }
+        ]
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "Detalle inexistente",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/99999",
+      "esperado": 404,
+      "obtenido": 404,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": "Publicación no encontrada"
+      },
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "Cupos inexistentes",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/99999/cupos",
+      "esperado": 404,
+      "obtenido": 404,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": "Publicación no encontrada"
+      },
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "Ruta buscar no se interpreta como ID",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/buscar",
+      "esperado": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "cuerpo": [],
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "POST JSON no cumple contrato Form",
+      "metodo": "POST",
+      "ruta": "/api/publicaciones",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "titulo"
+            ],
+            "msg": "Field required",
+            "input": null
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "categoria"
+            ],
+            "msg": "Field required",
+            "input": null
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "ubicacion"
+            ],
+            "msg": "Field required",
+            "input": null
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "precio"
+            ],
+            "msg": "Field required",
+            "input": null
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "tipo"
+            ],
+            "msg": "Field required",
+            "input": null
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "cupos_totales"
+            ],
+            "msg": "Field required",
+            "input": null
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "tipo_vivienda"
+            ],
+            "msg": "Field required",
+            "input": null
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "descripcion"
+            ],
+            "msg": "Field required",
+            "input": null
+          }
+        ]
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "POST no imagen",
+      "metodo": "POST",
+      "ruta": "/api/publicaciones",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": "El archivo no es válido. Usa JPG, PNG o WEBP."
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "POST imagen mayor a 5 MB",
+      "metodo": "POST",
+      "ruta": "/api/publicaciones",
+      "esperado": 413,
+      "obtenido": 413,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": "La imagen debe pesar como máximo 5 MB."
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "POST PNG válido, nombre y MIME no confiables",
+      "metodo": "POST",
+      "ruta": "/api/publicaciones",
+      "esperado": 201,
+      "obtenido": 201,
+      "resultado": "PASS",
+      "cuerpo": {
+        "id": 42,
+        "mensaje": "Publicación creada"
+      },
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 1,
+      "limpieza_simulada": 0,
+      "bytes_archivo_simulados": 76
+    },
+    {
+      "caso": "POST formato GIF no permitido",
+      "metodo": "POST",
+      "ruta": "/api/publicaciones",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": "El archivo no es válido. Usa JPG, PNG o WEBP."
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "Filtro precio mínimo mayor a máximo",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/buscar?precio_min=200&precio_max=100",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": "El precio mínimo no puede superar al máximo."
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "Filtro límite inválido",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones?limite=101",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": [
+          {
+            "type": "less_than_equal",
+            "loc": [
+              "query",
+              "limite"
+            ],
+            "msg": "Input should be less than or equal to 100",
+            "input": "101",
+            "ctx": {
+              "le": 100
+            }
+          }
+        ]
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "Listado vacío",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones",
+      "esperado": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "cuerpo": [],
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "Dato antiguo precio=NULL",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones",
+      "esperado": 200,
+      "obtenido": 500,
+      "resultado": "FAIL",
+      "cuerpo": {
+        "detail": "Error al cargar publicaciones"
+      },
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0,
+      "nota": "Criterio de robustez: respuesta controlada sin bloquear el listado. No demuestra existencia de esa fila real; requiere definir política de datos antiguos."
+    },
+    {
+      "caso": "Dato antiguo precio=NULL",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/buscar",
+      "esperado": 200,
+      "obtenido": 500,
+      "resultado": "FAIL",
+      "cuerpo": {
+        "detail": "Error al cargar publicaciones"
+      },
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0,
+      "nota": "Criterio de robustez: respuesta controlada sin bloquear el listado. No demuestra existencia de esa fila real; requiere definir política de datos antiguos."
+    },
+    {
+      "caso": "Dato antiguo titulo=NULL",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones",
+      "esperado": 200,
+      "obtenido": 500,
+      "resultado": "FAIL",
+      "cuerpo": "Internal Server Error",
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0,
+      "nota": "Criterio de robustez: respuesta controlada sin bloquear el listado. No demuestra existencia de esa fila real; requiere definir política de datos antiguos."
+    },
+    {
+      "caso": "Dato antiguo titulo=NULL",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/buscar",
+      "esperado": 200,
+      "obtenido": 500,
+      "resultado": "FAIL",
+      "cuerpo": "Internal Server Error",
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0,
+      "nota": "Criterio de robustez: respuesta controlada sin bloquear el listado. No demuestra existencia de esa fila real; requiere definir política de datos antiguos."
+    },
+    {
+      "caso": "Dato antiguo cupos_totales=NULL",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones",
+      "esperado": 200,
+      "obtenido": 500,
+      "resultado": "FAIL",
+      "cuerpo": "Internal Server Error",
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0,
+      "nota": "Criterio de robustez: respuesta controlada sin bloquear el listado. No demuestra existencia de esa fila real; requiere definir política de datos antiguos."
+    },
+    {
+      "caso": "Dato antiguo cupos_totales=NULL",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/buscar",
+      "esperado": 200,
+      "obtenido": 500,
+      "resultado": "FAIL",
+      "cuerpo": "Internal Server Error",
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0,
+      "nota": "Criterio de robustez: respuesta controlada sin bloquear el listado. No demuestra existencia de esa fila real; requiere definir política de datos antiguos."
+    },
+    {
+      "caso": "Perfil de usuario inexistente",
+      "metodo": "GET",
+      "ruta": "/api/perfil",
+      "esperado": 404,
+      "obtenido": 500,
+      "resultado": "FAIL",
+      "cuerpo": {
+        "detail": "Error al cargar el perfil"
+      },
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0,
+      "nota": "La función genera HTTPException 404 pero su except Exception la convierte en 500."
+    },
+    {
+      "caso": "Perfil permite foto no imagen",
+      "metodo": "PUT",
+      "ruta": "/api/perfil",
+      "esperado": 422,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "cuerpo": {
+        "mensaje": "Perfil actualizado permanentemente"
+      },
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 1,
+      "limpieza_simulada": 0,
+      "bytes_archivo_simulados": 16,
+      "nota": "Criterio de validación recomendado: aplicar control de imagen al perfil. La escritura fue sustituida por un mock."
+    },
+    {
+      "caso": "Perfil trunca foto mayor a 5 MB",
+      "metodo": "PUT",
+      "ruta": "/api/perfil",
+      "esperado": 413,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "cuerpo": {
+        "mensaje": "Perfil actualizado permanentemente"
+      },
+      "conexiones_simuladas": 1,
+      "escrituras_archivo_simuladas": 1,
+      "limpieza_simulada": 0,
+      "bytes_archivo_simulados": 5242880,
+      "nota": "Criterio de validación recomendado: rechazar exceso de tamaño, no truncarlo. El contrato Swagger actual no documenta ese límite de perfil."
+    },
+    {
+      "caso": "Autocompletado sin clave",
+      "metodo": "GET",
+      "ruta": "/api/ubicaciones?texto=Temuco",
+      "esperado": 503,
+      "obtenido": 503,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": "Falta configurar la clave de Geoapify."
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "Autocompletado texto menor a 3",
+      "metodo": "GET",
+      "ruta": "/api/ubicaciones?texto=ab",
+      "esperado": 422,
+      "obtenido": 422,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": [
+          {
+            "type": "string_too_short",
+            "loc": [
+              "query",
+              "texto"
+            ],
+            "msg": "String should have at least 3 characters",
+            "input": "ab",
+            "ctx": {
+              "min_length": 3
+            }
+          }
+        ]
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "Autocompletado proveedor falla",
+      "metodo": "GET",
+      "ruta": "/api/ubicaciones?texto=Temuco",
+      "esperado": 502,
+      "obtenido": 502,
+      "resultado": "PASS",
+      "cuerpo": {
+        "detail": "No se pudo consultar ubicaciones."
+      },
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    },
+    {
+      "caso": "Autocompletado texto en blanco",
+      "metodo": "GET",
+      "ruta": "/api/ubicaciones?texto=%20%20%20",
+      "esperado": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "cuerpo": [],
+      "conexiones_simuladas": 0,
+      "escrituras_archivo_simuladas": 0,
+      "limpieza_simulada": 0
+    }
+  ],
+  "resumen": {
+    "total": 29,
+    "pass": 20,
+    "fail": 9
+  },
+  "bloqueo_db_real_intentos": 0,
+  "limites": [
+    "TestClient en proceso sin lifespan; ningún puerto TCP real.",
+    "Conexiones, archivos y proveedor geográfico simulados.",
+    "Las expectativas de robustez/seguridad incluyen mejoras pendientes, no solo respuestas que describe el contrato actual.",
+    "Este script no ejecuta la suite general de unittest ni la suite JavaScript."
+  ]
+}

@@ -1,0 +1,1602 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FastAPI",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/auth/registro": {
+      "post": {
+        "summary": "Registrar Usuario",
+        "operationId": "registrar_usuario_auth_registro_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistroRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Iniciar Sesion",
+        "operationId": "iniciar_sesion_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Cerrar Sesion",
+        "operationId": "cerrar_sesion_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Mostrar Login",
+        "operationId": "mostrar_login__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inicio": {
+      "get": {
+        "summary": "Mostrar Pagina Principal",
+        "operationId": "mostrar_pagina_principal_inicio_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crear": {
+      "get": {
+        "summary": "Mostrar Formulario Creacion",
+        "operationId": "mostrar_formulario_creacion_crear_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/perfil": {
+      "get": {
+        "summary": "Mostrar Pantalla Perfil",
+        "operationId": "mostrar_pantalla_perfil_perfil_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mis-publicaciones": {
+      "get": {
+        "summary": "Mostrar Mis Publicaciones",
+        "operationId": "mostrar_mis_publicaciones_mis_publicaciones_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/editar-publicacion": {
+      "get": {
+        "summary": "Mostrar Editar Publicacion",
+        "operationId": "mostrar_editar_publicacion_editar_publicacion_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ubicaciones": {
+      "get": {
+        "summary": "Buscar Ubicaciones",
+        "operationId": "buscar_ubicaciones_api_ubicaciones_get",
+        "parameters": [
+          {
+            "name": "texto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 250,
+              "title": "Texto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/publicaciones/buscar": {
+      "get": {
+        "tags": [
+          "Publicaciones"
+        ],
+        "summary": "Buscar arriendos con filtros",
+        "operationId": "obtener_publicaciones_api_publicaciones_buscar_get",
+        "parameters": [
+          {
+            "name": "consulta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 250
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Parte de la ubicación",
+              "title": "Consulta"
+            },
+            "description": "Parte de la ubicación"
+          },
+          {
+            "name": "personas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "1",
+                    "2",
+                    "3"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "1, 2 o 3 (tres o más personas)",
+              "title": "Personas"
+            },
+            "description": "1, 2 o 3 (tres o más personas)"
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "casa",
+                    "departamento",
+                    "habitacion"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tipo de vivienda",
+              "title": "Tipo"
+            },
+            "description": "Tipo de vivienda"
+          },
+          {
+            "name": "mascotas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "si",
+                    "no"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mascotas"
+            }
+          },
+          {
+            "name": "precio_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0.0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Precio Min"
+            }
+          },
+          {
+            "name": "precio_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0.0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Precio Max"
+            }
+          },
+          {
+            "name": "categoria",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "busco",
+                    "ofrezco"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Categoria"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 100,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Máximo de resultados; omitir para listar todos",
+              "title": "Limite"
+            },
+            "description": "Máximo de resultados; omitir para listar todos"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "description": "Resultados a omitir para paginar",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Resultados a omitir para paginar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicacionResumen"
+                  },
+                  "title": "Response Obtener Publicaciones Api Publicaciones Buscar Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/publicaciones": {
+      "get": {
+        "tags": [
+          "Publicaciones"
+        ],
+        "summary": "Listar arriendos",
+        "operationId": "obtener_publicaciones_api_publicaciones_get",
+        "parameters": [
+          {
+            "name": "consulta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 250
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Parte de la ubicación",
+              "title": "Consulta"
+            },
+            "description": "Parte de la ubicación"
+          },
+          {
+            "name": "personas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "1",
+                    "2",
+                    "3"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "1, 2 o 3 (tres o más personas)",
+              "title": "Personas"
+            },
+            "description": "1, 2 o 3 (tres o más personas)"
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "casa",
+                    "departamento",
+                    "habitacion"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tipo de vivienda",
+              "title": "Tipo"
+            },
+            "description": "Tipo de vivienda"
+          },
+          {
+            "name": "mascotas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "si",
+                    "no"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mascotas"
+            }
+          },
+          {
+            "name": "precio_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0.0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Precio Min"
+            }
+          },
+          {
+            "name": "precio_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0.0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Precio Max"
+            }
+          },
+          {
+            "name": "categoria",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "busco",
+                    "ofrezco"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Categoria"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 100,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Máximo de resultados; omitir para listar todos",
+              "title": "Limite"
+            },
+            "description": "Máximo de resultados; omitir para listar todos"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "description": "Resultados a omitir para paginar",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Resultados a omitir para paginar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicacionResumen"
+                  },
+                  "title": "Response Obtener Publicaciones Api Publicaciones Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Publicaciones"
+        ],
+        "summary": "Publicar un arriendo",
+        "operationId": "crear_publicacion_api_publicaciones_post",
+        "parameters": [
+          {
+            "name": "roomies_id",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "title": "Roomies Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_crear_publicacion_api_publicaciones_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicacionCreada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mis-publicaciones": {
+      "get": {
+        "summary": "Obtener Mis Publicaciones",
+        "operationId": "obtener_mis_publicaciones_api_mis_publicaciones_get",
+        "parameters": [
+          {
+            "name": "roomies_id",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "title": "Roomies Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/publicaciones/{id_pub}": {
+      "get": {
+        "tags": [
+          "Publicaciones"
+        ],
+        "summary": "Obtener Una Publicacion",
+        "operationId": "obtener_una_publicacion_api_publicaciones__id_pub__get",
+        "parameters": [
+          {
+            "name": "id_pub",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id Pub"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Publicaciones"
+        ],
+        "summary": "Editar una publicación propia",
+        "operationId": "actualizar_publicacion_api_publicaciones__id_pub__put",
+        "parameters": [
+          {
+            "name": "id_pub",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id Pub"
+            }
+          },
+          {
+            "name": "roomies_id",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "title": "Roomies Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_actualizar_publicacion_api_publicaciones__id_pub__put"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Borrar Publicacion",
+        "operationId": "borrar_publicacion_api_publicaciones__id_pub__delete",
+        "parameters": [
+          {
+            "name": "id_pub",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id Pub"
+            }
+          },
+          {
+            "name": "roomies_id",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "title": "Roomies Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/publicaciones/{id_pub}/cupos": {
+      "get": {
+        "tags": [
+          "Publicaciones"
+        ],
+        "summary": "Consultar cupos actuales",
+        "operationId": "consultar_cupos_api_publicaciones__id_pub__cupos_get",
+        "parameters": [
+          {
+            "name": "id_pub",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id Pub"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/publicaciones/{id_pub}/cerrar": {
+      "patch": {
+        "tags": [
+          "Publicaciones"
+        ],
+        "summary": "Cerrar una publicación propia",
+        "operationId": "cerrar_publicacion_api_publicaciones__id_pub__cerrar_patch",
+        "parameters": [
+          {
+            "name": "id_pub",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id Pub"
+            }
+          },
+          {
+            "name": "roomies_id",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "title": "Roomies Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/perfil": {
+      "get": {
+        "summary": "Obtener Perfil",
+        "operationId": "obtener_perfil_api_perfil_get",
+        "parameters": [
+          {
+            "name": "roomies_id",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "title": "Roomies Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Actualizar Perfil",
+        "operationId": "actualizar_perfil_api_perfil_put",
+        "parameters": [
+          {
+            "name": "roomies_id",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "title": "Roomies Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_actualizar_perfil_api_perfil_put"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_actualizar_perfil_api_perfil_put": {
+        "properties": {
+          "edad": {
+            "type": "string",
+            "title": "Edad",
+            "default": ""
+          },
+          "ocupacion": {
+            "type": "string",
+            "title": "Ocupacion",
+            "default": ""
+          },
+          "ciudad": {
+            "type": "string",
+            "title": "Ciudad",
+            "default": ""
+          },
+          "breve_descripcion": {
+            "type": "string",
+            "title": "Breve Descripcion",
+            "default": ""
+          },
+          "sobre_mi": {
+            "type": "string",
+            "title": "Sobre Mi",
+            "default": ""
+          },
+          "foto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foto"
+          }
+        },
+        "type": "object",
+        "title": "Body_actualizar_perfil_api_perfil_put"
+      },
+      "Body_actualizar_publicacion_api_publicaciones__id_pub__put": {
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Titulo"
+          },
+          "categoria": {
+            "type": "string",
+            "enum": [
+              "busco",
+              "ofrezco"
+            ],
+            "title": "Categoria"
+          },
+          "ubicacion": {
+            "type": "string",
+            "maxLength": 250,
+            "minLength": 1,
+            "title": "Ubicacion"
+          },
+          "precio": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)"
+              }
+            ],
+            "title": "Precio"
+          },
+          "tipo_vivienda": {
+            "type": "string",
+            "enum": [
+              "casa",
+              "departamento",
+              "habitacion"
+            ],
+            "title": "Tipo Vivienda"
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Descripcion"
+          },
+          "cupos_totales": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Cupos Totales"
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Arrendador",
+                  "Compartida"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo"
+          },
+          "mascota": {
+            "type": "string",
+            "title": "Mascota",
+            "default": "no"
+          },
+          "tipos_mascotas_aceptadas": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipos Mascotas Aceptadas"
+          },
+          "condiciones_mascotas": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condiciones Mascotas"
+          },
+          "permitir_comentarios": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permitir Comentarios"
+          },
+          "imagen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titulo",
+          "categoria",
+          "ubicacion",
+          "precio",
+          "tipo_vivienda",
+          "descripcion",
+          "cupos_totales"
+        ],
+        "title": "Body_actualizar_publicacion_api_publicaciones__id_pub__put"
+      },
+      "Body_crear_publicacion_api_publicaciones_post": {
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Titulo"
+          },
+          "categoria": {
+            "type": "string",
+            "enum": [
+              "busco",
+              "ofrezco"
+            ],
+            "title": "Categoria"
+          },
+          "ubicacion": {
+            "type": "string",
+            "maxLength": 250,
+            "minLength": 1,
+            "title": "Ubicacion"
+          },
+          "precio": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)"
+              }
+            ],
+            "title": "Precio"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "Arrendador",
+              "Compartida"
+            ],
+            "title": "Tipo"
+          },
+          "cupos_totales": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Cupos Totales"
+          },
+          "tipo_vivienda": {
+            "type": "string",
+            "enum": [
+              "casa",
+              "departamento",
+              "habitacion"
+            ],
+            "title": "Tipo Vivienda"
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Descripcion"
+          },
+          "mascota": {
+            "type": "string",
+            "title": "Mascota",
+            "default": "no"
+          },
+          "tipos_mascotas_aceptadas": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipos Mascotas Aceptadas"
+          },
+          "condiciones_mascotas": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condiciones Mascotas"
+          },
+          "permitir_comentarios": {
+            "type": "boolean",
+            "title": "Permitir Comentarios",
+            "default": false
+          },
+          "imagen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titulo",
+          "categoria",
+          "ubicacion",
+          "precio",
+          "tipo",
+          "cupos_totales",
+          "tipo_vivienda",
+          "descripcion"
+        ],
+        "title": "Body_crear_publicacion_api_publicaciones_post"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LoginRequest": {
+        "properties": {
+          "correo": {
+            "type": "string",
+            "format": "email",
+            "title": "Correo"
+          },
+          "contrasena": {
+            "type": "string",
+            "title": "Contrasena"
+          }
+        },
+        "type": "object",
+        "required": [
+          "correo",
+          "contrasena"
+        ],
+        "title": "LoginRequest"
+      },
+      "PublicacionCreada": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "mensaje"
+        ],
+        "title": "PublicacionCreada"
+      },
+      "PublicacionResumen": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "precio": {
+            "type": "number",
+            "title": "Precio"
+          },
+          "ubicacion": {
+            "type": "string",
+            "title": "Ubicacion"
+          },
+          "cupos_totales": {
+            "type": "integer",
+            "title": "Cupos Totales"
+          },
+          "cupos_disponibles": {
+            "type": "integer",
+            "title": "Cupos Disponibles"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "tipo_vivienda": {
+            "type": "string",
+            "title": "Tipo Vivienda"
+          },
+          "imagen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen"
+          },
+          "categoria": {
+            "type": "string",
+            "title": "Categoria"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "mascota": {
+            "type": "string",
+            "title": "Mascota"
+          },
+          "tipos_mascotas_aceptadas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tipos Mascotas Aceptadas"
+          },
+          "condiciones_mascotas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condiciones Mascotas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "titulo",
+          "precio",
+          "ubicacion",
+          "cupos_totales",
+          "cupos_disponibles",
+          "estado",
+          "tipo_vivienda",
+          "imagen",
+          "categoria",
+          "descripcion",
+          "mascota",
+          "condiciones_mascotas"
+        ],
+        "title": "PublicacionResumen",
+        "description": "Formato compartido por el listado y los resultados de búsqueda."
+      },
+      "RegistroRequest": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "correo": {
+            "type": "string",
+            "format": "email",
+            "title": "Correo"
+          },
+          "contrasena": {
+            "type": "string",
+            "title": "Contrasena"
+          },
+          "fecha_nacimiento": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Nacimiento"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "correo",
+          "contrasena",
+          "fecha_nacimiento"
+        ],
+        "title": "RegistroRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

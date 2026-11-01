@@ -1,0 +1,25 @@
+{
+  "caso": "login_usuario2_logout_y_acceso_privado",
+  "esperado_despues_logout": 401,
+  "obtenido_despues_logout": 200,
+  "resultado": "FAIL",
+  "pasos": [
+    {
+      "login": 200
+    },
+    {
+      "propias_antes_logout": 200,
+      "id": 43
+    },
+    {
+      "logout": 200,
+      "cookie_eliminada": true
+    },
+    {
+      "propias_despues_logout": 200,
+      "id": 42
+    }
+  ],
+  "base_real": false,
+  "conexion_real_llamada": 0
+}

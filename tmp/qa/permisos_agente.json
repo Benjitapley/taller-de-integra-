@@ -1,0 +1,1462 @@
+{
+  "descripcion": "Matriz con identidad declarada y DB simulada que aplica dueño; expected seguro distingue anónimo/cookie forjada",
+  "totales": {
+    "casos": 54,
+    "pass": 40,
+    "fail": 14
+  },
+  "red_real": false,
+  "base_real": false,
+  "lectura_env": false,
+  "casos": [
+    {
+      "caso": "propietario_declarado_1_publico_/api/publicaciones",
+      "cookie_declarada": "1",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 42,
+          "titulo": "Aviso 42",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 43,
+          "titulo": "Aviso 43",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 44,
+          "titulo": "Aviso 44",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        }
+      ]
+    },
+    {
+      "caso": "propietario_declarado_1_publico_/api/publicaciones/buscar",
+      "cookie_declarada": "1",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/buscar",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 42,
+          "titulo": "Aviso 42",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 43,
+          "titulo": "Aviso 43",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 44,
+          "titulo": "Aviso 44",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        }
+      ]
+    },
+    {
+      "caso": "propietario_declarado_1_publico_/api/publicaciones/42",
+      "cookie_declarada": "1",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 42,
+        "estado": "Disponible",
+        "cupos_totales": 2,
+        "cupos_disponibles": 2,
+        "titulo": "Aviso 42",
+        "categoria": "ofrezco",
+        "tipo_vivienda": "casa",
+        "ubicacion": "Ciudad QA",
+        "precio": 150000,
+        "mascota": "no",
+        "descripcion": "Datos QA",
+        "tipos_mascotas_aceptadas": [],
+        "condiciones_mascotas": null,
+        "tipo": "Compartida",
+        "permitir_comentarios": false,
+        "imagen": null
+      }
+    },
+    {
+      "caso": "propietario_declarado_1_publico_/api/publicaciones/42/cupos",
+      "cookie_declarada": "1",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/42/cupos",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 42,
+        "estado": "Disponible",
+        "cupos_totales": 2,
+        "cupos_disponibles": 2
+      }
+    },
+    {
+      "caso": "propietario_declarado_1_GET_/api/mis-publicaciones",
+      "cookie_declarada": "1",
+      "metodo": "GET",
+      "ruta": "/api/mis-publicaciones",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 42,
+          "estado": "Disponible",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "titulo": "Aviso 42",
+          "precio": 150000.0,
+          "tipo": "casa",
+          "ubicacion": "Ciudad QA",
+          "cupos": 2,
+          "imagen": null
+        }
+      ]
+    },
+    {
+      "caso": "propietario_declarado_1_POST_/api/publicaciones",
+      "cookie_declarada": "1",
+      "metodo": "POST",
+      "ruta": "/api/publicaciones",
+      "esperado_seguro": 201,
+      "obtenido": 201,
+      "resultado": "PASS",
+      "escrituras_simuladas": [
+        {
+          "accion": "crear",
+          "autor": 1
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 100,
+        "mensaje": "Publicación creada"
+      }
+    },
+    {
+      "caso": "propietario_declarado_1_PUT_/api/publicaciones/42",
+      "cookie_declarada": "1",
+      "metodo": "PUT",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [
+        {
+          "accion": "editar",
+          "id": 42,
+          "autor": 1
+        }
+      ],
+      "consultas_simuladas": 2,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "mensaje": "Publicación actualizada correctamente"
+      }
+    },
+    {
+      "caso": "propietario_declarado_1_PATCH_/api/publicaciones/42/cerrar",
+      "cookie_declarada": "1",
+      "metodo": "PATCH",
+      "ruta": "/api/publicaciones/42/cerrar",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [
+        {
+          "accion": "cerrar",
+          "id": 42,
+          "autor": 1
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 42,
+        "estado": "Cerrada",
+        "cupos_totales": 2,
+        "cupos_disponibles": 0
+      }
+    },
+    {
+      "caso": "propietario_declarado_1_DELETE_/api/publicaciones/42",
+      "cookie_declarada": "1",
+      "metodo": "DELETE",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [
+        {
+          "accion": "borrar_imagenes",
+          "id": 42
+        },
+        {
+          "accion": "eliminar",
+          "id": 42,
+          "autor": 1
+        }
+      ],
+      "consultas_simuladas": 3,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "mensaje": "Publicación eliminada"
+      }
+    },
+    {
+      "caso": "propietario_declarado_1_GET_/api/perfil",
+      "cookie_declarada": "1",
+      "metodo": "GET",
+      "ruta": "/api/perfil",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 2,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "nombre": "Usuario QA 1",
+        "edad": 25,
+        "ocupacion": "Ocupación QA",
+        "ciudad": "Ciudad QA",
+        "breve_descripcion": "Texto QA",
+        "sobre_mi": "Texto QA",
+        "foto_perfil": null,
+        "total_publicaciones": 1
+      }
+    },
+    {
+      "caso": "propietario_declarado_1_PUT_/api/perfil",
+      "cookie_declarada": "1",
+      "metodo": "PUT",
+      "ruta": "/api/perfil",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [
+        {
+          "accion": "editar_perfil",
+          "autor": 1
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "mensaje": "Perfil actualizado permanentemente"
+      }
+    },
+    {
+      "caso": "otro_usuario_declarado_2_publico_/api/publicaciones",
+      "cookie_declarada": "2",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 42,
+          "titulo": "Aviso 42",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 43,
+          "titulo": "Aviso 43",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 44,
+          "titulo": "Aviso 44",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        }
+      ]
+    },
+    {
+      "caso": "otro_usuario_declarado_2_publico_/api/publicaciones/buscar",
+      "cookie_declarada": "2",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/buscar",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 42,
+          "titulo": "Aviso 42",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 43,
+          "titulo": "Aviso 43",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 44,
+          "titulo": "Aviso 44",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        }
+      ]
+    },
+    {
+      "caso": "otro_usuario_declarado_2_publico_/api/publicaciones/42",
+      "cookie_declarada": "2",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 42,
+        "estado": "Disponible",
+        "cupos_totales": 2,
+        "cupos_disponibles": 2,
+        "titulo": "Aviso 42",
+        "categoria": "ofrezco",
+        "tipo_vivienda": "casa",
+        "ubicacion": "Ciudad QA",
+        "precio": 150000,
+        "mascota": "no",
+        "descripcion": "Datos QA",
+        "tipos_mascotas_aceptadas": [],
+        "condiciones_mascotas": null,
+        "tipo": "Compartida",
+        "permitir_comentarios": false,
+        "imagen": null
+      }
+    },
+    {
+      "caso": "otro_usuario_declarado_2_publico_/api/publicaciones/42/cupos",
+      "cookie_declarada": "2",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/42/cupos",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 42,
+        "estado": "Disponible",
+        "cupos_totales": 2,
+        "cupos_disponibles": 2
+      }
+    },
+    {
+      "caso": "otro_usuario_declarado_2_GET_/api/mis-publicaciones",
+      "cookie_declarada": "2",
+      "metodo": "GET",
+      "ruta": "/api/mis-publicaciones",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 43,
+          "estado": "Disponible",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "titulo": "Aviso 43",
+          "precio": 150000.0,
+          "tipo": "casa",
+          "ubicacion": "Ciudad QA",
+          "cupos": 2,
+          "imagen": null
+        }
+      ]
+    },
+    {
+      "caso": "otro_usuario_declarado_2_POST_/api/publicaciones",
+      "cookie_declarada": "2",
+      "metodo": "POST",
+      "ruta": "/api/publicaciones",
+      "esperado_seguro": 201,
+      "obtenido": 201,
+      "resultado": "PASS",
+      "escrituras_simuladas": [
+        {
+          "accion": "crear",
+          "autor": 2
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 100,
+        "mensaje": "Publicación creada"
+      }
+    },
+    {
+      "caso": "otro_usuario_declarado_2_PUT_/api/publicaciones/42",
+      "cookie_declarada": "2",
+      "metodo": "PUT",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 404,
+      "obtenido": 404,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "detail": "Publicación no encontrada"
+      }
+    },
+    {
+      "caso": "otro_usuario_declarado_2_PATCH_/api/publicaciones/42/cerrar",
+      "cookie_declarada": "2",
+      "metodo": "PATCH",
+      "ruta": "/api/publicaciones/42/cerrar",
+      "esperado_seguro": 404,
+      "obtenido": 404,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "detail": "Publicación no encontrada"
+      }
+    },
+    {
+      "caso": "otro_usuario_declarado_2_DELETE_/api/publicaciones/42",
+      "cookie_declarada": "2",
+      "metodo": "DELETE",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 404,
+      "obtenido": 404,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "detail": "Publicación no encontrada"
+      }
+    },
+    {
+      "caso": "otro_usuario_declarado_2_GET_/api/perfil",
+      "cookie_declarada": "2",
+      "metodo": "GET",
+      "ruta": "/api/perfil",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 2,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "nombre": "Usuario QA 2",
+        "edad": 25,
+        "ocupacion": "Ocupación QA",
+        "ciudad": "Ciudad QA",
+        "breve_descripcion": "Texto QA",
+        "sobre_mi": "Texto QA",
+        "foto_perfil": null,
+        "total_publicaciones": 1
+      }
+    },
+    {
+      "caso": "otro_usuario_declarado_2_PUT_/api/perfil",
+      "cookie_declarada": "2",
+      "metodo": "PUT",
+      "ruta": "/api/perfil",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [
+        {
+          "accion": "editar_perfil",
+          "autor": 2
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "mensaje": "Perfil actualizado permanentemente"
+      }
+    },
+    {
+      "caso": "anonimo_publico_/api/publicaciones",
+      "cookie_declarada": null,
+      "metodo": "GET",
+      "ruta": "/api/publicaciones",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 42,
+          "titulo": "Aviso 42",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 43,
+          "titulo": "Aviso 43",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 44,
+          "titulo": "Aviso 44",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        }
+      ]
+    },
+    {
+      "caso": "anonimo_publico_/api/publicaciones/buscar",
+      "cookie_declarada": null,
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/buscar",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 42,
+          "titulo": "Aviso 42",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 43,
+          "titulo": "Aviso 43",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 44,
+          "titulo": "Aviso 44",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        }
+      ]
+    },
+    {
+      "caso": "anonimo_publico_/api/publicaciones/42",
+      "cookie_declarada": null,
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 42,
+        "estado": "Disponible",
+        "cupos_totales": 2,
+        "cupos_disponibles": 2,
+        "titulo": "Aviso 42",
+        "categoria": "ofrezco",
+        "tipo_vivienda": "casa",
+        "ubicacion": "Ciudad QA",
+        "precio": 150000,
+        "mascota": "no",
+        "descripcion": "Datos QA",
+        "tipos_mascotas_aceptadas": [],
+        "condiciones_mascotas": null,
+        "tipo": "Compartida",
+        "permitir_comentarios": false,
+        "imagen": null
+      }
+    },
+    {
+      "caso": "anonimo_publico_/api/publicaciones/42/cupos",
+      "cookie_declarada": null,
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/42/cupos",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 42,
+        "estado": "Disponible",
+        "cupos_totales": 2,
+        "cupos_disponibles": 2
+      }
+    },
+    {
+      "caso": "anonimo_GET_/api/mis-publicaciones",
+      "cookie_declarada": null,
+      "metodo": "GET",
+      "ruta": "/api/mis-publicaciones",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 42,
+          "estado": "Disponible",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "titulo": "Aviso 42",
+          "precio": 150000.0,
+          "tipo": "casa",
+          "ubicacion": "Ciudad QA",
+          "cupos": 2,
+          "imagen": null
+        }
+      ]
+    },
+    {
+      "caso": "anonimo_POST_/api/publicaciones",
+      "cookie_declarada": null,
+      "metodo": "POST",
+      "ruta": "/api/publicaciones",
+      "esperado_seguro": 401,
+      "obtenido": 201,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [
+        {
+          "accion": "crear",
+          "autor": 1
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 100,
+        "mensaje": "Publicación creada"
+      }
+    },
+    {
+      "caso": "anonimo_PUT_/api/publicaciones/42",
+      "cookie_declarada": null,
+      "metodo": "PUT",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [
+        {
+          "accion": "editar",
+          "id": 42,
+          "autor": 1
+        }
+      ],
+      "consultas_simuladas": 2,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "mensaje": "Publicación actualizada correctamente"
+      }
+    },
+    {
+      "caso": "anonimo_PATCH_/api/publicaciones/42/cerrar",
+      "cookie_declarada": null,
+      "metodo": "PATCH",
+      "ruta": "/api/publicaciones/42/cerrar",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [
+        {
+          "accion": "cerrar",
+          "id": 42,
+          "autor": 1
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 42,
+        "estado": "Cerrada",
+        "cupos_totales": 2,
+        "cupos_disponibles": 0
+      }
+    },
+    {
+      "caso": "anonimo_DELETE_/api/publicaciones/42",
+      "cookie_declarada": null,
+      "metodo": "DELETE",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [
+        {
+          "accion": "borrar_imagenes",
+          "id": 42
+        },
+        {
+          "accion": "eliminar",
+          "id": 42,
+          "autor": 1
+        }
+      ],
+      "consultas_simuladas": 3,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "mensaje": "Publicación eliminada"
+      }
+    },
+    {
+      "caso": "anonimo_GET_/api/perfil",
+      "cookie_declarada": null,
+      "metodo": "GET",
+      "ruta": "/api/perfil",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 2,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "nombre": "Usuario QA 1",
+        "edad": 25,
+        "ocupacion": "Ocupación QA",
+        "ciudad": "Ciudad QA",
+        "breve_descripcion": "Texto QA",
+        "sobre_mi": "Texto QA",
+        "foto_perfil": null,
+        "total_publicaciones": 1
+      }
+    },
+    {
+      "caso": "anonimo_PUT_/api/perfil",
+      "cookie_declarada": null,
+      "metodo": "PUT",
+      "ruta": "/api/perfil",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [
+        {
+          "accion": "editar_perfil",
+          "autor": 1
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "mensaje": "Perfil actualizado permanentemente"
+      }
+    },
+    {
+      "caso": "cookie_invalida_publico_/api/publicaciones",
+      "cookie_declarada": "abc",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 42,
+          "titulo": "Aviso 42",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 43,
+          "titulo": "Aviso 43",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 44,
+          "titulo": "Aviso 44",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        }
+      ]
+    },
+    {
+      "caso": "cookie_invalida_publico_/api/publicaciones/buscar",
+      "cookie_declarada": "abc",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/buscar",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 42,
+          "titulo": "Aviso 42",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 43,
+          "titulo": "Aviso 43",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        },
+        {
+          "id": 44,
+          "titulo": "Aviso 44",
+          "precio": 150000.0,
+          "ubicacion": "Ciudad QA",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "estado": "Disponible",
+          "tipo_vivienda": "casa",
+          "imagen": null,
+          "categoria": "ofrezco",
+          "descripcion": "Datos QA",
+          "mascota": "no",
+          "tipos_mascotas_aceptadas": [],
+          "condiciones_mascotas": null
+        }
+      ]
+    },
+    {
+      "caso": "cookie_invalida_publico_/api/publicaciones/42",
+      "cookie_declarada": "abc",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 42,
+        "estado": "Disponible",
+        "cupos_totales": 2,
+        "cupos_disponibles": 2,
+        "titulo": "Aviso 42",
+        "categoria": "ofrezco",
+        "tipo_vivienda": "casa",
+        "ubicacion": "Ciudad QA",
+        "precio": 150000,
+        "mascota": "no",
+        "descripcion": "Datos QA",
+        "tipos_mascotas_aceptadas": [],
+        "condiciones_mascotas": null,
+        "tipo": "Compartida",
+        "permitir_comentarios": false,
+        "imagen": null
+      }
+    },
+    {
+      "caso": "cookie_invalida_publico_/api/publicaciones/42/cupos",
+      "cookie_declarada": "abc",
+      "metodo": "GET",
+      "ruta": "/api/publicaciones/42/cupos",
+      "esperado_seguro": 200,
+      "obtenido": 200,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 42,
+        "estado": "Disponible",
+        "cupos_totales": 2,
+        "cupos_disponibles": 2
+      }
+    },
+    {
+      "caso": "cookie_invalida_GET_/api/mis-publicaciones",
+      "cookie_declarada": "abc",
+      "metodo": "GET",
+      "ruta": "/api/mis-publicaciones",
+      "esperado_seguro": 401,
+      "obtenido": 401,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 0,
+      "conexion_fake_llamada": false,
+      "cuerpo": {
+        "detail": "Inicia sesión para continuar."
+      }
+    },
+    {
+      "caso": "cookie_invalida_POST_/api/publicaciones",
+      "cookie_declarada": "abc",
+      "metodo": "POST",
+      "ruta": "/api/publicaciones",
+      "esperado_seguro": 401,
+      "obtenido": 401,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 0,
+      "conexion_fake_llamada": false,
+      "cuerpo": {
+        "detail": "Inicia sesión para continuar."
+      }
+    },
+    {
+      "caso": "cookie_invalida_PUT_/api/publicaciones/42",
+      "cookie_declarada": "abc",
+      "metodo": "PUT",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 401,
+      "obtenido": 401,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 0,
+      "conexion_fake_llamada": false,
+      "cuerpo": {
+        "detail": "Inicia sesión para continuar."
+      }
+    },
+    {
+      "caso": "cookie_invalida_PATCH_/api/publicaciones/42/cerrar",
+      "cookie_declarada": "abc",
+      "metodo": "PATCH",
+      "ruta": "/api/publicaciones/42/cerrar",
+      "esperado_seguro": 401,
+      "obtenido": 401,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 0,
+      "conexion_fake_llamada": false,
+      "cuerpo": {
+        "detail": "Inicia sesión para continuar."
+      }
+    },
+    {
+      "caso": "cookie_invalida_DELETE_/api/publicaciones/42",
+      "cookie_declarada": "abc",
+      "metodo": "DELETE",
+      "ruta": "/api/publicaciones/42",
+      "esperado_seguro": 401,
+      "obtenido": 401,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 0,
+      "conexion_fake_llamada": false,
+      "cuerpo": {
+        "detail": "Inicia sesión para continuar."
+      }
+    },
+    {
+      "caso": "cookie_invalida_GET_/api/perfil",
+      "cookie_declarada": "abc",
+      "metodo": "GET",
+      "ruta": "/api/perfil",
+      "esperado_seguro": 401,
+      "obtenido": 401,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 0,
+      "conexion_fake_llamada": false,
+      "cuerpo": {
+        "detail": "Inicia sesión para continuar."
+      }
+    },
+    {
+      "caso": "cookie_invalida_PUT_/api/perfil",
+      "cookie_declarada": "abc",
+      "metodo": "PUT",
+      "ruta": "/api/perfil",
+      "esperado_seguro": 401,
+      "obtenido": 401,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 0,
+      "conexion_fake_llamada": false,
+      "cuerpo": {
+        "detail": "Inicia sesión para continuar."
+      }
+    },
+    {
+      "caso": "cookie_forjada_37_GET_/api/mis-publicaciones",
+      "cookie_declarada": "37",
+      "metodo": "GET",
+      "ruta": "/api/mis-publicaciones",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": [
+        {
+          "id": 44,
+          "estado": "Disponible",
+          "cupos_totales": 2,
+          "cupos_disponibles": 2,
+          "titulo": "Aviso 44",
+          "precio": 150000.0,
+          "tipo": "casa",
+          "ubicacion": "Ciudad QA",
+          "cupos": 2,
+          "imagen": null
+        }
+      ]
+    },
+    {
+      "caso": "cookie_forjada_37_POST_/api/publicaciones",
+      "cookie_declarada": "37",
+      "metodo": "POST",
+      "ruta": "/api/publicaciones",
+      "esperado_seguro": 401,
+      "obtenido": 201,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [
+        {
+          "accion": "crear",
+          "autor": 37
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 100,
+        "mensaje": "Publicación creada"
+      }
+    },
+    {
+      "caso": "cookie_forjada_37_PUT_/api/publicaciones/44",
+      "cookie_declarada": "37",
+      "metodo": "PUT",
+      "ruta": "/api/publicaciones/44",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [
+        {
+          "accion": "editar",
+          "id": 44,
+          "autor": 37
+        }
+      ],
+      "consultas_simuladas": 2,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "mensaje": "Publicación actualizada correctamente"
+      }
+    },
+    {
+      "caso": "cookie_forjada_37_PATCH_/api/publicaciones/44/cerrar",
+      "cookie_declarada": "37",
+      "metodo": "PATCH",
+      "ruta": "/api/publicaciones/44/cerrar",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [
+        {
+          "accion": "cerrar",
+          "id": 44,
+          "autor": 37
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "id": 44,
+        "estado": "Cerrada",
+        "cupos_totales": 2,
+        "cupos_disponibles": 0
+      }
+    },
+    {
+      "caso": "cookie_forjada_37_DELETE_/api/publicaciones/44",
+      "cookie_declarada": "37",
+      "metodo": "DELETE",
+      "ruta": "/api/publicaciones/44",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [
+        {
+          "accion": "borrar_imagenes",
+          "id": 44
+        },
+        {
+          "accion": "eliminar",
+          "id": 44,
+          "autor": 37
+        }
+      ],
+      "consultas_simuladas": 3,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "mensaje": "Publicación eliminada"
+      }
+    },
+    {
+      "caso": "cookie_forjada_37_GET_/api/perfil",
+      "cookie_declarada": "37",
+      "metodo": "GET",
+      "ruta": "/api/perfil",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 2,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "nombre": "Usuario QA 37",
+        "edad": 25,
+        "ocupacion": "Ocupación QA",
+        "ciudad": "Ciudad QA",
+        "breve_descripcion": "Texto QA",
+        "sobre_mi": "Texto QA",
+        "foto_perfil": null,
+        "total_publicaciones": 1
+      }
+    },
+    {
+      "caso": "cookie_forjada_37_PUT_/api/perfil",
+      "cookie_declarada": "37",
+      "metodo": "PUT",
+      "ruta": "/api/perfil",
+      "esperado_seguro": 401,
+      "obtenido": 200,
+      "resultado": "FAIL",
+      "escrituras_simuladas": [
+        {
+          "accion": "editar_perfil",
+          "autor": 37
+        }
+      ],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "mensaje": "Perfil actualizado permanentemente"
+      }
+    },
+    {
+      "caso": "propietario_recurso_inexistente_PUT",
+      "cookie_declarada": "1",
+      "metodo": "PUT",
+      "ruta": "/api/publicaciones/999",
+      "esperado_seguro": 404,
+      "obtenido": 404,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "detail": "Publicación no encontrada"
+      }
+    },
+    {
+      "caso": "propietario_recurso_inexistente_PATCH",
+      "cookie_declarada": "1",
+      "metodo": "PATCH",
+      "ruta": "/api/publicaciones/999/cerrar",
+      "esperado_seguro": 404,
+      "obtenido": 404,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "detail": "Publicación no encontrada"
+      }
+    },
+    {
+      "caso": "propietario_recurso_inexistente_DELETE",
+      "cookie_declarada": "1",
+      "metodo": "DELETE",
+      "ruta": "/api/publicaciones/999",
+      "esperado_seguro": 404,
+      "obtenido": 404,
+      "resultado": "PASS",
+      "escrituras_simuladas": [],
+      "consultas_simuladas": 1,
+      "conexion_fake_llamada": true,
+      "cuerpo": {
+        "detail": "Publicación no encontrada"
+      }
+    }
+  ]
+}

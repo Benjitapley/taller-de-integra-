@@ -1,0 +1,53 @@
+{
+  "fecha_cliente": "2026-11-01",
+  "zona": "America/Santiago",
+  "revision_producto": "63b8493",
+  "logica_producto_modificada": false,
+  "python_base": {
+    "casos": 53,
+    "pass": 53,
+    "fail": 0,
+    "errores": 0,
+    "omitidos": 0,
+    "intentos_postgresql": 0
+  },
+  "javascript": {
+    "resultado": "PASS",
+    "metodo": "VM, DOM y fetch simulados; ejecución confirmada por node_repl"
+  },
+  "permisos": {
+    "casos": 55,
+    "pass": 40,
+    "fail": 15
+  },
+  "contratos": {
+    "total": 29,
+    "pass": 20,
+    "fail": 9
+  },
+  "swagger": {
+    "total": 28,
+    "PASS": 20,
+    "FAIL": 6,
+    "INFO": 2
+  },
+  "http": {
+    "casos": 11,
+    "pass": 11,
+    "fail": 0,
+    "no_validado": 0
+  },
+  "adicionales": {
+    "casos": 123,
+    "pass": 91,
+    "fail": 30,
+    "info": 2
+  },
+  "limites": [
+    "Sin PostgreSQL real ni escrituras de usuarios o avisos reales.",
+    "Publicaciones/auth reales; router conexiones sustituido.",
+    "HTTP loopback real con lifespan desactivado y PostgreSQL bloqueado.",
+    "Sin navegador conectado: no se certifica renderizado ni Try it out.",
+    "Un FAIL compara con política segura o robusta y puede representar un pendiente conocido, no una regresión nueva."
+  ]
+}
