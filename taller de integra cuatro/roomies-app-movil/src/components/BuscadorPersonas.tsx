@@ -5,6 +5,7 @@ import { UsuarioCard } from './Usuario_Card';
 import FiltrosPersonasModal from './FiltrosPersonasModal';
 import type { FiltrosPersona } from '../types/Usuario';
 import BarraBusqueda from './BarraBusqueda';
+import EstadoVacio from './EstadoVacio';
 
 export default function BuscadorPersonas() {
     const [busqueda, setBusqueda] = useState("");
@@ -78,10 +79,11 @@ export default function BuscadorPersonas() {
                 contentContainerStyle={{ paddingBottom: 16, gap: 16 }}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
-                    <View style={styles.sinResultados}>
-                        <Text style={styles.sinResultadosTitulo}>No encontramos personas</Text>
-                        <Text style={styles.sinResultadosTexto}>Prueba con otra búsqueda o modifica los filtros.</Text>
-                    </View>
+                    <EstadoVacio 
+                        titulo="No encontramos personas" 
+                        mensaje="Intenta con otros nombres, ocupaciones o ajusta los filtros de presupuesto y zona."
+                        icono="people-outline"
+                    />
                 }
             />
         </View>
