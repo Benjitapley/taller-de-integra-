@@ -44,7 +44,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test:http": "node --test tests/httpClient.test.mjs"
+    "test:http": "node --test tests/httpClient.test.mjs",
+    "test:perfil": "node --test tests/usuariosService.test.mjs tests/perfil.test.mjs"
   },
   "private": true
 }

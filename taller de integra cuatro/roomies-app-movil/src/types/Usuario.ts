@@ -62,3 +62,21 @@ export interface UsuarioPerfil extends Usuario {
 
   buscaEn?: string[];
 }
+
+/**
+ * Modelo de presentación de A08, independiente del DTO HTTP pendiente de TI2.
+ * null significa dato no disponible; no equivale a cero, lista vacía o valor mock.
+ * El adaptador confirmado deberá producir este modelo desde una respuesta validada.
+ */
+export interface PerfilPropioVista {
+  nombre: string | null;
+  email: string | null;
+  fotoPerfilUrl: string | null;
+  edad: number | null;
+  ocupacion: string | null;
+  ubicacion: string | null;
+  bio: string | null;
+  presupuesto: number | null;
+  preferencias: string[] | null;
+  buscaEn: string[] | null;
+}

@@ -12,7 +12,8 @@ protegida. No inicia ni cierra sesiones, no emite tokens y no crea perfiles.
 El cliente y sus pruebas controladas están implementados. La URL de API, OpenAPI,
 aceptación del JWT de Supabase y contratos de perfil siguen pendientes de confirmación
 de TI2. No se declara integrada la API real ni terminadas A08/A09 por estas pruebas.
-Las pantallas aún no consumen este módulo, por lo que A07 no cambia visualmente Perfil.
+La preparación de A08 añade `usuariosService.ts` y los estados de Perfil. La consulta
+real sigue detenida hasta confirmar el adaptador del DTO; véase `perfil-propio.md`.
 
 Gustavo compartió una propuesta comunicada a TI2: Supabase Auth gestionaría registro,
 login, correo y sesiones; FastAPI gestionaría permisos y datos, validando esos JWT.
