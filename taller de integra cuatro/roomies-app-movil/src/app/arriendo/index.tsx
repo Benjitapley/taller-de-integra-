@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import OrganizacionCasaCard from "@/components/OrganizacionCasaCard";
+import NuevaTareaSheet from "@/components/convivencia/NuevaTareaSheet";
 import ProximosRecordatorios from "@/components/convivencia/ProximosRecordatorios";
 import ResumenArriendo from "@/components/convivencia/ResumenArriendo";
 import {
@@ -12,6 +14,7 @@ import {
   ULTIMO_MENSAJE_ARRIENDO_MOCK,
   USUARIO_TIENE_ARRIENDO_MOCK,
 } from "@/data/convivenciaMock";
+import type { NuevaTareaInput, TareaConvivencia } from "@/types/Convivencia";
 
 
 function SinArriendo() {
@@ -37,6 +40,28 @@ export default function DashboardArriendo() {
     return <SinArriendo />;
   }
 
+  return <DashboardActivo />;
+}
+
+function DashboardActivo() {
+  const [tareas, setTareas] = useState<TareaConvivencia[]>(TAREAS_MOCK);
+  const [formularioVisible, setFormularioVisible] = useState(false);
+
+  function crearTarea(nueva: NuevaTareaInput) {
+    setTareas((actuales) => [
+      ...actuales,
+      {
+        id: `local-${Date.now()}`,
+        categoria: nueva.nombre,
+        icono: "checkbox-outline",
+        diaTexto: nueva.fechaTexto,
+        descripcion: nueva.descripcion,
+        responsable: nueva.responsable,
+      },
+    ]);
+    setFormularioVisible(false);
+  }
+
   return (
     <ScrollView style={styles.pantalla} contentContainerStyle={styles.contenedor}>
       <ResumenArriendo info={INFO_ARRIENDO_MOCK} cantidadIntegrantes={INTEGRANTES_MOCK.length} />
@@ -60,9 +85,20 @@ export default function DashboardArriendo() {
         <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
       </Pressable>
 
-      <OrganizacionCasaCard tareas={TAREAS_MOCK} onVerTodo={() => router.push("/convivencia/tareas")} />
+      <OrganizacionCasaCard
+        tareas={tareas}
+        onVerTodo={() => router.push("/convivencia/tareas")}
+        onAgregar={() => setFormularioVisible(true)}
+      />
 
       <ProximosRecordatorios recordatorios={RECORDATORIOS_MOCK} />
+
+      <NuevaTareaSheet
+        visible={formularioVisible}
+        integrantes={INTEGRANTES_MOCK}
+        onCancelar={() => setFormularioVisible(false)}
+        onCrear={crearTarea}
+      />
     </ScrollView>
   );
 }

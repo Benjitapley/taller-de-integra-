@@ -11,9 +11,10 @@ import type { TareaConvivencia } from "@/types/Convivencia";
 type Props = {
   tareas: TareaConvivencia[];
   onVerTodo?: () => void;
+  onAgregar?: () => void; 
 };
 
-export default function OrganizacionCasaCard({ tareas, onVerTodo }: Props) {
+export default function OrganizacionCasaCard({ tareas, onVerTodo, onAgregar }: Props) {
   return (
     <View style={styles.tarjeta}>
       <View style={styles.encabezado}>
@@ -21,11 +22,18 @@ export default function OrganizacionCasaCard({ tareas, onVerTodo }: Props) {
           <Ionicons name="clipboard-outline" size={16} color="#4F46E5" />
           <Text style={styles.titulo}>Organización de la casa</Text>
         </View>
-        {onVerTodo && (
-          <Pressable onPress={onVerTodo} hitSlop={8}>
-            <Text style={styles.verTodo}>Ver todo ›</Text>
-          </Pressable>
-        )}
+        <View style={styles.filaAcciones}>
+          {onVerTodo && (
+            <Pressable onPress={onVerTodo} hitSlop={8}>
+              <Text style={styles.verTodo}>Ver todo ›</Text>
+            </Pressable>
+          )}
+          {onAgregar && (
+            <Pressable style={styles.botonAgregar} onPress={onAgregar} hitSlop={8}>
+              <Ionicons name="add" size={18} color="#4F46E5" />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fila}>
@@ -42,13 +50,13 @@ function TareaItem({ tarea }: { tarea: TareaConvivencia }) {
     <View style={styles.item}>
       <View style={styles.filaCategoria}>
         <Ionicons name={tarea.icono as never} size={14} color="#4F46E5" />
-        <Text style={styles.categoria}>{tarea.categoria}</Text>
+        <Text style={styles.categoria} numberOfLines={1}>{tarea.categoria}</Text>
       </View>
 
       {tarea.frecuenciaTexto ? <Text style={styles.frecuencia}>{tarea.frecuenciaTexto}</Text> : null}
 
       <View style={styles.badgeDia}>
-        <Text style={styles.badgeDiaTexto}>{tarea.diaTexto}</Text>
+        <Text style={styles.badgeDiaTexto} numberOfLines={2}>{tarea.diaTexto}</Text>
       </View>
 
       <Image source={{ uri: tarea.responsable.fotoUrl }} style={styles.avatar} />
@@ -79,6 +87,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#111827",
+  },
+  filaAcciones: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  botonAgregar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#EEF2FF",
+    alignItems: "center",
+    justifyContent: "center",
   },
   verTodo: {
     fontSize: 12,

@@ -16,6 +16,7 @@ export interface TareaConvivencia {
   icono: string; // nombre de ícono de Ionicons
   frecuenciaTexto?: string; // "Esta semana", "Este finde" (algunas tareas no la muestran)
   diaTexto: string; // "Martes", "Sábado", "Jueves", "Viernes"
+  descripcion?: string; // M4-D07: detalle opcional de una tarea creada desde el formulario
   responsable: IntegranteConvivencia;
 }
 
@@ -40,4 +41,14 @@ export interface Recordatorio {
 export interface InfoArriendo {
   direccion: string; // "Providencia, Santiago"
   numeroDepto: string; // "Depto 4D/2B"
+}
+
+// M4-D07 — datos que entrega el formulario "Nueva tarea" (bottom sheet).
+// Es lo que captura la UI; convertirlo en TareaConvivencia (id, ícono) lo
+// hace quien lo recibe, para que el formulario no conozca el modelo de lista.
+export interface NuevaTareaInput {
+  nombre: string;
+  descripcion?: string;
+  responsable: IntegranteConvivencia;
+  fechaTexto: string; // texto libre, ej. "Martes 13 de octubre"
 }
