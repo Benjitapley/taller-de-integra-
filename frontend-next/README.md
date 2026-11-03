@@ -4,6 +4,60 @@ Base de SCRUM-66: TypeScript, App Router, componentes compartidos y convivencia 
 
 La integración permanece desactivada por defecto. Requiere habilitación explícita de un entorno aislado; si el backend no responde, devuelve un error y no simula éxito. Next.js no accede directamente a PostgreSQL. El JWT se conserva en cookie HttpOnly y nunca en localStorage ni en JSON enviado al navegador. Los detalles de configuración y límites están en «SCRUM-72: transporte web de autenticación preparado».
 
+## Despliegue en Vercel
+
+El archivo `vercel.json` prepara este frontend para Vercel. Importa el
+repositorio como proyecto y configura:
+
+| Ajuste | Valor |
+| --- | --- |
+| Root Directory | `frontend-next` |
+| Framework Preset | Next.js |
+| Install Command | `npm ci` |
+| Build Command | `npm run build` |
+| Output Directory | Automático de Next.js; dejar sin override |
+
+Para probar tu trabajo, usa un Preview de tu rama; no necesitas fusionarlo a
+`dev-web`. Vercel toma el código publicado en Git, no los cambios locales sin
+subir. Esta configuración no publica el proyecto ni modifica ninguna rama.
+
+En **Settings > Environment Variables**, configura las variables por entorno
+(Preview o Production). Sustituye los dominios de ejemplo por los reales:
+
+| Variable | Valor de ejemplo / uso |
+| --- | --- |
+| `FASTAPI_ORIGIN` | `https://api.tu-dominio.cl`, origen público de FastAPI para API, imágenes y HTML anterior |
+| `WEB_AUTH_FASTAPI_ORIGIN` | `https://api.tu-dominio.cl`, destino del transporte de autenticación del servidor |
+| `WEB_AUTH_ORIGIN` | `https://tu-proyecto.vercel.app`, dominio exacto desde el que abrirás la web |
+| `WEB_AUTH_ENABLED` | Mantener `false` en Production por ahora; `true` solo en Preview de pruebas con backend y esquema preparados |
+
+Los orígenes son solo protocolo y dominio, sin credenciales, `/api`, query ni
+fragmento. Usa HTTPS para ambos servidores. `localhost` y `127.0.0.1` en Vercel
+no apuntan a tu computador: FastAPI debe estar publicado y accesible desde allí.
+Este proyecto Vercel despliega únicamente Next.js; no inicia los microservicios
+Python. Si todavía no tienes backend, puedes revisar las pantallas públicas,
+pero no completar login ni abrir las secciones privadas.
+
+El origen web se valida de forma exacta para CSRF. En Preview configura un
+alias/dominio estable de esa rama y abre ese mismo dominio; una URL diferente
+recibirá 403 al enviar formularios. Mantén la configuración de Preview separada
+de Production y conserva las protecciones de sesión existentes.
+
+Después de cambiar variables, haz **Redeploy**. En particular, `FASTAPI_ORIGIN`
+se incorpora a los rewrites al compilar. No uses `npm run build:isolated` como
+comando de Vercel: ese runner elimina variables y apunta al backend local.
+No agregues secretos JWT, contraseñas de PostgreSQL/SMTP ni claves privadas a
+Vercel para este frontend; se mantienen en el servidor FastAPI.
+
+Comprobación del despliegue: abrir `/`, `/registro` y `/verificar`; si conectaste
+el backend, comprobar `/api/publicaciones` y después registro, login y perfil
+con una cuenta de prueba. Un 503 en autenticación requiere revisar la bandera,
+las variables y la disponibilidad del backend; un 403 al enviar requiere
+comprobar el dominio exacto configurado en `WEB_AUTH_ORIGIN`.
+
+Referencias oficiales: [Root Directory para monorepos](https://vercel.com/docs/monorepos),
+[configuración vercel.json](https://vercel.com/docs/project-configuration/vercel-json).
+
 ## Ejecución en VS Code
 
 Requisitos: Node.js 20.9 o posterior y npm. Entorno comprobado: Node.js 24.15.0.

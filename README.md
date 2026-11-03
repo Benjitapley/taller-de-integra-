@@ -10,3 +10,8 @@ Para consultar y registrar las pruebas manuales de los flujos de **Autenticacion
 Funciones incorporadas desde `pruebasbenja`, contratos conservados y pruebas:
 [Publicaciones: integración con dev-web](./backend/publicaciones_service/README.md).
 
+## Despliegue del frontend en Vercel
+
+Usa `frontend-next` como **Root Directory**. Configuración y variables:
+[Guía de Vercel](./frontend-next/README.md#despliegue-en-vercel).
+
