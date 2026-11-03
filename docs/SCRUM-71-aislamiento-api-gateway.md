@@ -43,3 +43,11 @@ El intento de ejecutar el runner indicado en la documentación no pudo iniciar e
 ## Límites de la comprobación
 
 La suite aislada no acredita el esquema PostgreSQL desplegado, RLS/grants, carreras reales ni los tipos/nombres de tablas existentes. La documentación de adaptación JWT también registra asuntos de despliegue pendientes (esquema y permisos, secretos y coordinación de clientes). No se tocaron esas configuraciones ni se asumió acceso al entorno de producción. El endurecimiento del upload de foto de perfil también está señalado como trabajo aparte en `backend/auth_service/ADAPTATION.md`; la ruta está autenticada, pero su validación de archivo no se modificó porque no es una brecha de aislamiento de datos.
+
+## Evolución posterior — SCRUM-83 (3 de noviembre de 2026)
+
+Según la información comunicada por el usuario, Gus confirmó que la arquitectura objetivo del backlog exige un API Gateway independiente. Esta información posterior cambia la dirección arquitectónica descrita en la auditoría anterior; no equivale a una aprobación formal del equipo acreditada en este documento. El usuario autorizó la primera implementación local aislada de SCRUM-83, sin autorizar despliegue ni integración de ramas.
+
+El Gateway nuevo se implementa en `backend/api-gateway/` y el FastAPI central se conserva temporalmente por compatibilidad. Las conclusiones y limitaciones históricas anteriores permanecen intactas. Las pruebas del nuevo componente se distinguen de aquellas comprobaciones: usan upstream simulado y no acreditan integración real con Auth/Users, Listado, Supabase, PostgreSQL o Render.
+
+El alcance, las verificaciones ejecutadas y la coordinación pendiente se registran en [SCRUM-83 — Gateway independiente](SCRUM-83-gateway-independiente.md).
