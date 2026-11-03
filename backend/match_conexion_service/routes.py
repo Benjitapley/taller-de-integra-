@@ -96,7 +96,7 @@ def buscar_publicaciones(
     mascotas: Optional[str] = Query(None, description="si o no"),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Publicacion).filter(Publicacion.estado == "Activa")
+    query = db.query(Publicacion).filter(Publicacion.estado.in_(["Activa", "Disponible"]))
     
     if consulta:
         query = query.filter(Publicacion.ubicacion.ilike(f"%{consulta}%"))
