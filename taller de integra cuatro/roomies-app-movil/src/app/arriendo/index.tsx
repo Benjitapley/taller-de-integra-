@@ -10,17 +10,11 @@ import ResumenArriendo from "@/components/convivencia/ResumenArriendo";
 import {
   INFO_ARRIENDO_MOCK,
   INTEGRANTES_MOCK,
-  RECORDATORIOS_MOCK,
-  TAREAS_MOCK,
   ULTIMO_MENSAJE_ARRIENDO_MOCK,
   USUARIO_TIENE_ARRIENDO_MOCK,
 } from "@/data/convivenciaMock";
-import type {
-  NuevaTareaInput,
-  NuevoRecordatorioInput,
-  Recordatorio,
-  TareaConvivencia,
-} from "@/types/Convivencia";
+import { useConvivenciaDemo } from "@/hooks/useConvivenciaDemo";
+import type { NuevaTareaInput, NuevoRecordatorioInput } from "@/types/Convivencia";
 
 
 function SinArriendo() {
@@ -50,37 +44,17 @@ export default function DashboardArriendo() {
 }
 
 function DashboardActivo() {
-  const [tareas, setTareas] = useState<TareaConvivencia[]>(TAREAS_MOCK);
+  const { tareas, recordatorios, agregarTarea, agregarRecordatorio } = useConvivenciaDemo();
   const [formularioVisible, setFormularioVisible] = useState(false);
-  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>(RECORDATORIOS_MOCK);
   const [recordatorioVisible, setRecordatorioVisible] = useState(false);
 
   function crearTarea(nueva: NuevaTareaInput) {
-    setTareas((actuales) => [
-      ...actuales,
-      {
-        id: `local-${Date.now()}`,
-        categoria: nueva.nombre,
-        icono: "checkbox-outline",
-        diaTexto: nueva.fechaTexto,
-        descripcion: nueva.descripcion,
-        responsable: nueva.responsable,
-      },
-    ]);
+    agregarTarea(nueva);
     setFormularioVisible(false);
   }
 
   function crearRecordatorio(nuevo: NuevoRecordatorioInput) {
-    setRecordatorios((actuales) => [
-      ...actuales,
-      {
-        id: `local-${Date.now()}`,
-        titulo: nuevo.titulo,
-        fechaTexto: nuevo.fechaTexto,
-        horaTexto: nuevo.horaTexto,
-        descripcion: nuevo.descripcion,
-      },
-    ]);
+    agregarRecordatorio(nuevo);
     setRecordatorioVisible(false);
   }
 
