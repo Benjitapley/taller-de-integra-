@@ -2,17 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { Recordatorio } from "@/types/Convivencia";
 
-
 type Props = {
   recordatorios: Recordatorio[];
+  onAgregar?: () => void;
 };
 
-export default function ProximosRecordatorios({ recordatorios }: Props) {
+export default function ProximosRecordatorios({ recordatorios, onAgregar }: Props) {
   return (
     <View style={styles.tarjeta}>
       <View style={styles.encabezado}>
         <Text style={styles.titulo}>Próximos recordatorios</Text>
-        <Pressable style={styles.botonAgregar} disabled>
+        <Pressable style={styles.botonAgregar} onPress={onAgregar} disabled={!onAgregar} hitSlop={8}>
           <Ionicons name="add" size={18} color="#4F46E5" />
         </Pressable>
       </View>
@@ -28,8 +28,15 @@ export default function ProximosRecordatorios({ recordatorios }: Props) {
             <View style={{ flex: 1 }}>
               <Text style={styles.filaTitulo}>{recordatorio.titulo}</Text>
               <Text style={styles.filaSubtitulo}>
-                {recordatorio.fechaTexto} · {recordatorio.horaTexto}
+                {recordatorio.horaTexto
+                  ? `${recordatorio.fechaTexto} · ${recordatorio.horaTexto}`
+                  : recordatorio.fechaTexto}
               </Text>
+              {recordatorio.descripcion ? (
+                <Text style={styles.filaDescripcion} numberOfLines={2}>
+                  {recordatorio.descripcion}
+                </Text>
+              ) : null}
             </View>
             <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </View>
@@ -63,4 +70,5 @@ const styles = StyleSheet.create({
   iconoCirculo: { backgroundColor: "#EEF2FF", borderRadius: 10, padding: 8 },
   filaTitulo: { fontSize: 14, fontWeight: "600", color: "#111827" },
   filaSubtitulo: { fontSize: 12, color: "#6B7280", marginTop: 1 },
+  filaDescripcion: { fontSize: 12, color: "#9CA3AF", marginTop: 2 },
 });

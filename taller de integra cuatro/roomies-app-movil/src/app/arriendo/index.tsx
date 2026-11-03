@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import OrganizacionCasaCard from "@/components/OrganizacionCasaCard";
 import NuevaTareaSheet from "@/components/convivencia/NuevaTareaSheet";
+import NuevoRecordatorioSheet from "@/components/convivencia/NuevoRecordatorioSheet";
 import ProximosRecordatorios from "@/components/convivencia/ProximosRecordatorios";
 import ResumenArriendo from "@/components/convivencia/ResumenArriendo";
 import {
@@ -14,7 +15,12 @@ import {
   ULTIMO_MENSAJE_ARRIENDO_MOCK,
   USUARIO_TIENE_ARRIENDO_MOCK,
 } from "@/data/convivenciaMock";
-import type { NuevaTareaInput, TareaConvivencia } from "@/types/Convivencia";
+import type {
+  NuevaTareaInput,
+  NuevoRecordatorioInput,
+  Recordatorio,
+  TareaConvivencia,
+} from "@/types/Convivencia";
 
 
 function SinArriendo() {
@@ -46,6 +52,8 @@ export default function DashboardArriendo() {
 function DashboardActivo() {
   const [tareas, setTareas] = useState<TareaConvivencia[]>(TAREAS_MOCK);
   const [formularioVisible, setFormularioVisible] = useState(false);
+  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>(RECORDATORIOS_MOCK);
+  const [recordatorioVisible, setRecordatorioVisible] = useState(false);
 
   function crearTarea(nueva: NuevaTareaInput) {
     setTareas((actuales) => [
@@ -60,6 +68,20 @@ function DashboardActivo() {
       },
     ]);
     setFormularioVisible(false);
+  }
+
+  function crearRecordatorio(nuevo: NuevoRecordatorioInput) {
+    setRecordatorios((actuales) => [
+      ...actuales,
+      {
+        id: `local-${Date.now()}`,
+        titulo: nuevo.titulo,
+        fechaTexto: nuevo.fechaTexto,
+        horaTexto: nuevo.horaTexto,
+        descripcion: nuevo.descripcion,
+      },
+    ]);
+    setRecordatorioVisible(false);
   }
 
   return (
@@ -91,13 +113,22 @@ function DashboardActivo() {
         onAgregar={() => setFormularioVisible(true)}
       />
 
-      <ProximosRecordatorios recordatorios={RECORDATORIOS_MOCK} />
+      <ProximosRecordatorios
+        recordatorios={recordatorios}
+        onAgregar={() => setRecordatorioVisible(true)}
+      />
 
       <NuevaTareaSheet
         visible={formularioVisible}
         integrantes={INTEGRANTES_MOCK}
         onCancelar={() => setFormularioVisible(false)}
         onCrear={crearTarea}
+      />
+
+      <NuevoRecordatorioSheet
+        visible={recordatorioVisible}
+        onCancelar={() => setRecordatorioVisible(false)}
+        onGuardar={crearRecordatorio}
       />
     </ScrollView>
   );

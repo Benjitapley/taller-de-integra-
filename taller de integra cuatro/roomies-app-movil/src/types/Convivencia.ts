@@ -35,7 +35,8 @@ export interface Recordatorio {
   id: string;
   titulo: string;
   fechaTexto: string; // "Viernes"
-  horaTexto: string; // "19:00"
+  horaTexto?: string; // "19:00" — opcional según el mockup m_recordatorio (M4-D08)
+  descripcion?: string; // opcional (M4-D08)
 }
 
 export interface InfoArriendo {
@@ -51,4 +52,12 @@ export interface NuevaTareaInput {
   descripcion?: string;
   responsable: IntegranteConvivencia;
   fechaTexto: string; // texto libre, ej. "Martes 13 de octubre"
+}
+
+// M4-D08 — datos que entrega el formulario "Nuevo recordatorio" (bottom sheet).
+export interface NuevoRecordatorioInput {
+  titulo: string;
+  fechaTexto: string; // texto libre, ej. "Viernes 16 de octubre"
+  horaTexto?: string; // "HH:MM", ya validada
+  descripcion?: string;
 }
