@@ -198,3 +198,32 @@ por eso el smoke usa bridge exclusiva. Esa red no bloquea salida a Internet: no
 se configura upstream ni se contactan servicios de negocio externos, pero esta
 prueba Docker no es una auditoría de egress. No se acreditan Render, otras
 arquitecturas, carga ni un escaneo integral de vulnerabilidades de la imagen.
+
+## Estado posterior: PoC en Render
+
+El usuario confirmó un despliegue real del commit `073c33e`, rama
+`SCRUM-83-Validar-Gateway-despliegue-y-documentación`, en el servicio
+`roomies-scrum83-api-gateway` del proyecto `roomies-scrum77-poc`, entorno Staging,
+plan Free y runtime Docker:
+[URL de la PoC](https://roomies-scrum83-api-gateway.onrender.com).
+
+Estado reportado: **Deploy succeeded / Live**. Dockerfile:
+`backend/api-gateway/Dockerfile`; Docker Build Context Directory:
+`backend/api-gateway`; Root Directory vacío; Health Check Path `/health`;
+Auto-Deploy **Off**. No se configuraron variables de entorno ni secretos para esta
+PoC. La duración del despliegue fue **44 segundos; no es una medición de cold start**.
+
+Verificaciones remotas confirmadas por el usuario: `/health` respondió desde el
+navegador con `{"status":"ok"}`; `/usuarios/me`, consultado con `curl.exe -i`,
+devolvió **503 Service Unavailable**, **Cache-Control: no-store** y
+`{"detail":"Servicio no configurado."}`. Los registros de Render confirmaron el
+arranque correcto de Uvicorn. No se repitieron esas consultas en esta actualización.
+
+`AUTH_USERS_UPSTREAM_URL` sigue sin configurar. No se ha probado comunicación
+remota Gateway → Auth/Users ni validado Supabase Auth, PostgreSQL o Listado mediante
+este despliegue. No se acredita integración del sistema completo; no se usan
+credenciales ni servicios de producción.
+
+Las referencias anteriores a Render no comprobado describen las fases previas y
+se conservan como historial. Los detalles y límites de la evidencia posterior están
+en [la documentación SCRUM-83](../../docs/SCRUM-83-gateway-independiente.md#evidencia-posterior-poc-desplegada-y-comprobada-en-render).

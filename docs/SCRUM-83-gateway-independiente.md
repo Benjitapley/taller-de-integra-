@@ -372,3 +372,72 @@ se acreditó el smoke descrito. No se hicieron carga, escaneo integral de CVE,
 integración con Auth real, otras arquitecturas ni validación TLS/Render.
 No se desplegó, publicó imagen ni se subieron cambios a GitHub. La siguiente etapa
 requiere revisión del usuario; Render sigue sin autorización.
+
+## Evidencia posterior: PoC desplegada y comprobada en Render
+
+Esta sección registra el despliegue real y las verificaciones remotas confirmadas
+por el usuario. Actualiza el estado respecto de las fases anteriores, cuyo contenido
+se conserva como historial: las referencias anteriores a Render pendiente o todavía
+no autorizado corresponden a esas etapas. Esta actualización documental no ejecutó
+un despliegue, no modificó Render ni repitió las solicitudes remotas.
+
+### Servicio y configuración reportados
+
+| Dato | Valor confirmado |
+| --- | --- |
+| Proyecto Render | `roomies-scrum77-poc` |
+| Entorno | Staging |
+| Servicio | `roomies-scrum83-api-gateway` |
+| Plan | Free |
+| Runtime | Docker |
+| Rama | `SCRUM-83-Validar-Gateway-despliegue-y-documentación` |
+| Commit desplegado | `073c33e` |
+| URL pública | [roomies-scrum83-api-gateway.onrender.com](https://roomies-scrum83-api-gateway.onrender.com) |
+| Dockerfile | `backend/api-gateway/Dockerfile` |
+| Docker Build Context Directory | `backend/api-gateway` |
+| Root Directory | Vacío |
+| Health Check Path | `/health` |
+| Auto-Deploy | Off |
+| Variables de entorno y secretos configurados para esta PoC | Ninguno |
+| Estado observado | Deploy succeeded / Live |
+| Duración del despliegue | 44 segundos |
+
+Los **44 segundos corresponden a la duración del despliegue**, no a una medición
+de cold start ni de latencia de respuesta. La ausencia de variables configuradas
+para esta PoC no significa que Render carezca de variables automáticas de plataforma.
+
+### Verificaciones remotas confirmadas
+
+1. `GET /health`, abierto desde el navegador, respondió con `{"status":"ok"}`.
+2. `GET /usuarios/me` fue comprobado mediante `curl.exe -i` y devolvió
+   **503 Service Unavailable**, con **Cache-Control: no-store** y el cuerpo
+   `{"detail":"Servicio no configurado."}`.
+3. Según la revisión de registros de Render comunicada por el usuario, Uvicorn
+   inició correctamente.
+
+La consulta de perfil corresponde a la URL
+[usuarios/me](https://roomies-scrum83-api-gateway.onrender.com/usuarios/me).
+Para reproducir esa comprobación sin token ni credenciales:
+
+```powershell
+curl.exe -i https://roomies-scrum83-api-gateway.onrender.com/usuarios/me
+```
+
+La respuesta 503 acredita el comportamiento controlado del Gateway sin servicio
+destino configurado; no acredita una respuesta de Auth/Users. El health acredita
+que la aplicación atiende esa ruta, sin comprobar disponibilidad de dependencias.
+
+### Alcance y limitaciones de esta evidencia
+
+- `AUTH_USERS_UPSTREAM_URL` todavía no está configurado.
+- No se ha probado comunicación remota Gateway → Auth/Users.
+- No se ha validado Supabase Auth, PostgreSQL ni Listado mediante este despliegue.
+- No se acredita que el sistema completo esté integrado ni que los clientes
+  móviles/web funcionen contra esta PoC.
+- No se midió cold start; los 44 segundos no deben reutilizarse como esa métrica.
+- Esta PoC no utiliza credenciales ni servicios de producción. No se incorporan
+  secretos a la documentación.
+
+La siguiente integración requiere acordar el contrato y disponibilidad de Auth/Users
+y, por separado, el contrato de Listado con Benjamín Cabrera. Esta evidencia de
+infraestructura no cierra esas dependencias ni autoriza cambios adicionales en Render.
