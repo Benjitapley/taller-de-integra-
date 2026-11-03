@@ -1,0 +1,22 @@
+# Contexto obligatorio: backend/api-gateway/. Denegar todo salvo el runtime.
+**
+!Dockerfile
+!.dockerignore
+!requirements.txt
+!app/
+app/**
+!app/__init__.py
+!app/main.py
+!app/config.py
+!app/proxy.py
+!docker/
+docker/**
+!docker/runtime.py
+# Defensa adicional frente a futuras reglas de inclusión.
+**/__pycache__
+**/*.py[cod]
+**/.env*
+**/.venv
+**/venv
+**/*.pem
+**/*.key
