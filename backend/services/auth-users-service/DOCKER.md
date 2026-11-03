@@ -135,5 +135,40 @@ staging mediante el gestor de secretos del servicio y establece el health check
 HTTP en `/health`. La base de datos local de desarrollo no debe conectarse desde
 Render.
 
-Esto documenta la configuración prevista. **No acredita una construcción en
-Render ni que el servicio se haya desplegado allí.**
+Lo anterior describe la configuración de Render. El siguiente registro documenta
+la PoC desplegada y verificada según la evidencia disponible.
+
+## Render — despliegue PoC confirmado
+
+El despliegue de SCRUM-77 se realizó con esta configuración:
+
+- Proyecto: `roomies-scrum77-poc`.
+- Entorno: Staging.
+- Servicio: `roomies-scrum77-auth-users`.
+- Runtime y plan: Docker, Free.
+- Rama: `SCRUM-77-Preparar-Docker-y-desplegar-un-microservicio`.
+- Commit desplegado: `5fba985`.
+- URL: <https://roomies-scrum77-auth-users.onrender.com>.
+- Dockerfile: `backend/services/auth-users-service/Dockerfile`.
+- Contexto de construcción: raíz del repositorio (`.`).
+- Health Check Path: `/health`.
+- Auto-Deploy: desactivado.
+- Estado reportado: Deploy succeeded / Live.
+
+Verificaciones reportadas:
+
+- `GET /health` respondió HTTP `200`, según los logs de Render.
+- `GET /docs` mostró Swagger con `GET /health`, `GET /usuarios/me` y
+  `PATCH /usuarios/me`.
+- `GET /usuarios/me` respondió HTTP `503`, incluyó
+  `Cache-Control: no-store` y el mensaje genérico
+  `La verificación de identidad no está configurada.`
+
+La duración informada de este despliegue fue de 1 minuto y 7 segundos. Esa
+duración corresponde al despliegue y **no equivale al cold start**, que todavía
+no se ha medido.
+
+Esta PoC confirma el despliegue y las respuestas descritas; no valida la
+autenticación real con Supabase ni la persistencia remota en PostgreSQL. Tampoco
+se modificaron el Gateway, el frontend ni los servicios del equipo. No se deben
+usar credenciales de producción para completar esta PoC.
