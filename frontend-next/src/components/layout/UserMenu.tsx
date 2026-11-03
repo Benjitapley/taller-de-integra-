@@ -34,6 +34,6 @@ export default function UserMenu() {
   }, [open]);
   return <div ref={ref} className={styles.userMenu} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
     <button ref={trigger} type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}><Icon name="user" size={16} />Información de cuenta</button>
-    <div id={id} hidden={!open} className={styles.userPanel}><strong>Sesión validada por FastAPI</strong><Link href={routes.profile} onClick={() => setOpen(false)}>Ver mi perfil</Link><button type="button" onClick={logout} disabled={pending}>{pending ? "Cerrando sesión…" : "Cerrar sesión"}</button><p role="status">{message}</p></div>
+    <div id={id} hidden={!open} className={styles.userPanel}><strong>Sesión validada por FastAPI</strong><Link href={routes.profile} onClick={() => setOpen(false)}>Ver mi perfil</Link><Link href="/admin" onClick={() => setOpen(false)}>Panel administrativo</Link><button type="button" onClick={logout} disabled={pending}>{pending ? "Cerrando sesión…" : "Cerrar sesión"}</button><p role="status">{message}</p></div>
   </div>;
 }

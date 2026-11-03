@@ -105,13 +105,15 @@ try {
   const ctxA=await context(), pageA=await ctxA.newPage();
   pageA.setDefaultTimeout(15_000);
   await pass("private Next pages reject anonymous users",async()=>{
-    for(const path of ["/inicio","/publicar","/navegacion","/perfil"]) {
+    for(const path of ["/inicio","/publicar","/navegacion","/perfil","/admin"]) {
       const response=await ctxA.request.get(config.web+path,{maxRedirects:0});
       assert.equal(response.status(),307);
       assert.equal(new URL(response.headers().location,config.web).pathname,"/");
     }
     assert.equal((await ctxA.request.get(config.web+"/web-api/auth/sesion")).status(),401);
     assert.equal((await ctxA.request.get(config.web+"/web-api/perfil")).status(),401);
+    assert.equal((await ctxA.request.get(config.web+"/web-api/admin")).status(),401);
+    assert.equal((await privateAPI("/api/admin/resumen",null)).status,401);
   });
   await pass("browser registration persists Argon2 account and delivers STARTTLS SMTP locally",async()=>{
     await register(pageA,A);
@@ -157,6 +159,14 @@ try {
     const session=await webJSON(pageA,"sesion");
     assert.deepEqual(session,{status:200,body:{authenticated:true,user:{nombre:A.nombre}}});
     assert.ok(await pageA.getByRole("navigation",{name:"Navegación principal"}).isVisible());
+  });
+  await pass("admin empty state uses real PostgreSQL totals",async()=>{
+    await pageA.goto(config.web+"/admin");
+    await pageA.getByText("No hay publicaciones en esta página.",{exact:true}).waitFor();
+    const response=await ctxA.request.get(config.web+"/web-api/admin");
+    assert.equal(response.status(),200);
+    assert.deepEqual(await response.json(),{resumen:{usuarios:1,publicaciones:0,conexiones:0},items:[],pagina:1,hay_mas:false});
+    await pageA.goto(config.web+"/inicio");
   });
   const ctxB=await context(),pageB=await ctxB.newPage();
   pageB.setDefaultTimeout(15_000);
@@ -221,6 +231,47 @@ try {
     assert.deepEqual((await privateAPI("/api/mis-publicaciones",tokenA)).body.map(p=>p.id),[pubA]);
     assert.deepEqual((await privateAPI("/api/mis-publicaciones",tokenB)).body.map(p=>p.id),[pubB]);
     assert.equal((await privateAPI("/api/mis-publicaciones",null)).status,401);
+  });
+  await pass("admin shows real publications, validates pagination and remains read only",async()=>{
+    const api=await privateAPI("/api/admin/resumen",tokenA);
+    assert.equal(api.status,200);assert.deepEqual(api.body,{usuarios:2,publicaciones:2,conexiones:0});
+    const list=await privateAPI("/api/admin/publicaciones?limite=1&pagina=1",tokenA);
+    assert.equal(list.status,200);assert.equal(list.body.items[0].id,pubB);assert.equal(list.body.hay_mas,true);
+    assert.equal((await privateAPI("/api/admin/publicaciones?limite=1&pagina=2",tokenA)).body.items[0].id,pubA);
+    assert.equal((await privateAPI("/api/admin/publicaciones?limite=101",tokenA)).status,422);
+    assert.equal((await privateAPI("/api/admin/resumen",tokenA,"DELETE")).status,405);
+    await pageA.goto(config.web+"/admin");
+    await pageA.getByRole("cell",{name:"Ciudad de prueba",exact:true}).first().waitFor();
+    assert.equal(await pageA.getByRole("rowheader",{name:publication.titulo,exact:true}).count(),1);
+    assert.equal(await pageA.getByRole("button",{name:"Siguiente",exact:true}).isDisabled(),true);
+    assert.equal(await pageA.getByRole("button",{name:"Anterior",exact:true}).isDisabled(),true);
+    await pageA.getByRole("button",{name:"Actualizar panel",exact:true}).click();
+    await pageA.getByRole("rowheader",{name:publication.titulo,exact:true}).waitFor();
+    await pageA.goto(config.web+"/perfil");
+    await pageA.getByRole("heading",{name:A.nombre,exact:true}).waitFor();
+  });
+  await pass("ordinary account cannot read admin through backend, BFF or page",async()=>{
+    assert.equal((await privateAPI("/api/admin/resumen?role=admin",tokenB)).status,403);
+    assert.equal((await privateAPI("/api/admin/publicaciones",tokenB)).status,403);
+    const denied=await ctxB.request.get(config.web+"/web-api/admin");
+    assert.equal(denied.status(),403);assert.equal(denied.headers()["set-cookie"],undefined);
+    await pageB.goto(config.web+"/admin");
+    await pageB.getByRole("alert").filter({hasText:"Tu cuenta no tiene acceso administrativo."}).waitFor();
+    assert.equal(await pageB.getByRole("table").count(),0);
+    assert.equal((await webJSON(pageB,"sesion")).status,200);
+    await pageB.goto(config.web+"/perfil");
+    await pageB.getByRole("heading",{name:B.nombre,exact:true}).waitFor();
+  });
+  await pass("admin browser handles service failure and retry without showing stale data",async()=>{
+    await pageA.route("**/web-api/admin?*",route=>route.fulfill({status:503,contentType:"application/json",body:'{"detail":"Unavailable"}'}));
+    await pageA.goto(config.web+"/admin");
+    await pageA.getByRole("alert").filter({hasText:"No se pudo consultar el panel."}).waitFor();
+    assert.equal(await pageA.getByRole("table").count(),0);
+    await pageA.unroute("**/web-api/admin?*");
+    await pageA.getByRole("button",{name:"Reintentar",exact:true}).click();
+    await pageA.getByRole("rowheader",{name:publication.titulo,exact:true}).waitFor();
+    await pageA.goto(config.web+"/perfil");
+    await pageA.getByRole("heading",{name:A.nombre,exact:true}).waitFor();
   });
   await pass("profile reload renders real PostgreSQL fields and publication totals",async()=>{
     await pageA.reload();
@@ -364,6 +415,7 @@ try {
     await pageA.waitForURL(config.web+"/");
     assert.equal(await tokenOf(ctxA),undefined);
     assert.equal((await fixture("session-state",{token:tokenA})).revoked,true);
+    assert.equal((await privateAPI("/api/admin/resumen",tokenA)).status,401);
     assert.equal((await privateAPI("/api/perfil",tokenA)).status,401);
     assert.equal((await webJSON(pageA,"sesion")).status,401);
     assert.equal((await webProfile(pageA)).status,401);

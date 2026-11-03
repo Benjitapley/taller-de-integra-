@@ -16,6 +16,7 @@ from backend.match_conexion_service.routes import router as conexion_router
 from backend.auth_service.main import auth_router
 from backend.auth_service.security import get_current_user
 from backend.auth_service.config import get_settings
+from backend.main.admin import router as admin_router
 
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -87,7 +88,7 @@ async def validation_error(request, exc):
 async def private_no_store(request, call_next):
     response = await call_next(request)
     path = request.url.path
-    if (path.startswith(("/auth/", "/conexiones"))
+    if (path.startswith(("/auth/", "/conexiones", "/api/admin"))
         or path in {"/api/perfil", "/api/mis-publicaciones"}
         or path.startswith("/api/publicaciones/")
         or (path.startswith("/api/publicaciones") and request.method != "GET")):
@@ -105,6 +106,7 @@ app.add_middleware(
 
 app.include_router(conexion_router)
 app.include_router(auth_router)
+app.include_router(admin_router)
 
 # MONTAJE DE CARPETAS ESTÁTICAS
 app.mount("/static_creacion", StaticFiles(directory=FRONTEND_CREACION), name="static_creacion")

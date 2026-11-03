@@ -297,6 +297,7 @@ with tempfile.TemporaryDirectory(prefix=fixture_prefix) as temporary:
             return process
         api_env = {**base_env,'HAYCUPO_E2E':'isolated-disposable','DATABASE_URL':app_dsn,
                    'AUTH_JWT_ENABLED':'true','JWT_SECRET_KEY':jwt_secret,'AUTH_CODE_SECRET':code_secret,
+                   'ADMIN_USER_IDS':'1',  # Solo la primera cuenta sintética de este clúster.
                    'JWT_EXPIRATION_MINUTES':'15','SMTP_HOST':'127.0.0.1','SMTP_PORT':str(smtp_port),
                    'SMTP_USER':smtp_user,'SMTP_PASSWORD':smtp_password,'SSL_CERT_FILE':str(cert_file),
                    'E2E_API_PORT':str(api_port),'E2E_IMAGE_DIR':str(fixture / 'images'),'WEB_ORIGINS':web_origin}
