@@ -227,3 +227,32 @@ credenciales ni servicios de producción.
 Las referencias anteriores a Render no comprobado describen las fases previas y
 se conservan como historial. Los detalles y límites de la evidencia posterior están
 en [la documentación SCRUM-83](../../docs/SCRUM-83-gateway-independiente.md#evidencia-posterior-poc-desplegada-y-comprobada-en-render).
+
+## Estado posterior: comunicación remota con Auth/Users
+
+El usuario confirmó que configuró únicamente `roomies-scrum83-api-gateway` en
+Render con `AUTH_USERS_UPSTREAM_URL=https://roomies-scrum77-auth-users.onrender.com`
+y guardó mediante **Save and deploy**, sin modificar código ni el servicio
+Auth/Users. Este estado sucede a la PoC sin upstream conservada arriba.
+
+Tras un **502 transitorio de causa no confirmada**, se comprobaron HTTP **200**
+en `/health` del Gateway y en `/health` directo de Auth/Users. El
+**GET /usuarios/me a través del Gateway** devolvió HTTP **503**,
+`Content-Type: application/json`, `Cache-Control: no-store` y:
+
+```json
+{"detail":"La verificación de identidad no está configurada."}
+```
+
+Esto acredita comunicación HTTP remota Gateway → Auth/Users y propagación de esa
+respuesta controlada para GET. No se ha validado autenticación funcional con
+Supabase Auth, operaciones PostgreSQL, perfiles reales, Listado/Applications,
+PATCH remoto ni reenvío de un JWT real. No acredita integración del sistema completo.
+
+Ambos servicios siguen en plan **Free** y pueden experimentar arranques en frío;
+no hay evidencia para atribuirles el 502 inicial ni una medición de cold start.
+No se usan credenciales ni servicios de producción. Esta actualización documental
+no consultó servicios externos ni alteró configuración.
+
+La secuencia, el alcance y los pendientes están registrados en
+[la evidencia de comunicación remota de SCRUM-83](../../docs/SCRUM-83-gateway-independiente.md#evidencia-posterior-comunicación-http-remota-gateway--authusers).

@@ -441,3 +441,66 @@ que la aplicación atiende esa ruta, sin comprobar disponibilidad de dependencia
 La siguiente integración requiere acordar el contrato y disponibilidad de Auth/Users
 y, por separado, el contrato de Listado con Benjamín Cabrera. Esta evidencia de
 infraestructura no cierra esas dependencias ni autoriza cambios adicionales en Render.
+
+## Evidencia posterior: comunicación HTTP remota Gateway → Auth/Users
+
+El usuario confirmó la primera comunicación HTTP remota entre ambos servicios
+desplegados en Render. Esta evidencia es posterior a la PoC sin upstream descrita
+arriba; se conserva íntegramente ese historial. Las afirmaciones anteriores sobre
+ausencia de upstream y comunicación pendiente corresponden a aquella etapa.
+Esta actualización solo documenta los resultados comunicados: no accedió a servicios
+externos ni credenciales, no repitió solicitudes y no cambió código o configuración.
+
+### Cambio de configuración reportado
+
+Se configuró únicamente el servicio `roomies-scrum83-api-gateway` con:
+
+```text
+AUTH_USERS_UPSTREAM_URL=https://roomies-scrum77-auth-users.onrender.com
+```
+
+El cambio se guardó mediante **Save and deploy** en Render. No se modificaron el
+código ni el servicio Auth/Users. Esta URL identifica el upstream y no contiene
+credenciales. Ambos servicios continúan usando el plan **Free**.
+
+### Secuencia y resultados confirmados
+
+Primero se observó un **502 transitorio**. Su causa no está confirmada; no se
+atribuye a arranque en frío, timeout u otro fallo concreto sin evidencia adicional.
+Después se obtuvieron los siguientes resultados:
+
+| Comprobación | Resultado confirmado |
+| --- | --- |
+| GET /health del Gateway | HTTP 200 |
+| GET /health directo de Auth/Users | HTTP 200 |
+| GET /usuarios/me a través del Gateway | HTTP 503 |
+| Content-Type de la respuesta de perfil | `application/json` |
+| Cache-Control de la respuesta de perfil | `no-store` |
+
+Cuerpo recibido a través del Gateway:
+
+```json
+{"detail":"La verificación de identidad no está configurada."}
+```
+
+A diferencia del 503 anterior generado por el Gateway sin upstream, esta
+comprobación acredita que el Gateway puede comunicarse con Auth/Users por HTTP
+en Render y propagar su respuesta controlada de identidad no configurada.
+Los health checks acreditan las rutas de salud consultadas; no verifican por sí
+solos autenticación ni acceso a datos.
+
+### Alcance y pendientes
+
+- La evidencia acredita la ruta **GET /usuarios/me** y la propagación del código
+  **503**, cuerpo JSON y cabeceras observadas; no acredita el sistema completo.
+- No se ha validado autenticación funcional con **Supabase Auth**.
+- No se han probado operaciones con **PostgreSQL** ni perfiles reales.
+- No se ha integrado **Listado/Applications**.
+- No se ha validado **PATCH remoto** ni el reenvío de un **JWT real**.
+- Los servicios Free pueden experimentar arranques en frío, pero esa posibilidad
+  no demuestra la causa del 502 inicial. No se dispone de una medición de cold start.
+- Esta comprobación no utiliza credenciales ni servicios de producción.
+
+La configuración del verificador de identidad y las pruebas autenticadas requieren
+una etapa posterior coordinada. El GET remoto comprobado no sustituye esas pruebas
+ni las validaciones de escritura o de integración con otros servicios.
