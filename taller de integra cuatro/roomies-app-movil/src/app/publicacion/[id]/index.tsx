@@ -1,10 +1,11 @@
-import React from 'react';
-import { ScrollView, View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, View, Text, Image, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { CustomButton } from '@/components/CustomButton';
-import { publicacionesMock, usuariosMock } from '@/mocks';
+import { usuariosMock } from '@/mocks'; 
+import { obtenerPublicacionPorId } from '@/services/publicaciones.service';
 import {
     TITULO_PUBLICACION,
     configPorEstado,
@@ -12,6 +13,7 @@ import {
     estiloPorTipo,
     paletaPublicacion,
 } from '@/constants/origenPublicacion';
+import { Publicacion } from '@/types/Publicacion';
 
 function formatoPrecio(precio: number): string {
     return `$${String(precio).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} CLP`;
@@ -20,6 +22,25 @@ function formatoPrecio(precio: number): string {
 export default function PublicacionDetallePantalla() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
+
+    const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
+    const [cargando, setCargando] = useState(true);
+
+    useEffect(() => {
+        if (id) {
+            cargarDetalle();
+        }
+    }, [id]);
+
+    const cargarDetalle = async () => {
+        setCargando(true);
+        // Simulamos un pequeño retraso de red
+        setTimeout(async () => {
+            const data = await obtenerPublicacionPorId(id);
+            setPublicacion(data);
+            setCargando(false);
+        }, 500);
+    };
 
     const opcionesHeader = {
         headerShown: true,
@@ -39,9 +60,17 @@ export default function PublicacionDetallePantalla() {
         ),
     };
 
-    // Datos simulados de mocks
-    const publicacion = publicacionesMock.find((p) => p.idPublicacion === Number(id));
+    // 1. Mostrar estado de carga mientras se ejecuta el useEffect
+    if (cargando) {
+        return (
+            <View style={styles.vacio}>
+                <Stack.Screen options={opcionesHeader} />
+                <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+        );
+    }
 
+    // 2. Mostrar pantalla de error si la publicación no existe o viene null
     if (!publicacion) {
         return (
             <View style={styles.vacio}>
@@ -58,6 +87,7 @@ export default function PublicacionDetallePantalla() {
         );
     }
 
+    // 3. Renderizar el detalle normal si ya hay datos
     const config = configPorOrigen[publicacion.tipo];
     const estilo = estiloPorTipo[publicacion.tipo];
     const estado = configPorEstado[publicacion.estado];

@@ -1,5 +1,6 @@
 import { adaptarListaPublicaciones } from "@/adapters/publicacionAdapter";
 import { publicacionesMock } from '@/mocks/publicaciones'; // Asegúrate de que esta ruta sea correcta
+import type { Publicacion } from "@/types/Publicacion";
 
 export interface FiltrosArriendo {
   precioMin?: number;
@@ -47,8 +48,37 @@ export async function obtenerPublicaciones(filtros?: FiltrosArriendo) {
   if (filtros) {
     if (filtros.precioMin) resultados = resultados.filter(p => p.precio >= filtros.precioMin!);
     if (filtros.precioMax) resultados = resultados.filter(p => p.precio <= filtros.precioMax!);
-    if (filtros.comuna) resultados = resultados.filter(p => p.comuna.toLowerCase() === filtros.comuna!.toLowerCase());
+    if (filtros.comuna) {
+      resultados = resultados.filter(p => 
+        p.ubicacion?.toLowerCase().includes(filtros.comuna!.toLowerCase())
+      );
+    }
   }
 
   return resultados;
+}
+
+
+export async function obtenerPublicacionPorId(id: string | number): Promise<Publicacion | null> {
+  // 1. CÓDIGO REAL (Comentado hasta integración del endpoint real)
+  /*
+  try {
+    const baseUrl = 'https://roomies-scrum83-api-gateway.onrender.com';
+    const respuesta = await fetch(`${baseUrl}/publicaciones/${id}`);
+    
+    if (!respuesta.ok) return null;
+    
+    const datosCrudos = await respuesta.json();
+    return adaptarPublicacion(datosCrudos);
+  } catch (error) {
+    console.error(`Error al obtener la publicación ${id}:`, error);
+    return null;
+  }
+  */
+
+  // 2. MOCK TEMPORAL (Activo mientras se habilita el backend)
+  const idNumerico = Number(id);
+  const encontrada = publicacionesMock.find((p) => p.idPublicacion === idNumerico);
+  
+  return encontrada || null;
 }
