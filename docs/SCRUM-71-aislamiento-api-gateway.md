@@ -21,6 +21,7 @@ La identidad privada se obtiene de un Bearer JWT validado por `get_identity`: co
 | `POST /conexiones/` | JWT requerido; solicitante del cuerpo debe coincidir con la identidad autenticada (403 si no). |
 | `PUT /conexiones/{id_conexion}` | JWT requerido; únicamente el destinatario autenticado puede responder; el registro se bloquea durante la actualización. |
 | `GET /conexiones/recibidas/{id_usuario}` | JWT requerido; ID solicitado debe coincidir con el usuario autenticado (403 si no). Solo devuelve solicitudes recibidas pendientes. |
+| `GET /conexiones/enviadas` | JWT requerido; devuelve las solicitudes enviadas por la identidad autenticada, ordenadas por fecha descendente. No acepta un ID de usuario del cliente. |
 | `/auth/*` | Router de autenticación; sus handlers gestionan registro, verificación y login. Logout requiere identidad de sesión. |
 
 Las páginas HTML y los archivos estáticos se sirven públicamente; la protección de datos se aplica en los endpoints API. Las solicitudes privadas reciben `no-store` mediante middleware central. Las búsquedas son públicas por compatibilidad con el flujo de descubrimiento; no se infiere que el perfil completo sea público.

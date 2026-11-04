@@ -214,6 +214,7 @@ def test_signature_algorithm_and_malformed_tokens():
     ("post", "/conexiones/", {"id_solicitante_FK": 1, "id_receptor_FK": 2}),
     ("put", "/conexiones/8", {"estado": "Aceptada"}),
     ("get", "/conexiones/recibidas/1", None),
+    ("get", "/conexiones/enviadas", None),
 ])
 def test_private_routes_reject_cookie_id(client, db, method, path, json):
     response = client.request(method, path, json=json, headers={"Cookie": "roomies_id=1"})
@@ -388,5 +389,37 @@ def test_connection_create_and_accept_keep_json_contract(client, payload, mail):
         assert response.status_code == 200
         assert response.json()["estado"] == "Aceptada"
         assert response.json()["id_receptor_FK"] == 1
+    finally:
+        web.app.dependency_overrides.clear()
+
+
+def test_my_sent_connections_are_scoped_to_authenticated_user(client, payload, mail):
+    from backend.match_conexion_service.database import get_db
+    from backend.match_conexion_service.models import EstadoConexion, Conexion
+    headers = verified_login(client, payload, mail)
+    db = MagicMock()
+    sent = Conexion(
+        id_conexion=9,
+        id_solicitante_FK=1,
+        id_receptor_FK=2,
+        estado=EstadoConexion.Pendiente,
+        fecha_solicitud=datetime.now(timezone.utc),
+    )
+    db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [sent]
+    web.app.dependency_overrides[get_db] = lambda: db
+    try:
+        response = client.get("/conexiones/enviadas", headers=headers)
+        assert response.status_code == 200
+        assert response.json()[0]["id_conexion"] == 9
+        assert response.json()[0]["id_solicitante_FK"] == 1
+        assert response.json()[0]["id_receptor_FK"] == 2
+        assert response.json()[0]["estado"] == "Pendiente"
+        db.query.assert_called_once_with(Conexion)
+        query = db.query.return_value
+        query.filter.assert_called_once()
+        criterion = query.filter.call_args.args[0]
+        assert criterion.left.name == "id_solicitante_FK"
+        assert criterion.right.value == 1
+        query.filter.return_value.order_by.assert_called_once()
     finally:
         web.app.dependency_overrides.clear()

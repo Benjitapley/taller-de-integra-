@@ -48,16 +48,24 @@ compilar, por lo que se debe volver a compilar y reiniciar.
 | `/verificar` | Verificación y reenvío mediante adaptador web |
 | `/inicio` | Inicio React protegido, con Sidebar y pestaña Arriendos |
 | `/inicio?vista=personas` | Inicio React protegido, pestaña Personas |
-| `/publicar` | Selector visual protegido; formularios pendientes |
+| `/publicar` | Selector visual protegido, con acceso al formulario de creación |
 | `/navegacion` | Guía protegida, ejemplo de modal y accesos al HTML antiguo |
 | `/acceso`, `/legacy/acceso` | Login/registro HTML original, FastAPI `/` |
 | `/legacy/inicio` | Inicio HTML original, FastAPI `/inicio` |
-| `/crear`, `/legacy/crear` | FastAPI `/crear` |
+| `/crear` | Formulario React protegido para crear publicaciones |
+| `/legacy/crear` | Formulario HTML de FastAPI `/crear` |
 | `/perfil` | Perfil React autenticado, edición y estado de verificación del correo |
 | `/legacy/perfil` | HTML original de FastAPI `/perfil` |
 | `/web-api/perfil` | GET/PUT de servidor para consultar y editar el perfil propio |
-| `/mis-publicaciones`, `/legacy/mis-publicaciones` | FastAPI `/mis-publicaciones` |
-| `/editar-publicacion?id=…`, `/legacy/editar-publicacion?id=…` | FastAPI `/editar-publicacion?id=…` |
+| `/mis-publicaciones` | Listado React de publicaciones propias, con acciones de edición y eliminación |
+| `/editar-publicacion?id=…` | Formulario React protegido para editar una publicación propia |
+| `/legacy/mis-publicaciones`, `/legacy/editar-publicacion?id=…` | Páginas HTML originales de FastAPI |
+| `/mis-postulaciones` | Solicitudes de conexión enviadas por la cuenta autenticada |
+| `/web-api/mis-postulaciones` | BFF con cookie HttpOnly que consulta FastAPI `GET /conexiones/enviadas` |
+
+El modelo actual de conexiones no referencia una publicación. Por eso
+`/mis-postulaciones` muestra solicitudes enviadas a otros usuarios (ID, estado
+y fecha), no postulaciones asociadas a un aviso de arriendo.
 
 Flujo preparado: registro confirmado → `/verificar`; verificación confirmada → `/`; login confirmado → `/inicio`. Las rutas del grupo `(app)` comprueban la sesión con FastAPI en cada petición; ante sesión ausente redirigen a `/` y ante indisponibilidad bloquean el contenido. Los grupos `(auth)` y `(app)` mantienen layouts separados y no aparecen en las URL.
 
@@ -87,7 +95,14 @@ src/
 │       ├── layout.tsx               # AppShell con validación de sesión en servidor
 │       ├── inicio/page.tsx
 │       ├── publicar/page.tsx
+│       ├── crear/page.tsx
+│       ├── mis-publicaciones/page.tsx
+│       ├── editar-publicacion/page.tsx
+│       ├── mis-postulaciones/page.tsx
 │       └── navegacion/page.tsx
+├── app/web-api/
+│   ├── mis-postulaciones/route.ts    # BFF autenticado para solicitudes enviadas
+│   └── publicaciones/                # BFF autenticado para CRUD de publicaciones
 ├── components/
 │   ├── layout/                      # Header, Sidebar, AppShell, navegación,
 │   │                                # UserMenu, PageHeader y PromoCard

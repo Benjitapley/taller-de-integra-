@@ -67,7 +67,15 @@ def ver_solicitudes_recibidas(id_usuario: int, id_actual: int = Depends(get_curr
     return solicitudes  
 
 
-# 4. BÚSQUEDA DE USUARIOS (ROOMIES)
+# 4. Ver las solicitudes que he enviado
+@router.get("/enviadas", response_model=list[ConexionResponse])
+def ver_solicitudes_enviadas(id_actual: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    return db.query(Conexion).filter(
+        Conexion.id_solicitante_FK == id_actual
+    ).order_by(Conexion.fecha_solicitud.desc()).all()
+
+
+# 5. BÚSQUEDA DE USUARIOS (ROOMIES)
 @router.get("/usuarios/buscar", response_model=List[UsuarioBusqueda])
 def buscar_usuarios(
     presupuesto_max: Optional[int] = Query(None, description="Presupuesto máximo del roomie"),
@@ -87,7 +95,7 @@ def buscar_usuarios(
     return consulta_db.all()
 
 
-# 5. BÚSQUEDA DE PUBLICACIONES (ARRIENDOS) CON FILTROS DEL FRONTEND
+# 6. BÚSQUEDA DE PUBLICACIONES (ARRIENDOS) CON FILTROS DEL FRONTEND
 @router.get("/publicaciones/buscar", response_model=List[PublicacionBusqueda])
 def buscar_publicaciones(
     consulta: Optional[str] = Query(None, description="Ubicación (barra de búsqueda)"),
