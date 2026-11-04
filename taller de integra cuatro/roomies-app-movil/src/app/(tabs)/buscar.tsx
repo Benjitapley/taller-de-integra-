@@ -1,16 +1,40 @@
-import { useState } from "react";
-import { Text, View, StyleSheet, TouchableOpacity, FlatList, ScrollView} from "react-native";
-import { UsuarioCard } from "@/components/Usuario_Card";
-import { usuariosMock } from "@/mocks/usuarios";
+import { useEffect, useState } from "react";
+import { Text, View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
 import { colors } from "@/theme/colors";
 import { paletaPublicacion } from "@/constants/origenPublicacion";
 import BuscadorPublicaciones from '@/components/BuscadorPublicaciones';
 import BuscadorPersonas from '@/components/BuscadorPersonas';
-import BarraBusqueda from '@/components/BarraBusqueda';
-
+import { obtenerPublicaciones, FiltrosArriendo } from "@/services/publicaciones.service";
+import type { Publicacion } from "@/types/Publicacion";
 
 export default function Buscar() {
   const [tab, setTab] = useState<'arriendos' | 'personas'>('arriendos');
+  const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
+  const [cargando, setCargando] = useState(true);
+  
+  // Cambiamos a una ubicación que sí existe en tus mocks (ej. 'Temuco')
+  const [filtros, setFiltros] = useState<FiltrosArriendo>({ comuna: 'Temuco' });
+
+  useEffect(() => {
+    cargarDatos();
+  }, [filtros]);
+
+  const cargarDatos = async () => {
+    setCargando(true);
+    setTimeout(async () => {
+      const datos = await obtenerPublicaciones(filtros);
+      setPublicaciones(datos);
+      setCargando(false);
+    }, 800);
+  };
+
+  if (cargando) {
+    return (
+      <View style={styles.centrado}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -36,7 +60,7 @@ export default function Buscar() {
 
       {tab === 'arriendos' ? (
         <ScrollView contentContainerStyle={{ padding: 16 }}>
-            <BuscadorPublicaciones />
+          <BuscadorPublicaciones />
         </ScrollView>
       ) : (
         <BuscadorPersonas />  
@@ -47,6 +71,7 @@ export default function Buscar() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  centrado: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   tabs: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -63,6 +88,4 @@ const styles = StyleSheet.create({
   tabActiva: { borderBottomColor: colors.primary },
   tabTexto: { color: paletaPublicacion.textoSecundario, fontWeight: '600' },
   tabTextoActivo: { color: colors.primary },
-  contenido: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  nota: { color: paletaPublicacion.textoSecundario },
 });
