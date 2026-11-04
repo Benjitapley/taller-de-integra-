@@ -12,7 +12,7 @@ import type { VerificacionRequest } from "./contracts";
 import { validateVerification, type VerificationErrors } from "./validation";
 import styles from "./auth.module.css";
 
-export default function VerificationForm({ onVerified, showFlowLinks = true }: { onVerified?: () => void; showFlowLinks?: boolean } = {}) {
+export default function VerificationForm({ onVerified, showFlowLinks = true, supabase = false }: { onVerified?: () => void; showFlowLinks?: boolean; supabase?: boolean } = {}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -31,7 +31,7 @@ export default function VerificationForm({ onVerified, showFlowLinks = true }: {
     if (pending) return;
     const submitter = (event.nativeEvent as SubmitEvent).submitter;
     const action = submitter instanceof HTMLButtonElement && submitter.value === "resend" ? "resend" : "verify";
-    const nextErrors = validateVerification(values, action);
+    const nextErrors = validateVerification(values, action, supabase);
     setErrors(nextErrors);
     const first = Object.keys(nextErrors)[0];
     if (first) {
@@ -56,7 +56,7 @@ export default function VerificationForm({ onVerified, showFlowLinks = true }: {
     <fieldset className={styles.fields} disabled={!ready || pending}>
       <legend className={styles.srOnly}>Correo y código de verificación</legend>
       <AuthField label="Correo electrónico" name="correo" type="email" autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false} required placeholder="ejemplo@correo.com" value={values.correo} error={errors.correo} onChange={(e) => update("correo", e.target.value)} />
-      <AuthField label="Código de verificación" name="codigo" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" spellCheck={false} required placeholder="000000" hint="Introduce los 6 dígitos del código. Los ceros iniciales se conservan." value={values.codigo} error={errors.codigo} onChange={(e) => update("codigo", e.target.value)} />
+      <AuthField label="Código de verificación" name="codigo" type="text" inputMode="numeric" autoComplete="one-time-code" pattern={supabase ? "[0-9]{6,10}" : "[0-9]{6}"} spellCheck={false} required placeholder="000000" hint={supabase ? "Introduce el código recibido por correo o utiliza su enlace de confirmación." : "Introduce los 6 dígitos del código. Los ceros iniciales se conservan."} value={values.codigo} error={errors.codigo} onChange={(e) => update("codigo", e.target.value)} />
       <SubmitButton pending={pending} name="action" value="verify" pendingLabel="Verificando…">Verificar correo</SubmitButton>
       <p className={styles.hint}>¿Necesitas otro código? El reenvío requiere el correo y está sujeto a límites de envío.</p>
       <SubmitButton pending={pending} name="action" value="resend" variant="secondary" pendingLabel="Solicitando código…">Reenviar código</SubmitButton>

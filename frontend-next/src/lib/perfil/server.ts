@@ -1,5 +1,5 @@
 import "server-only";
-import { authConfig, authReply, readToken, sessionCookie, upstream, type Transport, type WebAuthConfig } from "../auth/gateway";
+import { authConfig, authReply, readToken, sessionCookie, upstream, profilePath, type Transport, type WebAuthConfig } from "../auth/gateway";
 import type { Profile } from "../../features/perfil/contracts";
 import { photoLimit, validateProfile } from "../../features/perfil/validation";
 
@@ -59,7 +59,7 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
       catch { return authReply(422, { detail: "Formulario no válido." }); }
       const error = validateProfile(form);
       if (error) return authReply(422, { detail: error });
-      const saved = await transport(`${config.backend}/api/perfil`, {
+      const saved = await transport(`${config.backend}${profilePath(config)}`, {
         method: "PUT", body: form, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
         headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
       });
@@ -71,11 +71,18 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
       return authReply(200, { success: true });
     }
     // No query/ID/header from the caller is forwarded. FastAPI authorizes the JWT.
-    const response = await upstream(config, "/api/perfil", token, undefined, transport);
+    const response = await upstream(config, profilePath(config), token, undefined, transport);
     if ([401, 403].includes(response.status)) return expired(response.status);
     if (response.status === 404) return authReply(404, { detail: "No hay un perfil disponible para tu cuenta." });
     if (!response.ok) return unavailable();
-    return authReply(200, normalizeProfile(await response.json()));
+    let data = await response.json();
+    if (config.provider === "supabase") {
+      const count = await upstream(config, "/local/v1/publicaciones/resumen", token, undefined, transport);
+      if (!count.ok) return unavailable();
+      const totals = await count.json();
+      data = { ...data, total_publicaciones: totals.total_publicaciones };
+    }
+    return authReply(200, { ...normalizeProfile(data), ...(config.provider === "supabase" ? { edad_calculada: true } : {}) });
   } catch {
     return request.method === "PUT" ? authReply(503, { detail: "No se confirmó el guardado. Consulta tu perfil antes de volver a intentar." }) : unavailable();
   }

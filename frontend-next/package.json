@@ -15,7 +15,11 @@
     "test:proxy": "node --test tests/proxy.test.mjs",
     "test:session": "node --test tests/auth-gateway.test.mjs",
     "test:profile": "node --test tests/profile.test.mjs",
-    "test:admin": "node --test tests/admin.test.mjs"
+    "test:connections": "node --test tests/connections.test.mjs",
+    "test:publications": "node --test tests/publications.test.mjs",
+    "test:admin": "node --test tests/admin.test.mjs",
+    "test:supabase-auth": "node --test tests/supabase-auth.test.mjs",
+    "test:applications": "node --test tests/applications.test.mjs"
   },
   "dependencies": {
     "next": "16.4.3",

@@ -14,20 +14,20 @@ export function validateEmail(value: string): string | undefined {
 export type VerificationAction = "verify" | "resend";
 export type VerificationErrors = Partial<Record<keyof VerificacionRequest, string>>;
 
-export function validateVerification(values: VerificacionRequest, action: VerificationAction = "verify"): VerificationErrors {
+export function validateVerification(values: VerificacionRequest, action: VerificationAction = "verify", supabase = false): VerificationErrors {
   const errors: VerificationErrors = {};
   const emailError = validateEmail(values.correo);
   if (emailError) errors.correo = emailError;
   if (action === "verify") {
     if (!values.codigo) errors.codigo = "Ingresa el código de verificación.";
-    else if (values.codigo.length !== 6 || !/^[0-9]{6}$/.test(values.codigo)) errors.codigo = "Ingresa exactamente 6 dígitos, sin espacios ni letras.";
+    else if (!(supabase ? /^[0-9]{6,10}$/ : /^[0-9]{6}$/).test(values.codigo)) errors.codigo = supabase ? "Ingresa el código numérico recibido, sin espacios ni letras." : "Ingresa exactamente 6 dígitos, sin espacios ni letras.";
   }
   return errors;
 }
 
 // Calendario local: no convertir la fecha de nacimiento a UTC ni usar Date.parse,
 // que normaliza fechas inexistentes como el 31 de febrero.
-export function validateAuth(mode: AuthMode, values: AuthValues, today = new Date()): AuthErrors {
+export function validateAuth(mode: AuthMode, values: AuthValues, today = new Date(), minimumPasswordLength = 6): AuthErrors {
   const errors: AuthErrors = {};
   if (mode === "register" && !values.nombre.trim()) errors.nombre = "Ingresa tu nombre completo.";
   const emailError = validateEmail(values.correo);
@@ -35,7 +35,7 @@ export function validateAuth(mode: AuthMode, values: AuthValues, today = new Dat
 
   // La contraseña se conserva exactamente como se escribe, incluidos espacios.
   if (!values.contrasena) errors.contrasena = "Ingresa tu contraseña.";
-  else if (mode === "register" && values.contrasena.length < 6) errors.contrasena = "Usa al menos 6 caracteres en la contraseña.";
+  else if (mode === "register" && values.contrasena.length < minimumPasswordLength) errors.contrasena = `Usa al menos ${minimumPasswordLength} caracteres en la contraseña.`;
 
   if (mode === "register") {
     const raw = values.fecha_nacimiento;

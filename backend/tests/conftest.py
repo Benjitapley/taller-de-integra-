@@ -28,6 +28,7 @@ class MemoryDB:
         self.users, self.codes, self.sessions = {}, {}, {}
         self.calls, self.outcomes = [], []
         self.publications, self.images_deleted = {}, False
+        self.publication_states = {}
 
     def connect(self):
         return Connection(self)
@@ -38,12 +39,14 @@ class Connection:
         self.db = db
 
     def __enter__(self):
-        self.snapshot = deepcopy((self.db.users, self.db.codes, self.db.sessions))
+        self.snapshot = deepcopy((self.db.users, self.db.codes, self.db.sessions,
+                                  self.db.publications, self.db.publication_states, self.db.images_deleted))
         return self
 
     def __exit__(self, kind, value, traceback):
         if kind:
-            self.db.users, self.db.codes, self.db.sessions = self.snapshot
+            (self.db.users, self.db.codes, self.db.sessions, self.db.publications,
+             self.db.publication_states, self.db.images_deleted) = self.snapshot
         self.db.outcomes.append("rollback" if kind else "commit")
 
     def execute(self, sql, params=()):
@@ -108,12 +111,16 @@ class Connection:
             return Cursor([(0,)])
         if q.startswith("select id_publicacion from haycupo.publicacion"):
             return Cursor([(params[0],)] if d.publications.get(params[0]) == params[1] else [])
-        if q.startswith("select titulo, categoria, tipo_vivienda, ubicacion, precio"):
-            return Cursor([("Título", "ofrezco", "casa", "Ciudad", 100, 1, "no", "Descripción")]
+        if q.startswith("select p.titulo, p.categoria, p.tipo_vivienda, p.ubicacion, p.precio"):
+            return Cursor([("Título", "ofrezco", "casa", "Ciudad", 100, 1, "no", "Descripción",
+                            [], None, d.publication_states.get(params[0], "Disponible"), "Compartida", False, None)]
                           if d.publications.get(params[0]) == params[1] else [])
+        if q.startswith("select mascota,"):
+            return Cursor([("no", [], None)] if d.publications.get(params[0]) == params[1] else [])
         if q.startswith("insert into haycupo.publicacion"):
             i = max(d.publications, default=0) + 1
             d.publications[i] = params[0]
+            d.publication_states[i] = "Disponible"
             return Cursor([(i,)])
         if q.startswith("update haycupo.usuario set edad"):
             if params[-1] in d.users:
@@ -127,7 +134,13 @@ class Connection:
             return Cursor()
         if q.startswith("delete from haycupo.publicacion"):
             d.publications.pop(params[0], None)
+            d.publication_states.pop(params[0], None)
             return Cursor()
+        if q.startswith("update haycupo.publicacion set estado = 'cerrada'"):
+            if d.publications.get(params[0]) != params[1]:
+                return Cursor([])
+            d.publication_states[params[0]] = "Cerrada"
+            return Cursor([("Cerrada", 2)])
         if q.startswith("update haycupo.publicacion"):
             return Cursor(rowcount=1 if d.publications.get(params[-2]) == params[-1] else 0)
         if "from haycupo.publicacion" in q:

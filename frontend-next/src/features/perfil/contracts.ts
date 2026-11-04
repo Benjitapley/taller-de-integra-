@@ -1,5 +1,6 @@
 /** Public web shape. Identity always comes from the server session. */
 export type Profile = {
+  edad_calculada?: boolean;
   nombre: string;
   edad: number | null;
   ocupacion: string | null;

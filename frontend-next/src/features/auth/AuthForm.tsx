@@ -13,7 +13,7 @@ import { useFormReady } from "./useFormReady";
 import { validateAuth, type AuthErrors, type AuthFieldName, type AuthMode, type AuthValues } from "./validation";
 import styles from "./auth.module.css";
 
-export default function AuthForm({ mode }: { mode: AuthMode }) {
+export default function AuthForm({ mode, passwordMinimum = 6 }: { mode: AuthMode; passwordMinimum?: number }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -31,7 +31,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
-    const nextErrors = validateAuth(mode, values);
+    const nextErrors = validateAuth(mode, values, new Date(), passwordMinimum);
     setErrors(nextErrors);
     setSubmitted(true);
     const first = Object.keys(nextErrors)[0];
@@ -53,12 +53,13 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
       {register && <AuthField label="Nombre completo" name="nombre" autoComplete="name" placeholder="Tu nombre completo" required value={values.nombre} onChange={(e) => update("nombre", e.target.value)} error={errors.nombre} />}
       <AuthField label="Correo electrónico" name="correo" type="email" autoComplete={register ? "email" : "username"} inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="ejemplo@correo.com" required value={values.correo} onChange={(e) => update("correo", e.target.value)} error={errors.correo} />
       {register && <AuthField label="Fecha de nacimiento" name="fecha_nacimiento" type="date" autoComplete="bday" required hint="Debes tener al menos 18 años." value={values.fecha_nacimiento} onChange={(e) => update("fecha_nacimiento", e.target.value)} error={errors.fecha_nacimiento} />}
-      <AuthField label="Contraseña" name="contrasena" type="password" autoComplete={register ? "new-password" : "current-password"} required minLength={register ? 6 : undefined} hint={register ? "Mínimo 6 caracteres." : undefined} value={values.contrasena} onChange={(e) => update("contrasena", e.target.value)} error={errors.contrasena} />
+      <AuthField label="Contraseña" name="contrasena" type="password" autoComplete={register ? "new-password" : "current-password"} required minLength={register ? passwordMinimum : undefined} hint={register ? `Mínimo ${passwordMinimum} caracteres.` : undefined} value={values.contrasena} onChange={(e) => update("contrasena", e.target.value)} error={errors.contrasena} />
       <SubmitButton pending={pending}>{register ? "Crear cuenta" : "Iniciar sesión"}<span aria-hidden="true">→</span></SubmitButton>
     </fieldset>
     <noscript><p>Activa JavaScript para validar el formulario. El envío seguro requiere JavaScript.</p></noscript>
     <FormMessage error={submitted && (invalid || failed)}>{submitted ? invalid ? "Revisa los campos indicados." : message : null}</FormMessage>
     <p className={styles.switch}>{register ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?"} <Link href={register ? routes.access : routes.register}>{register ? "Iniciar sesión" : "Crear cuenta nueva"}</Link></p>
+    {!register && <p><Link href="/recuperar-contrasena">¿Olvidaste tu contraseña?</Link></p>}
     <AuthFlowLinks screen={mode} />
   </form>;
 }

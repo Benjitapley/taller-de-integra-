@@ -32,8 +32,10 @@ const assets = new Map([
 test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos", { timeout: 120_000 }, async (t) => {
   // No ocupar el puerto de un servidor existente ni detener procesos ajenos.
   const portCheck = createServer();
-  portCheck.listen(3000, "127.0.0.1");
+  portCheck.listen(0, "127.0.0.1");
   await once(portCheck, "listening");
+  const port = portCheck.address().port;
+  const base = `http://127.0.0.1:${port}`;
   await new Promise((resolve) => portCheck.close(resolve));
 
   // Aplicación temporal: no comparte el lock de next dev ni copia archivos .env.
@@ -113,9 +115,9 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
   await once(upstream, "listening");
   const upstreamOrigin = `http://127.0.0.1:${upstream.address().port}`;
   let output = "";
-  const next = spawn(process.execPath, [join(project, "node_modules/next/dist/bin/next"), "dev", "--hostname", "127.0.0.1", "--port", "3000"], {
+  const next = spawn(process.execPath, [join(project, "node_modules/next/dist/bin/next"), "dev", "--hostname", "127.0.0.1", "--port", String(port)], {
     cwd: isolated,
-    env: { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => ["PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "COMSPEC", "PATHEXT"].includes(key.toUpperCase()))), FASTAPI_ORIGIN: upstreamOrigin, WEB_AUTH_ENABLED: "true", WEB_AUTH_ORIGIN: "http://127.0.0.1:3000", WEB_AUTH_FASTAPI_ORIGIN: upstreamOrigin, NEXT_TELEMETRY_DISABLED: "1" },
+    env: { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => ["PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "COMSPEC", "PATHEXT"].includes(key.toUpperCase()))), FASTAPI_ORIGIN: upstreamOrigin, WEB_AUTH_ENABLED: "true", WEB_AUTH_ORIGIN: base, WEB_AUTH_FASTAPI_ORIGIN: upstreamOrigin, NEXT_TELEMETRY_DISABLED: "1" },
     windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -144,7 +146,6 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
     await rm(isolated, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   });
 
-  const base = "http://127.0.0.1:3000";
   let ready = false;
   for (let attempt = 0; attempt < 120; attempt++) {
     if (next.exitCode !== null) throw new Error(`Next.js no pudo arrancar:\n${output}`);
@@ -219,12 +220,23 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
 
   await t.test("páginas HTML y alias de acceso conservan sus bytes", async () => {
     for (const [path, file] of html) {
-      const aliases = path === "/" ? ["/acceso", "/legacy/acceso"] : path === "/inicio" || path === "/perfil" ? [`/legacy${path}`] : [path, `/legacy${path}`];
+      const aliases = path === "/" ? ["/acceso", "/legacy/acceso"] : [`/legacy${path}`];
       for (const alias of aliases) {
         const response = await fetch(`${base}${alias}`);
         assert.equal(response.status, 200, alias);
         assert.equal(await response.text(), await readFile(new URL(file, legacyRoot), "utf8"), alias);
       }
+    }
+  });
+
+  await t.test("publicaciones nativas exigen sesión y conservan AppShell", async () => {
+    for (const path of ["/crear", "/mis-publicaciones", "/editar-publicacion?id=123", "/publicaciones/123"]) {
+      assert.equal((await fetch(`${base}${path}`, { redirect: "manual" })).status, 307, path);
+    }
+    for (const path of ["/mis-publicaciones", "/editar-publicacion?id=123"]) {
+      const response = await fetch(`${base}${path}`, { headers: { cookie: profileCookie }, redirect: "manual" });
+      assert.equal(response.status, 200, path);
+      assert.match(await response.text(), /aria-label="Navegación principal"/);
     }
   });
 
@@ -237,7 +249,7 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
   });
 
   await t.test("conserva parámetros, cookie sintética, rutas e imágenes", async () => {
-    for (const path of ["/api/__proxy_probe?texto=Temuco&limite=5", "/editar-publicacion?id=123", "/legacy/editar-publicacion?id=123", "/imagenes/__proxy_probe.png", "/conexiones/usuarios/buscar?zona=Centro"]) {
+    for (const path of ["/api/__proxy_probe?texto=Temuco&limite=5", "/legacy/editar-publicacion?id=123", "/imagenes/__proxy_probe.png", "/conexiones/usuarios/buscar?zona=Centro"]) {
       const response = await fetch(`${base}${path}`, { headers: { Cookie: "proxy_transport_probe=synthetic" }, redirect: "manual" });
       assert.equal(response.status, 200, path);
       if (path.includes("/editar-publicacion")) { assert.ok(received.includes(path.replace("/legacy", ""))); continue; }
@@ -274,7 +286,7 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
     const response = await fetch(base);
     const body = await response.text();
     assert.match(body, /¡Bienvenido de vuelta!/);
-    assert.match(body, /Integración segura preparada/);
+    assert.doesNotMatch(body, /Integración segura preparada|entorno de pruebas esté habilitado/);
     assert.match(body, /type="password"/);
     assert.doesNotMatch(body, /<aside\b|aria-label="Navegación principal"/);
     assert.match(body, /href="\/registro"/);
@@ -302,7 +314,7 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
     assert.match(html, /autoComplete="one-time-code"/i);
     assert.match(html, /inputMode="numeric"/i);
     assert.match(html, /<fieldset[^>]*disabled/);
-    assert.match(html, /El envío requiere que el entorno de pruebas esté habilitado/);
+    assert.doesNotMatch(html, /Integración segura preparada|entorno de pruebas esté habilitado/);
     assert.match(html, /href="\/"/);
     assert.match(html, /href="\/registro"/);
     assert.doesNotMatch(html, /<aside\b|aria-label="Navegación principal"/);

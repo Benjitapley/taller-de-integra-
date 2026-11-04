@@ -15,6 +15,11 @@ function fastApiOrigin(): string {
 }
 
 const nextConfig: NextConfig = {
+  logging: {
+    incomingRequests: { ignore: [/\/web-api\/auth\/(confirmar|recuperacion-callback)/, /[?&](code|token_hash|access_token|refresh_token)=/] },
+    serverFunctions: false,
+    browserToTerminal: false,
+  },
   // FastAPI utiliza /conexiones/ con barra final. Evita redirecciones opuestas.
   skipTrailingSlashRedirect: true,
   async rewrites() {

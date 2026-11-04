@@ -3,22 +3,36 @@ import "server-only";
 /** Server transport. No credentials from the browser are forwarded as headers.
  * FastAPI remains the authority for signature, expiry and session revocation.
  */
-export type WebAuthConfig = { origin: string; backend: string; secure: boolean };
+export type WebAuthConfig = { origin: string; backend: string; secure: boolean; provider?: "supabase"; supabase?: { origin: string; key: string }; recoverySecret?: string };
 export type Transport = typeof fetch;
 export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig | null {
   if (env.WEB_AUTH_ENABLED !== "true") return null;
   try {
     const web = new URL(env.WEB_AUTH_ORIGIN ?? "");
     const backend = new URL(env.WEB_AUTH_FASTAPI_ORIGIN ?? "");
+    const provider = env.WEB_AUTH_PROVIDER ?? "legacy";
+    if (!["legacy", "supabase"].includes(provider)) return null;
     for (const url of [web, backend]) {
       if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) return null;
-      if (url.protocol !== "https:" && !(url.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname))) return null;
+      const localGateway = url === backend && (env.ROOMIES_LOCAL_MODE === "1" || env.ROOMIES_RUNTIME_MODE === "supabase") && env.NODE_ENV !== "production" && url.hostname === "api-gateway";
+      if (url.protocol !== "https:" && !(url.protocol === "http:" && (["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) || localGateway))) return null;
     }
     if (web.origin === backend.origin || (env.NODE_ENV === "production" && web.protocol !== "https:")) return null;
+    if (provider === "supabase") {
+      const identity = new URL(env.WEB_SUPABASE_ORIGIN ?? "");
+      const key = env.WEB_SUPABASE_PUBLISHABLE_KEY ?? "";
+      const real = env.ROOMIES_RUNTIME_MODE === "supabase" && env.ROOMIES_LOCAL_MODE !== "1" && /^[a-z0-9]{20}$/.test(env.ROOMIES_SUPABASE_PROJECT_REF ?? "") && identity.origin === `https://${env.ROOMIES_SUPABASE_PROJECT_REF}.supabase.co`;
+      const disposable = env.ROOMIES_LOCAL_MODE === "1" && (!env.ROOMIES_RUNTIME_MODE || env.ROOMIES_RUNTIME_MODE === "disposable") && ["127.0.0.1", "localhost", "[::1]", "host.docker.internal", "supabase-auth"].includes(identity.hostname);
+      if (!(real || disposable) ||
+          !["http:", "https:"].includes(identity.protocol) || identity.username || identity.password || identity.pathname !== "/" || identity.search || identity.hash || !key || key.length > 4096 || key.startsWith("sb_secret_") || /[\r\n]/.test(key)) return null;
+      if (key.split(".").length === 3 && JSON.parse(Buffer.from(key.split(".")[1], "base64url").toString()).role !== "anon") return null;
+      return { origin: web.origin, backend: backend.origin, secure: web.protocol === "https:", provider: "supabase", supabase: { origin: identity.origin, key }, ...(env.WEB_AUTH_RECOVERY_SECRET ? { recoverySecret: env.WEB_AUTH_RECOVERY_SECRET } : {}) };
+    }
     return { origin: web.origin, backend: backend.origin, secure: web.protocol === "https:" };
   } catch { return null; }
 }
-export const cookieName = (config: WebAuthConfig) => config.secure ? "__Host-haycupo_session" : "haycupo_dev_session";
+export const cookieName = (config: WebAuthConfig) => config.provider === "supabase" ? (config.secure ? "__Host-roomies_sb_access" : "roomies_sb_dev_access") : (config.secure ? "__Host-haycupo_session" : "haycupo_dev_session");
+export const profilePath = (config: WebAuthConfig) => config.provider === "supabase" ? "/local/v1/perfil" : "/api/perfil";
 export function sessionCookie(config: WebAuthConfig, token = "", maxAge = 0) {
   return `${cookieName(config)}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${config.secure ? "; Secure" : ""}`;
 }
@@ -36,7 +50,7 @@ const messages: Record<number, string> = {
   409: "La cuenta o el código requiere revisión. No se cambiaron tus credenciales.",
   422: "Revisa el formato y los límites de los campos indicados.",
   429: "Se alcanzó el límite de intentos o envíos. Espera antes de volver a intentar.",
-  503: "Autenticación no disponible. La integración segura está pendiente de habilitación o el servicio no responde. No se confirmó la operación.",
+  503: "No pudimos completar la solicitud. Intenta nuevamente en unos minutos. Si ya recibiste un correo de confirmación, utiliza su enlace o intenta iniciar sesión antes de repetir el registro.",
 };
 export function authReply(status: number, body: unknown, headers?: HeadersInit) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store", "Vary": "Cookie", ...headers } });
@@ -56,15 +70,19 @@ export async function getSession(config: WebAuthConfig | null, token: string, tr
   if (!config) return authError(503);
   if (!token) return authError(401);
   try {
-    const response = await upstream(config, "/api/perfil", token, undefined, transport);
+    const response = await upstream(config, profilePath(config), token, undefined, transport);
     if (!response.ok) return authError([401, 403].includes(response.status) ? response.status : 503);
     const profile = await response.json();
     if (!profile || typeof profile.nombre !== "string") return authError(503);
     // Explicit public shape: never echo arbitrary upstream fields or JWTs.
-    return authReply(200, { authenticated: true, user: { nombre: profile.nombre } });
+    let remaining: number | undefined;
+    if (config.provider === "supabase") {
+      try { remaining = Math.max(0, Math.floor(JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).exp - Date.now() / 1000)); } catch { return authError(401); }
+    }
+    return authReply(200, { authenticated: true, user: { nombre: profile.nombre }, ...(remaining === undefined ? {} : { expires_in: remaining }) });
   } catch { return authError(503); }
 }
-const actions = ["registro", "verificar", "reenviar-codigo", "login", "logout", "sesion"];
+const actions = ["registro", "verificar", "reenviar-codigo", "login", "logout", "sesion", "renovar", "confirmar", "recuperar", "recuperacion-callback", "cambiar-contrasena", "recuperacion-estado"];
 async function limitedJson(request: Request): Promise<Record<string, unknown>> {
   const reader = request.body?.getReader();
   if (!reader) throw new Error();
@@ -84,6 +102,11 @@ async function limitedJson(request: Request): Promise<Record<string, unknown>> {
 export async function handleAuth(request: Request, action: string, config: WebAuthConfig | null, transport: Transport = fetch): Promise<Response> {
   if (!actions.includes(action)) return authReply(404, { detail: "Ruta no disponible." });
   if (!config) return authError(503);
+  if (config.provider === "supabase") {
+    const { handleSupabaseAuth } = await import("./supabase");
+    return handleSupabaseAuth(request, action, config, transport, { reply: authReply, error: authError, limitedJson, token: readToken, accessCookie: sessionCookie, session: getSession });
+  }
+  if (["renovar", "confirmar", "recuperar", "recuperacion-callback", "cambiar-contrasena", "recuperacion-estado"].includes(action)) return authReply(404, { detail: "Ruta no disponible." });
   const token = readToken(request.headers.get("cookie"), config);
   if (action === "sesion") {
     if (request.method !== "GET") return authReply(405, {}, { Allow: "GET" });

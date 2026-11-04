@@ -366,10 +366,10 @@ def test_duplicate_normalized_accounts_are_not_selected_arbitrarily(client, payl
 
 def test_connection_create_and_accept_keep_json_contract(client, payload, mail):
     from backend.match_conexion_service.database import get_db
-    from backend.match_conexion_service.models import EstadoConexion, Conexion
+    from backend.match_conexion_service.models import EstadoConexion, Conexion, Usuario
     headers = verified_login(client, payload, mail)
     db = MagicMock()
-    db.query.return_value.filter.return_value.first.return_value = None
+    db.query.return_value.filter.return_value.first.side_effect = [Usuario(id_usuario_PK=2), None]
     def refresh(created):
         created.id_conexion = 9
         created.fecha_solicitud = datetime.now(timezone.utc)

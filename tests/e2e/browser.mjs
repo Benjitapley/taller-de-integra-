@@ -68,9 +68,11 @@ const A={nombre:"Cuenta A E2E",correo:"cuenta-a@example.com",contrasena:"E2E-onl
 const B={...A,nombre:"Cuenta B E2E",correo:"cuenta-b@example.com",contrasena:"E2E-only-password-B"};
 const C={...A,nombre:"Cuenta SMTP E2E",correo:"smtp-failure@example.com"};
 async function clickResponse(page,button,path) {
-  const ready=page.waitForResponse(response=>new URL(response.url()).pathname===path&&response.request().method()==="POST");
-  await page.getByRole("button",{name:button,exact:true}).click();
-  return ready;
+  const [response]=await Promise.all([
+    page.waitForResponse(response=>new URL(response.url()).pathname===path&&response.request().method()==="POST"),
+    page.getByRole("button",{name:button,exact:true}).click(),
+  ]);
+  return response;
 }
 async function register(page,user,status=200) {
   await page.goto(config.web+"/registro");
@@ -105,7 +107,7 @@ try {
   const ctxA=await context(), pageA=await ctxA.newPage();
   pageA.setDefaultTimeout(15_000);
   await pass("private Next pages reject anonymous users",async()=>{
-    for(const path of ["/inicio","/publicar","/navegacion","/perfil","/admin"]) {
+    for(const path of ["/inicio","/publicar","/navegacion","/perfil","/admin","/mis-publicaciones","/editar-publicacion","/crear","/publicaciones/1","/mis-conexiones"]) {
       const response=await ctxA.request.get(config.web+path,{maxRedirects:0});
       assert.equal(response.status(),307);
       assert.equal(new URL(response.headers().location,config.web).pathname,"/");
@@ -359,6 +361,140 @@ try {
     assert.deepEqual(statuses,[403,422,422]);
     assert.equal((await webProfile(pageA)).body.ciudad,"Ciudad A");
     assert.equal((await webProfile(pageB)).body.ciudad,null);
+  });
+  await pass("Next publication list keeps session and separates accounts",async()=>{
+    await pageA.getByRole("navigation",{name:"Navegación principal"}).getByRole("link",{name:"Mis publicaciones",exact:true}).click();
+    await pageA.waitForURL(config.web+"/mis-publicaciones");
+    await pageA.getByRole("heading",{name:publication.titulo,exact:true}).waitFor();
+    assert.doesNotMatch(await pageA.locator("main").innerText(),/Publicación B sintética/);
+    assert.equal(await pageA.getByRole("navigation",{name:"Navegación principal"}).getByRole("link",{name:/Mis publicaciones.*HTML/}).count(),0);
+    const mine=await pageB.evaluate(async()=>{const r=await fetch("/web-api/mis-publicaciones?id_usuario=1");return {status:r.status,items:await r.json()};});
+    assert.equal(mine.status,200);assert.deepEqual(mine.items.map(p=>p.id),[pubB]);
+  });
+  await pass("native Next creation, detail, edit and close preserve Arrendador and history",async()=>{
+    let created;
+    try {
+      await pageA.goto(config.web+"/publicar");
+      await pageA.getByRole("heading",{name:"Publicar un arriendo",exact:true}).locator("..").getByRole("button",{name:"Continuar →",exact:true}).click();
+      await pageA.getByLabel("Título",{exact:true}).fill("Arriendo UI sintético");
+      await pageA.getByRole("combobox",{name:/^Tipo de vivienda/}).selectOption("casa");
+      await pageA.getByLabel("Región y comuna",{exact:true}).fill("La Araucanía, Temuco");
+      await pageA.getByLabel("Precio del arriendo (CLP)",{exact:true}).fill("123456");
+      await pageA.getByLabel("Capacidad total del espacio",{exact:true}).fill("2");
+      await pageA.getByLabel("Descripción",{exact:true}).fill("Solo base desechable");
+      await pageA.getByLabel("Permitir comentarios en esta publicación").check();
+      await pageA.locator('input[name="imagen"]').setInputFiles({name:"publication.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAE0lEQVR4nGNsYGhggAEmOAsvBwAzBAEI14KrBQAAAABJRU5ErkJggg==","base64")});
+      const saved=await clickResponse(pageA,"Publicar ahora","/web-api/publicaciones");
+      assert.equal(saved.status(),201);
+      await pageA.waitForURL(config.web+"/inicio");
+      // La navegación destruye el cuerpo CDP de la respuesta anterior.
+      // Confirmar la fila creada consultando la API real del propietario.
+      created=(await privateAPI("/api/mis-publicaciones",tokenA)).body.find(p=>p.titulo==="Arriendo UI sintético").id;
+      await pageA.getByRole("link",{name:"Arriendo UI sintético",exact:true}).click();
+      await pageA.waitForURL(config.web+`/publicaciones/${created}`);
+      await pageA.getByRole("heading",{name:"Arriendo UI sintético",exact:true}).waitFor();
+      assert.match(await pageA.locator("main").innerText(),/Arrendador/);
+      await pageA.getByRole("img",{name:"Fotografía de la publicación"}).waitFor();
+      assert.equal((await privateAPI(`/api/publicaciones/${created}/detalle`,null)).status,200);
+      assert.equal((await privateAPI(`/api/publicaciones/${created}`,tokenB)).status,404);
+      await pageA.goto(config.web+`/editar-publicacion?id=${created}`);
+      await pageA.getByLabel("Título",{exact:true}).fill("Arriendo UI actualizado");
+      assert.equal(await pageA.getByLabel("Permitir comentarios",{exact:true}).isChecked(),true);
+      const edited=pageA.waitForResponse(r=>new URL(r.url()).pathname===`/web-api/publicaciones/${created}`&&r.request().method()==="PUT");
+      await pageA.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+      assert.equal((await edited).status(),200);
+      await pageA.waitForURL(config.web+"/mis-publicaciones");
+      const own=(await privateAPI(`/api/publicaciones/${created}`,tokenA)).body;
+      assert.equal(own.tipo,"Arrendador");assert.equal(own.permitir_comentarios,true);
+      const card=pageA.getByRole("heading",{name:"Arriendo UI actualizado",exact:true}).locator("..").locator("..").locator("..");
+      const [closed]=await Promise.all([
+        pageA.waitForResponse(r=>new URL(r.url()).pathname===`/web-api/publicaciones/${created}/cerrar`&&r.request().method()==="PATCH"),
+        card.getByRole("button",{name:"Cerrar publicación",exact:true}).click(),
+      ]);
+      assert.equal(closed.status(),200);
+      await card.getByText("Cerrada",{exact:true}).waitFor();
+      const cupos=(await privateAPI(`/api/publicaciones/${created}/cupos`,null)).body;
+      assert.equal(cupos.cupos_totales,2);assert.equal(cupos.cupos_disponibles,0);
+      assert.ok((await privateAPI("/api/mis-publicaciones",tokenA)).body.some(p=>p.id===created));
+      assert.ok(!(await privateAPI("/api/publicaciones",null)).body.some(p=>p.id===created));
+      await pageA.setViewportSize({width:390,height:844});
+      assert.equal(await pageA.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+    } finally {
+      await pageA.setViewportSize({width:1440,height:1000});
+      if(!created) created=(await privateAPI("/api/mis-publicaciones",tokenA)).body.find(p=>["Arriendo UI sintético","Arriendo UI actualizado"].includes(p.titulo))?.id;
+      if(created) await privateAPI(`/api/publicaciones/${created}`,tokenA,"DELETE");
+    }
+  });
+  await pass("publication filters work against PostgreSQL and expose one cover per listing",async()=>{
+    const filtered=await privateAPI("/api/publicaciones?tipo_vivienda=casa&mascota=no&cupos_min=1&precio_max=100000",null);
+    assert.equal(filtered.status,200);assert.equal(filtered.body.length,2);
+    assert.equal(new Set(filtered.body.map(p=>p.id)).size,2);
+    assert.equal((await privateAPI("/api/publicaciones?precio_min=200000&precio_max=1",null)).status,422);
+  });
+  await pass("connection lifecycle uses real JWT, rejects spoofing and preserves domain separation",async()=>{
+    const people=(await privateAPI("/conexiones/usuarios/buscar",null)).body;
+    const a=people.find(p=>p.nombre===A.nombre).id_usuario_PK;
+    const b=people.find(p=>p.nombre===B.nombre).id_usuario_PK;
+    const send=async(path,token,method="GET",body)=>{
+      const r=await fetch(config.web+path,{method,headers:{...(token?{Authorization:`Bearer ${token}`}:{ }),...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{})});
+      return {status:r.status,body:r.status===204?null:await r.json()};
+    };
+    assert.equal((await send("/conexiones/",null,"POST",{id_receptor_FK:b})).status,401);
+    assert.equal((await send("/conexiones/",tokenA,"POST",{id_solicitante_FK:b,id_receptor_FK:a})).status,403);
+    assert.equal((await send("/conexiones/",tokenA,"POST",{id_receptor_FK:a})).status,422);
+    const created=await send("/conexiones/",tokenA,"POST",{id_receptor_FK:b});
+    assert.equal(created.status,201);const id=created.body.id_conexion;
+    try {
+      assert.equal(created.body.id_solicitante_FK,a);
+      assert.equal((await send("/conexiones/",tokenB,"POST",{id_receptor_FK:a})).status,400);
+      assert.equal((await send(`/conexiones/recibidas/${a}`,tokenB)).status,403);
+      assert.equal((await send("/conexiones/recibidas",tokenB)).body[0].id_conexion,id);
+      assert.equal((await send("/conexiones/enviadas",tokenA)).body[0].id_conexion,id);
+      assert.equal((await send(`/conexiones/${id}`,tokenA,"PUT",{estado:"Aceptada"})).status,403);
+      assert.equal((await send(`/conexiones/${id}`,tokenB,"PUT",{estado:"Pendiente"})).status,422);
+      assert.equal((await send(`/conexiones/${id}`,tokenB,"PUT",{estado:"Aceptada"})).status,200);
+      assert.equal((await send("/conexiones/aceptadas",tokenA)).body[0].id_conexion,id);
+      assert.equal((await send(`/conexiones/${id}`,tokenB,"PUT",{estado:"Rechazada"})).status,400);
+      const profile=(await send(`/conexiones/usuarios/${a}`,null)).body;
+      assert.equal(profile.nombre,A.nombre);assert.ok(!("correo" in profile));
+    } finally { assert.equal((await send(`/conexiones/${id}`,tokenA,"DELETE")).status,204); }
+    const rejected=await send("/conexiones/",tokenA,"POST",{id_receptor_FK:b});
+    assert.equal(rejected.status,201);
+    try { assert.equal((await send(`/conexiones/${rejected.body.id_conexion}`,tokenB,"PUT",{estado:"Rechazada"})).body.estado,"Rechazada"); }
+    finally { await send(`/conexiones/${rejected.body.id_conexion}`,tokenB,"DELETE"); }
+    assert.deepEqual((await send("/conexiones/aceptadas",tokenA)).body,[]);
+    assert.equal((await send("/api/postulaciones/mias",tokenA)).status,404);
+  });
+  await pass("Next connection send, acceptance, rejection and deletion use HttpOnly BFF",async()=>{
+    await pageA.goto(config.web+"/inicio?vista=personas");
+    const profile=pageA.getByRole("heading",{name:B.nombre,exact:true}).locator("..").locator("..");
+    const sent=pageA.waitForResponse(r=>new URL(r.url()).pathname==="/web-api/conexiones"&&r.request().method()==="POST");
+    await profile.getByRole("button",{name:"Conectar",exact:true}).click();
+    assert.equal((await sent).status(),201);
+    await pageB.goto(config.web+"/mis-conexiones");
+    await pageB.getByRole("heading",{name:`${A.nombre} → ${B.nombre}`,exact:true}).waitFor();
+    const accepted=pageB.waitForResponse(r=>new URL(r.url()).pathname==="/web-api/conexiones"&&r.request().method()==="PUT");
+    await pageB.getByRole("button",{name:"Aceptar",exact:true}).click();
+    assert.equal((await accepted).status(),200);
+    await pageB.getByRole("tab",{name:"Aceptadas",exact:true}).click();
+    await pageB.getByText("Aceptada",{exact:true}).waitFor();
+    const deleted=pageB.waitForResponse(r=>new URL(r.url()).pathname==="/web-api/conexiones"&&r.request().method()==="DELETE");
+    await pageB.getByRole("button",{name:"Eliminar conexión",exact:true}).click();
+    assert.equal((await deleted).status(),200);
+    await pageB.getByText("No hay conexiones en esta vista.",{exact:true}).waitFor();
+    const resend=pageA.waitForResponse(r=>new URL(r.url()).pathname==="/web-api/conexiones"&&r.request().method()==="POST");
+    await profile.getByRole("button",{name:"Conectar",exact:true}).click();
+    assert.equal((await resend).status(),201);
+    await pageB.getByRole("tab",{name:"Recibidas",exact:true}).click();
+    const rejected=pageB.waitForResponse(r=>new URL(r.url()).pathname==="/web-api/conexiones"&&r.request().method()==="PUT");
+    await pageB.getByRole("button",{name:"Rechazar",exact:true}).click();
+    assert.equal((await rejected).status(),200);
+    await pageA.goto(config.web+"/mis-conexiones");
+    await pageA.getByRole("tab",{name:"Enviadas",exact:true}).click();
+    await pageA.getByText("Rechazada",{exact:true}).waitFor();
+    const cleanup=pageA.waitForResponse(r=>new URL(r.url()).pathname==="/web-api/conexiones"&&r.request().method()==="DELETE");
+    await pageA.getByRole("button",{name:"Eliminar conexión",exact:true}).click();
+    assert.equal((await cleanup).status(),200);
   });
   await pass("publication editing detail requires authentication and owner",async()=>{
     assert.equal((await privateAPI(`/api/publicaciones/${pubA}`,null)).status,401);

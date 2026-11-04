@@ -1,7 +1,24 @@
 .publishContent { max-width: 811px; padding-top: 15px; }
 .typeGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 21px; }
-.publishInfo { margin-top: 26px; padding: 25px; }
-.publishInfo h2 { font-size: 17px; color: var(--primary); margin: 0 0 9px; }
-.publishInfo p { font-size: 13px; color: var(--muted); margin: 0; }
-.legacyLink { display: inline-block; margin-top: 18px; font-size: 13px; }
-@media (max-width: 767px) { .typeGrid { grid-template-columns: minmax(0, 1fr); } }
+.publishInfo { margin-top: 26px; color: var(--muted); font-size: 13px; }
+.formSection { padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: white; }
+.backButton { padding: 0; border: 0; background: transparent; color: var(--primary); font-weight: 700; cursor: pointer; }
+.formSection > h2 { margin: 20px 0 5px; font-size: 22px; color: var(--primary); }
+.formSection > p { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+.publicationForm fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 18px; border: 1px solid var(--line); border-radius: 15px; }
+.publicationForm legend { padding: 0 7px; color: var(--primary); font-size: 14px; font-weight: 750; }
+.publicationForm label { display: grid; align-content: start; gap: 6px; color: var(--foreground); font-size: 13px; font-weight: 650; }
+.publicationForm input:not([type="checkbox"]), .publicationForm select, .publicationForm textarea { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--foreground); font-weight: 400; }
+.publicationForm small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.fullField { grid-column: 1 / -1; }
+.checkboxField { display: flex !important; flex-direction: row; align-items: center; gap: 9px !important; }
+.checkboxField input { accent-color: var(--primary); }
+.formActions { grid-column: 1 / -1; display: flex; gap: 10px; }
+.formError { margin: 14px 0; padding: 12px; border-radius: 10px; background: #fff1f0; color: #a3211b; }
+.publicationType { display: flex; flex-direction: column; padding: 31px; min-height: 330px; }
+.largeIcon { display: grid; place-items: center; color: var(--primary); background: var(--lavender); border-radius: 13px; width: 67px; height: 67px; flex-shrink: 0; }
+.publicationType h2 { color: var(--primary); font-size: 23px; margin: 22px 0 12px; }
+.publicationType p { font-size: 13px; color: var(--muted); margin: 0 0 20px; min-height: 42px; }
+.publicationType > button { width: 100%; margin-top: auto; }
+@media (max-width: 767px) { .typeGrid { grid-template-columns: minmax(0, 1fr); } .publicationForm fieldset { grid-template-columns: minmax(0, 1fr); } .formSection { padding: 18px; } }
+@media (max-width: 480px) { .publicationType { padding: 24px; } .publicationForm fieldset { padding: 13px; } }

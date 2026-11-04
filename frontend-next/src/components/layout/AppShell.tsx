@@ -6,6 +6,7 @@ import Header from "./Header";
 import Sidebar from "./Sidebar";
 import Modal from "@/components/ui/Modal";
 import styles from "./AppShell.module.css";
+import SessionRenewal from "@/features/auth/SessionRenewal";
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -19,6 +20,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     return () => { media.removeEventListener("change", resize); window.removeEventListener("popstate", history); };
   }, []);
   return <div className={styles.shell}>
+    <SessionRenewal />
     <a className={styles.skipLink} href="#contenido">Saltar al contenido</a>
     <div className={styles.desktopSidebar}><Sidebar /></div>
     <Header sidebarOpen={open} onOpenSidebar={() => setOpen(true)} />

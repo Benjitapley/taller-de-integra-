@@ -3,7 +3,7 @@ export async function submitAuth(action: string, body: object) {
     const response = await fetch(`/web-api/auth/${action}`, {
       method: "POST", credentials: "same-origin", cache: "no-store",
       headers: { "Content-Type": "application/json", "X-Haycupo-CSRF": "1" },
-      body: JSON.stringify(body), signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify(body), signal: AbortSignal.timeout(action === "cambiar-contrasena" ? 45_000 : 15_000),
     });
     const data = await response.json();
     const retry = response.headers.get("retry-after");

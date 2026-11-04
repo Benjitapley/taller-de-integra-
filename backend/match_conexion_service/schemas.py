@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -13,7 +13,8 @@ class ConexionBase(BaseModel):
     id_receptor_FK: int
 
 class ConexionCreate(ConexionBase):
-    pass 
+    id_solicitante_FK: int | None = Field(default=None, ge=1)
+    id_receptor_FK: int = Field(ge=1)
 
 class ConexionUpdate(BaseModel):
     estado: EstadoConexion

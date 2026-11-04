@@ -9,6 +9,8 @@ def session_factory():
     url = os.getenv("DATABASE_URL")
     if not url:
         raise RuntimeError("Falta DATABASE_URL del servidor.")
+    # El backend usa psycopg 3; SQLAlchemy no debe seleccionar psycopg2 implícitamente.
+    url = url.replace("postgres://", "postgresql+psycopg://", 1).replace("postgresql://", "postgresql+psycopg://", 1)
     engine = create_engine(url)
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

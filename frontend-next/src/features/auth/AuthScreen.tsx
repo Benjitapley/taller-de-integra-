@@ -5,10 +5,11 @@ import Icon from "@/components/ui/Icon";
 import { routes } from "@/config/navigation";
 import AuthForm from "./AuthForm";
 import VerificationForm from "./VerificationForm";
+import EmailConfirmation from "./EmailConfirmation";
 import type { AuthMode } from "./validation";
 import styles from "./auth.module.css";
 
-export default function AuthScreen({ mode }: { mode: AuthMode | "verify" }) {
+export default function AuthScreen({ mode, supabaseVerification = false, notice = "", passwordMinimum = 6 }: { mode: AuthMode | "verify"; supabaseVerification?: boolean; notice?: string; passwordMinimum?: number }) {
   const register = mode === "register";
   const verify = mode === "verify";
   return <>
@@ -30,9 +31,10 @@ export default function AuthScreen({ mode }: { mode: AuthMode | "verify" }) {
       </section>
       <Card className={styles.card}>
         <h1>{verify ? "Verifica tu correo" : register ? "Crea tu cuenta" : "¡Bienvenido de vuelta!"}</h1>
-        <p className={styles.subtitle}>{verify ? "Introduce tu correo y el código de seis dígitos." : register ? "Encuentra tu próximo espacio ideal." : "Inicia sesión para encontrar tu próximo hogar."}</p>
-        <div className={styles.notice}><strong>Integración segura preparada</strong><p>El envío requiere que el entorno de pruebas esté habilitado. Si el servicio no está disponible, verás un error y no se confirmará ninguna operación.</p></div>
-        {verify ? <VerificationForm /> : <AuthForm key={mode} mode={mode} />}
+        <p className={styles.subtitle}>{verify ? (supabaseVerification ? "Confirma tu correo usando el enlace o código recibido." : "Introduce tu correo y el código de seis dígitos.") : register ? "Encuentra tu próximo espacio ideal." : "Inicia sesión para encontrar tu próximo hogar."}</p>
+        {register && <p className={styles.hint}>Usa un correo al que tengas acceso. Te enviaremos las instrucciones para confirmar tu cuenta.</p>}
+        {!verify && notice && <p role="status">{notice}</p>}
+        {verify ? supabaseVerification ? <EmailConfirmation error={notice} /> : <VerificationForm /> : <AuthForm key={mode} mode={mode} passwordMinimum={passwordMinimum} />}
       </Card>
     </main>
     <footer className={styles.footer}><Link href={routes.guide}>Guía de navegación</Link></footer>

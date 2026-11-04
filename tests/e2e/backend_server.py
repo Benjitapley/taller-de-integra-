@@ -76,6 +76,11 @@ for probe in (
 print('PASS backend isolation guards: dotenv, external DNS, database and SMTP blocked', flush=True)
 
 from backend.main import main as web
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from backend.match_conexion_service import database as match_database
+match_engine = create_engine("postgresql+psycopg://", creator=lambda: local_database(dsn))
+match_database.session_factory = lambda: sessionmaker(autocommit=False, autoflush=False, bind=match_engine)
 if os.environ.get('HAYCUPO_MANUAL') == 'synthetic-only':
     from fastapi.responses import JSONResponse
 

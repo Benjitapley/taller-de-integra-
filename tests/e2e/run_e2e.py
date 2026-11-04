@@ -337,10 +337,12 @@ with tempfile.TemporaryDirectory(prefix=fixture_prefix) as temporary:
             if result_file.exists():
                 report = json.loads(result_file.read_text(encoding='utf-8'))
                 for item in report['checks']:
-                    print(('PASS ' if item['passed'] else 'FAIL ')+item['name'],flush=True)
+                    print(('PASS ' if item['passed'] else 'FAIL ')+item['name']+
+                          (': '+item.get('error', '') if not item['passed'] else ''),flush=True)
                 print(f"Browser/HTTP checks: {sum(item['passed'] for item in report['checks'])}/{len(report['checks'])}; external browser requests: {report['externalRequests']}",flush=True)
             if driver.returncode:
-                print((fixture / 'browser.log').read_text(encoding='utf-8',errors='replace'),flush=True)
+                if not result_file.exists() or all(item['passed'] for item in report['checks']):
+                    print((fixture / 'browser.log').read_text(encoding='utf-8',errors='replace')[-2000:],flush=True)
                 raise RuntimeError('E2E browser assertions failed')
     except KeyboardInterrupt:
         print('\nSesión interrumpida; retirando servicios y datos temporales.', flush=True)
