@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Text, View, StyleSheet, TouchableOpacity, FlatList, ScrollView} from "react-native";
+import { useEffect, useState } from "react";
+import { Text, View, StyleSheet, TouchableOpacity, FlatList, ScrollView, ActivityIndicator} from "react-native";
 import { UsuarioCard } from "@/components/Usuario_Card";
 import { usuariosMock } from "@/mocks/usuarios";
 import { colors } from "@/theme/colors";
@@ -7,10 +7,35 @@ import { paletaPublicacion } from "@/constants/origenPublicacion";
 import BuscadorPublicaciones from '@/components/BuscadorPublicaciones';
 import BuscadorPersonas from '@/components/BuscadorPersonas';
 import BarraBusqueda from '@/components/BarraBusqueda';
+import { obtenerPublicaciones } from "@/services/publicaciones.service";
 
 
 export default function Buscar() {
   const [tab, setTab] = useState<'arriendos' | 'personas'>('arriendos');
+  const [publicaciones, setPublicaciones] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    setCargando(true);
+    // setTimeout simula el tiempo de carga de una conexión a internet real
+    setTimeout(async () => {
+      const datos = await obtenerPublicaciones();
+      setPublicaciones(datos);
+      setCargando(false);
+    }, 800);
+  };
+
+  if (cargando) {
+    return (
+      <View style={styles.centrado}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -36,7 +61,7 @@ export default function Buscar() {
 
       {tab === 'arriendos' ? (
         <ScrollView contentContainerStyle={{ padding: 16 }}>
-            <BuscadorPublicaciones />
+          <BuscadorPublicaciones publicaciones={publicaciones} />        
         </ScrollView>
       ) : (
         <BuscadorPersonas />  
@@ -47,6 +72,7 @@ export default function Buscar() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  centrado: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   tabs: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
