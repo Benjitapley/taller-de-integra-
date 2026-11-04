@@ -1,0 +1,8 @@
+.publicationType { display: flex; flex-direction: column; padding: 31px; min-height: 330px; }
+.largeIcon { display: grid; place-items: center; color: var(--primary); background: var(--lavender); border-radius: 13px; width: 67px; height: 67px; flex-shrink: 0; }
+.publicationType h2 { color: var(--primary); font-size: 23px; margin: 22px 0 12px; }
+.publicationType p { font-size: 13px; color: var(--muted); margin: 0 0 20px; min-height: 42px; }
+.publicationType > button { width: 100%; margin-top: auto; }
+.publicationType small { color: var(--muted); text-align: center; margin-top: 9px; font-size: 11px; }
+
+@media (max-width: 480px) { .publicationType { padding: 24px; } }

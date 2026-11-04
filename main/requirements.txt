@@ -1,7 +1,0 @@
-fastapi
-httpx
-Pillow
-psycopg[binary]
-python-dotenv
-SQLAlchemy
-uvicorn
