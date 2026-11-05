@@ -8,10 +8,7 @@ import { publicacionesMock, usuariosMock } from '@/mocks';
 import { postularAPublicacion } from '@/services/postulacionesService';
 import { TITULO_PUBLICACION, configPorEstado, configPorOrigen, ctaPorOrigen, estiloPorTipo, paletaPublicacion } from '@/constants/origenPublicacion';
 
-// M4-C10: "Mi postulación" (M4-C09) hoy lee solo datos de demostración, así que una
-// postulación real no aparecería ahí. Pasar a true cuando M4-C11 la conecte con
-// GET /api/postulaciones/mias; hasta entonces el aviso no ofrece ir a esa pantalla.
-const MI_POSTULACION_LISTA = false;
+const MI_POSTULACION_LISTA = true;
 
 function formatoPrecio(precio: number): string {
     return `$${String(precio).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} CLP`;

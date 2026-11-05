@@ -9,6 +9,7 @@ export const configPorEstadoPostulacion: Record<
   Preseleccionada: { etiqueta: 'Preseleccionada', color: colors.primary, fondo: '#EEEBFF' },
   Aceptada: { etiqueta: 'Aceptada', color: '#15803D', fondo: '#DCFCE7' },
   Rechazada: { etiqueta: 'Rechazada', color: '#B91C1C', fondo: '#FEE2E2' },
+  Cancelada: { etiqueta: 'Cancelada', color: '#4B5563', fondo: '#E5E7EB' },
 };
 
 /**
@@ -17,8 +18,9 @@ export const configPorEstadoPostulacion: Record<
  * - actual: círculo claro con anillo (lo que se espera ahora)
  * - inactivo: círculo claro con punto tenue (aún no ocurre)
  * - rechazado: círculo rojo con X (solo el paso de decisión)
+ * - cancelado: círculo gris con X (la persona canceló su postulación)
  */
-export type MarcadorPaso = 'hecho' | 'actual' | 'inactivo' | 'rechazado';
+export type MarcadorPaso = 'hecho' | 'actual' | 'inactivo' | 'rechazado' | 'cancelado';
 
 export interface PasoPostulacion {
   titulo: string;
@@ -54,6 +56,11 @@ export const pasosPorEstadoPostulacion: Record<EstadoPostulacion, PasoPostulacio
     { titulo: TITULOS[1], descripcion: REVISADA, marcador: 'hecho' },
     { titulo: TITULOS[2], descripcion: 'Tu postulación no fue seleccionada.', marcador: 'rechazado' },
   ],
+  Cancelada: [
+    { titulo: TITULOS[0], descripcion: SOLICITUD_ENVIADA, marcador: 'hecho' },
+    { titulo: TITULOS[1], descripcion: 'La revisión se detuvo al cancelar.', marcador: 'inactivo' },
+    { titulo: TITULOS[2], descripcion: 'Cancelaste tu postulación.', marcador: 'cancelado' },
+  ],
 };
 
 // Tarjeta "Chat con arrendador". El chat de postulación existe solo mientras la
@@ -69,4 +76,5 @@ export const chatPorEstadoPostulacion: Record<
   },
   Aceptada: null,
   Rechazada: null,
+  Cancelada: null,
 };

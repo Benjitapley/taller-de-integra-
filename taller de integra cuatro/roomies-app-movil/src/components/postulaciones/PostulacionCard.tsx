@@ -9,7 +9,8 @@ import type { Publicacion } from '@/types/Publicacion';
 
 interface PostulacionCardProps {
   postulacion: Postulacion;
-  // Publicación a la que se postuló. Si no se encuentra, se avisa en la tarjeta. 
+  // Publicación a la que se postuló (opcional). Sin ella, la tarjeta usa el título
+  // que informa el backend (`tituloPublicacion`) o avisa que no está disponible.
   publicacion?: Publicacion;
 }
 
@@ -37,14 +38,16 @@ export const PostulacionCard: React.FC<PostulacionCardProps> = ({ postulacion, p
       )}
 
       <View style={styles.info}>
-        {publicacion ? (
+        {publicacion || postulacion.tituloPublicacion ? (
           <>
             <Text style={styles.titulo} numberOfLines={2}>
-              {publicacion.titulo}
+              {publicacion?.titulo ?? postulacion.tituloPublicacion}
             </Text>
-            <Text style={styles.detalle} numberOfLines={2}>
-              {publicacion.ubicacion} · {formatoPrecio(publicacion.precio)}
-            </Text>
+            {publicacion ? (
+              <Text style={styles.detalle} numberOfLines={2}>
+                {publicacion.ubicacion} · {formatoPrecio(publicacion.precio)}
+              </Text>
+            ) : null}
           </>
         ) : (
           <Text style={styles.tituloNoDisponible}>Publicación no disponible</Text>

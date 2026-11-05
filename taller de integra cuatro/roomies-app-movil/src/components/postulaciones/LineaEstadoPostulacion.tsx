@@ -15,6 +15,7 @@ const TEXTO_MARCADOR: Record<MarcadorPaso, string> = {
   actual: 'en curso',
   inactivo: 'pendiente',
   rechazado: 'no seleccionada',
+  cancelado: 'cancelada',
 };
 
 function Marcador({ tipo }: { tipo: MarcadorPaso }) {
@@ -29,6 +30,13 @@ function Marcador({ tipo }: { tipo: MarcadorPaso }) {
     return (
       <View style={[styles.marcador, styles.marcadorRechazado]}>
         <Ionicons name="close" size={20} color="#B91C1C" />
+      </View>
+    );
+  }
+  if (tipo === 'cancelado') {
+    return (
+      <View style={[styles.marcador, styles.marcadorCancelado]}>
+        <Ionicons name="close" size={20} color="#4B5563" />
       </View>
     );
   }
@@ -89,6 +97,9 @@ const styles = StyleSheet.create({
   },
   marcadorRechazado: {
     backgroundColor: '#FEE2E2',
+  },
+  marcadorCancelado: {
+    backgroundColor: '#E5E7EB',
   },
   marcadorClaro: {
     backgroundColor: paletaPublicacion.fondoSuave,
