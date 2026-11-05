@@ -5,6 +5,7 @@ import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { CustomButton } from '@/components/CustomButton';
 import { publicacionesMock, usuariosMock } from '@/mocks';
+import { useAuth } from '@/hooks/useAuth';
 import { postularAPublicacion } from '@/services/postulacionesService';
 import { TITULO_PUBLICACION, configPorEstado, configPorOrigen, ctaPorOrigen, estiloPorTipo, paletaPublicacion } from '@/constants/origenPublicacion';
 
@@ -17,6 +18,7 @@ function formatoPrecio(precio: number): string {
 export default function PublicacionDetallePantalla() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
+    const { estaAutenticado, cerrarSesion } = useAuth();
     const [postulando, setPostulando] = useState(false);
     const [postulada, setPostulada] = useState(false);
     const postulandoRef = useRef(false); // evita el doble toque antes del re-render
@@ -99,14 +101,27 @@ export default function PublicacionDetallePantalla() {
             return;
         }
 
-        if (
-            resultado.codigo === 'sin_sesion' ||
-            resultado.codigo === 'sesion_no_disponible' ||
-            resultado.codigo === 'no_autorizado'
-        ) {
+        // /login solo existe sin sesión (Stack.Protected en app/_layout.tsx). Con una
+        // sesión que el servicio rechazó no se puede navegar hasta allí: se cierra la
+        // sesión y el guard lleva solo al login. Sin sesión se va directo.
+        // (`sesion_no_disponible` es un fallo pasajero: no cierra nada y cae en el
+        // aviso genérico de abajo.)
+        if (resultado.codigo === 'sin_sesion' || resultado.codigo === 'no_autorizado') {
             Alert.alert('Inicia sesión', resultado.error, [
                 { text: 'Cancelar', style: 'cancel' },
-                { text: 'Iniciar sesión', onPress: () => router.push('/login') },
+                {
+                    text: 'Iniciar sesión',
+                    onPress: async () => {
+                        if (!estaAutenticado) {
+                            router.push('/login');
+                            return;
+                        }
+                        const cierre = await cerrarSesion();
+                        if (!cierre.exito && !cierre.sesionLocalCerrada) {
+                            Alert.alert('No se pudo cerrar la sesión', cierre.error);
+                        }
+                    },
+                },
             ]);
             return;
         }

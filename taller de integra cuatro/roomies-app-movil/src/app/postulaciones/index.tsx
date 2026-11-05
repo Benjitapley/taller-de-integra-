@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { CustomButton } from '@/components/CustomButton';
@@ -7,6 +7,7 @@ import { LineaEstadoPostulacion } from '@/components/postulaciones/LineaEstadoPo
 import { PostulacionCard } from '@/components/postulaciones/PostulacionCard';
 import { chatPorEstadoPostulacion } from '@/constants/estadoPostulacion';
 import { paletaPublicacion } from '@/constants/origenPublicacion';
+import { useAuth } from '@/hooks/useAuth';
 import { useMisPostulaciones } from '@/hooks/useMisPostulaciones';
 import { colors } from '@/theme/colors';
 
@@ -17,7 +18,8 @@ import { colors } from '@/theme/colors';
 // Solo muestra el estado que recibe del backend: no hay ninguna acción que lo
 // cambie, ni forma de forzar una aceptación desde la app.
 
-const ERRORES_DE_SESION = ['sin_sesion', 'sesion_no_disponible', 'no_autorizado'];
+// `sesion_no_disponible` es un fallo pasajero: solo ofrece reintentar, no cerrar sesión.
+const ERRORES_DE_SESION = ['sin_sesion', 'no_autorizado'];
 
 function Mensaje({
   icono,
@@ -42,8 +44,22 @@ function Mensaje({
 
 export default function MiPostulacion() {
   const router = useRouter();
+  const { estaAutenticado, cerrarSesion } = useAuth();
   const { idPublicacion } = useLocalSearchParams<{ idPublicacion?: string }>();
   const { estado, postulaciones, error, reintentar } = useMisPostulaciones();
+
+  // /login solo existe sin sesión (Stack.Protected en app/_layout.tsx): con una sesión
+  // que el servicio rechazó se cierra la sesión y el guard lleva solo al login.
+  const iniciarSesion = async () => {
+    if (!estaAutenticado) {
+      router.push('/login');
+      return;
+    }
+    const cierre = await cerrarSesion();
+    if (!cierre.exito && !cierre.sesionLocalCerrada) {
+      Alert.alert('No se pudo cerrar la sesión', cierre.error);
+    }
+  };
 
   const volver = () => (router.canGoBack() ? router.back() : router.replace('/'));
   const irAPublicaciones = () => router.replace('/(tabs)');
@@ -91,7 +107,7 @@ export default function MiPostulacion() {
           texto={error?.error ?? 'Inténtalo otra vez en un momento.'}
         >
           {requiereSesion ? (
-            <CustomButton titulo="Iniciar sesión" onPress={() => router.push('/login')} />
+            <CustomButton titulo="Iniciar sesión" onPress={iniciarSesion} />
           ) : null}
           <CustomButton
             titulo="Reintentar"
