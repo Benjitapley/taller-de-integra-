@@ -64,7 +64,22 @@ export interface UsuarioPerfil extends Usuario {
 }
 
 /**
- * Modelo de presentación de A08, independiente del DTO HTTP pendiente de TI2.
+ * GET /usuarios/me observado en OpenAPI de Auth/Users el 04/11/2026.
+ * Las siete claves son obligatorias, aunque seis permiten valores nulos.
+ * No equivale al modelo completo de usuario ni a los campos editables de PATCH.
+ */
+export interface PerfilPropioTi2 {
+  nombre: string;
+  edad: number | null;
+  ocupacion: string | null;
+  ciudad: string | null;
+  breve_descripcion: string | null;
+  sobre_mi: string | null;
+  foto_perfil: string | null;
+}
+
+/**
+ * Modelo de presentación de A08, independiente del DTO HTTP de TI2.
  * null significa dato no disponible; no equivale a cero, lista vacía o valor mock.
  * El adaptador confirmado deberá producir este modelo desde una respuesta validada.
  */
@@ -75,6 +90,7 @@ export interface PerfilPropioVista {
   edad: number | null;
   ocupacion: string | null;
   ubicacion: string | null;
+  breveDescripcion: string | null;
   bio: string | null;
   presupuesto: number | null;
   preferencias: string[] | null;

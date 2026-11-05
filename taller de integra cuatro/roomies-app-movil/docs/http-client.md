@@ -5,15 +5,14 @@ Requisitos: NFR-01, NFR-02, NFR-11, NFR-12. Dependencias: A05 y A06 fusionadas.
 
 ## Alcance y estado
 
-`src/services/httpClient.ts` implementa `solicitarJson()` para la API de TI2 usando
-Fetch. Reutiliza el cliente Supabase de A02 y consulta su sesión en cada petición
+`src/services/httpClient.ts` implementa `solicitarJson()` y `solicitarFormulario()`
+para la API de TI2 usando Fetch. Reutiliza el cliente Supabase de A02 y consulta su sesión en cada petición
 protegida. No inicia ni cierra sesiones, no emite tokens y no crea perfiles.
 
-El cliente y sus pruebas controladas están implementados. La URL de API, OpenAPI,
-aceptación del JWT de Supabase y contratos de perfil siguen pendientes de confirmación
-de TI2. No se declara integrada la API real ni terminadas A08/A09 por estas pruebas.
-La preparación de A08 añade `usuariosService.ts` y los estados de Perfil. La consulta
-real sigue detenida hasta confirmar el adaptador del DTO; véase `perfil-propio.md`.
+El cliente y sus pruebas controladas están implementados. El 04/11 se revisó el
+OpenAPI publicado en Auth/Users y se conectó el adaptador de A08. Siguen pendientes
+aceptación del JWT, persistencia y una consulta autenticada real satisfactoria.
+Estas pruebas no terminan A07/A08/A09 como integración; véase `perfil-propio.md`.
 
 Gustavo compartió una propuesta comunicada a TI2: Supabase Auth gestionaría registro,
 login, correo y sesiones; FastAPI gestionaría permisos y datos, validando esos JWT.
@@ -60,7 +59,23 @@ if (!resultado.exito) {
 Las peticiones son protegidas por defecto. `autenticada: false` permite una petición
 pública sin consultar Supabase ni añadir Authorization. Se aceptan GET, POST, PUT,
 PATCH y DELETE mediante `metodo`; `cuerpo` se serializa como JSON y no se admite en GET.
-Este cliente no implementa subida de archivos/FormData; A11 requiere su contrato propio.
+`solicitarFormulario()` acepta FormData y POST (por defecto), PUT, PATCH o DELETE.
+Comparte con JSON el transporte, validación del destino, Bearer, timeout y errores.
+Envía el formulario directamente; fetch construye Content-Type y boundary.
+`solicitarJson()` rechaza FormData en vez de convertirlo silenciosamente en `{}`.
+
+```ts
+import { solicitarFormulario } from "@/services/httpClient";
+
+// Construir previamente todos los campos y el archivo según el contrato de Listado.
+const resultado = await solicitarFormulario("/api/publicaciones", {
+  cuerpo: formulario,
+});
+// PUT para actualizar: { metodo: "PUT", cuerpo: formulario }.
+```
+
+Ampliación del 04/11 solicitada para M4-C07/C08. El adaptador de publicaciones
+debe preparar campos/archivos web y nativos; este cliente no convierte URIs en archivos.
 
 Para peticiones protegidas se obtiene `session.access_token` con `getSession()` y
 se envía como `Authorization: Bearer ...`. No se usa la clave publishable como Bearer,
@@ -121,12 +136,9 @@ También se verificó que los detalles sensibles ficticios no aparecen en errore
 
 ## Pendientes de integración con TI2
 
-- Confirmar URL base, entorno y OpenAPI, además del proyecto/emisor Supabase que
-  aceptará el backend y el vínculo entre UUID de Auth e ID de usuario Roomies.
-- Resolver la diferencia observada el 29 de octubre: el backlog móvil especifica
-  `GET/PATCH /usuarios/me`, mientras `dev-web` contiene `GET/PUT /api/perfil` y un
-  validador de JWT propios con `sub` numérico. No se adapta el móvil a ese contrato
-  alternativo sin confirmación del equipo.
+- Configurar el proyecto común en móvil y en el backend, y probar el vínculo entre
+  UUID de Auth e ID de negocio. El GET/PATCH publicado de SCRUM-77 es /usuarios/me;
+  A08 ahora valida ese DTO. El antiguo /api/perfil no se usa como fallback.
 - Acordar campos de respuesta y campos editables. Actualmente la UI móvil y el
   backend observado permiten editar edad; el registro/modelo móvil conserva fecha
   de nacimiento. No se decide aquí si se permite corregir esa fecha o cómo hacerlo.
@@ -135,8 +147,27 @@ También se verificó que los detalles sensibles ficticios no aparecen en errore
   y los errores 401/403 sin copiar el JWT a documentación, capturas o logs.
 - Repetir la comprobación en web y Expo Go, incluyendo CORS/conectividad del entorno.
 
-Una vez resuelto el contrato, A08 incorporará consulta y estados de perfil. A09 enviará
-solo los campos editables acordados y comprobará persistencia volviendo a consultar.
+A08 ya incorpora consulta y estados de perfil; falta acreditar la integración real.
+A09 enviará solo campos editables acordados y comprobará persistencia mediante GET.
+
+### Comprobaciones del 04/11/2026
+
+- 21 pruebas HTTP controladas: las 15 anteriores y 6 para formularios. Incluyen un
+  archivo binario, serialización multipart con Request/FormData de Node y lectura
+  del resultado, token actualizado, errores y ausencia de logs.
+- Queda comprobar una subida desde Expo Go y una creación real con el adaptador
+  de Abdiel y el servicio de Listado disponible.
+- Lecturas reales: salud de ambos Render 200; Auth/Users y Gateway /usuarios/me 503
+  (verificación de identidad no configurada); preconsulta CORS a Gateway 405;
+  /api/publicaciones por Gateway 404. No se crearon usuarios ni publicaciones.
+- SCRUM-77 ya tiene verificador. Sus variables SUPABASE_URL,
+  SUPABASE_JWT_AUDIENCE y SUPABASE_JWT_ALGORITHMS se configuran en el proceso
+  (Render > servicio > Environment), no en una tabla SQL.
+- En SCRUM-83 revisado no hay CORSMiddleware en la creación del Gateway. El soporte
+  se agrega al servidor y se despliega; una variable de orígenes solo funciona si
+  el código la lee. Deben admitirse el origen web y Authorization/Content-Type.
+- Coordinar tamaño multipart: Gateway SCRUM-83 original 1 MiB por solicitud frente
+  a imágenes de hasta 5 MiB en Listado. El despliegue debe tener límites coherentes.
 
 ## Referencias
 

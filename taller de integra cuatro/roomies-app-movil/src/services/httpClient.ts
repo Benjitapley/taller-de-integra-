@@ -1,5 +1,5 @@
 import { estaSupabaseConfigurado, getSupabaseClient } from "@/lib/supabase";
-import type { CodigoErrorHttp, ErrorHttp, OpcionesPeticionHttp, ResultadoHttp } from "@/types/Http";
+import type { CodigoErrorHttp, ErrorHttp, OpcionesFormularioHttp, OpcionesPeticionHttp, ResultadoHttp } from "@/types/Http";
 
 function fallo(codigo: CodigoErrorHttp, error: string, estadoHttp?: number): ErrorHttp {
   return { exito: false, codigo, error, ...(estadoHttp === undefined ? {} : { estadoHttp }) };
@@ -24,13 +24,34 @@ function falloRespuesta(estadoHttp: number): ErrorHttp {
 }
 
 /**
- * M4-A07: cliente JSON para la API de TI2. El SDK administra los tokens;
+ * M4-A07: peticiones JSON a TI2. El SDK administra los tokens;
  * este módulo los obtiene para cada petición, sin guardarlos ni registrarlos.
  * Los adaptadores de cada recurso deben validar la forma de `datos` (unknown).
  */
 export async function solicitarJson(
   ruta: string,
   opciones: OpcionesPeticionHttp = {},
+): Promise<ResultadoHttp> {
+  return solicitar(ruta, opciones, "json");
+}
+
+/** Envía FormData sin serializar ni fijar Content-Type; espera una respuesta JSON. */
+export async function solicitarFormulario(
+  ruta: string,
+  opciones: OpcionesFormularioHttp,
+): Promise<ResultadoHttp> {
+  return solicitar(ruta, { ...opciones, metodo: opciones.metodo ?? "POST" }, "formulario");
+}
+
+function esFormulario(cuerpo: unknown): cuerpo is FormData {
+  return typeof FormData !== "undefined" && cuerpo instanceof FormData;
+}
+
+/** Un único transporte mantiene las mismas protecciones para JSON y multipart. */
+async function solicitar(
+  ruta: string,
+  opciones: OpcionesPeticionHttp,
+  formato: "json" | "formulario",
 ): Promise<ResultadoHttp> {
   let base: URL;
   try {
@@ -57,14 +78,25 @@ export async function solicitarJson(
   }
 
   const metodo = opciones.metodo ?? "GET";
+  if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(metodo)) {
+    return fallo("peticion_invalida", "El método de la solicitud no es válido.");
+  }
   const tiempoLimiteMs = opciones.tiempoLimiteMs ?? 15000;
   if (!Number.isFinite(tiempoLimiteMs) || tiempoLimiteMs <= 0) {
     return fallo("peticion_invalida", "El tiempo de espera de la solicitud no es válido.");
   }
 
-  let cuerpo: string | undefined;
-  if (opciones.cuerpo !== undefined) {
+  let cuerpo: string | FormData | undefined;
+  if (formato === "formulario") {
+    if (metodo === "GET" || !esFormulario(opciones.cuerpo)) {
+      return fallo("peticion_invalida", "El formulario de la solicitud no tiene un formato válido.");
+    }
+    cuerpo = opciones.cuerpo;
+  } else if (opciones.cuerpo !== undefined) {
     if (metodo === "GET") return fallo("peticion_invalida", "Una consulta GET no admite cuerpo.");
+    if (esFormulario(opciones.cuerpo)) {
+      return fallo("peticion_invalida", "El formato de los datos no corresponde a esta solicitud.");
+    }
     try {
       cuerpo = JSON.stringify(opciones.cuerpo);
       if (cuerpo === undefined) throw new Error();
@@ -74,7 +106,7 @@ export async function solicitarJson(
   }
 
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (cuerpo !== undefined) headers["Content-Type"] = "application/json";
+  if (formato === "json" && cuerpo !== undefined) headers["Content-Type"] = "application/json";
   if (opciones.autenticada !== false) {
     if (!estaSupabaseConfigurado()) {
       return fallo("configuracion", "La autenticación todavía no está configurada correctamente.");

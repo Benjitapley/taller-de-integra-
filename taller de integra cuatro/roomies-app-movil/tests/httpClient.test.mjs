@@ -39,7 +39,7 @@ function preparar({
       return { estaSupabaseConfigurado: () => configurado, getSupabaseClient: () => sdk };
     },
     process: { env: { EXPO_PUBLIC_API_URL: base } },
-    URL, AbortController, setTimeout, clearTimeout,
+    URL, FormData, AbortController, setTimeout, clearTimeout,
     console: Object.fromEntries(["log", "warn", "error", "debug", "info"].map((nivel) => [nivel, (...args) => registros.push(args)])),
     fetch: async (url, opciones) => {
       llamadas.push({ url, opciones });
@@ -48,6 +48,7 @@ function preparar({
   });
   return {
     solicitar: modulo.exports.solicitarJson,
+    formulario: modulo.exports.solicitarFormulario,
     llamadas,
     registros,
     consultasSesion: () => consultasSesion,
@@ -197,4 +198,103 @@ test("opciones o cuerpos inválidos no consultan Auth ni envían peticiones", as
   }
   assert.equal(cliente.consultasSesion(), 0);
   assert.equal(cliente.llamadas.length, 0);
+});
+
+test("multipart conserva campos y archivo y fetch genera un boundary interpretable", async () => {
+  const formulario = new FormData();
+  formulario.append("titulo", "Habitación de prueba");
+  formulario.append("precio", "150000");
+  const bytes = new Uint8Array([137, 80, 78, 71, 0, 255]);
+  formulario.append("imagen", new Blob([bytes], { type: "image/png" }), "prueba.png");
+  const cliente = preparar({ responder: async (url, opciones) => {
+    assert.equal(opciones.body, formulario);
+    assert.equal(opciones.headers["Content-Type"], undefined);
+    const peticion = new Request(url, opciones);
+    assert.match(peticion.headers.get("content-type"), /^multipart\/form-data; boundary=/);
+    const recibido = await peticion.formData();
+    assert.equal(recibido.get("titulo"), "Habitación de prueba");
+    assert.equal(recibido.get("precio"), "150000");
+    assert.equal(recibido.get("imagen").name, "prueba.png");
+    assert.equal(recibido.get("imagen").type, "image/png");
+    assert.deepEqual(new Uint8Array(await recibido.get("imagen").arrayBuffer()), bytes);
+    return Response.json({ id: 123 }, { status: 201 });
+  } });
+  const resultado = await cliente.formulario("/publicaciones", { cuerpo: formulario });
+  assert.equal(resultado.exito, true);
+  assert.equal(resultado.estadoHttp, 201);
+  assert.equal(resultado.datos.id, 123);
+  assert.equal(cliente.llamadas[0].opciones.method, "POST");
+  assert.equal(cliente.llamadas[0].opciones.headers.Authorization, "Bearer token-ficticio-para-pruebas");
+  assert.equal(cliente.registros.length, 0);
+});
+
+test("PUT multipart obtiene el token actual para cada envío", async () => {
+  let token = "primero-ficticio";
+  const cliente = preparar({ obtenerSesion: async () => ({ data: { session: { access_token: token } }, error: null }) });
+  await cliente.formulario("/publicaciones/123", { metodo: "PUT", cuerpo: new FormData() });
+  token = "renovado-ficticio";
+  await cliente.formulario("/publicaciones/123", { metodo: "PUT", cuerpo: new FormData() });
+  assert.equal(cliente.llamadas[0].opciones.method, "PUT");
+  assert.equal(cliente.llamadas[0].opciones.headers.Authorization, "Bearer primero-ficticio");
+  assert.equal(cliente.llamadas[1].opciones.headers.Authorization, "Bearer renovado-ficticio");
+  assert.equal(cliente.consultasSesion(), 2);
+});
+
+test("multipart público explícito omite Auth y JSON rechaza FormData para evitar enviar un objeto vacío", async () => {
+  const cliente = preparar({ configurado: false });
+  assert.equal((await cliente.formulario("/recurso", { cuerpo: new FormData(), autenticada: false })).exito, true);
+  assert.equal(cliente.llamadas[0].opciones.headers.Authorization, undefined);
+  assert.equal(cliente.consultasSesion(), 0);
+  assert.equal((await cliente.solicitar("/recurso", { metodo: "POST", cuerpo: new FormData() })).codigo, "peticion_invalida");
+  assert.equal(cliente.llamadas.length, 1);
+});
+
+test("formularios y métodos inválidos se rechazan antes de consultar sesión o transporte", async () => {
+  const cliente = preparar();
+  for (const opciones of [
+    { cuerpo: {} }, { cuerpo: null }, {},
+    { cuerpo: new FormData(), metodo: "GET" },
+    { cuerpo: new FormData(), metodo: "TRACE" },
+    { cuerpo: new FormData(), tiempoLimiteMs: 0 },
+  ]) assert.equal((await cliente.formulario("/recurso", opciones)).codigo, "peticion_invalida");
+  assert.equal(cliente.consultasSesion(), 0);
+  assert.equal(cliente.llamadas.length, 0);
+});
+
+test("multipart conserva las protecciones de destino y sesión", async () => {
+  for (const [config, ruta, codigo] of [
+    [{ base: "" }, "/recurso", "configuracion"],
+    [{}, "https://externo.example.invalid", "peticion_invalida"],
+    [{}, "/../fuera", "peticion_invalida"],
+    [{ token: null }, "/recurso", "sin_sesion"],
+    [{ configurado: false }, "/recurso", "configuracion"],
+    [{ obtenerSesion: async () => { throw new Error("detalle-privado"); } }, "/recurso", "sesion_no_disponible"],
+  ]) {
+    const cliente = preparar(config);
+    assert.equal((await cliente.formulario(ruta, { cuerpo: new FormData() })).codigo, codigo);
+    assert.equal(cliente.llamadas.length, 0);
+    assert.equal(cliente.registros.length, 0);
+  }
+});
+
+test("multipart distingue errores HTTP, red, JSON inválido y timeout sin repetir ni cerrar sesión", async () => {
+  const casos = [
+    [async () => Response.json({ detail: "detalle-privado" }, { status: 401 }), "no_autorizado"],
+    [async () => Response.json({ detail: "detalle-privado" }, { status: 403 }), "sin_permiso"],
+    [async () => new Response("detalle-privado", { status: 422 }), "http"],
+    [async () => new Response("<html>detalle-privado</html>"), "respuesta_invalida"],
+    [async () => { throw new Error("detalle-privado"); }, "red"],
+    [async (_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener("abort", () => reject(new Error("detalle-privado")), { once: true });
+    }), "tiempo_agotado"],
+  ];
+  for (const [responder, codigo] of casos) {
+    const cliente = preparar({ responder });
+    const resultado = await cliente.formulario("/publicaciones", { cuerpo: new FormData(), tiempoLimiteMs: 100 });
+    assert.equal(resultado.codigo, codigo);
+    assert.doesNotMatch(JSON.stringify(resultado), /detalle-privado/);
+    assert.equal(cliente.llamadas.length, 1);
+    assert.equal(cliente.cierresSesion(), 0);
+    assert.equal(cliente.registros.length, 0);
+  }
 });

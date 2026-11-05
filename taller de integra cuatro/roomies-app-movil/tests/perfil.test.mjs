@@ -70,9 +70,20 @@ test("un perfil proyectado conserva cero y listas vacías; reputación y estadí
 test("datos ausentes permanecen no disponibles sin inventar edad, presupuesto ni historial", () => {
   const html = render({ tipo: "resultado", resultado: { exito: true, perfil: {
     nombre: null, email: null, fotoPerfilUrl: null, edad: null, ocupacion: null,
-    ubicacion: null, bio: null, presupuesto: null, preferencias: null, buscaEn: null,
+    ubicacion: null, breveDescripcion: null, bio: null, presupuesto: null, preferencias: null, buscaEn: null,
   } } });
   assert.match(html, /No disponible/);
   assert.doesNotMatch(html, /\$0|0 años|Sin preferencias indicadas|Sin zonas indicadas|Camila Soto/);
   assert.match(html, /Reputación y evaluaciones no disponibles/);
+});
+
+test("la descripción breve se muestra en el resumen y la extensa en Sobre mí", () => {
+  const html = render({ tipo: "resultado", resultado: { exito: true, perfil: {
+    nombre: "Persona controlada", email: null, fotoPerfilUrl: null, edad: 24,
+    ocupacion: null, ubicacion: null, breveDescripcion: "Texto breve controlado",
+    bio: "Texto extenso controlado", presupuesto: null, preferencias: null, buscaEn: null,
+  } } });
+  assert.ok(html.indexOf("Texto breve controlado") < html.indexOf("Sobre mí"));
+  assert.ok(html.indexOf("Texto extenso controlado") > html.indexOf("Sobre mí"));
+  assert.doesNotMatch(html, /Sofía|Verificada|4\.8/);
 });

@@ -29,3 +29,10 @@ export interface OpcionesPeticionHttp {
   /** Tiempo máximo de fetch y lectura del cuerpo; por defecto, 15 segundos. */
   tiempoLimiteMs?: number;
 }
+
+/** Formulario multipart; fetch genera Content-Type con su boundary. */
+export interface OpcionesFormularioHttp extends Omit<OpcionesPeticionHttp, "metodo" | "cuerpo"> {
+  /** POST por defecto; GET no admite formulario. */
+  metodo?: "POST" | "PUT" | "PATCH" | "DELETE";
+  cuerpo: FormData;
+}

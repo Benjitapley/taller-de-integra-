@@ -28,7 +28,7 @@ function ResumenPersonal({ perfil }: { perfil: PerfilPropioVista }) {
         <Dato icono="calendar-outline" valor={perfil.edad === null ? NO_DISPONIBLE : `${perfil.edad} años`} />
         <Dato icono="briefcase-outline" valor={perfil.ocupacion ?? NO_DISPONIBLE} />
       </View>
-      <Text style={styles.texto}>{perfil.bio ?? "Descripción no disponible."}</Text>
+      <Text style={styles.texto}>{perfil.breveDescripcion ?? "Descripción breve no disponible."}</Text>
     </View>
   );
 }
@@ -46,6 +46,7 @@ function SobreMi({ perfil }: { perfil: PerfilPropioVista }) {
   return (
     <View style={styles.tarjeta}>
       <Text style={styles.titulo}>Sobre mí</Text>
+      <Text style={styles.texto}>{perfil.bio ?? "Descripción personal no disponible."}</Text>
       <Text style={styles.etiqueta}>Preferencias</Text>
       <Text style={styles.texto}>
         {perfil.preferencias === null ? NO_DISPONIBLE : perfil.preferencias.join(", ") || "Sin preferencias indicadas."}

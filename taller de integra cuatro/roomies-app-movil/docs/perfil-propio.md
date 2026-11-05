@@ -1,60 +1,72 @@
-# Perfil propio — preparación M4-A08 / SCRUM-41
+# Perfil propio - M4-A08 / SCRUM-41
 
-Responsable: Gustavo Martínez. 2 de noviembre de 2026.
-Requisitos: FR-03, FR-04, NFR-11. Dependencia técnica: cliente HTTP de A07.
+Responsable: Gustavo Martínez. Preparación del 02/11, adaptador conectado el 04/11/2026.
+Requisitos: FR-03, FR-04, NFR-11. Dependencia: cliente HTTP de A07.
 
-## Estado y alcance
+## Estado
 
-Preparación parcial. No acredita consumo de un perfil real ni termina A08.
-TI2 aún debe confirmar URL, DTO de GET `/usuarios/me` y comportamiento sin perfil.
-La referencia del backlog define la ruta; no define por sí sola nombres, tipos,
-nulabilidad ni envoltorio del JSON. Los instructivos de arquitectura y Auth son
-propuestas de integración, no una respuesta real del endpoint.
+Se implementó el adaptador del GET /usuarios/me publicado en el OpenAPI de
+https://roomies-scrum77-auth-users.onrender.com/openapi.json, consultado el 04/11.
+La consulta por defecto ya hace GET protegido mediante A07. No se declara terminada
+la integración: en la comprobación de hoy Auth/Users/Gateway devolvían 503 de
+configuración JWT y la preconsulta CORS web del Gateway devolvía 405.
 
-Perfil deja de mostrar a Sofía, su avatar, publicación, estadísticas y evaluaciones.
-No se rellenan campos del perfil con metadata de Supabase ni con datos de ejemplo.
-Tampoco se confunde la identidad autenticada con un perfil Roomies ya inicializado.
+La cuenta común confirmada y el login fueron comprobados por Gustavo. Esa sesión
+no demuestra que el backend la acepte ni que exista una fila de perfil de negocio.
 
-## Bloques preparados
+## Contrato y presentación
 
-- `src/types/Usuario.ts`: `PerfilPropioVista` es un modelo local para presentar
-  datos, **no el contrato HTTP**. Cada campo ausente se representa con `null`.
-  Cero, una lista vacía y un dato no disponible conservan significados distintos.
-- `src/services/usuariosService.ts`: `consultarPerfilPropio()` utiliza la ruta
-  protegida de referencia y A07. El adaptador por defecto permanece en `null`:
-  devuelve `contrato_pendiente` **sin hacer peticiones**, aunque se configure URL.
-  Cuando exista contrato, su adaptador validará `unknown` antes de proyectar.
-  Los errores HTTP conservan su código; un 404 no se interpreta aún como perfil
-  sin inicializar. null/204 o un fallo de adaptación no se muestran como éxito.
-- `src/hooks/usePerfilPropio.ts`: carga al enfocar Perfil, permite reintentar y
-  descarta resultados al desenfocar, reintentar o cambiar de identidad. No cachea
-  perfiles entre cuentas ni cambia la sesión Supabase por un fallo del backend.
-- `src/components/perfil/ContenidoPerfil.tsx`: carga, error/pendiente, reintento,
-  presentación de datos personales y secciones no disponibles. No inventa
-  reputación, contadores, publicaciones ni estado de publicación del usuario.
-- `src/app/(tabs)/perfil.tsx`: conecta el hook con la pantalla. Conserva el cierre
-  local de sesión de A05 y usa un avatar neutro si no hay foto respaldada.
-- `src/components/perfil/FormularioPerfilLocal.tsx`: formulario previo trasladado
-  como referencia para A09; no está montado. Su lógica local y campos deberán
-  revisarse con el contrato de edición antes de conectarlo a PATCH. No significa
-  que edad, ubicación o preferencias estén aprobadas como campos editables.
+PerfilPropioTi2 tiene siete claves obligatorias; todas salvo nombre admiten null.
+El servicio valida estructura, tipos y edad numérica entera antes de proyectar.
 
-No se añade un modo demo en la app ni se cambia el estado de autenticación A06.
-Otras pantallas que usan datos simulados conservan su alcance pendiente.
+| Campo de API | Presentación |
+| --- | --- |
+| nombre | Nombre de la tarjeta principal. |
+| edad | Edad devuelta, sin habilitar edición ni derivar una fecha ficticia. |
+| ocupacion | Ocupación. |
+| ciudad | Ubicación. |
+| breve_descripcion | Descripción breve de la tarjeta principal. |
+| sobre_mi | Texto extenso de Sobre mí. |
+| foto_perfil | HTTP(S) absoluto o referencia raíz resuelta con la base API. |
 
-## Qué comprobar ahora
+Gustavo aprobó el 04/11 mostrar ambas descripciones por separado. Los textos
+vacíos se presentan como no disponibles. Una foto nula, mal formada o con
+esquema/credenciales inapropiados deja el avatar neutro; no se inventa una foto.
 
-1. Iniciar sesión con la cuenta de pruebas existente y abrir Perfil.
-2. Debe aparecer “Perfil no disponible”, con descripción y botón “Reintentar”.
-   La carga puede ser muy breve porque el bloqueo local responde inmediatamente;
-   no se agrega una demora artificial para que se vea el indicador.
-3. Reintentar mantiene un resultado pendiente mientras no se configure el
-   adaptador real. La sesión sigue abierta y no hay petición a `/usuarios/me`.
-4. No deben aparecer Sofía, su foto, su publicación ni sus evaluaciones en Perfil.
-   Estadísticas y reputación se indican como no disponibles, sin contadores cero.
-5. “Cerrar sesión” debe seguir llevando al login y proteger el acceso posterior.
+La respuesta no incluye email, presupuesto, preferencias, zonas, reputación,
+publicaciones ni estadísticas: permanecen no disponibles. Tampoco se rellenan con
+metadata de Supabase o con Sofía. Campos extra del JSON no amplían el contrato.
 
-## Pruebas controladas
+Solo HTTP 200 con un DTO válido se representa como perfil. Los errores conservan
+código/estado; 404 no se interpreta automáticamente como perfil aún no provisionado.
+204, null, JSON incorrecto y fallos del adaptador nunca se anuncian como éxito.
+
+## Bloques
+
+- src/types/Usuario.ts: DTO PerfilPropioTi2 separado de PerfilPropioVista.
+- src/services/usuariosService.ts: adaptarPerfilTi2 y consultarPerfilPropio. El
+  adaptador real está activo por defecto; sin fallback al antiguo /api/perfil.
+- src/hooks/usePerfilPropio.ts: carga al enfocar, reintento y descarte de respuestas
+  tardías al salir, reintentar o cambiar de identidad; conserva la sesión ante errores.
+- src/components/perfil/ContenidoPerfil.tsx: carga/error, reintento, datos personales,
+  descripción breve y extensa, y secciones no disponibles.
+- src/app/(tabs)/perfil.tsx: conecta hook y vista; mantiene cierre de sesión local.
+- FormularioPerfilLocal.tsx: referencia previa para A09; sigue sin montarse.
+
+## Comprobación manual
+
+1. Configurar Supabase común y Gateway en .env.local, reiniciar/recargar Expo e iniciar sesión.
+2. Abrir Perfil y revisar en Network del navegador GET /usuarios/me y, cuando
+   corresponda, su OPTIONS previo. Un fallo CORS puede verse en la app como red.
+3. Mientras siga el 503/CORS, mostrar error y Reintentar, conservando la sesión.
+   El antiguo bloqueo local por contrato_pendiente ya no es el camino por defecto.
+4. Cuando TI2 habilite el entorno y un perfil de prueba, comprobar nombre, edad,
+   ocupación, ciudad y ambas descripciones del JSON real. Datos no entregados
+   siguen no disponibles; no se sustituyen por ceros ni mocks.
+5. Probar otra cuenta y una respuesta tardía: no debe aparecer el perfil anterior.
+6. Repetir en Expo Go. Cerrar sesión debe conservar el comportamiento de A05/A06.
+
+## Verificación y límites
 
 ```bash
 npm run test:perfil
@@ -63,34 +75,22 @@ npx tsc --noEmit
 npx expo lint
 ```
 
-Las pruebas del servicio sustituyen únicamente el cliente HTTP y pasan un adaptador
-ficticio explícito. No cargan `.env.local`, no usan Supabase ni hacen red.
-Comprueban el bloqueo por contrato, ruta protegida, errores, null/204 y adaptación.
-Las pruebas de contenido renderizan el componente real con hosts mínimos y React
-DOM Server: verifican textos, datos ausentes, cero, listas y ausencia de mocks.
-No acreditan comportamiento nativo ni integración real del backend.
+Las 15 pruebas de Perfil usan un transporte controlado y renderizado del componente
+real con hosts mínimos de React DOM Server. Verifican DTO, nulabilidad, referencias
+de foto, ambas descripciones, errores y ausencia de datos inventados. No cargan
+.env.local, no usan cuentas reales ni prueban conectividad o representación nativa.
+El historial anterior era de 10 pruebas, previo a conectar este adaptador.
 
-Resultado del 2 de noviembre: pasaron las 10 pruebas de Perfil y las 15 de HTTP,
-TypeScript y lint sin errores ni advertencias. Se revisó la app web con Edge en
-un contexto aislado y sesión/entorno ficticios (sin usar cuentas reales): estado
-pendiente, reintento, ausencia de datos demo, cero peticiones externas al consultar,
-sin errores JavaScript, sin desbordamiento horizontal a 390 px y cierre al login.
-Esta revisión no prueba credenciales reales, el endpoint de TI2 ni Expo Go.
+El 04/11 pasaron las 15 pruebas de Perfil, las 21 de HTTP, TypeScript y lint sin
+errores. La exportación web de Expo también terminó correctamente. Estos checks
+no acreditan una respuesta 200 del perfil real ni una prueba nativa de subida.
 
-## Qué falta para completar A08
+Para cerrar A08 faltan GET real satisfactorio con JWT común, evidencia de cuenta y
+perfil asociados, y comprobación visual con datos reales en web/Expo Go. La ausencia
+de perfil requiere que TI2 defina y pruebe su provisión; el móvil no crea una fila
+automáticamente ni deduce ese estado solo por un 404.
 
-1. Recibir URL del Gateway/API y proyecto Supabase del mismo entorno.
-2. Obtener OpenAPI y ejemplos reales del GET: campos, tipos, nombres, null y
-   envoltorio; acordar respuesta cuando existe identidad pero todavía no perfil.
-3. Implementar el adaptador real y sustituir `adaptadorPerfilTi2 = null`.
-   Validar JSON, campos soportados y URL de foto; derivar edad de fecha solo si
-   corresponde al contrato. No convertir un objeto arbitrario con `as UsuarioPerfil`.
-4. Probar GET con JWT válido del mismo proyecto, datos de dos cuentas, campos
-   ausentes y 401/403/404/red/respuesta inválida. Verificar que no aparecen datos
-   anteriores durante cambio de cuenta o respuesta tardía.
-5. Registrar evidencia del endpoint real y SHA desplegado antes de cerrar A08.
-
-No se realiza PATCH, inicialización de perfil ni consulta a publicaciones/reputación
-en esta preparación. La confirmación de correo aprobada reemplaza la verificación
-documental; cualquier indicador de ese estado requiere una fuente autorizada y
-no debe presentarse como comprobación de identidad documental.
+A09 sigue pendiente: acordar campos editables y realizar PATCH seguido de GET.
+El PATCH publicado permite editar edad mientras el registro conserva fecha de
+nacimiento; esa discrepancia requiere acuerdo antes de habilitar edición. No se
+añade verificación documental ni un indicador de identidad validada por documentos.
