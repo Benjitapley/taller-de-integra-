@@ -12,6 +12,7 @@ export type OcupacionUsuario =
  * FR-03, FR-12 y FR-13 del SRS.
  */
 export interface Usuario {
+  /** ID de negocio de Roomies; no corresponde al UUID de Supabase Auth. */
   idUsuario: number;
   rol: RolUsuario;
   nombre: string;

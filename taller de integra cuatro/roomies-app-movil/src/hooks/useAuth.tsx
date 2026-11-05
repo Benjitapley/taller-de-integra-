@@ -1,89 +1,147 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import type { UsuarioPerfil } from "@/types/Usuario";
-import { credencialesMock } from "@/mocks/auth";
+import * as Linking from "expo-linking";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { estaSupabaseConfigurado, getSupabaseClient } from "@/lib/supabase";
+import {
+  cerrarSesionSupabase,
+  confirmarRegistroSupabase,
+  iniciarSesionSupabase,
+  registrarCuentaSupabase,
+} from "@/services/authService";
+import type {
+  DatosRegistro,
+  ResultadoCierreSesion,
+  ResultadoConfirmacion,
+  ResultadoInicioSesion,
+  ResultadoRegistro,
+  SesionSupabase,
+  UsuarioActual,
+} from "@/types/Auth";
 
 interface AuthContextValue {
-  usuario: UsuarioPerfil | null;
+  sesion: SesionSupabase | null;
+  usuarioActual: UsuarioActual | null;
   estaAutenticado: boolean;
-  iniciarSesion: (email: string, password: string) => Promise<boolean>;
-  registrarCuenta: (datos: {
-    nombre: string;
-    email: string;
-    password: string;
-  }) => Promise<boolean>;
-  cerrarSesion: () => void;
+  restaurandoSesion: boolean;
+  errorRestauracion: string | null;
+  reintentarRestauracion: () => void;
+  iniciarSesion: (email: string, password: string) => Promise<ResultadoInicioSesion>;
+  registrarCuenta: (datos: DatosRegistro) => Promise<ResultadoRegistro>;
+  confirmarRegistro: (enlace: string) => Promise<ResultadoConfirmacion>;
+  cerrarSesion: () => Promise<ResultadoCierreSesion>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<UsuarioPerfil | null>(null);
-  const [credenciales, setCredenciales] = useState(credencialesMock);
+  const [sesion, setSesion] = useState<SesionSupabase | null>(null);
+  const [restaurandoSesion, setRestaurandoSesion] = useState(true);
+  const [errorRestauracion, setErrorRestauracion] = useState<string | null>(null);
+  const [intentoRestauracion, setIntentoRestauracion] = useState(0);
 
-  async function iniciarSesion(email: string, password: string) {
-    const credencial = credenciales.find(
-      (item) =>
-        item.usuario.email.toLowerCase() === email.trim().toLowerCase() &&
-        item.password === password,
-    );
+  useEffect(() => {
+    let vigente = true;
+    let sesionActualizadaPorEvento = false;
+    let desuscribir = () => {};
 
-    if (!credencial) {
-      return false;
+    async function recuperarSesion() {
+      try {
+        if (!estaSupabaseConfigurado()) {
+          if (vigente) setSesion(null);
+          return;
+        }
+
+        const supabase = getSupabaseClient();
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          (evento, nuevaSesion) => {
+            if (!vigente || evento === "INITIAL_SESSION") return;
+            // Callback síncrono: no llamar métodos de Auth desde esta notificación.
+            sesionActualizadaPorEvento = true;
+            setSesion(nuevaSesion);
+            setErrorRestauracion(null);
+            setRestaurandoSesion(false);
+          },
+        );
+        desuscribir = () => subscription.unsubscribe();
+
+        // La lectura inicial permite distinguir un error de una sesión inexistente.
+        // INITIAL_SESSION se ignora porque no proporciona el error de recuperación.
+        const { data, error } = await supabase.auth.getSession();
+        if (!vigente || sesionActualizadaPorEvento) return;
+        if (error) throw error;
+        setSesion(data.session);
+        setErrorRestauracion(null);
+      } catch {
+        if (!vigente || sesionActualizadaPorEvento) return;
+        setSesion(null);
+        setErrorRestauracion("No pudimos recuperar tu sesión. Revisa tu conexión y vuelve a intentarlo.");
+      } finally {
+        // Un login/logout o una renovación posterior tienen prioridad sobre la lectura inicial.
+        if (vigente && !sesionActualizadaPorEvento) setRestaurandoSesion(false);
+      }
     }
 
-    setUsuario(credencial.usuario);
-    return true;
-  }
-
-  async function registrarCuenta(datos: {
-    nombre: string;
-    email: string;
-    password: string;
-  }) {
-    const correoExiste = credenciales.some(
-      (item) => item.usuario.email.toLowerCase() === datos.email.trim().toLowerCase(),
-    );
-
-    if (correoExiste) {
-      return false;
-    }
-
-    const nuevoUsuario: UsuarioPerfil = {
-      idUsuario: Date.now(),
-      rol: "Usuario",
-      nombre: datos.nombre.trim(),
-      email: datos.email.trim(),
-      fechaNacimiento: "",
-      estadoVerificacion: "Pendiente",
-      presupuesto: 0,
-      zonaInteres: "",
-      ocupacion: "Estudiante",
-      fotoPerfilUrl: undefined,
-      calificacionPromedio: undefined,
-      cantidadEvaluaciones: 0,
+    void recuperarSesion();
+    return () => {
+      vigente = false;
+      desuscribir();
     };
+  }, [intentoRestauracion]);
 
-    setCredenciales((actuales) => [
-      ...actuales,
-      { usuario: nuevoUsuario, password: datos.password },
-    ]);
-    setUsuario(nuevoUsuario);
-    return true;
-  }
+  const reintentarRestauracion = useCallback(() => {
+    setErrorRestauracion(null);
+    setRestaurandoSesion(true);
+    setIntentoRestauracion((intento) => intento + 1);
+  }, []);
 
-  function cerrarSesion() {
-    setUsuario(null);
-  }
+  // El servicio ejecuta la operación; la suscripción refleja la sesión del SDK.
+  const iniciarSesion = useCallback(
+    (email: string, password: string) => iniciarSesionSupabase(email, password),
+    [],
+  );
 
-  const value = useMemo(
+  const registrarCuenta = useCallback(
+    (datos: DatosRegistro) => registrarCuentaSupabase(datos, Linking.createURL("/auth/callback")),
+    [],
+  );
+
+  const confirmarRegistro = useCallback(
+    (enlace: string) => confirmarRegistroSupabase(enlace),
+    [],
+  );
+
+  const cerrarSesion = useCallback(() => cerrarSesionSupabase(), []);
+
+  const value = useMemo<AuthContextValue>(
     () => ({
-      usuario,
-      estaAutenticado: usuario !== null,
+      sesion,
+      usuarioActual: sesion ? { identidad: sesion.user, perfil: null } : null,
+      estaAutenticado: sesion !== null,
+      restaurandoSesion,
+      errorRestauracion,
+      reintentarRestauracion,
       iniciarSesion,
       registrarCuenta,
+      confirmarRegistro,
       cerrarSesion,
     }),
-    [usuario],
+    [
+      sesion,
+      restaurandoSesion,
+      errorRestauracion,
+      reintentarRestauracion,
+      iniciarSesion,
+      registrarCuenta,
+      confirmarRegistro,
+      cerrarSesion,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
