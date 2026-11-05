@@ -4,13 +4,16 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { CustomButton } from "@/components/CustomButton";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { iniciarCicloSesionSupabase } from "@/lib/supabase";
+import { ConvivenciaDemoProvider } from "@/components/convivencia/ConvivenciaDemoProvider";
 
 export default function RootLayout() {
   useEffect(() => iniciarCicloSesionSupabase(), []);
 
   return (
     <AuthProvider>
-      <NavegacionPrincipal />
+      <ConvivenciaDemoProvider>
+        <NavegacionPrincipal />
+      </ConvivenciaDemoProvider>
     </AuthProvider>
   );
 }
@@ -55,6 +58,10 @@ function NavegacionPrincipal() {
             headerTintColor: "#4F46E5",
           }}
         />
+        <Stack.Screen name="arriendo/index" options={{ headerShown: true, title: "Arriendo", headerTintColor: "#4F46E5" }} />
+        <Stack.Screen name="arriendo/chat" options={{ headerShown: false }} />
+        <Stack.Screen name="chats/index" options={{ headerShown: true, title: "Chats", headerTintColor: "#4F46E5" }} />
+        <Stack.Screen name="chats/[id]" options={{ headerShown: true, title: "Chat", headerTintColor: "#4F46E5" }} />
       </Stack.Protected>
     </Stack>
   );

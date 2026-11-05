@@ -96,3 +96,9 @@ export interface PerfilPropioVista {
   preferencias: string[] | null;
   buscaEn: string[] | null;
 }
+
+export interface FiltrosPersona {
+  presupuestoMaximo?: number;
+  zonaInteres?: string;
+  soloVerificados?: boolean;
+}
