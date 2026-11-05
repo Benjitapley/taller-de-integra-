@@ -9,6 +9,8 @@ type Props = {
 };
 
 export default function CompositorMensaje({ valor, onCambiarValor, onEnviar }: Props) {
+  const vacio = valor.trim() === "";
+
   return (
     <View style={styles.barraEscribir}>
       <Ionicons name="add-circle" size={28} color="#4F46E5" />
@@ -20,9 +22,16 @@ export default function CompositorMensaje({ valor, onCambiarValor, onEnviar }: P
         style={styles.inputEscribir}
         onSubmitEditing={onEnviar}
         returnKeyType="send"
+        submitBehavior="submit"
       />
       <Ionicons name="happy-outline" size={22} color="#9CA3AF" />
-      <Pressable style={styles.botonEnviar} onPress={onEnviar}>
+      <Pressable
+        style={[styles.botonEnviar, vacio && styles.botonEnviarInactivo]}
+        onPress={onEnviar}
+        disabled={vacio}
+        accessibilityRole="button"
+        accessibilityLabel="Enviar mensaje"
+      >
         <Ionicons name="send" size={16} color="#fff" />
       </Pressable>
     </View>
@@ -57,4 +66,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  botonEnviarInactivo: { opacity: 0.4 },
 });

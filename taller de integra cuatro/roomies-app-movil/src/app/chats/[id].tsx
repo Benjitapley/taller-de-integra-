@@ -1,9 +1,8 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import CompositorMensaje from "@/components/chat/CompositorMensaje";
+import { StyleSheet, Text, View } from "react-native";
+import ContenedorChat from "@/components/chat/ContenedorChat";
 import EncabezadoContextual from "@/components/chat/EncabezadoContextual";
-import ListaMensajes from "@/components/chat/ListaMensajes";
 import { CHATS_EXPLORATORIOS_MOCK } from "@/data/chatsMock";
 import { USUARIO_ACTUAL_MOCK } from "@/data/convivenciaMock";
 import type { MensajeConvivencia } from "@/types/Convivencia";
@@ -60,29 +59,25 @@ export default function ChatContextual() {
       },
     ]);
     setTexto("");
-    // Solo en memoria: no hay persistencia ni backend de Mensajería todavía
-    // (contrato pendiente para Sprint 3, ver M4-D11).
   }
 
   return (
-    <View style={styles.pantalla}>
+    <>
       <Stack.Screen
         options={{ headerShown: true, title: chat.nombreOtraPersona, headerTintColor: "#4F46E5" }}
       />
-      <EncabezadoContextual publicacion={chat.publicacion} />
-
-      <ScrollView contentContainerStyle={styles.contenedorScroll}>
-        <ListaMensajes mensajes={mensajes} />
-      </ScrollView>
-
-      <CompositorMensaje valor={texto} onCambiarValor={setTexto} onEnviar={enviarMensaje} />
-    </View>
+      <ContenedorChat
+        encabezado={<EncabezadoContextual publicacion={chat.publicacion} />}
+        mensajes={mensajes}
+        texto={texto}
+        onCambiarTexto={setTexto}
+        onEnviar={enviarMensaje}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  pantalla: { flex: 1, backgroundColor: "#F9FAFB" },
-  contenedorScroll: { padding: 16, gap: 10 },
   estadoVacio: {
     flex: 1,
     alignItems: "center",

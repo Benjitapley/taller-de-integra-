@@ -28,7 +28,7 @@ function SinArriendo() {
         Cuando te unas a un arriendo o encuentres compañeros de casa, vas a poder ver acá la
         convivencia, las tareas y el chat del grupo.
       </Text>
-      <Pressable style={styles.sinArriendoBoton} onPress={() => router.push("/(tabs)/buscar")}>
+      <Pressable style={styles.sinArriendoBoton} onPress={() => router.dismissTo("/(tabs)/buscar")}>
         <Text style={styles.sinArriendoBotonTexto}>Ir a Buscar</Text>
       </Pressable>
     </View>

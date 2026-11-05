@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { INTEGRANTES_MOCK } from "@/data/convivenciaMock";
 
 const CHATS_SIN_LEER_MOCK = 3;
@@ -8,8 +9,10 @@ const CHATS_SIN_LEER_MOCK = 3;
 const COLORES_AVATAR = ["#C7D2FE", "#FBCFE8", "#BBF7D0", "#FDE68A"];
 
 export default function SelectorChatArriendo() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.pantalla}>
+    <View style={[styles.pantalla, { paddingTop: 20 + insets.top }]}>
       <Text style={styles.titulo}>Chat</Text>
       <Text style={styles.subtitulo}>Elige dónde quieres entrar</Text>
 

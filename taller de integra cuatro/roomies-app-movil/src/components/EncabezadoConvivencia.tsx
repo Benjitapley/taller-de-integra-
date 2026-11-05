@@ -1,14 +1,34 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { IntegranteConvivencia } from "@/types/Convivencia";
 
 type Props = {
   integrantes: IntegranteConvivencia[];
 };
 
+function volver() {
+  if (router.canGoBack()) {
+    router.back();
+  } else {
+    router.replace("/(tabs)/mensajes");
+  }
+}
+
 export default function EncabezadoConvivencia({ integrantes }: Props) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.encabezado}>
+    <View style={[styles.encabezado, { paddingTop: insets.top + 12 }]}>
+      <Pressable
+        onPress={volver}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Volver"
+      >
+        <Ionicons name="chevron-back" size={26} color="#4F46E5" />
+      </Pressable>
       <View style={styles.avataresGrupo}>
         {integrantes.map((integrante, indice) => (
           <Image

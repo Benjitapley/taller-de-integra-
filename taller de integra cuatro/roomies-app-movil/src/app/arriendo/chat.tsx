@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
-import CompositorMensaje from "@/components/chat/CompositorMensaje";
-import ListaMensajes from "@/components/chat/ListaMensajes";
+import ContenedorChat from "@/components/chat/ContenedorChat";
 import EncabezadoConvivencia from "@/components/EncabezadoConvivencia";
 import { INTEGRANTES_MOCK, MENSAJES_MOCK, USUARIO_ACTUAL_MOCK } from "@/data/convivenciaMock";
 import type { MensajeConvivencia } from "@/types/Convivencia";
@@ -34,25 +32,15 @@ export default function ChatArriendo() {
       },
     ]);
     setTexto("");
-    // Nota: esto solo actualiza la lista en memoria. No hay backend ni
-    // socket detrás todavía — eso es la integración de Convivencia en
-    // Sprint 3 (ver M4-D11).
   }
 
   return (
-    <View style={styles.pantalla}>
-      <EncabezadoConvivencia integrantes={INTEGRANTES_MOCK} />
-
-      <ScrollView contentContainerStyle={styles.contenedorScroll}>
-        <ListaMensajes mensajes={mensajes} />
-      </ScrollView>
-
-      <CompositorMensaje valor={texto} onCambiarValor={setTexto} onEnviar={enviarMensaje} />
-    </View>
+    <ContenedorChat
+      encabezado={<EncabezadoConvivencia integrantes={INTEGRANTES_MOCK} />}
+      mensajes={mensajes}
+      texto={texto}
+      onCambiarTexto={setTexto}
+      onEnviar={enviarMensaje}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  pantalla: { flex: 1, backgroundColor: "#F9FAFB" },
-  contenedorScroll: { padding: 16, gap: 10 },
-});

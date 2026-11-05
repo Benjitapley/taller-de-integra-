@@ -1,10 +1,10 @@
 import { router } from "expo-router";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { CHATS_EXPLORATORIOS_MOCK } from "@/data/chatsMock";
 
 export default function ListaChats() {
   return (
-    <View style={styles.contenedor}>
+    <ScrollView style={styles.pantalla} contentContainerStyle={styles.contenedor}>
       {CHATS_EXPLORATORIOS_MOCK.map((chat) => (
         <Pressable
           key={chat.id}
@@ -23,12 +23,13 @@ export default function ListaChats() {
       <Text style={styles.nota}>
         Diseño completo de esta lista: mockup "Lista general de chats" (tarea aparte).
       </Text>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  contenedor: { flex: 1, backgroundColor: "#F9FAFB", padding: 16, gap: 10 },
+  pantalla: { flex: 1, backgroundColor: "#F9FAFB" },
+  contenedor: { padding: 16, gap: 10 },
   fila: {
     flexDirection: "row",
     alignItems: "center",

@@ -38,6 +38,14 @@ export default function RootLayout() {
             headerTintColor: "#4F46E5",
           }}
         />
+        <Stack.Screen
+          name="chats/[id]"
+          options={{
+            headerShown: true,
+            title: "Chat",
+            headerTintColor: "#4F46E5",
+          }}
+        />
       </Stack>
     </AuthProvider>
   );
