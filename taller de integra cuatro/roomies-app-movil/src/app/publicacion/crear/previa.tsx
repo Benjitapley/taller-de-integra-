@@ -9,6 +9,7 @@ import { ENVIAR_DETALLE_MASCOTAS, ENVIAR_ENLACE_REFERENCIA } from "@/constants/c
 import { etiquetaMascota } from "@/constants/mascotas";
 import { paletaPublicacion } from "@/constants/origenPublicacion";
 import { OPCIONES_TIPO_VIVIENDA } from "@/constants/tipoVivienda";
+import { useAuth } from "@/hooks/useAuth";
 import { crearPublicacion } from "@/services/publicacionesService";
 import { colors } from "@/theme/colors";
 import type { FormularioPublicacionValores, Publicacion } from "@/types/Publicacion";
@@ -45,6 +46,7 @@ function textoMascotas(valores: FormularioPublicacionValores): string {
 export default function Previa() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { cerrarSesion } = useAuth();
   // El ref bloquea el doble toque al instante; el estado solo cambia la interfaz.
   const publicandoRef = useRef(false);
   const [publicando, setPublicando] = useState(false);
@@ -141,15 +143,29 @@ export default function Previa() {
       return;
     }
 
-    if (
-      resultado.codigo === "sin_sesion" ||
-      resultado.codigo === "sesion_no_disponible" ||
-      resultado.codigo === "no_autorizado"
-    ) {
-      Alert.alert("Inicia sesión", resultado.error, [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Iniciar sesión", onPress: () => router.push("/login") },
-      ]);
+    // Sin sesión o sesión rechazada por el servicio. /login está protegido por
+    // `Stack.Protected guard={!estaAutenticado}` en app/_layout.tsx, así que no
+    // se puede navegar hasta allí con la sesión activa: se cierra la sesión y
+    // el guard lleva solo a la pantalla de login.
+    // (`sesion_no_disponible` es un fallo pasajero al leer la sesión: no cierra
+    // nada y cae en el aviso genérico de abajo, con opción de reintentar.)
+    if (resultado.codigo === "sin_sesion" || resultado.codigo === "no_autorizado") {
+      Alert.alert(
+        "Tu sesión no es válida",
+        "Vuelve a iniciar sesión para publicar. Al hacerlo se cierra esta pantalla y tendrás que completar el formulario de nuevo.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Iniciar sesión",
+            onPress: async () => {
+              const cierre = await cerrarSesion();
+              if (!cierre.exito && !cierre.sesionLocalCerrada) {
+                Alert.alert("No se pudo cerrar la sesión", cierre.error);
+              }
+            },
+          },
+        ],
+      );
       return;
     }
 
