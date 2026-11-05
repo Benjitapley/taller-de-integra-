@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CustomButton } from "@/components/CustomButton";
 import { PublicacionCard } from "@/components/Publicacion_Card";
@@ -9,10 +9,11 @@ import { ENVIAR_DETALLE_MASCOTAS, ENVIAR_ENLACE_REFERENCIA } from "@/constants/c
 import { etiquetaMascota } from "@/constants/mascotas";
 import { paletaPublicacion } from "@/constants/origenPublicacion";
 import { OPCIONES_TIPO_VIVIENDA } from "@/constants/tipoVivienda";
+import { crearPublicacion } from "@/services/publicacionesService";
 import { colors } from "@/theme/colors";
 import type { FormularioPublicacionValores, Publicacion } from "@/types/Publicacion";
 import { leerBorradorDesdeParams } from "@/utils/borradorPublicacion";
-import { leerFotosBorrador } from "@/utils/fotosBorrador";
+import { leerFotosBorrador, limpiarFotosBorrador } from "@/utils/fotosBorrador";
 
 function FilaDetalle({
   icono,
@@ -44,11 +45,17 @@ function textoMascotas(valores: FormularioPublicacionValores): string {
 export default function Previa() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  // El ref bloquea el doble toque al instante; el estado solo cambia la interfaz.
+  const publicandoRef = useRef(false);
+  const [publicando, setPublicando] = useState(false);
 
   // Al "Volver a editar" regresa al paso anterior (Fotos), que sigue montado con
   // sus fotos y el formulario conserva lo escrito porque nunca se desmonta.
-  const volver = () =>
-    router.canGoBack() ? router.back() : router.replace("/(tabs)/publicar");
+  const volver = () => {
+    if (publicandoRef.current) return; // no salir con un envío en curso
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)/publicar");
+  };
 
   const opcionesHeader = {
     headerShown: true,
@@ -107,6 +114,55 @@ export default function Previa() {
     cuposTotales: Number(valores.cupos),
     cuposDisponibles: Number(valores.cupos),
     imagenPrincipalUrl: fotos[0],
+  };
+
+  // M4-C08: crea la publicación según su origen. Las reglas de negocio las valida
+  // el backend; aquí solo se interpreta su respuesta. Un error nunca se trata
+  // como creación exitosa.
+  const publicar = async () => {
+    if (publicandoRef.current) return;
+    publicandoRef.current = true;
+    setPublicando(true);
+
+    // El servicio guarda UNA imagen: se envía la primera foto del borrador.
+    const resultado = await crearPublicacion(valores, undefined, fotos[0]);
+
+    publicandoRef.current = false;
+    setPublicando(false);
+
+    if (resultado.exito) {
+      limpiarFotosBorrador();
+      // Se cierra el flujo de creación para que "atrás" no vuelva a un formulario lleno.
+      router.dismissAll();
+      router.push({
+        pathname: "/publicacion/[id]",
+        params: { id: String(resultado.datos.id) },
+      });
+      return;
+    }
+
+    if (
+      resultado.codigo === "sin_sesion" ||
+      resultado.codigo === "sesion_no_disponible" ||
+      resultado.codigo === "no_autorizado"
+    ) {
+      Alert.alert("Inicia sesión", resultado.error, [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Iniciar sesión", onPress: () => router.push("/login") },
+      ]);
+      return;
+    }
+
+    // Respuesta 2xx ilegible: la publicación pudo haberse creado.
+    if (resultado.codigo === "respuesta_invalida" && (resultado.estadoHttp ?? 0) < 300) {
+      Alert.alert(
+        "Revisa tus publicaciones",
+        "No pudimos confirmar el resultado. Es posible que la publicación se haya creado: revisa antes de volver a intentarlo.",
+      );
+      return;
+    }
+
+    Alert.alert("No se pudo publicar", resultado.error);
   };
 
   return (
@@ -174,18 +230,15 @@ export default function Previa() {
         </Text>
 
         <View style={styles.acciones}>
-          {/* M4-C08: conectar con la API de creación según el origen. */}
           <CustomButton
-            titulo="Publicar ahora"
-            deshabilitado
-            onPress={() => {}}
+            titulo={publicando ? "Publicando..." : "Publicar ahora"}
+            deshabilitado={publicando}
+            onPress={publicar}
           />
-          <Text style={styles.notaPublicar}>
-            Disponible cuando se conecte con la API (M4-C08).
-          </Text>
           <CustomButton
             titulo="Volver a editar"
             variante="contorno"
+            deshabilitado={publicando}
             onPress={volver}
           />
         </View>
@@ -263,11 +316,6 @@ const styles = StyleSheet.create({
   },
   acciones: {
     gap: 12,
-  },
-  notaPublicar: {
-    fontSize: 12,
-    textAlign: "center",
-    color: paletaPublicacion.textoSecundario,
   },
   vacio: {
     flex: 1,
