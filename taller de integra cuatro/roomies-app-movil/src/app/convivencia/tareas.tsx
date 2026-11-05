@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
-import { TAREAS_MOCK, TAREAS_PROXIMAS_MOCK } from "@/data/convivenciaMock";
+import { useConvivenciaDemo } from "@/hooks/useConvivenciaDemo";
 import type { TareaConvivencia } from "@/types/Convivencia";
 
 // Subpantalla de MOB-11: detalle completo de tareas de convivencia,
@@ -42,11 +42,14 @@ function Seccion({ titulo, tareas }: { titulo: string; tareas: TareaConvivencia[
   );
 }
 
+
 export default function TareasConvivencia() {
+  const { tareas, tareasProximas } = useConvivenciaDemo();
+
   return (
     <ScrollView style={styles.pantalla} contentContainerStyle={styles.contenedor}>
-      <Seccion titulo="Tareas de esta semana" tareas={TAREAS_MOCK} />
-      <Seccion titulo="Próximas tareas" tareas={TAREAS_PROXIMAS_MOCK} />
+      <Seccion titulo="Tareas de esta semana" tareas={tareas} />
+      <Seccion titulo="Próximas tareas" tareas={tareasProximas} />
     </ScrollView>
   );
 }

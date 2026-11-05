@@ -47,7 +47,8 @@
     "lint": "expo lint",
     "test:http": "node --test tests/httpClient.test.mjs",
     "test:perfil": "node --test tests/usuariosService.test.mjs tests/perfil.test.mjs",
-    "test:publicaciones": "node --test tests/publicacionesService.test.mjs"
+    "test:publicaciones": "node --test tests/publicacionesService.test.mjs",
+    "test:convivencia": "node --test tests/convivencia.test.mjs"
   },
   "private": true
 }
