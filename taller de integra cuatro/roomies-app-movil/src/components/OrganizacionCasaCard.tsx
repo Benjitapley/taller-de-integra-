@@ -11,7 +11,7 @@ import type { TareaConvivencia } from "@/types/Convivencia";
 type Props = {
   tareas: TareaConvivencia[];
   onVerTodo?: () => void;
-  onAgregar?: () => void; 
+  onAgregar?: () => void;
 };
 
 export default function OrganizacionCasaCard({ tareas, onVerTodo, onAgregar }: Props) {

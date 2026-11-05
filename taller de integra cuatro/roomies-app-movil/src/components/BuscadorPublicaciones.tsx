@@ -8,6 +8,8 @@ import FiltrosModal, {
 import { PublicacionCard } from "@/components/Publicacion_Card";
 import { publicacionesMock } from "@/mocks";
 import type { Publicacion } from "@/types/Publicacion";
+import EstadoVacio from './EstadoVacio';
+
 
 function coincideBusqueda(publicacion: Publicacion, busqueda: string): boolean {
   const termino = busqueda.trim().toLocaleLowerCase("es-CL");
@@ -47,19 +49,21 @@ function coincideFiltros(
   return coincideZona && coincidePersonas && coincidePrecio;
 }
 
-export default function BuscadorPublicaciones() {
+type Props = { publicaciones?: readonly Publicacion[] };
+
+export default function BuscadorPublicaciones({ publicaciones = publicacionesMock }: Props) {
   const [busqueda, setBusqueda] = useState("");
   const [filtrosVisibles, setFiltrosVisibles] = useState(false);
   const [filtros, setFiltros] = useState<FiltrosSeleccionados>(FILTROS_VACIOS);
 
   const publicacionesFiltradas = useMemo(
     () =>
-      publicacionesMock.filter(
+      publicaciones.filter(
         (publicacion) =>
           coincideBusqueda(publicacion, busqueda) &&
           coincideFiltros(publicacion, filtros),
       ),
-    [busqueda, filtros],
+    [publicaciones, busqueda, filtros],
   );
 
   const hayFiltrosActivos =
@@ -103,14 +107,11 @@ export default function BuscadorPublicaciones() {
           ))}
         </View>
       ) : (
-        <View style={styles.sinResultados}>
-          <Text style={styles.sinResultadosTitulo}>
-            No encontramos publicaciones
-          </Text>
-          <Text style={styles.sinResultadosTexto}>
-            Prueba con otra búsqueda o modifica los filtros.
-          </Text>
-        </View>
+        <EstadoVacio
+            titulo="No encontramos publicaciones"
+            mensaje="Prueba buscando en otras zonas o flexibiliza el precio máximo en los filtros."
+            icono="home-outline"
+        />
       )}
 
       <FiltrosModal

@@ -16,6 +16,10 @@ function horaActualTexto(): string {
 
 export default function ChatContextual() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  return <Conversacion key={id} id={id} />;
+}
+
+function Conversacion({ id }: { id: string }) {
   const chat = CHATS_EXPLORATORIOS_MOCK.find((c) => c.id === id);
 
   const [mensajes, setMensajes] = useState<MensajeConvivencia[]>(chat?.mensajes ?? []);

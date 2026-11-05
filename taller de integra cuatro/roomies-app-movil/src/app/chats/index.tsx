@@ -21,7 +21,7 @@ export default function ListaChats() {
         </Pressable>
       ))}
       <Text style={styles.nota}>
-        Diseño completo de esta lista: mockup "Lista general de chats" (tarea aparte).
+        Conversaciones de demostración.
       </Text>
     </ScrollView>
   );

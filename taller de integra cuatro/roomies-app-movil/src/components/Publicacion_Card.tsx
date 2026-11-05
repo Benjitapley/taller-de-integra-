@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Card } from './Card';
+import { GaleriaFotos } from '@/components/publicaciones/GaleriaFotos';
 import { colors } from '@/theme/colors';
 import type { Publicacion } from '@/types/Publicacion';
 import { configPorOrigen, estiloPorTipo, paletaPublicacion } from '@/constants/origenPublicacion';
@@ -11,6 +12,14 @@ interface PublicacionCardProps {
     publicacion: Publicacion;
     onPress?: () => void;
     onPressMenu?: () => void;
+    /**
+     * Borrador que todavía no existe en el backend (M4-C05): la tarjeta no es
+     * tocable (no hay detalle al que ir), muestra la descripción completa para
+     * poder revisarla y no dice "Publicado hace...".
+     */
+    modoVistaPrevia?: boolean;
+    /** Varias fotos (la primera es la principal). Si se omite se usa imagenPrincipalUrl. */
+    imagenesUrls?: string[];
 }
 
 type NombreIcono = keyof typeof Ionicons.glyphMap;
@@ -37,11 +46,19 @@ export const PublicacionCard: React.FC<PublicacionCardProps> = ({
     publicacion,
     onPress,
     onPressMenu,
+    modoVistaPrevia = false,
+    imagenesUrls,
 }) => {
     const router = useRouter();
     const config = configPorOrigen[publicacion.tipo];
     const estilo = estiloPorTipo[publicacion.tipo];
-    const imagenUrl = publicacion.imagenPrincipalUrl;
+    const imagenes =
+        imagenesUrls && imagenesUrls.length > 0
+            ? imagenesUrls
+            : publicacion.imagenPrincipalUrl
+              ? [publicacion.imagenPrincipalUrl]
+              : [];
+    const imagenUrl = imagenes[0];
 
     const irAlDetalle = () =>
         router.push({
@@ -51,12 +68,14 @@ export const PublicacionCard: React.FC<PublicacionCardProps> = ({
 
     return (
         <Card
-            onPress={onPress ?? irAlDetalle}
+            onPress={modoVistaPrevia ? undefined : (onPress ?? irAlDetalle)}
             style={styles.card}
         >
             <View style={styles.recorte} accessible accessibilityLabel={`${config.etiqueta}: ${publicacion.titulo}`}>
                 <View style={styles.cuerpo}>
-                    {imagenUrl ? (
+                    {imagenes.length > 1 ? (
+                        <GaleriaFotos urls={imagenes} altura={styles.imagen.height} />
+                    ) : imagenUrl ? (
                         <Image source={{ uri: imagenUrl }} style={styles.imagen} resizeMode="cover" />
                     ) : (
                         <View style={[styles.imagen, styles.imagenVacia]}>
@@ -93,11 +112,16 @@ export const PublicacionCard: React.FC<PublicacionCardProps> = ({
                             </Text>
                         </View>
 
-                        <Text style={styles.descripcion} numberOfLines={3}>
+                        <Text
+                            style={styles.descripcion}
+                            numberOfLines={modoVistaPrevia ? undefined : 3}
+                        >
                             {publicacion.descripcion}
                         </Text>
 
-                        <Text style={styles.publicado}>Publicado hace recientemente</Text>
+                        {modoVistaPrevia ? null : (
+                            <Text style={styles.publicado}>Publicado hace recientemente</Text>
+                        )}
                     </View>
                 </View>
 

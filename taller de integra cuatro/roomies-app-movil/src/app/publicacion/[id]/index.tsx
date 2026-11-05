@@ -1,17 +1,17 @@
-import React from 'react';
-import { ScrollView, View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { CustomButton } from '@/components/CustomButton';
-import { publicacionesMock, usuariosMock } from '@/mocks';
-import {
-    TITULO_PUBLICACION,
-    configPorEstado,
-    configPorOrigen,
-    estiloPorTipo,
-    paletaPublicacion,
-} from '@/constants/origenPublicacion';
+import { usuariosMock } from '@/mocks';
+import { obtenerPublicacionPorId } from '@/services/publicacionesService';
+import type { Publicacion } from '@/types/Publicacion';
+import { useAuth } from '@/hooks/useAuth';
+import { postularAPublicacion } from '@/services/postulacionesService';
+import { TITULO_PUBLICACION, configPorEstado, configPorOrigen, ctaPorOrigen, estiloPorTipo, paletaPublicacion } from '@/constants/origenPublicacion';
+
+const MI_POSTULACION_LISTA = true;
 
 function formatoPrecio(precio: number): string {
     return `$${String(precio).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} CLP`;
@@ -19,7 +19,28 @@ function formatoPrecio(precio: number): string {
 
 export default function PublicacionDetallePantalla() {
     const { id } = useLocalSearchParams<{ id: string }>();
+    return <DetallePublicacion key={id} id={id} />;
+}
+
+function DetallePublicacion({ id }: { id: string }) {
     const router = useRouter();
+    const { estaAutenticado, cerrarSesion } = useAuth();
+    const [postulando, setPostulando] = useState(false);
+    const [postulada, setPostulada] = useState(false);
+    const postulandoRef = useRef(false); // evita el doble toque antes del re-render
+    const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
+    const [cargando, setCargando] = useState(true);
+    const [errorCarga, setErrorCarga] = useState(false);
+    const [intento, setIntento] = useState(0);
+
+    useEffect(() => {
+        let activo = true;
+        obtenerPublicacionPorId(id)
+            .then((datos) => { if (activo) setPublicacion(datos); })
+            .catch(() => { if (activo) setErrorCarga(true); })
+            .finally(() => { if (activo) setCargando(false); });
+        return () => { activo = false; };
+    }, [id, intento]);
 
     const opcionesHeader = {
         headerShown: true,
@@ -39,8 +60,23 @@ export default function PublicacionDetallePantalla() {
         ),
     };
 
-    // Datos simulados de mocks
-    const publicacion = publicacionesMock.find((p) => p.idPublicacion === Number(id));
+    if (cargando || errorCarga) {
+        return (
+            <View style={styles.vacio}>
+                <Stack.Screen options={opcionesHeader} />
+                {cargando ? <ActivityIndicator size="large" color={colors.primary} /> : (
+                    <>
+                        <Text style={styles.vacioTitulo}>No pudimos cargar la publicación</Text>
+                        <CustomButton titulo="Reintentar" onPress={() => {
+                            setCargando(true);
+                            setErrorCarga(false);
+                            setIntento((valor) => valor + 1);
+                        }} />
+                    </>
+                )}
+            </View>
+        );
+    }
 
     if (!publicacion) {
         return (
@@ -61,6 +97,106 @@ export default function PublicacionDetallePantalla() {
     const config = configPorOrigen[publicacion.tipo];
     const estilo = estiloPorTipo[publicacion.tipo];
     const estado = configPorEstado[publicacion.estado];
+    const cta = ctaPorOrigen[publicacion.tipo];
+    const cerrada = publicacion.estado === 'Cerrada';
+
+    // M4-C10: postular a una publicación de Arrendador. Las reglas (cupos, postulación
+    // repetida, publicación propia, correo confirmado) las valida el backend; aquí solo
+    // se interpreta su respuesta. Un error nunca se trata como postulación exitosa.
+    const postular = async () => {
+        if (postulandoRef.current) return;
+        postulandoRef.current = true;
+        setPostulando(true);
+
+        const resultado = await postularAPublicacion(Number(id));
+
+        postulandoRef.current = false;
+        setPostulando(false);
+
+        if (resultado.exito) {
+            setPostulada(true);
+            const mensaje = `Tu postulación quedó en estado ${resultado.datos.estado}.`;
+            Alert.alert(
+                'Postulación enviada',
+                mensaje,
+                MI_POSTULACION_LISTA
+                    ? [
+                          { text: 'Ahora no', style: 'cancel' },
+                          {
+                              text: 'Ver mi postulación',
+                              onPress: () =>
+                                   router.push(
+                                      `/postulaciones?idPublicacion=${encodeURIComponent(String(id))}` as Href,
+                                  ),
+                          },
+                      ]
+                    : [{ text: 'Entendido' }],
+            );
+            return;
+        }
+
+        // /login solo existe sin sesión (Stack.Protected en app/_layout.tsx). Con una
+        // sesión que el servicio rechazó no se puede navegar hasta allí: se cierra la
+        // sesión y el guard lleva solo al login. Sin sesión se va directo.
+        // (`sesion_no_disponible` es un fallo pasajero: no cierra nada y cae en el
+        // aviso genérico de abajo.)
+        if (resultado.codigo === 'sin_sesion' || resultado.codigo === 'no_autorizado') {
+            Alert.alert('Inicia sesión', resultado.error, [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Iniciar sesión',
+                    onPress: async () => {
+                        if (!estaAutenticado) {
+                            router.push('/login');
+                            return;
+                        }
+                        const cierre = await cerrarSesion();
+                        if (!cierre.exito && !cierre.sesionLocalCerrada) {
+                            Alert.alert('No se pudo cerrar la sesión', cierre.error);
+                        }
+                    },
+                },
+            ]);
+            return;
+        }
+
+        if (resultado.codigo === 'respuesta_invalida' && (resultado.estadoHttp ?? 0) < 300) {
+            Alert.alert(
+                'Revisa tu postulación',
+                'No pudimos confirmar el resultado. Es posible que tu postulación se haya enviado: revísalo antes de volver a intentarlo.',
+            );
+            return;
+        }
+
+        // El backend usa 409 (ya postulaste, sin cupos o publicación cerrada) y 403
+        // (publicación propia o correo sin confirmar). El cliente HTTP los reduce a un
+        // mensaje genérico, así que aquí se explican con las reglas conocidas.
+        if (resultado.estadoHttp === 409) {
+            Alert.alert(
+                'No se pudo postular',
+                'Ya tienes una postulación vigente a esta publicación, o ya no tiene cupos disponibles.',
+            );
+            return;
+        }
+        if (resultado.estadoHttp === 403) {
+            Alert.alert(
+                'No se pudo postular',
+                'Para postular debes tener el correo confirmado y la publicación no puede ser tuya.',
+            );
+            return;
+        }
+
+        Alert.alert('No se pudo postular', resultado.error);
+    };
+
+    const accionPrincipal = () => {
+        // Compartida no recibe postulaciones: su contacto depende de Match (TI2).
+        if (publicacion.tipo !== 'Arrendador') {
+            Alert.alert(cta.etiqueta, cta.avisoPendiente);
+            return;
+        }
+        void postular();
+    };
     const autor = usuariosMock.find((u) => u.idUsuario === publicacion.idUsuario);
     const cuposTexto =
         publicacion.cuposDisponibles > 0
@@ -158,6 +294,18 @@ export default function PublicacionDetallePantalla() {
 
                 </View>
             </ScrollView>
+
+            <View style={styles.pie}>
+                <CustomButton
+                    titulo={
+                        cerrada ? 'Publicación cerrada' : postulada ? 'Postulación enviada' : cta.etiqueta
+                    }
+                    onPress={accionPrincipal}
+                    cargando={postulando}
+                    deshabilitado={cerrada || postulada}
+                />
+                {!cerrada ? <Text style={styles.pieNota}>{cta.nota}</Text> : null}
+            </View>
         </>
     );
 }
@@ -168,7 +316,19 @@ const styles = StyleSheet.create({
         backgroundColor: colors.background,
     },
     contenido: {
+        paddingBottom: 16,
+    },
+    pie: {
+        paddingHorizontal: 20,
+        paddingTop: 12,
         paddingBottom: 32,
+        backgroundColor: colors.background,
+    },
+    pieNota: {
+        fontSize: 12,
+        textAlign: 'center',
+        color: paletaPublicacion.textoSecundario,
+        marginTop: 8,
     },
     imagen: {
         width: '100%',

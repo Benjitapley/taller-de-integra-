@@ -75,7 +75,7 @@ function DashboardActivo() {
         <View style={{ flex: 1 }}>
           <Text style={styles.tarjetaChatTitulo}>Chat del arriendo</Text>
           <Text style={styles.tarjetaChatSubtitulo} numberOfLines={1}>
-            Roomies · "{ULTIMO_MENSAJE_ARRIENDO_MOCK.texto}"
+            Roomies · &quot;{ULTIMO_MENSAJE_ARRIENDO_MOCK.texto}&quot;
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color="#4F46E5" />

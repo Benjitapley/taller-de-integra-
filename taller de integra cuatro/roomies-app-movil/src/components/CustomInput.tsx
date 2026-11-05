@@ -1,12 +1,5 @@
 import React, { useState } from "react";
-import {
-  View,
-  TextInput,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInputProps,
-} from "react-native";
+import { View, TextInput, Text, StyleSheet, TouchableOpacity, TextInputProps } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 
@@ -15,8 +8,10 @@ interface CustomInputProps extends TextInputProps {
   icono: keyof typeof Ionicons.glyphMap;
   esContrasena?: boolean;
   error?: string;
+  ayuda?: string;
   mostrarIconoInterior?: boolean;
   iconoDerecho?: keyof typeof Ionicons.glyphMap;
+  multilinea?: boolean;
 }
 
 export const CustomInput: React.FC<CustomInputProps> = ({
@@ -24,8 +19,10 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   icono,
   esContrasena = false,
   error,
+  ayuda,
   mostrarIconoInterior = true,
   iconoDerecho,
+  multilinea = false,
   ...rest
 }) => {
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
@@ -44,7 +41,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         <Text style={styles.etiqueta}>{etiqueta}</Text>
       </View>
 
-      <View style={[styles.inputWrapper, error && styles.inputWrapperError]}>
+      <View style={[styles.inputWrapper,multilinea && styles.inputWrapperMultilinea, error && styles.inputWrapperError]}>
         {mostrarIconoInterior && (
           <Ionicons
             name={icono}
@@ -55,7 +52,8 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         )}
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, multilinea && styles.inputMultilinea]}
+          multiline={multilinea}
           placeholderTextColor="#9CA3AF"
           secureTextEntry={esContrasena && !mostrarContrasena}
           {...rest}
@@ -80,7 +78,11 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         )}
       </View>
 
-      {error && <Text style={styles.textoError}>{error}</Text>}
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.textoError}>{error}</Text>
+      ) : ayuda ? (
+        <Text style={styles.textoAyuda}>{ayuda}</Text>
+      ) : null}
     </View>
   );
 };
@@ -126,5 +128,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#B42318",
     marginTop: 4,
+  },
+  inputMultilinea: {
+    minHeight: 84,
+    textAlignVertical: "top",
+  },
+  inputWrapperMultilinea: {
+    height: undefined,
+    minHeight: 110,
+    alignItems: "flex-start",
+    paddingVertical: 12,
+  },
+  textoAyuda: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 4,
+    lineHeight: 18,
   },
 });
