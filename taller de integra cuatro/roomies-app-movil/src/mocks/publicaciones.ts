@@ -66,4 +66,16 @@ export const publicacionesMock: Publicacion[] = [
     cuposDisponibles: 1,
     imagenPrincipalUrl: 'https://images.unsplash.com/photo-1560185008-b033106af5c3?auto=format&fit=crop&w=900&q=80',
   },
+  {
+    idPublicacion: 6,
+    idUsuario: 4,
+    tipo: 'Arrendador',
+    titulo: 'Pieza en casa cerca del centro',
+    descripcion: 'Pieza individual en casa con cocina y baño compartidos.',
+    precio: 160000,
+    ubicacion: 'Temuco Centro',
+    estado: 'Disponible',
+    cuposTotales: 2,
+    cuposDisponibles: 1,
+  },
 ];

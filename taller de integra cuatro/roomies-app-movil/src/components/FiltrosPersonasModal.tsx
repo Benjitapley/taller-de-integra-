@@ -25,7 +25,7 @@ export default function FiltrosPersonasModal({ visible, onClose, filtrosActuales
                     <Text style={styles.titulo}>Filtros de Búsqueda</Text>
 
                     <Text style={styles.label}>Zona de interés</Text>
-                    <TextInput 
+                    <TextInput
                         style={styles.input}
                         placeholder="Ej. Providencia"
                         value={filtros.zonaInteres || ''}
@@ -33,7 +33,7 @@ export default function FiltrosPersonasModal({ visible, onClose, filtrosActuales
                     />
 
                     <Text style={styles.label}>Presupuesto Máximo (CLP)</Text>
-                    <TextInput 
+                    <TextInput
                         style={styles.input}
                         placeholder="Ej. 300000"
                         keyboardType="numeric"
@@ -43,7 +43,7 @@ export default function FiltrosPersonasModal({ visible, onClose, filtrosActuales
 
                     <View style={styles.filaSwitch}>
                         <Text style={styles.labelSwitch}>Solo cuentas verificadas</Text>
-                        <Switch 
+                        <Switch
                             value={filtros.soloVerificados || false}
                             onValueChange={(val) => setFiltros({ ...filtros, soloVerificados: val })}
                             trackColor={{ true: colors.success }}

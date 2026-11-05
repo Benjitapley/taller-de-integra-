@@ -39,3 +39,44 @@ export const paletaPublicacion = {
   textoSecundario: '#6B7280',
   fondoSuave: '#F3F1FF',
 };
+
+// Textos de Formularios dependiendo del origen de la publicación (Compartida o Arrendador)
+export const textosFormularioPorOrigen: Record< 
+  TipoPublicacion,
+  {
+    tituloPantalla: string;
+    placeholderTitulo: string;
+    mostrarEnlace: boolean;
+    nota?: string;
+  }
+> = {
+  Compartida: {
+    tituloPantalla: 'Compartir una oportunidad',
+    placeholderTitulo: 'Busco roomie para departamento',
+    mostrarEnlace: true, // Enlace de publicacion externa (solo aplica a Compartida)
+  },
+  Arrendador: {
+    tituloPantalla: 'Publicar un arriendo',
+    placeholderTitulo: 'Depto. con habitación disponible',
+    mostrarEnlace: false, 
+    nota: 'Las reglas y condiciones se completarán en los próximos pasos.',
+  },
+
+  
+};
+
+export const ctaPorOrigen: Record<
+  TipoPublicacion,
+  { etiqueta: string; nota: string; avisoPendiente: string }
+> = {
+  Arrendador: {
+    etiqueta: 'Postular al arriendo',
+    nota: 'Chat disponible solo tras preselección',
+    avisoPendiente: 'La postulación se habilitará en la tarea M4-C10.',
+  },
+  Compartida: {
+    etiqueta: 'Contactar usuario',
+    nota: 'El contacto no habilita un chat por sí solo',
+    avisoPendiente: 'El contacto depende del servicio de conexión de TI2 (Match).',
+  },
+};

@@ -2,39 +2,27 @@ import { useEffect, useState } from "react";
 import { Text, View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
 import { colors } from "@/theme/colors";
 import { paletaPublicacion } from "@/constants/origenPublicacion";
+import { CustomButton } from "@/components/CustomButton";
 import BuscadorPublicaciones from '@/components/BuscadorPublicaciones';
 import BuscadorPersonas from '@/components/BuscadorPersonas';
-import { obtenerPublicaciones, FiltrosArriendo } from "@/services/publicaciones.service";
+import { obtenerPublicaciones } from "@/services/publicacionesService";
 import type { Publicacion } from "@/types/Publicacion";
 
 export default function Buscar() {
   const [tab, setTab] = useState<'arriendos' | 'personas'>('arriendos');
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [cargando, setCargando] = useState(true);
-  
-  // Cambiamos a una ubicación que sí existe en tus mocks (ej. 'Temuco')
-  const [filtros, setFiltros] = useState<FiltrosArriendo>({ comuna: 'Temuco' });
+  const [errorCarga, setErrorCarga] = useState(false);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
-    cargarDatos();
-  }, [filtros]);
-
-  const cargarDatos = async () => {
-    setCargando(true);
-    setTimeout(async () => {
-      const datos = await obtenerPublicaciones(filtros);
-      setPublicaciones(datos);
-      setCargando(false);
-    }, 800);
-  };
-
-  if (cargando) {
-    return (
-      <View style={styles.centrado}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+    let activo = true;
+    obtenerPublicaciones()
+      .then((datos) => { if (activo) setPublicaciones(datos); })
+      .catch(() => { if (activo) setErrorCarga(true); })
+      .finally(() => { if (activo) setCargando(false); });
+    return () => { activo = false; };
+  }, [intento]);
 
   return (
     <View style={styles.container}>
@@ -60,10 +48,20 @@ export default function Buscar() {
 
       {tab === 'arriendos' ? (
         <ScrollView contentContainerStyle={{ padding: 16 }}>
-          <BuscadorPublicaciones />
+          {cargando ? <ActivityIndicator size="large" color={colors.primary} /> :
+            errorCarga ? (
+              <View style={styles.centrado}>
+                <Text>No pudimos cargar las publicaciones.</Text>
+                <CustomButton titulo="Reintentar" onPress={() => {
+                  setCargando(true);
+                  setErrorCarga(false);
+                  setIntento((valor) => valor + 1);
+                }} />
+              </View>
+            ) : <BuscadorPublicaciones publicaciones={publicaciones} />}
         </ScrollView>
       ) : (
-        <BuscadorPersonas />  
+        <BuscadorPersonas />
       )}
     </View>
   );

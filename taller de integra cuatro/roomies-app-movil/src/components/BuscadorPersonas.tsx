@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, FlatList, Text, StyleSheet } from 'react-native';
-import { usuariosMock } from '../mocks/usuarios'; 
+import { usuariosMock } from '../mocks/usuarios';
 import { UsuarioCard } from './Usuario_Card';
 import FiltrosPersonasModal from './FiltrosPersonasModal';
 import type { FiltrosPersona } from '../types/Usuario';
@@ -14,10 +14,10 @@ export default function BuscadorPersonas() {
 
     const usuariosFiltrados = useMemo(() => {
         return usuariosMock.filter((usuario) => {
-            // Filtro por texto  
+            // Filtro por texto
             const termino = busqueda.trim().toLowerCase();
-            const coincideTexto = !termino || 
-                usuario.nombre.toLowerCase().includes(termino) || 
+            const coincideTexto = !termino ||
+                usuario.nombre.toLowerCase().includes(termino) ||
                 (usuario.ocupacion && usuario.ocupacion.toLowerCase().includes(termino));
 
             if (!coincideTexto) return false;
@@ -42,7 +42,7 @@ export default function BuscadorPersonas() {
 
     return (
         <View style={styles.contenedor}>
-            <BarraBusqueda 
+            <BarraBusqueda
                 valor={busqueda}
                 onCambiarValor={setBusqueda}
                 onPresionarFiltros={() => setModalVisible(true)}
@@ -64,23 +64,23 @@ export default function BuscadorPersonas() {
                     {usuariosFiltrados.length}
                 </Text>
             </View>
-            
-            <FiltrosPersonasModal 
-                visible={modalVisible} 
+
+            <FiltrosPersonasModal
+                visible={modalVisible}
                 onClose={() => setModalVisible(false)}
                 filtrosActuales={filtros}
                 onAplicar={(nuevosFiltros) => setFiltros(nuevosFiltros)}
             />
 
-            <FlatList 
+            <FlatList
                 data={usuariosFiltrados}
                 keyExtractor={(item) => item.idUsuario.toString()}
                 renderItem={({ item }) => <UsuarioCard usuario={item} />}
                 contentContainerStyle={{ paddingBottom: 16, gap: 16 }}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
-                    <EstadoVacio 
-                        titulo="No encontramos personas" 
+                    <EstadoVacio
+                        titulo="No encontramos personas"
                         mensaje="Intenta con otros nombres, ocupaciones o ajusta los filtros de presupuesto y zona."
                         icono="people-outline"
                     />
@@ -91,9 +91,9 @@ export default function BuscadorPersonas() {
 }
 
 const styles = StyleSheet.create({
-    contenedor: { 
-        flex: 1, 
-        padding: 16, 
+    contenedor: {
+        flex: 1,
+        padding: 16,
         gap: 12,
         backgroundColor: '#f9fafb'
     },

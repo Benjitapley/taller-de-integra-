@@ -78,8 +78,10 @@ El perfil se obtendrá desde la API de TI2 y no se inventará al crear una sesi�
   de Gustavo el 26 de octubre. Coordinar con TI2 su instalación y mantenimiento
   en el proyecto compartido; no dar por implementada AUTH-02 allí.
 - Definir la creación/sincronización del perfil Roomies tras el alta de Auth.
-- La URL del Gateway y el OpenAPI son necesarios para M4-A07 y posteriores,
-  pero no para preparar este cliente.
+- La URL del Gateway y el OpenAPI son necesarios para acreditar la integración real
+  de M4-A07 y posteriores. El cliente HTTP y sus pruebas controladas se prepararon
+  en SCRUM-40; ver [Cliente HTTP autenticado](http-client.md). No requieren cambiar
+  el proyecto personal ni acreditan que la API de TI2 ya acepte sus tokens.
 
 ## Comprobar desde Expo
 

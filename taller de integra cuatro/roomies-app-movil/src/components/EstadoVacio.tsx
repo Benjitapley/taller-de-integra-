@@ -8,10 +8,10 @@ interface Props {
     icono?: keyof typeof Ionicons.glyphMap;
 }
 
-export default function EstadoVacio({ 
-    titulo, 
-    mensaje, 
-    icono = "search-outline" 
+export default function EstadoVacio({
+    titulo,
+    mensaje,
+    icono = "search-outline"
 }: Props) {
     return (
         <View style={styles.contenedor}>
