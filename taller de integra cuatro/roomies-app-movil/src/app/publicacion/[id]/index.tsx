@@ -92,10 +92,9 @@ export default function PublicacionDetallePantalla() {
                           {
                               text: 'Ver mi postulación',
                               onPress: () =>
-                                  router.push({
-                                      pathname: '/postulaciones',
-                                      params: { idPublicacion: String(id) },
-                                  } as Href),
+                                   router.push(
+                                      `/postulaciones?idPublicacion=${encodeURIComponent(String(id))}` as Href,
+                                  ),
                           },
                       ]
                     : [{ text: 'Entendido' }],
@@ -119,6 +118,24 @@ export default function PublicacionDetallePantalla() {
             Alert.alert(
                 'Revisa tu postulación',
                 'No pudimos confirmar el resultado. Es posible que tu postulación se haya enviado: revísalo antes de volver a intentarlo.',
+            );
+            return;
+        }
+
+        // El backend usa 409 (ya postulaste, sin cupos o publicación cerrada) y 403
+        // (publicación propia o correo sin confirmar). El cliente HTTP los reduce a un
+        // mensaje genérico, así que aquí se explican con las reglas conocidas.
+        if (resultado.estadoHttp === 409) {
+            Alert.alert(
+                'No se pudo postular',
+                'Ya tienes una postulación vigente a esta publicación, o ya no tiene cupos disponibles.',
+            );
+            return;
+        }
+        if (resultado.estadoHttp === 403) {
+            Alert.alert(
+                'No se pudo postular',
+                'Para postular debes tener el correo confirmado y la publicación no puede ser tuya.',
             );
             return;
         }
