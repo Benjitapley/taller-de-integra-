@@ -1,12 +1,29 @@
-import { useState } from "react";
-import { Text, View, StyleSheet, TouchableOpacity, FlatList} from "react-native";
-import { UsuarioCard } from "@/components/Usuario_Card";
-import { usuariosMock } from "@/mocks/usuarios";
+import { useEffect, useState } from "react";
+import { Text, View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
 import { colors } from "@/theme/colors";
 import { paletaPublicacion } from "@/constants/origenPublicacion";
+import { CustomButton } from "@/components/CustomButton";
+import BuscadorPublicaciones from '@/components/BuscadorPublicaciones';
+import BuscadorPersonas from '@/components/BuscadorPersonas';
+import { obtenerPublicaciones } from "@/services/publicacionesService";
+import type { Publicacion } from "@/types/Publicacion";
 
 export default function Buscar() {
   const [tab, setTab] = useState<'arriendos' | 'personas'>('arriendos');
+  const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
+  const [intento, setIntento] = useState(0);
+
+  useEffect(() => {
+    let activo = true;
+    obtenerPublicaciones()
+      .then((datos) => { if (activo) setPublicaciones(datos); })
+      .catch(() => { if (activo) setErrorCarga(true); })
+      .finally(() => { if (activo) setCargando(false); });
+    return () => { activo = false; };
+  }, [intento]);
+
   return (
     <View style={styles.container}>
       <View style={styles.tabs}>
@@ -30,17 +47,21 @@ export default function Buscar() {
       </View>
 
       {tab === 'arriendos' ? (
-        <View style={styles.contenido}>
-          <Text style={styles.nota}>Listado de arriendos (MOB-06)</Text>
-        </View>
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
+          {cargando ? <ActivityIndicator size="large" color={colors.primary} /> :
+            errorCarga ? (
+              <View style={styles.centrado}>
+                <Text>No pudimos cargar las publicaciones.</Text>
+                <CustomButton titulo="Reintentar" onPress={() => {
+                  setCargando(true);
+                  setErrorCarga(false);
+                  setIntento((valor) => valor + 1);
+                }} />
+              </View>
+            ) : <BuscadorPublicaciones publicaciones={publicaciones} />}
+        </ScrollView>
       ) : (
-        <FlatList
-          data={usuariosMock}
-          keyExtractor={(u) => String(u.idUsuario)}
-          renderItem={({ item }) => <UsuarioCard usuario={item} />}
-          contentContainerStyle={{ padding: 16 }}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        />
+        <BuscadorPersonas />
       )}
     </View>
   );
@@ -48,6 +69,7 @@ export default function Buscar() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  centrado: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   tabs: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -64,6 +86,4 @@ const styles = StyleSheet.create({
   tabActiva: { borderBottomColor: colors.primary },
   tabTexto: { color: paletaPublicacion.textoSecundario, fontWeight: '600' },
   tabTextoActivo: { color: colors.primary },
-  contenido: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  nota: { color: paletaPublicacion.textoSecundario },
 });

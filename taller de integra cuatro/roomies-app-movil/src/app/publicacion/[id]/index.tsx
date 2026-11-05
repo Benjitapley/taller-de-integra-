@@ -1,10 +1,12 @@
-import React, { useRef, useState } from 'react';
-import { Alert, ScrollView, View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { CustomButton } from '@/components/CustomButton';
-import { publicacionesMock, usuariosMock } from '@/mocks';
+import { usuariosMock } from '@/mocks';
+import { obtenerPublicacionPorId } from '@/services/publicacionesService';
+import type { Publicacion } from '@/types/Publicacion';
 import { useAuth } from '@/hooks/useAuth';
 import { postularAPublicacion } from '@/services/postulacionesService';
 import { TITULO_PUBLICACION, configPorEstado, configPorOrigen, ctaPorOrigen, estiloPorTipo, paletaPublicacion } from '@/constants/origenPublicacion';
@@ -17,11 +19,28 @@ function formatoPrecio(precio: number): string {
 
 export default function PublicacionDetallePantalla() {
     const { id } = useLocalSearchParams<{ id: string }>();
+    return <DetallePublicacion key={id} id={id} />;
+}
+
+function DetallePublicacion({ id }: { id: string }) {
     const router = useRouter();
     const { estaAutenticado, cerrarSesion } = useAuth();
     const [postulando, setPostulando] = useState(false);
     const [postulada, setPostulada] = useState(false);
     const postulandoRef = useRef(false); // evita el doble toque antes del re-render
+    const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
+    const [cargando, setCargando] = useState(true);
+    const [errorCarga, setErrorCarga] = useState(false);
+    const [intento, setIntento] = useState(0);
+
+    useEffect(() => {
+        let activo = true;
+        obtenerPublicacionPorId(id)
+            .then((datos) => { if (activo) setPublicacion(datos); })
+            .catch(() => { if (activo) setErrorCarga(true); })
+            .finally(() => { if (activo) setCargando(false); });
+        return () => { activo = false; };
+    }, [id, intento]);
 
     const opcionesHeader = {
         headerShown: true,
@@ -41,8 +60,23 @@ export default function PublicacionDetallePantalla() {
         ),
     };
 
-    // Datos simulados de mocks
-    const publicacion = publicacionesMock.find((p) => p.idPublicacion === Number(id));
+    if (cargando || errorCarga) {
+        return (
+            <View style={styles.vacio}>
+                <Stack.Screen options={opcionesHeader} />
+                {cargando ? <ActivityIndicator size="large" color={colors.primary} /> : (
+                    <>
+                        <Text style={styles.vacioTitulo}>No pudimos cargar la publicación</Text>
+                        <CustomButton titulo="Reintentar" onPress={() => {
+                            setCargando(true);
+                            setErrorCarga(false);
+                            setIntento((valor) => valor + 1);
+                        }} />
+                    </>
+                )}
+            </View>
+        );
+    }
 
     if (!publicacion) {
         return (
