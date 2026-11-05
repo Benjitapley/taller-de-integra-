@@ -1,14 +1,45 @@
+import React from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CustomButton } from "@/components/CustomButton";
 import { PublicacionCard } from "@/components/Publicacion_Card";
 import { PasoPublicacion } from "@/components/publicaciones/PasoPublicacion";
+import { ENVIAR_DETALLE_MASCOTAS, ENVIAR_ENLACE_REFERENCIA } from "@/constants/camposPublicacion";
+import { etiquetaMascota } from "@/constants/mascotas";
 import { paletaPublicacion } from "@/constants/origenPublicacion";
+import { OPCIONES_TIPO_VIVIENDA } from "@/constants/tipoVivienda";
 import { colors } from "@/theme/colors";
-import type { Publicacion } from "@/types/Publicacion";
+import type { FormularioPublicacionValores, Publicacion } from "@/types/Publicacion";
 import { leerBorradorDesdeParams } from "@/utils/borradorPublicacion";
 import { leerFotosBorrador } from "@/utils/fotosBorrador";
+
+function FilaDetalle({
+  icono,
+  texto,
+  secundario,
+}: {
+  icono: React.ComponentProps<typeof Ionicons>["name"];
+  texto: string;
+  secundario?: string;
+}) {
+  return (
+    <View style={styles.filaDetalle}>
+      <Ionicons name={icono} size={18} color={colors.primary} />
+      <View style={styles.textosDetalle}>
+        <Text style={styles.detalleTexto}>{texto}</Text>
+        {secundario ? <Text style={styles.detalleSecundario}>{secundario}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+function textoMascotas(valores: FormularioPublicacionValores): string {
+  if (!valores.aceptaMascotas) return "No se aceptan mascotas";
+  if (!ENVIAR_DETALLE_MASCOTAS) return "Se aceptan mascotas";
+  const tipos = valores.tiposMascotas.map(etiquetaMascota).join(", ");
+  return `Se aceptan mascotas: ${tipos}`;
+}
 
 export default function Previa() {
   const router = useRouter();
@@ -60,6 +91,7 @@ export default function Previa() {
 
   const fotos = leerFotosBorrador(valores.tipo);
   const enlace = valores.enlaceReferencia.trim();
+  const vivienda = OPCIONES_TIPO_VIVIENDA.find((o) => o.valor === valores.tipoVivienda);
 
   // Publicación solo para dibujar la tarjeta: aún no existe en el backend,
   // por eso el id es 0 y los cupos libres son los ingresados.
@@ -101,7 +133,30 @@ export default function Previa() {
           modoVistaPrevia
         />
 
-        {valores.tipo === "Compartida" && enlace ? (
+        {vivienda ? (
+          <View style={styles.detalles}>
+            <FilaDetalle icono={vivienda.icono} texto={vivienda.etiqueta} />
+            <FilaDetalle
+              icono="paw-outline"
+              texto={textoMascotas(valores)}
+              secundario={
+                ENVIAR_DETALLE_MASCOTAS && valores.aceptaMascotas && valores.condicionesMascotas.trim()
+                  ? valores.condicionesMascotas.trim()
+                  : undefined
+              }
+            />
+            <FilaDetalle
+              icono="chatbubbles-outline"
+              texto={
+                valores.permitirComentarios
+                  ? "Se permiten comentarios"
+                  : "Comentarios desactivados"
+              }
+            />
+          </View>
+        ) : null}
+
+        {ENVIAR_ENLACE_REFERENCIA && valores.tipo === "Compartida" && enlace ? (
           <View style={styles.filaEnlace}>
             <Ionicons
               name="link-outline"
@@ -164,6 +219,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: "#15803D",
+  },
+  detalles: {
+    marginTop: 14,
+    padding: 12,
+    gap: 10,
+    borderRadius: 12,
+    backgroundColor: paletaPublicacion.fondoSuave,
+  },
+  filaDetalle: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  textosDetalle: {
+    flex: 1,
+  },
+  detalleTexto: {
+    fontSize: 14,
+    color: paletaPublicacion.textoPrincipal,
+  },
+  detalleSecundario: {
+    marginTop: 2,
+    fontSize: 12,
+    color: paletaPublicacion.textoSecundario,
   },
   filaEnlace: {
     flexDirection: "row",

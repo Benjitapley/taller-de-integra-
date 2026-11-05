@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { ENVIAR_DETALLE_MASCOTAS } from "@/constants/camposPublicacion";
+import { MAX_CARACTERES_CONDICIONES_MASCOTAS } from "@/constants/mascotas";
 import {
   formularioPublicacionInicialConOrigen,
   type ErroresFormularioPublicacion,
@@ -30,6 +32,10 @@ export function validarFormularioPublicacion(valores: FormularioPublicacionValor
     errores.ubicacion = "Ingresa la comuna o sector.";
   }
 
+  if (!valores.tipoVivienda) {
+    errores.tipoVivienda = "Elige el tipo de vivienda.";
+  }
+
   const cupos = valores.cupos.trim();
   if (!cupos) {
     errores.cupos = "Ingresa los cupos disponibles.";
@@ -49,6 +55,24 @@ export function validarFormularioPublicacion(valores: FormularioPublicacionValor
       "Ingresa un enlace válido que empiece con http:// o https://.";
   }
 
+  // Preferencias de mascotas: solo se revisan si se aceptan. Son las mismas
+  // exigencias de la API (al menos un tipo; "otro" pide aclarar cuál).
+  // Si el detalle está oculto (ENVIAR_DETALLE_MASCOTAS en false), no se exige: la
+  // persona no tiene cómo llenarlo.
+  if (valores.aceptaMascotas && ENVIAR_DETALLE_MASCOTAS) {
+    if (valores.tiposMascotas.length === 0) {
+      errores.tiposMascotas = "Elige al menos un tipo de mascota.";
+    } else if (
+      valores.tiposMascotas.includes("otro") &&
+      !valores.condicionesMascotas.trim()
+    ) {
+      errores.condicionesMascotas = "Indica qué otro animal se acepta.";
+    }
+    if (valores.condicionesMascotas.length > MAX_CARACTERES_CONDICIONES_MASCOTAS) {
+      errores.condicionesMascotas = `Máximo ${MAX_CARACTERES_CONDICIONES_MASCOTAS} caracteres.`;
+    }
+  }
+
   return errores;
 }
 
@@ -64,8 +88,15 @@ export function useFormularioPublicacion(tipo: TipoPublicacion) {
     valor: FormularioPublicacionValores[K],
   ) {
     setValores((anterior) => ({ ...anterior, [campo]: valor }));
-    // Al editar un campo se limpia su error.
-    setErrores((anterior) => ({ ...anterior, [campo]: undefined }));
+    // Al editar un campo se limpia su error, y el de los campos que dependen de él.
+    setErrores((anterior) => ({
+      ...anterior,
+      [campo]: undefined,
+      ...(campo === "aceptaMascotas"
+        ? { tiposMascotas: undefined, condicionesMascotas: undefined }
+        : {}),
+      ...(campo === "tiposMascotas" ? { condicionesMascotas: undefined } : {}),
+    }));
   }
 
   // Devuelve true si el formulario es válido; si no, deja los errores en pantalla.

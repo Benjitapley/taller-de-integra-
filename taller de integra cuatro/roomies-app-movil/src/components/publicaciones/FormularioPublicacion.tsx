@@ -2,10 +2,19 @@ import React, { useRef } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { CustomButton } from "@/components/CustomButton";
 import { CustomInput } from "@/components/CustomInput";
+import { InterruptorFormulario } from "@/components/publicaciones/InterruptorFormulario";
 import { PasoPublicacion } from "@/components/publicaciones/PasoPublicacion";
+import { SelectorChips } from "@/components/publicaciones/SelectorChips";
+import { SelectorTipoVivienda } from "@/components/publicaciones/SelectorTipoVivienda";
+import { ENVIAR_DETALLE_MASCOTAS, ENVIAR_ENLACE_REFERENCIA } from "@/constants/camposPublicacion";
+import { MAX_CARACTERES_CONDICIONES_MASCOTAS, OPCIONES_MASCOTAS } from "@/constants/mascotas";
 import { paletaPublicacion, textosFormularioPorOrigen } from "@/constants/origenPublicacion";
 import { colors } from "@/theme/colors";
-import type { ErroresFormularioPublicacion, FormularioPublicacionValores } from "@/types/Publicacion";
+import type {
+  ErroresFormularioPublicacion,
+  FormularioPublicacionValores,
+  TipoMascota,
+} from "@/types/Publicacion";
 
 interface FormularioPublicacionProps {
   valores: FormularioPublicacionValores;
@@ -32,6 +41,15 @@ export const FormularioPublicacion: React.FC<
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 250);
+  };
+
+  // Agrega el tipo si no estaba y lo quita si ya estaba elegido.
+  const alternarMascota = (tipo: TipoMascota) => {
+    const elegidos = valores.tiposMascotas;
+    onCambiar(
+      "tiposMascotas",
+      elegidos.includes(tipo) ? elegidos.filter((t) => t !== tipo) : [...elegidos, tipo],
+    );
   };
 
   return (
@@ -63,6 +81,12 @@ export const FormularioPublicacion: React.FC<
             placeholder={textos.placeholderTitulo}
             maxLength={80}
             error={errores.titulo}
+          />
+
+          <SelectorTipoVivienda
+            valor={valores.tipoVivienda}
+            onCambiar={(v) => onCambiar("tipoVivienda", v)}
+            error={errores.tipoVivienda}
           />
 
           <CustomInput
@@ -113,7 +137,57 @@ export const FormularioPublicacion: React.FC<
             onFocus={bajarAlFinal}
           />
 
-          {textos.mostrarEnlace && (
+          <InterruptorFormulario
+            etiqueta="¿Se aceptan mascotas?"
+            icono="paw-outline"
+            valor={valores.aceptaMascotas}
+            onCambiar={(v) => onCambiar("aceptaMascotas", v)}
+          />
+
+          {valores.aceptaMascotas && ENVIAR_DETALLE_MASCOTAS && (
+            <>
+              <SelectorChips
+                etiqueta="¿Qué animales se aceptan?"
+                iconoEtiqueta="paw-outline"
+                ayuda="Puedes elegir más de uno."
+                opciones={OPCIONES_MASCOTAS}
+                seleccionados={valores.tiposMascotas}
+                onAlternar={alternarMascota}
+                error={errores.tiposMascotas}
+              />
+
+              <CustomInput
+                etiqueta={
+                  valores.tiposMascotas.includes("otro")
+                    ? "Condiciones para mascotas"
+                    : "Condiciones para mascotas (opcional)"
+                }
+                icono="reader-outline"
+                mostrarIconoInterior={false}
+                value={valores.condicionesMascotas}
+                onChangeText={(t) => onCambiar("condicionesMascotas", t)}
+                placeholder={
+                  valores.tiposMascotas.includes("otro")
+                    ? "Indica qué otro animal se acepta"
+                    : "Ej: máximo una mascota por persona"
+                }
+                multilinea
+                maxLength={MAX_CARACTERES_CONDICIONES_MASCOTAS}
+                error={errores.condicionesMascotas}
+                onFocus={bajarAlFinal}
+              />
+            </>
+          )}
+
+          <InterruptorFormulario
+            etiqueta="Permitir comentarios"
+            icono="chatbubble-ellipses-outline"
+            descripcion="Otras personas podrán comentar en tu publicación."
+            valor={valores.permitirComentarios}
+            onCambiar={(v) => onCambiar("permitirComentarios", v)}
+          />
+
+          {textos.mostrarEnlace && ENVIAR_ENLACE_REFERENCIA && (
             <CustomInput
               etiqueta="Enlace de referencia (opcional)"
               icono="link-outline"

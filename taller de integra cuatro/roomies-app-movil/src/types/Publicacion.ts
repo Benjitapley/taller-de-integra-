@@ -2,6 +2,12 @@ export type TipoPublicacion = 'Arrendador' | 'Compartida';
 
 export type EstadoPublicacion = 'Disponible' | 'Activa' | 'Cerrada';
 
+/** Valores que acepta `tipo_vivienda` en PublicacionCrear (publicaciones_service). */
+export type TipoVivienda = 'casa' | 'departamento' | 'habitacion';
+
+/** Valores que acepta `tipos_mascotas_aceptadas` en la API de TI2. */
+export type TipoMascota = 'perro' | 'gato' | 'ave' | 'tortuga' | 'conejo' | 'pez' | 'otro';
+
 /**
  * Modelo de publicación utilizado por el cliente móvil.
  *
@@ -33,9 +39,14 @@ export interface FormularioPublicacionValores {
   titulo: string;
   precio: string; // solo dígitos, ejemplo. "11000"
   ubicacion: string;
+  tipoVivienda: TipoVivienda | ''; 
   cupos: string; // solo dígitos (1 cupo, 2 cupos, etc.)
   descripcion: string;
   enlaceReferencia: string; // opcional, solo aplica a Compartida (el enlace de la publicación de otro sitio)
+  aceptaMascotas: boolean;
+  tiposMascotas: TipoMascota[]; // solo se usa si aceptaMascotas es true
+  condicionesMascotas: string; // opcional; obligatoria si se elige "otro"
+  permitirComentarios: boolean;
 }
 
 export const formularioPublicacionInicialConOrigen = (
@@ -45,9 +56,14 @@ export const formularioPublicacionInicialConOrigen = (
   titulo: '',
   precio: '',
   ubicacion: '',
+  tipoVivienda: '',
   cupos: '',
   descripcion: '',
   enlaceReferencia: '',
+  aceptaMascotas: false,
+  tiposMascotas: [],
+  condicionesMascotas: '',
+  permitirComentarios: false,
 });
 
 export type ErroresFormularioPublicacion = Partial<
