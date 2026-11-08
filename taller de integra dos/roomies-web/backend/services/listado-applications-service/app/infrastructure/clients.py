@@ -33,4 +33,3 @@ class HttpNotifications:
         with httpx.Client(timeout=3,trust_env=False,follow_redirects=False) as client:
             response=client.post(url+"/internal/v1/notificaciones",json=event,headers={"X-Roomies-Service":key})
             response.raise_for_status()
-
