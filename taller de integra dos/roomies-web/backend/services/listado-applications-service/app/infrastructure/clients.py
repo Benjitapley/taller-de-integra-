@@ -34,4 +34,3 @@ class HttpNotifications:
             response=client.post(url+"/internal/v1/notificaciones",json=event,headers={"X-Roomies-Service":key})
             response.raise_for_status()
 
-
