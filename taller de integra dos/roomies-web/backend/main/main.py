@@ -314,7 +314,7 @@ def obtener_publicaciones(
     try:
         with conectar() as conexion:
             registros = conexion.execute(sql, tuple(parametros)).fetchall()
-            
+
             publicaciones = []
             for row in registros:
                 cupos = resumen_cupos(row[0], row[13], row[4])
@@ -351,7 +351,7 @@ def obtener_mis_publicaciones(id_usuario: int = Depends(get_current_user)):
                 WHERE p.id_usuario = %s
                 ORDER BY p.id_publicacion DESC
             """, (id_usuario,)).fetchall()
-            
+
             return [{**resumen_cupos(r[0], r[3], r[6]), "titulo": r[1], "precio": float(r[2]),
                      "tipo": r[4], "ubicacion": r[5], "cupos": r[6], "imagen": r[7]}
                     for r in registros]
@@ -487,7 +487,7 @@ def crear_publicacion(
                 """,
                 parametros,
             ).fetchone()
-            
+
             identificador = fila[0]
 
             if ruta_imagen:
@@ -556,8 +556,8 @@ def actualizar_publicacion(
                 parametros += (preferencias.tipos_mascotas_aceptadas, preferencias.condiciones_mascotas)
             parametros += (tipo, permitir_comentarios, id_pub, id_usuario)
             conexion.execute(f"""
-                UPDATE haycupo.publicacion 
-                SET titulo=%s, categoria=%s, ubicacion=%s, precio=%s, 
+                UPDATE haycupo.publicacion
+                SET titulo=%s, categoria=%s, ubicacion=%s, precio=%s,
                     tipo_vivienda=%s, descripcion=%s, cupos_totales=%s, mascota=%s, contenido=%s,
                     {extra_set}
                     tipo=COALESCE(%s, tipo), permitir_comentarios=COALESCE(%s, permitir_comentarios)
@@ -612,18 +612,18 @@ def obtener_perfil(id_usuario: int = Depends(get_current_user)):
         with conectar() as conexion:
             user = conexion.execute("SELECT nombre, edad, ocupacion, ciudad, breve_descripcion, sobre_mi, foto_perfil, verificado FROM haycupo.usuario WHERE id_usuario = %s", (id_usuario,)).fetchone()
             pubs = conexion.execute("SELECT COUNT(*) FROM haycupo.publicacion WHERE id_usuario = %s", (id_usuario,)).fetchone()[0]
-            
+
             if not user:
                 raise HTTPException(status_code=404, detail="Usuario no encontrado")
-                
+
             return {
-                "nombre": user[0] or "Usuario", 
+                "nombre": user[0] or "Usuario",
                 "edad": user[1] if user[1] is not None else "",
                 "ocupacion": user[2] or "",
-                "ciudad": user[3] or "", 
+                "ciudad": user[3] or "",
                 "breve_descripcion": user[4] or "",
                 "sobre_mi": user[5] or "",
-                "foto_perfil": user[6] or None, 
+                "foto_perfil": user[6] or None,
                 "verificado": user[7],
                 "total_publicaciones": pubs
             }
@@ -681,10 +681,10 @@ def actualizar_perfil(
             if ruta_foto:
                 ruta_foto.write_bytes(contenido_img)
             if url_foto:
-                conexion.execute("UPDATE haycupo.usuario SET edad=%s, ocupacion=%s, ciudad=%s, breve_descripcion=%s, sobre_mi=%s, foto_perfil=%s WHERE id_usuario=%s", 
+                conexion.execute("UPDATE haycupo.usuario SET edad=%s, ocupacion=%s, ciudad=%s, breve_descripcion=%s, sobre_mi=%s, foto_perfil=%s WHERE id_usuario=%s",
                                  (edad_db, ocupacion, ciudad, breve_descripcion, sobre_mi, url_foto, id_usuario))
             else:
-                conexion.execute("UPDATE haycupo.usuario SET edad=%s, ocupacion=%s, ciudad=%s, breve_descripcion=%s, sobre_mi=%s WHERE id_usuario=%s", 
+                conexion.execute("UPDATE haycupo.usuario SET edad=%s, ocupacion=%s, ciudad=%s, breve_descripcion=%s, sobre_mi=%s WHERE id_usuario=%s",
                                  (edad_db, ocupacion, ciudad, breve_descripcion, sobre_mi, id_usuario))
         return {"mensaje": "Perfil actualizado permanentemente"}
     except Exception:
