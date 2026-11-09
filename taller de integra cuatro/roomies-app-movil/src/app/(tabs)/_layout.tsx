@@ -35,10 +35,9 @@ export default function TabsLayout() {
         name="publicar"
         options={{
           title: "Publicar",
-          // En el mockup este ícono siempre se ve resaltado (círculo relleno,
-          // color de marca), sin importar si la tab está activa o no.
+          tabBarIconStyle: { transform: [{ translateY: -2.5 }] },
           tabBarIcon: ({ size }) => (
-            <Ionicons name="add-circle" color={COLOR_ACTIVO} size={size + 10} />
+            <Ionicons name="add-circle" color={COLOR_ACTIVO} size={size + 5} />
           ),
         }}
       />
