@@ -1,1 +1,0 @@
-"""Gateway independiente de Roomies."""

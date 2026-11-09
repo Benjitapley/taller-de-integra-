@@ -1,2 +1,0 @@
-# Reutiliza las dependencias de ejecución del backend existente.
--r ../auth_service/requirements-jwt.txt
