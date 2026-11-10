@@ -81,10 +81,25 @@ La plataforma está dividida en módulos que acompañan todo el ciclo de vida de
 ![Expo](https://img.shields.io/badge/expo-1C1E24?style=for-the-badge&logo=expo&logoColor=white)
 ![Render](https://img.shields.io/badge/Render-%46E3B7.svg?style=for-the-badge&logo=render&logoColor=white)
 
-# Instalacion?
+# Instalacion
+
+Sigue estos pasos para levantar el entorno de desarrollo de Roomies en tu máquina local.
+
+### Requisitos Previos
+Asegúrate de tener instalado:
+- [Node.js](https://nodejs.org/) (v18 o superior recomendado)
+- [Docker y Docker Compose](https://www.docker.com/) (para levantar los microservicios)
+- [Expo CLI](https://docs.expo.dev/) o la app Expo Go en tu celular (para el entorno móvil)
 
 
+### 1. Clonar el repositorio
 
+
+### 2. 
+
+### 3.
+
+### 4. 
 
 
 - [Aplicación web y servicios](./taller%20de%20integra%20dos/roomies-web/)
