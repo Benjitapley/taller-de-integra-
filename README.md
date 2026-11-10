@@ -92,20 +92,32 @@ Asegúrate de tener instalado:
 - [Expo CLI](https://docs.expo.dev/) o la app Expo Go en tu celular (para el entorno móvil)
 
 
-### 1. Clonar el repositorio
+### 1. Clonar el repositorio (git clone [inserte link del repositorio]
+
+### 2. Instalar las dependencias:
+
+npm install
+
+### 3. Configurar las variables de entorno:
+
+Crear un archivo .env.local a partir de .env.example y completar las credenciales correspondientes de Supabase y la URL de la API, cuando esté disponible.
+
+### 4. Iniciar el entorno de desarrollo:
+
+npx expo start
+
+Una vez iniciado Expo, puedes escanear el código QR con Expo Go compatible con el SDK del proyecto para abrir la aplicación en tu dispositivo móvil.
 
 
-### 2. 
+# Capturas
 
-### 3.
+<p align="center">
+  <img width="49%" src="https://github.com/user-attachments/assets/b8ccfbc1-221b-4114-9266-a27661753c1a" alt="Captura 1" />
+  <img width="49%" src="https://github.com/user-attachments/assets/70abb965-ba56-4c24-8002-8c04b25f5f79" alt="Captura 2" />
+</p>
 
-### 4. 
-
-
-- [Aplicación web y servicios](./taller%20de%20integra%20dos/roomies-web/)
-- [Aplicación móvil](./taller%20de%20integra%20cuatro/roomies-app-movil/)
-
-Para ejecutar los comandos de la web y de los servicios, usa `taller de integra dos/roomies-web` como directorio de trabajo. Next.js vive en su subcarpeta `frontend-next`.
-
-Las pruebas manuales de autenticación y publicaciones están en la [guía de QA web](./taller%20de%20integra%20dos/roomies-web/docs/endpoint/manual-testing-auth-publicaciones.md).
+<p align="center">
+  <img width="49%" src="https://github.com/user-attachments/assets/aae2f070-707d-4332-bba0-5c340ee33693" alt="Captura 3" />
+  <img width="49%" src="https://github.com/user-attachments/assets/b8e692c7-537e-4222-ae42-e89d0c4052c3" alt="Captura 4" />
+</p>
 
