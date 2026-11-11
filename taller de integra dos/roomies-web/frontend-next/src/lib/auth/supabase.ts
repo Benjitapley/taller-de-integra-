@@ -267,10 +267,14 @@ export async function handleSupabaseAuth(request: Request, action: string, confi
       const verifier = randomBytes(48).toString("base64url");
       const challenge = createHash("sha256").update(verifier).digest("base64url");
       const response = await provider(config, `/signup?redirect_to=${encodeURIComponent(config.origin + "/web-api/auth/confirmar")}`, transport, { email: data.correo, password: data.contrasena, data: { nombre: (data.nombre as string).trim(), fecha_nacimiento: data.fecha_nacimiento }, code_challenge: challenge, code_challenge_method: "s256" });
-      if (!response.ok) return bridge.error(response.status === 429 ? 429 : 422);
-      const result = await response.json();
-      if (!result || typeof result !== "object" || result.access_token) return bridge.error(503);
-      const created = bridge.reply(200, { success: true, verificacion_pendiente: true, message: "Revisa tu correo para verificar tu cuenta." }, { "Set-Cookie": pkceCookie(config, verifier, 3600) });
+      if (response.status === 429) return bridge.error(429);
+      const result = await response.json().catch(() => null);
+      if (!response.ok && (result?.error_code ?? result?.code) !== "user_already_exists") {
+        return bridge.error(response.status >= 500 ? 503 : 422);
+      }
+      if (response.ok && (!result || typeof result !== "object" || (result.access_token && !config.localSignupAutoconfirm))) return bridge.error(503);
+      // Local autoconfirmation never establishes a web session. Login still checks identity and profile.
+      const created = bridge.reply(200, { success: true, verificacion_pendiente: true, message: "Si recibes un correo de confirmación, abre el enlace. Si tu cuenta ya está habilitada, inicia sesión." }, { "Set-Cookie": pkceCookie(config, verifier, 3600) });
       created.headers.append("Set-Cookie", recoveryCookie(config,"",0,true));
       return created;
     }
