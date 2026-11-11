@@ -42,7 +42,7 @@ export default function AuthForm({ mode, passwordMinimum = 6, supabaseAuth = fal
     setFailed(!result.ok);
     setMessage(result.message);
     setValues((previous) => ({ ...previous, contrasena: "" }));
-    if (result.ok) { router.push(register ? routes.verify : routes.home); router.refresh(); }
+    if (result.ok) { router.push(register ? routes.verify + (supabaseAuth ? "?estado=registro-recibido" : "") : routes.home); router.refresh(); }
 
   }
   const invalid = Object.values(errors).some(Boolean);

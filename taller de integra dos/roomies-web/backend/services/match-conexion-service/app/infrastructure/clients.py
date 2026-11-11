@@ -23,7 +23,7 @@ class HttpProfiles:
 class HttpPublications:
     def search(self,filters):
         try:
-            url=service_url("LISTADO_UPSTREAM_URL",docker_hosts=("listado",))
+            url=service_url("LISTADO_UPSTREAM_URL",docker_hosts=("listado", "listado-applications"))
             with httpx.Client(timeout=5,trust_env=False,follow_redirects=False) as client:
                 response=client.get(url+"/api/publicaciones",params=filters)
             response.raise_for_status()
