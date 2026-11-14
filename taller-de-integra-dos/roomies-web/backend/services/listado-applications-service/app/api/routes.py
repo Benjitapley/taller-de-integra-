@@ -1,4 +1,5 @@
 """Adaptadores HTTP locales; reglas y SQL permanecen fuera de los routers."""
+import hmac
 import os
 from decimal import Decimal
 from typing import Literal
@@ -17,6 +18,13 @@ router=APIRouter()
 
 def service():
     return Publications(PostgresPublications(),UnavailableOccupancy(),Images(os.environ.get("ROOMIES_IMAGE_DIR"),"p_"),HttpOwners())
+
+
+def internal_authorized(request: Request):
+    expected=os.environ.get("ROOMIES_INTERNAL_TOKEN","")
+    supplied=request.headers.get("x-roomies-service","")
+    if len(expected)<32 or not hmac.compare_digest(supplied,expected):
+        raise HTTPException(403,"Servicio no autorizado.")
 
 
 def dto(row,occupancy):
@@ -70,6 +78,64 @@ def private_detail(id:int,identity=Depends(confirmed_actor),app=Depends(service)
 def slots(id:int,app=Depends(service)):
     row=app.get(id)
     return {"id":id,"estado":row["estado"],"cupos_totales":row["cupos_totales"],"cupos_disponibles":available(row,app.occupancy)}
+
+
+class CapacityReservation(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    event_key:str=Field(pattern=r"^postulacion:[1-9][0-9]*:Aceptada$",max_length=100)
+    id_postulacion:int=Field(gt=0,strict=True)
+    id_usuario:int=Field(gt=0,strict=True)
+
+
+class CapacityRelease(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    event_key:str=Field(pattern=r"^postulacion:[1-9][0-9]*:Aceptada$",max_length=100)
+
+
+class OccupancyUpdate(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    event_key:str=Field(min_length=1,max_length=200)
+    clave_incorporacion:str|None=Field(default=None,pattern=r"^postulacion:[1-9][0-9]*:Aceptada$",max_length=100)
+    id_reserva:int|None=Field(default=None,gt=0,strict=True)
+    id_usuario:int=Field(gt=0,strict=True)
+    id_publicacion:int=Field(gt=0,strict=True)
+    version_ocupacion:int=Field(ge=0,strict=True)
+    cupos_totales:int=Field(gt=0,strict=True)
+    cupos_ocupados:int=Field(ge=0,strict=True)
+    estado:Literal["Activa","Cerrada"]
+
+
+@router.get("/internal/publicaciones/{id}")
+def internal_publication(id:int,request:Request,app=Depends(service)):
+    internal_authorized(request)
+    return app.repository.internal_publication(id)
+
+
+@router.post("/internal/publicaciones/{id}/reservas",status_code=201)
+def reserve_capacity(id:int,data:CapacityReservation,request:Request,app=Depends(service)):
+    internal_authorized(request)
+    if data.event_key!=f"postulacion:{data.id_postulacion}:Aceptada":
+        raise HTTPException(422,"Clave de reserva inconsistente.")
+    return app.repository.reserve_capacity(
+        data.event_key,id,data.id_postulacion,data.id_usuario
+    )
+
+
+@router.delete("/internal/publicaciones/{id}/reservas")
+def release_capacity(id:int,data:CapacityRelease,request:Request,app=Depends(service)):
+    internal_authorized(request)
+    app.repository.release_capacity(data.event_key,id)
+    return {"liberada":True}
+
+
+@router.put("/internal/publicaciones/{id}/ocupacion")
+def update_occupancy(id:int,data:OccupancyUpdate,request:Request,app=Depends(service)):
+    internal_authorized(request)
+    if data.id_publicacion!=id:
+        raise HTTPException(422,"La publicación no coincide con la ruta.")
+    if (data.id_reserva is None)!=(data.clave_incorporacion is None):
+        raise HTTPException(422,"La reserva y la clave de incorporación son obligatorias en conjunto.")
+    return app.repository.update_occupancy(data.model_dump())
 
 
 async def publication_form(request):

@@ -10,6 +10,7 @@ x-runtime: &runtime
   ROOMIES_AUTH_PUBLISHABLE_KEY: ${ROOMIES_SUPABASE_PUBLISHABLE_KEY:?Clave publishable requerida}
   AUTH_USERS_UPSTREAM_URL: http://auth-users:8000
   LISTADO_UPSTREAM_URL: http://listado-applications:8000
+  CONVIVENCIA_UPSTREAM_URL: http://convivencia-mensajeria:8000
   ROOMIES_INTERNAL_TOKEN: ${ROOMIES_INTERNAL_TOKEN:?Secreto interno exclusivo requerido}
   ROOMIES_ADMIN_SUBJECTS: ${ROOMIES_ADMIN_SUBJECTS:-}
 services:
@@ -41,6 +42,14 @@ services:
     environment:
       <<: *runtime
       MATCH_DATABASE_URL: ${MATCH_DATABASE_URL:?DSN sql_match_conexion con verify-full y sslrootcert}
+  convivencia-mensajeria:
+    build:
+      context: .
+      dockerfile: backend/services/convivencia-mensajeria-service/Dockerfile
+    environment:
+      <<: *runtime
+      CONVIVENCIA_DATABASE_URL: ${CONVIVENCIA_DATABASE_URL:?DSN sql_convivencia_mensajeria con verify-full y sslrootcert}
+      ROOMIES_CURSOR_SECRET: ${ROOMIES_CURSOR_SECRET:?Secreto de cursor de al menos 32 caracteres}
   api-gateway:
     build: ./backend/api-gateway
     environment:
@@ -48,8 +57,9 @@ services:
       AUTH_USERS_UPSTREAM_URL: http://auth-users:8000
       LISTADO_UPSTREAM_URL: http://listado-applications:8000
       MATCH_UPSTREAM_URL: http://match-conexion:8000
+      CONVIVENCIA_UPSTREAM_URL: http://convivencia-mensajeria:8000
     ports: ["127.0.0.1:8010:8000"]
-    depends_on: [auth-users, listado-applications, match-conexion]
+    depends_on: [auth-users, listado-applications, match-conexion, convivencia-mensajeria]
   next-web:
     build:
       context: .
