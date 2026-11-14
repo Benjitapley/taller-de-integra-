@@ -37,6 +37,5 @@ export default function AuthScreen({ mode, supabaseAuth = false, notice = "", pa
         {verify ? supabaseAuth ? <EmailConfirmation error={notice} /> : <VerificationForm /> : <AuthForm key={mode} mode={mode} passwordMinimum={passwordMinimum} supabaseAuth={supabaseAuth} />}
       </Card>
     </main>
-    <footer className={styles.footer}><Link href={routes.guide}>Guía de navegación</Link></footer>
   </>;
 }
