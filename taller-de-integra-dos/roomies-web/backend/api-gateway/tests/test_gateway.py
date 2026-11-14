@@ -41,6 +41,41 @@ def test_health_and_unconfigured():
     assert result.headers["cache-control"] == "no-store"
 
 
+def test_convivencia_routes_forward_but_internal_routes_are_not_exposed():
+    calls = []
+
+    async def scenario():
+        def handler(request):
+            calls.append(request)
+            assert request.url.host == "convivencia.test"
+            assert request.url.path == "/api/conversaciones"
+            assert request.url.query == b"limite=20"
+            return reply(
+                200,
+                content=b'{"items":[],"siguiente_cursor":null}',
+                headers={"Content-Type": "application/json"},
+            )
+
+        app = create_app(
+            Settings(convivencia_upstream="http://convivencia.test", local_mode=True),
+            transport=httpx.MockTransport(handler),
+        )
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://gateway.test",
+            ) as client:
+                public = await client.get("/api/conversaciones?limite=20")
+                internal = await client.post("/internal/incorporaciones", json={})
+        return public, internal
+
+    public, internal = asyncio.run(scenario())
+    assert public.status_code == 200
+    assert public.json() == {"items": [], "siguiente_cursor": None}
+    assert internal.status_code == 404
+    assert len(calls) == 1
+
+
 @pytest.mark.parametrize("method", ["GET", "PATCH"])
 def test_forward_bytes_query_bearer(method, caplog):
     caplog.set_level(logging.DEBUG)
