@@ -85,6 +85,10 @@ La plataforma está dividida en módulos que acompañan todo el ciclo de vida de
 
 Sigue estos pasos para levantar el entorno de desarrollo de Roomies en tu máquina local.
 
+Para TI2, abre [Roomies Web](taller-de-integra-dos/roomies-web/frontend-next/README.md).
+Ejecuta Docker Compose desde `taller-de-integra-dos/roomies-web` y los comandos de Next.js desde su subcarpeta `frontend-next`.
+Los siguientes pasos con Expo corresponden a la aplicación móvil.
+
 ### Requisitos Previos
 Asegúrate de tener instalado:
 - [Node.js](https://nodejs.org/) (v18 o superior recomendado)

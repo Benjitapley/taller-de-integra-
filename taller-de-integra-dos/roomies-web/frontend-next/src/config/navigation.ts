@@ -7,8 +7,6 @@ export const routes = {
   home: "/inicio",
   profile: "/perfil",
   publish: "/publicar",
-  guide: "/navegacion",
-  legacyAccess: "/acceso",
 } as const;
 
 // Enlaces explícitos; no implican registro o verificación satisfactorios.
@@ -21,7 +19,7 @@ export const authFlowLinks = {
   ],
 } as const;
 
-type NavigationItem = { label: string; icon: IconName; href?: string; legacy?: boolean };
+type NavigationItem = { label: string; icon: IconName; href?: string };
 
 // Contrato compartido de navegación. Las funciones de negocio viven en features/.
 export const navigationItems: readonly NavigationItem[] = [

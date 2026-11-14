@@ -2,7 +2,7 @@
 
 **Fecha:** 10 de noviembre de 2026. **Base revisada:** repositorio local, commit `af84fba`.
 
-**Alcance:** aplicación web y servicios de `taller de integra dos/roomies-web`.
+**Alcance:** aplicación web y servicios de `taller-de-integra-dos/roomies-web`.
 
 **Frontend web: aproximadamente 40%. Backend: aproximadamente 40%.**
 
@@ -38,11 +38,11 @@ Cálculo por capa: 325/800 = 40,625%. Los resultados comunicados se redondean al
 ## Evidencia principal
 
 - [Alcance funcional declarado](../README.md).
-- [Autenticación web](../taller%20de%20integra%20dos/roomies-web/frontend-next/src/lib/auth/supabase.ts), [edición de perfil](../taller%20de%20integra%20dos/roomies-web/frontend-next/src/features/perfil/ProfileEditor.tsx) y [publicaciones](../taller%20de%20integra%20dos/roomies-web/frontend-next/src/lib/publicaciones/server.ts).
-- [Postulaciones web e incorporación pendiente](../taller%20de%20integra%20dos/roomies-web/frontend-next/src/features/publicaciones/Applications.tsx), [conexiones](../taller%20de%20integra%20dos/roomies-web/frontend-next/src/lib/conexiones/server.ts) y [navegación con chat pendiente](../taller%20de%20integra%20dos/roomies-web/frontend-next/src/config/navigation.ts).
-- [Verificación web limitada al correo](../taller%20de%20integra%20dos/roomies-web/frontend-next/src/features/perfil/AccountVerification.tsx) y [administración de consulta](../taller%20de%20integra%20dos/roomies-web/frontend-next/src/lib/admin/server.ts).
-- [Rutas activas del gateway](../taller%20de%20integra%20dos/roomies-web/backend/api-gateway/app/local_routes.py), [usuarios/perfil](../taller%20de%20integra%20dos/roomies-web/backend/services/auth-users-service/app/api/routes/local_users.py), [publicaciones y postulaciones](../taller%20de%20integra%20dos/roomies-web/backend/services/listado-applications-service/app/api/routes.py) y [conexiones persistentes](../taller%20de%20integra%20dos/roomies-web/backend/services/match-conexion-service/app/application/service.py).
-- [Convivencia sin implementar](../taller%20de%20integra%20dos/roomies-web/backend/services/listado-applications-service/app/infrastructure/clients.py), [perfil sin verificación documental](../taller%20de%20integra%20dos/roomies-web/backend/services/auth-users-service/app/infrastructure/persistence/postgres_profile_repository.py) y [compose Supabase preparado, no activado](../taller%20de%20integra%20dos/roomies-web/docker-compose.supabase.yml).
+- [Autenticación web](../taller-de-integra-dos/roomies-web/frontend-next/src/lib/auth/supabase.ts), [edición de perfil](../taller-de-integra-dos/roomies-web/frontend-next/src/features/perfil/ProfileEditor.tsx) y [publicaciones](../taller-de-integra-dos/roomies-web/frontend-next/src/lib/publicaciones/server.ts).
+- [Postulaciones web e incorporación pendiente](../taller-de-integra-dos/roomies-web/frontend-next/src/features/publicaciones/Applications.tsx), [conexiones](../taller-de-integra-dos/roomies-web/frontend-next/src/lib/conexiones/server.ts) y [navegación con chat pendiente](../taller-de-integra-dos/roomies-web/frontend-next/src/config/navigation.ts).
+- [Verificación web limitada al correo](../taller-de-integra-dos/roomies-web/frontend-next/src/features/perfil/AccountVerification.tsx) y [administración de consulta](../taller-de-integra-dos/roomies-web/frontend-next/src/lib/admin/server.ts).
+- [Rutas activas del gateway](../taller-de-integra-dos/roomies-web/backend/api-gateway/app/local_routes.py), [usuarios/perfil](../taller-de-integra-dos/roomies-web/backend/services/auth-users-service/app/api/routes/local_users.py), [publicaciones y postulaciones](../taller-de-integra-dos/roomies-web/backend/services/listado-applications-service/app/api/routes.py) y [conexiones persistentes](../taller-de-integra-dos/roomies-web/backend/services/match-conexion-service/app/application/service.py).
+- [Convivencia sin implementar](../taller-de-integra-dos/roomies-web/backend/services/listado-applications-service/app/infrastructure/clients.py), [perfil sin verificación documental](../taller-de-integra-dos/roomies-web/backend/services/auth-users-service/app/infrastructure/persistence/postgres_profile_repository.py) y [compose Supabase preparado, no activado](../taller-de-integra-dos/roomies-web/docker-compose.supabase.yml).
 
 ## Verificación y límites
 

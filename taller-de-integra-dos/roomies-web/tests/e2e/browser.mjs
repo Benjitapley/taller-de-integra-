@@ -107,7 +107,7 @@ try {
   const ctxA=await context(), pageA=await ctxA.newPage();
   pageA.setDefaultTimeout(15_000);
   await pass("private Next pages reject anonymous users",async()=>{
-    for(const path of ["/inicio","/publicar","/navegacion","/perfil","/admin","/mis-publicaciones","/editar-publicacion","/crear","/publicaciones/1","/mis-conexiones"]) {
+    for(const path of ["/inicio","/publicar","/perfil","/admin","/mis-publicaciones","/editar-publicacion","/crear","/publicaciones/1","/mis-conexiones"]) {
       const response=await ctxA.request.get(config.web+path,{maxRedirects:0});
       assert.equal(response.status(),307);
       assert.equal(new URL(response.headers().location,config.web).pathname,"/");

@@ -27,8 +27,7 @@ const nextConfig: NextConfig = {
     const origin = fastApiOrigin();
     // /auth is intentionally NOT proxied: FastAPI login returns a raw JWT.
     // Browser authentication must use /web-api/auth (HttpOnly + CSRF).
-    const namespaces = ["api", "imagenes", "static_creacion", "static_principal", "PerfilU"];
-    const legacyPages = ["inicio", "crear", "perfil", "mis-publicaciones", "editar-publicacion"];
+    const namespaces = ["api", "imagenes"];
 
     return {
       beforeFiles: [
@@ -39,16 +38,8 @@ const nextConfig: NextConfig = {
         { source: "/conexiones", destination: `${origin}/conexiones/` },
         { source: "/conexiones/:path+", destination: `${origin}/conexiones/:path+` },
       ],
-      // Los WebP en public/Iconos conservan prioridad y funcionan sin FastAPI.
-      afterFiles: [{ source: "/Iconos/:path*", destination: `${origin}/Iconos/:path*` }],
-      // Lista explícita: no captura /, /navegacion, /_next ni rutas inexistentes.
-      // Una futura página React tendrá prioridad sobre su equivalente HTML.
-      fallback: [
-        ...legacyPages.filter((page) => page !== "inicio").map((page) => ({ source: `/${page}`, destination: `${origin}/${page}` })),
-        ...legacyPages.map((page) => ({ source: `/legacy/${page}`, destination: `${origin}/${page}` })),
-        { source: "/legacy/acceso", destination: `${origin}/` },
-        { source: "/acceso", destination: `${origin}/` },
-      ],
+      afterFiles: [],
+      fallback: [],
     };
   },
 };

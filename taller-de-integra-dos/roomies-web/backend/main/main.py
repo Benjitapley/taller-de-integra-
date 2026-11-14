@@ -18,7 +18,6 @@ from backend.auth_service.security import get_current_user
 from backend.auth_service.config import get_settings
 from backend.main.admin import router as admin_router
 
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -34,13 +33,7 @@ load_dotenv()
 # ==========================================
 
 BASE = Path(__file__).resolve().parent
-RAIZ_PROYECTO = BASE.parent.parent
 
-FRONTEND = RAIZ_PROYECTO / "frontend"
-FRONTEND_CREACION = FRONTEND / "Creacion_De_publicacion"
-FRONTEND_PRINCIPAL = FRONTEND / "PaginaPrincipal"
-FRONTEND_ICONOS = FRONTEND / "Iconos"
-FRONTEND_PERFIL = FRONTEND / "PerfilU"
 
 IMAGENES = BASE / "imagenes"
 
@@ -114,41 +107,7 @@ app.include_router(conexion_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 
-# MONTAJE DE CARPETAS ESTÁTICAS
-app.mount("/static_creacion", StaticFiles(directory=FRONTEND_CREACION), name="static_creacion")
-app.mount("/static_principal", StaticFiles(directory=FRONTEND_PRINCIPAL), name="static_principal")
 app.mount("/imagenes", StaticFiles(directory=IMAGENES, check_dir=False), name="imagenes")
-app.mount("/Iconos", StaticFiles(directory=FRONTEND_ICONOS), name="iconos")
-app.mount("/PerfilU", StaticFiles(directory=FRONTEND_PERFIL), name="perfil_u")
-
-# ==========================================
-# 3. RUTAS PARA MOSTRAR LOS HTML (FRONTEND)
-# ==========================================
-@app.get("/")
-def mostrar_login():
-    return FileResponse(FRONTEND_PRINCIPAL / "Auth_app(login)" / "auth_app.html")
-
-@app.get("/inicio")
-def mostrar_pagina_principal():
-    return FileResponse(FRONTEND_PRINCIPAL / "hayCupo.html")
-
-@app.get("/crear")
-def mostrar_formulario_creacion():
-    return FileResponse(FRONTEND_CREACION / "publicacion.html")
-
-@app.get("/perfil")
-def mostrar_pantalla_perfil():
-    return FileResponse(FRONTEND_PERFIL / "perfil.html")
-
-@app.get("/mis-publicaciones")
-def mostrar_mis_publicaciones():
-    # Carga tu CRUD
-    return FileResponse(FRONTEND_PRINCIPAL / "PublicacionesU" / "mis_publicaciones.html")
-
-@app.get("/editar-publicacion")
-def mostrar_editar_publicacion():
-    # Reutiliza el HTML de creación para editar
-    return FileResponse(FRONTEND_CREACION / "publicacion.html")
 
 
 # ==========================================

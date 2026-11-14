@@ -1,34 +1,13 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { cp, mkdtemp, readFile, rm, symlink, unlink } from "node:fs/promises";
+import { cp, mkdtemp, rm, symlink, unlink } from "node:fs/promises";
 import { createServer } from "node:http";
 import { join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const project = fileURLToPath(new URL("../", import.meta.url));
-const legacyRoot = new URL("../../frontend/", import.meta.url);
-const html = new Map([
-  ["/", "PaginaPrincipal/Auth_app(login)/auth_app.html"],
-  ["/inicio", "PaginaPrincipal/hayCupo.html"],
-  ["/crear", "Creacion_De_publicacion/publicacion.html"],
-  ["/editar-publicacion", "Creacion_De_publicacion/publicacion.html"],
-  ["/perfil", "PerfilU/perfil.html"],
-  ["/mis-publicaciones", "PaginaPrincipal/PublicacionesU/mis_publicaciones.html"],
-]);
-const assets = new Map([
-  ["/static_principal/HayCupo.js", "PaginaPrincipal/HayCupo.js"],
-  ["/static_principal/estilo_HayCupo.css", "PaginaPrincipal/estilo_HayCupo.css"],
-  ["/static_principal/Auth_app(login)/auth_app.css", "PaginaPrincipal/Auth_app(login)/auth_app.css"],
-  ["/static_principal/Auth_app(login)/auth_app.js", "PaginaPrincipal/Auth_app(login)/auth_app.js"],
-  ["/static_principal/PublicacionesU/MisPublicaciones.js", "PaginaPrincipal/PublicacionesU/MisPublicaciones.js"],
-  ["/static_creacion/publicacion.js", "Creacion_De_publicacion/publicacion.js"],
-  ["/static_creacion/estilo_de_publicacion.css", "Creacion_De_publicacion/estilo_de_publicacion.css"],
-  ["/PerfilU/perfil.js", "PerfilU/perfil.js"],
-  ["/Iconos/sidebar.css", "Iconos/sidebar.css"],
-]);
-
 test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos", { timeout: 120_000 }, async (t) => {
   // No ocupar el puerto de un servidor existente ni detener procesos ajenos.
   const portCheck = createServer();
@@ -54,12 +33,6 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
     const path = decodeURIComponent(url.pathname);
     received.push(path + url.search);
     response.setHeader("X-Proxy-Fixture", "transport-only");
-    const file = html.get(path) ?? assets.get(path);
-    if (file) {
-      response.setHeader("Content-Type", html.has(path) ? "text/html; charset=utf-8" : path.endsWith(".css") ? "text/css" : "application/javascript");
-      response.end(await readFile(new URL(file, legacyRoot)));
-      return;
-    }
     // Double of FastAPI, available only in this isolated test process.
     if (["/auth/verificar", "/auth/reenviar-codigo"].includes(path)) {
       response.setHeader("Content-Type", "application/json");
@@ -218,15 +191,14 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
     });
   }
 
-  await t.test("páginas HTML y alias de acceso conservan sus bytes", async () => {
-    for (const [path, file] of html) {
-      const aliases = path === "/" ? ["/acceso", "/legacy/acceso"] : [`/legacy${path}`];
-      for (const alias of aliases) {
-        const response = await fetch(`${base}${alias}`);
-        assert.equal(response.status, 200, alias);
-        assert.equal(await response.text(), await readFile(new URL(file, legacyRoot), "utf8"), alias);
-      }
+  await t.test("las rutas retiradas devuelven 404 sin contactar al upstream", async () => {
+    const count = received.length;
+    for (const path of ["/acceso", "/legacy/acceso", "/legacy/inicio", "/legacy/perfil",
+      "/legacy/editar-publicacion?id=123", "/navegacion", "/static_principal/HayCupo.js",
+      "/static_creacion/publicacion.js", "/PerfilU/perfil.js", "/Iconos/sidebar.css"]) {
+      assert.equal((await fetch(base + path)).status, 404, path);
     }
+    assert.equal(received.length, count);
   });
 
   await t.test("publicaciones nativas exigen sesión y conservan AppShell", async () => {
@@ -240,19 +212,10 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
     }
   });
 
-  await t.test("recursos antiguos, incluyendo paréntesis y mayúsculas", async () => {
-    for (const [path, file] of assets) {
-      const response = await fetch(`${base}${path}`);
-      assert.equal(response.status, 200, path);
-      assert.equal(await response.text(), await readFile(new URL(file, legacyRoot), "utf8"), path);
-    }
-  });
-
   await t.test("conserva parámetros, cookie sintética, rutas e imágenes", async () => {
-    for (const path of ["/api/__proxy_probe?texto=Temuco&limite=5", "/legacy/editar-publicacion?id=123", "/imagenes/__proxy_probe.png", "/conexiones/usuarios/buscar?zona=Centro"]) {
+    for (const path of ["/api/__proxy_probe?texto=Temuco&limite=5", "/imagenes/__proxy_probe.png", "/conexiones/usuarios/buscar?zona=Centro"]) {
       const response = await fetch(`${base}${path}`, { headers: { Cookie: "proxy_transport_probe=synthetic" }, redirect: "manual" });
       assert.equal(response.status, 200, path);
-      if (path.includes("/editar-publicacion")) { assert.ok(received.includes(path.replace("/legacy", ""))); continue; }
       const body = await response.json();
       const expected = new URL(path, base);
       assert.equal(body.path, expected.pathname);
