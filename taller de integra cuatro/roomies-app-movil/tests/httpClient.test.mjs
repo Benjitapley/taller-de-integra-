@@ -78,6 +78,26 @@ test("URL base ausente o inválida impide consultar Auth y enviar peticiones", a
   }
 });
 
+test("un prefijo API configurado se combina con la ruta sin repetir /api", async () => {
+  const cliente = preparar({ base: "https://api.example.invalid/pasarela/api/" });
+  await cliente.solicitar("/api/usuarios/me");
+  assert.equal(cliente.llamadas[0].url, "https://api.example.invalid/pasarela/api/usuarios/me");
+  const fuera = await cliente.solicitar("/api/../fuera");
+  assert.equal(fuera.codigo, "peticion_invalida");
+  assert.equal(cliente.llamadas.length, 1);
+});
+
+test("no usa el token de la cuenta nueva para enviar datos de la cuenta anterior", async () => {
+  const cliente = preparar({ obtenerSesion: async () => ({
+    data: { session: { access_token: "token-cuenta-b", user: { id: "cuenta-b" } } }, error: null,
+  }) });
+  const resultado = await cliente.solicitar("/usuarios/me", {
+    metodo: "POST", identidadEsperada: "cuenta-a", cuerpo: { nombre: "Cuenta A" },
+  });
+  assert.equal(resultado.codigo, "sesion_no_disponible");
+  assert.equal(cliente.llamadas.length, 0);
+});
+
 test("rechaza URLs externas y rutas que escapan del prefijo configurado", async () => {
   const cliente = preparar();
   for (const ruta of ["https://externo.example.invalid", "//externo.example.invalid", "/\\externo", "/../fuera", "recurso"]) {

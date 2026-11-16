@@ -71,7 +71,10 @@ async function solicitar(
   try {
     // Solo rutas de esta API: no aceptar URLs externas para enviarles el Bearer.
     if (!ruta.startsWith("/") || ruta.startsWith("//") || ruta.includes("\\")) throw new Error();
-    url = new URL(ruta.slice(1), base);
+    const rutaRelativa = base.pathname.endsWith("/api/") && ruta.startsWith("/api/")
+      ? ruta.slice("/api/".length)
+      : ruta.slice(1);
+    url = new URL(rutaRelativa, base);
     if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname) || url.hash) throw new Error();
   } catch {
     return fallo("peticion_invalida", "La ruta de la solicitud no es válida.");
@@ -116,6 +119,9 @@ async function solicitar(
       if (error) return fallo("sesion_no_disponible", "No pudimos comprobar tu sesión. Inténtalo otra vez.");
       const token = data.session?.access_token;
       if (!token) return fallo("sin_sesion", "Inicia sesión para continuar.");
+      if (opciones.identidadEsperada !== undefined && data.session?.user?.id !== opciones.identidadEsperada) {
+        return fallo("sesion_no_disponible", "La cuenta cambió antes de completar la solicitud. Inténtalo otra vez.");
+      }
       headers.Authorization = `Bearer ${token}`;
     } catch {
       return fallo("sesion_no_disponible", "No pudimos comprobar tu sesión. Inténtalo otra vez.");

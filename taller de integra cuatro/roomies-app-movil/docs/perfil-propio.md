@@ -94,3 +94,39 @@ A09 sigue pendiente: acordar campos editables y realizar PATCH seguido de GET.
 El PATCH publicado permite editar edad mientras el registro conserva fecha de
 nacimiento; esa discrepancia requiere acuerdo antes de habilitar edición. No se
 añade verificación documental ni un indicador de identidad validada por documentos.
+
+## Alta de perfil y restauración de sesión (SCRUM-85)
+
+El SDK restaura la sesión. Tras recuperar una identidad o iniciar sesión, la app
+consulta su perfil con el token de esa cuenta. Con el alta habilitada por entorno,
+un perfil ausente se solicita mediante el POST configurado, con el nombre y la
+fecha de nacimiento del registro y solo si el correo se confirmó. El servidor
+controla la pertenencia y la idempotencia. Si faltan datos del registro o falla
+la solicitud, Mi perfil muestra el problema y permite reintentar sin cerrar sesión.
+
+Para una prueba en Expo Go contra el despliegue de transición, configurar `.env.local`:
+
+```dotenv
+EXPO_PUBLIC_API_URL=https://roomies-main-api-gateway.onrender.com
+EXPO_PUBLIC_CONTRATO_PERFIL=render
+```
+
+`render` selecciona el GET `/usuarios/me` y el POST `/local/v1/perfil/inicializacion`.
+El OpenAPI desplegado y el backlog TI2 Sprint 2 v1.5 coinciden en GET y PATCH
+`/usuarios/me`. El alta está en el OpenAPI desplegado; el backlog describe la
+persistencia por UUID (AUTH-04) sin fijar una ruta HTTP de alta. Sin modo se
+conserva el GET anterior. La URL base se configura sin `/api`; los prefijos
+forman parte de la ruta publicada para cada operación.
+
+1. Con la cuenta existente, abrir Mi perfil y comprobar sus datos.
+2. Cerrar sesión, registrar una cuenta nueva de prueba y confirmar el correo.
+   Abrir Mi perfil y comprobar que muestra el nombre y la edad de esa cuenta.
+3. Cerrar completamente Expo Go y reabrir el proyecto. Comprobar que la sesión y
+   el perfil se recuperan. Cambiar de cuenta y comprobar que nunca aparece el perfil
+   de la sesión anterior. Para verificar la ausencia de duplicados, pedir a TI2
+   que confirme un único ID de perfil para la identidad de prueba.
+
+La prueba del Gateway el 16/11 mostró 200 en `/health`, 401 sin sesión en el
+POST de inicialización y 404 en `POST /api/usuarios/me`. La provisión autenticada y la restauración en
+teléfono requieren la prueba anterior. Las pruebas locales de HTTP y perfil usan
+transporte simulado y no crean cuentas ni filas reales.

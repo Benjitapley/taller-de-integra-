@@ -8,8 +8,9 @@ export type EstadoPerfilPropio =
   | { tipo: "resultado"; resultado: ResultadoPerfilPropio };
 
 export function usePerfilPropio() {
-  const { usuarioActual } = useAuth();
+  const { usuarioActual, provisionPerfil, reintentarProvisionPerfil } = useAuth();
   const identidadId = usuarioActual?.identidad.id ?? null;
+  const perfilPreparado = provisionPerfil?.exito === true;
   const [intento, setIntento] = useState(0);
   const [consulta, setConsulta] = useState<{
     identidadId: string | null;
@@ -18,15 +19,14 @@ export function usePerfilPropio() {
   }>({ identidadId: null, intento: 0, estado: { tipo: "cargando" } });
 
   useFocusEffect(useCallback(() => {
+    if (!identidadId || !perfilPreparado) return;
     let vigente = true;
     setConsulta({ identidadId, intento, estado: { tipo: "cargando" } });
 
     async function cargar() {
       let resultado: ResultadoPerfilPropio;
       try {
-        resultado = identidadId
-          ? await consultarPerfilPropio()
-          : { exito: false, codigo: "sin_sesion", error: "Inicia sesión para consultar tu perfil." };
+        resultado = await consultarPerfilPropio(undefined, identidadId ?? undefined);
       } catch {
         resultado = { exito: false, codigo: "red", error: "No pudimos consultar tu perfil. Inténtalo otra vez." };
       }
@@ -36,13 +36,18 @@ export function usePerfilPropio() {
     void cargar();
     // Descarta resultados después de salir de Perfil, reintentar o cambiar de cuenta.
     return () => { vigente = false; };
-  }, [identidadId, intento]));
+  }, [identidadId, intento, perfilPreparado]));
 
   // Nunca mostrar el perfil anterior durante el render de un cambio de identidad.
-  const estado: EstadoPerfilPropio = consulta.identidadId === identidadId && consulta.intento === intento
+  const estado: EstadoPerfilPropio = provisionPerfil && !provisionPerfil.exito
+    ? { tipo: "resultado", resultado: provisionPerfil }
+    : perfilPreparado && consulta.identidadId === identidadId && consulta.intento === intento
     ? consulta.estado
     : { tipo: "cargando" };
 
-  const reintentar = useCallback(() => setIntento((valor) => valor + 1), []);
+  const reintentar = useCallback(() => {
+    if (perfilPreparado) setIntento((valor) => valor + 1);
+    else reintentarProvisionPerfil();
+  }, [perfilPreparado, reintentarProvisionPerfil]);
   return { estado, reintentar };
 }
