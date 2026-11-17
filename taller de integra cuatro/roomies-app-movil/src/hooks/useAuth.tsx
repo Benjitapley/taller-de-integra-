@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useProvisionPerfil } from "@/hooks/useProvisionPerfil";
 import { estaSupabaseConfigurado, getSupabaseClient } from "@/lib/supabase";
 import {
   cerrarSesionSupabase,
@@ -15,6 +16,7 @@ import {
   iniciarSesionSupabase,
   registrarCuentaSupabase,
 } from "@/services/authService";
+import type { ResultadoProvisionPerfil } from "@/services/provisionPerfilService";
 import type {
   DatosRegistro,
   ResultadoCierreSesion,
@@ -32,6 +34,8 @@ interface AuthContextValue {
   restaurandoSesion: boolean;
   errorRestauracion: string | null;
   reintentarRestauracion: () => void;
+  provisionPerfil: ResultadoProvisionPerfil | null;
+  reintentarProvisionPerfil: () => void;
   iniciarSesion: (email: string, password: string) => Promise<ResultadoInicioSesion>;
   registrarCuenta: (datos: DatosRegistro) => Promise<ResultadoRegistro>;
   confirmarRegistro: (enlace: string) => Promise<ResultadoConfirmacion>;
@@ -45,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [restaurandoSesion, setRestaurandoSesion] = useState(true);
   const [errorRestauracion, setErrorRestauracion] = useState<string | null>(null);
   const [intentoRestauracion, setIntentoRestauracion] = useState(0);
+  const { resultado: provisionPerfil, reintentar: reintentarProvisionPerfil } = useProvisionPerfil(sesion?.user ?? null);
 
   useEffect(() => {
     let vigente = true;
@@ -127,6 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       restaurandoSesion,
       errorRestauracion,
       reintentarRestauracion,
+      provisionPerfil,
+      reintentarProvisionPerfil,
       iniciarSesion,
       registrarCuenta,
       confirmarRegistro,
@@ -137,6 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       restaurandoSesion,
       errorRestauracion,
       reintentarRestauracion,
+      provisionPerfil,
+      reintentarProvisionPerfil,
       iniciarSesion,
       registrarCuenta,
       confirmarRegistro,

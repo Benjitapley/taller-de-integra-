@@ -26,6 +26,8 @@ export interface OpcionesPeticionHttp {
   cuerpo?: unknown;
   /** Las peticiones son protegidas salvo que se indique false explícitamente. */
   autenticada?: boolean;
+  /** Si se indica, solo usar el token de esta identidad. */
+  identidadEsperada?: string;
   /** Tiempo máximo de fetch y lectura del cuerpo; por defecto, 15 segundos. */
   tiempoLimiteMs?: number;
 }

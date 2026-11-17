@@ -1,4 +1,5 @@
 import { solicitarJson } from "@/services/httpClient";
+import { errorConfiguracionPerfil, rutasPerfilPropio } from "@/services/provisionPerfilService";
 import type { ErrorHttp } from "@/types/Http";
 import type { PerfilPropioTi2, PerfilPropioVista } from "@/types/Usuario";
 
@@ -62,6 +63,7 @@ export function adaptarPerfilTi2(datos: unknown): PerfilPropioVista | null {
  */
 export async function consultarPerfilPropio(
   adaptar: AdaptadorPerfilPropio | null = adaptarPerfilTi2,
+  identidadEsperada?: string,
 ): Promise<ResultadoPerfilPropio> {
   if (!adaptar) {
     return {
@@ -71,7 +73,11 @@ export async function consultarPerfilPropio(
     };
   }
 
-  const resultado = await solicitarJson("/usuarios/me");
+  const rutas = rutasPerfilPropio();
+  if (!rutas) return errorConfiguracionPerfil();
+  const resultado = identidadEsperada
+    ? await solicitarJson(rutas.consulta, { identidadEsperada })
+    : await solicitarJson(rutas.consulta);
   if (!resultado.exito) return resultado;
 
   try {

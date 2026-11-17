@@ -17,6 +17,9 @@ function preparar(respuesta = { exito: true, estadoHttp: 200, datos: { ejemplo: 
     URL,
     process: { env: { EXPO_PUBLIC_API_URL: "https://api.example.invalid" } },
     require(nombre) {
+      if (nombre === "@/services/provisionPerfilService") {
+        return { rutasPerfilPropio: () => ({ consulta: "/usuarios/me", alta: null }) };
+      }
       assert.equal(nombre, "@/services/httpClient");
       return { solicitarJson: async (...args) => { llamadas.push(args); return respuesta; } };
     },
