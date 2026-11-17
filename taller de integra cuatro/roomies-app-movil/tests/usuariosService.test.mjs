@@ -21,11 +21,21 @@ function preparar(respuesta = { exito: true, estadoHttp: 200, datos: { ejemplo: 
         return { rutasPerfilPropio: () => ({ consulta: "/usuarios/me", alta: null }) };
       }
       assert.equal(nombre, "@/services/httpClient");
-      return { solicitarJson: async (...args) => { llamadas.push(args); return respuesta; } };
+      return { solicitarJson: async (...args) => {
+        llamadas.push(args);
+        return typeof respuesta === "function" ? respuesta(...args) : respuesta;
+      } };
     },
     console: { log: () => assert.fail("No registrar datos"), error: () => assert.fail("No registrar datos") },
   });
-  return { consultar: modulo.exports.consultarPerfilPropio, adaptar: modulo.exports.adaptarPerfilTi2, llamadas };
+  return {
+    consultar: modulo.exports.consultarPerfilPropio,
+    actualizar: modulo.exports.actualizarPerfilPropio,
+    adaptar: modulo.exports.adaptarPerfilTi2,
+    crearBorrador: modulo.exports.crearBorradorPerfilPropio,
+    obtenerCambios: modulo.exports.obtenerCambiosPerfilPropio,
+    llamadas,
+  };
 }
 
 // Modelo local de la vista, NO un ejemplo del contrato HTTP de TI2.
@@ -151,4 +161,54 @@ test("un fallo de adaptación se convierte en error genérico sin exponer datos 
   const resultado = await servicio.consultar(() => { throw new Error("dato-sensible-ficticio"); });
   assert.equal(resultado.codigo, "respuesta_invalida");
   assert.doesNotMatch(JSON.stringify(resultado), /dato-sensible-ficticio/);
+});
+
+test("el borrador conserva los valores existentes y envía solo los cambios, incluido el borrado", async () => {
+  const actualizado = { ...dto, ciudad: "Padre Las Casas", sobre_mi: null };
+  const servicio = preparar((_ruta, opciones) => ({
+    exito: true, estadoHttp: 200, datos: opciones.metodo === "PATCH" ? dto : actualizado,
+  }));
+  const inicial = servicio.crearBorrador(servicio.adaptar({ ...dto, ocupacion: "Ocupación previa de Render" }));
+  const cambios = servicio.obtenerCambios(inicial, { ...inicial, ciudad: " Padre Las Casas ", sobre_mi: " " });
+  assert.equal(JSON.stringify(servicio.obtenerCambios(inicial, inicial)), "{}");
+  const resultado = await servicio.actualizar(cambios, "cuenta-a");
+
+  assert.equal(servicio.llamadas.length, 2);
+  assert.equal(JSON.stringify(servicio.llamadas), JSON.stringify([
+    ["/usuarios/me", { metodo: "PATCH", cuerpo: { ciudad: "Padre Las Casas", sobre_mi: null }, identidadEsperada: "cuenta-a" }],
+    ["/usuarios/me", { identidadEsperada: "cuenta-a" }],
+  ]));
+  assert.equal(resultado.exito, true);
+  assert.equal(resultado.perfil.ubicacion, "Padre Las Casas");
+  assert.equal(resultado.perfil.bio, null);
+});
+
+test("no envía un PATCH vacío, fuera de límite o con datos protegidos", async () => {
+  const servicio = preparar();
+  for (const cambios of [
+    {}, { edad: 30, ciudad: "Temuco" }, { nombre: "Otro nombre" }, { correo: null },
+    { foto_perfil: "foto.jpg" }, { ciudad: "a".repeat(101) }, { sobre_mi: "a\0b" },
+  ]) {
+    const resultado = await servicio.actualizar(cambios, "cuenta-a");
+    assert.equal(resultado.exito, false);
+    assert.equal(resultado.guardado, false);
+  }
+  assert.equal(servicio.llamadas.length, 0);
+});
+
+test("distingue un PATCH rechazado de un guardado que solo necesita repetir la consulta", async () => {
+  const rechazo = { exito: false, estadoHttp: 422, codigo: "http", error: "Revisa los datos que enviaste." };
+  const rechazado = preparar(rechazo);
+  const falloPatch = await rechazado.actualizar({ ciudad: "Temuco" }, "cuenta-a");
+  assert.equal(falloPatch.guardado, false);
+  assert.equal(falloPatch.error, rechazo.error);
+  assert.equal(rechazado.llamadas.length, 1);
+
+  const guardado = preparar((_ruta, opciones) => opciones.metodo === "PATCH"
+    ? { exito: true, estadoHttp: 200, datos: dto }
+    : { exito: false, codigo: "red", error: "Revisa la conexión." });
+  const falloConsulta = await guardado.actualizar({ ciudad: "Temuco" }, "cuenta-a");
+  assert.equal(falloConsulta.exito, false);
+  assert.equal(falloConsulta.guardado, true);
+  assert.equal(guardado.llamadas.length, 2);
 });

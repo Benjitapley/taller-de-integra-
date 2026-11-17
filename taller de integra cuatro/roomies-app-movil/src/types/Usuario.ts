@@ -78,6 +78,14 @@ export interface PerfilPropioTi2 {
   foto_perfil: string | null;
 }
 
+/** Cada clave omitida conserva su valor. Un null explícito borra el campo. */
+export interface CambiosPerfilPropio {
+  ocupacion?: string | null;
+  ciudad?: string | null;
+  breve_descripcion?: string | null;
+  sobre_mi?: string | null;
+}
+
 /**
  * Modelo de presentación de A08, independiente del DTO HTTP de TI2.
  * null significa dato no disponible; no equivale a cero, lista vacía o valor mock.
