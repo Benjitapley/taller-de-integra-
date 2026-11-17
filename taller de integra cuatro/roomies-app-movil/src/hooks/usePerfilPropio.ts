@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { consultarPerfilPropio, type ResultadoPerfilPropio } from "@/services/usuariosService";
+import type { PerfilPropioVista } from "@/types/Usuario";
 
 export type EstadoPerfilPropio =
   | { tipo: "cargando" }
@@ -49,5 +50,10 @@ export function usePerfilPropio() {
     if (perfilPreparado) setIntento((valor) => valor + 1);
     else reintentarProvisionPerfil();
   }, [perfilPreparado, reintentarProvisionPerfil]);
-  return { estado, reintentar };
+  const reflejarPerfilGuardado = useCallback((perfil: PerfilPropioVista) => {
+    setConsulta((actual) => actual.identidadId === identidadId && actual.intento === intento
+      ? { identidadId, intento, estado: { tipo: "resultado", resultado: { exito: true, perfil } } }
+      : actual);
+  }, [identidadId, intento]);
+  return { estado, reintentar, reflejarPerfilGuardado };
 }

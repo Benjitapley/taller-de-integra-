@@ -1,7 +1,7 @@
 import { solicitarJson } from "@/services/httpClient";
 import { errorConfiguracionPerfil, rutasPerfilPropio } from "@/services/provisionPerfilService";
-import type { ErrorHttp } from "@/types/Http";
-import type { PerfilPropioTi2, PerfilPropioVista } from "@/types/Usuario";
+import type { ErrorHttp, ResultadoHttp } from "@/types/Http";
+import type { CambiosPerfilPropio, PerfilPropioTi2, PerfilPropioVista } from "@/types/Usuario";
 
 /** Valida el DTO acordado con TI2 y lo convierte al modelo de la pantalla. */
 export type AdaptadorPerfilPropio = (datos: unknown) => PerfilPropioVista | null;
@@ -10,6 +10,37 @@ export type ResultadoPerfilPropio =
   | { exito: true; perfil: PerfilPropioVista }
   | ErrorHttp
   | { exito: false; codigo: "contrato_pendiente"; error: string };
+
+export const LIMITES_EDICION_PERFIL = {
+  ocupacion: 100,
+  ciudad: 100,
+  breve_descripcion: 255,
+  sobre_mi: 5000,
+} as const satisfies Record<keyof CambiosPerfilPropio, number>;
+
+export type BorradorPerfilPropio = Record<keyof CambiosPerfilPropio, string>;
+
+export function crearBorradorPerfilPropio(perfil: PerfilPropioVista): BorradorPerfilPropio {
+  return {
+    ocupacion: perfil.ocupacion ?? "",
+    ciudad: perfil.ubicacion ?? "",
+    breve_descripcion: perfil.breveDescripcion ?? "",
+    sobre_mi: perfil.bio ?? "",
+  };
+}
+
+export function obtenerCambiosPerfilPropio(inicial: BorradorPerfilPropio, borrador: BorradorPerfilPropio): CambiosPerfilPropio {
+  const cambios: CambiosPerfilPropio = {};
+  for (const campo of Object.keys(LIMITES_EDICION_PERFIL) as (keyof CambiosPerfilPropio)[]) {
+    const texto = borrador[campo].trim();
+    if (texto !== inicial[campo].trim()) cambios[campo] = texto || null;
+  }
+  return cambios;
+}
+
+export type ResultadoGuardarPerfil =
+  | { exito: true; perfil: PerfilPropioVista }
+  | { exito: false; guardado: boolean; error: string };
 
 function esPerfilTi2(datos: unknown): datos is PerfilPropioTi2 {
   if (datos === null || typeof datos !== "object" || Array.isArray(datos)) return false;
@@ -78,6 +109,41 @@ export async function consultarPerfilPropio(
   const resultado = identidadEsperada
     ? await solicitarJson(rutas.consulta, { identidadEsperada })
     : await solicitarJson(rutas.consulta);
+  return interpretarPerfil(resultado, adaptar);
+}
+
+export async function actualizarPerfilPropio(cambios: CambiosPerfilPropio, identidadEsperada: string): Promise<ResultadoGuardarPerfil> {
+  const campos = Object.entries(cambios);
+  if (!identidadEsperada || !campos.length || campos.some(([campo, valor]) => !esCambioValido(campo, valor))) {
+    return { exito: false, guardado: false, error: "Revisa los campos editados antes de guardar tu perfil." };
+  }
+
+  const rutas = rutasPerfilPropio();
+  if (!rutas) return { ...errorConfiguracionPerfil(), guardado: false };
+  const cuerpo = Object.fromEntries(campos.map(([campo, valor]) => [campo, typeof valor === "string" ? valor.trim() || null : valor]));
+  const actualizacion = await solicitarJson(rutas.consulta, { metodo: "PATCH", cuerpo, identidadEsperada });
+
+  // Un HTTP 200 confirma el guardado incluso si el cuerpo no se pudo leer.
+  // El GET posterior es la fuente para actualizar los datos de la pantalla.
+  if (actualizacion.estadoHttp !== 200) {
+    return {
+      exito: false, guardado: false,
+      error: actualizacion.exito ? "No pudimos confirmar el guardado. Vuelve a consultar tu perfil." : actualizacion.error,
+    };
+  }
+
+  const consulta = await consultarPerfilPropio(undefined, identidadEsperada);
+  return consulta.exito ? consulta : { exito: false, guardado: true, error: consulta.error };
+}
+
+function esCambioValido(campo: string, valor: unknown): boolean {
+  if (!Object.hasOwn(LIMITES_EDICION_PERFIL, campo)) return false;
+  if (valor === null) return true;
+  const maximo = LIMITES_EDICION_PERFIL[campo as keyof CambiosPerfilPropio];
+  return typeof valor === "string" && !valor.includes("\0") && [...valor.trim()].length <= maximo;
+}
+
+function interpretarPerfil(resultado: ResultadoHttp, adaptar: AdaptadorPerfilPropio): ResultadoPerfilPropio {
   if (!resultado.exito) return resultado;
 
   try {

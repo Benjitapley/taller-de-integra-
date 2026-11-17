@@ -51,7 +51,7 @@ código/estado; 404 no se interpreta automáticamente como perfil aún no provis
 - src/components/perfil/ContenidoPerfil.tsx: carga/error, reintento, datos personales,
   descripción breve y extensa, y secciones no disponibles.
 - src/app/(tabs)/perfil.tsx: conecta hook y vista; mantiene cierre de sesión local.
-- FormularioPerfilLocal.tsx: referencia previa para A09; sigue sin montarse.
+- FormularioEditarPerfil.tsx: edición mediante el contrato desplegado, descrita en SCRUM-86.
 
 ## Comprobación manual
 
@@ -90,10 +90,8 @@ perfil asociados, y comprobación visual con datos reales en web/Expo Go. La aus
 de perfil requiere que TI2 defina y pruebe su provisión; el móvil no crea una fila
 automáticamente ni deduce ese estado solo por un 404.
 
-A09 sigue pendiente: acordar campos editables y realizar PATCH seguido de GET.
-El PATCH publicado permite editar edad mientras el registro conserva fecha de
-nacimiento; esa discrepancia requiere acuerdo antes de habilitar edición. No se
-añade verificación documental ni un indicador de identidad validada por documentos.
+El avance de A09 se incorpora a SCRUM-86. El PATCH publicado incluye `edad` en
+su esquema, pero el móvil conserva la edad derivada de la fecha de nacimiento.
 
 ## Alta de perfil y restauración de sesión (SCRUM-85)
 
@@ -130,3 +128,35 @@ La prueba del Gateway el 16/11 mostró 200 en `/health`, 401 sin sesión en el
 POST de inicialización y 404 en `POST /api/usuarios/me`. La provisión autenticada y la restauración en
 teléfono requieren la prueba anterior. Las pruebas locales de HTTP y perfil usan
 transporte simulado y no crean cuentas ni filas reales.
+
+## Edición y confirmación de guardado (SCRUM-86 / SCRUM-42)
+
+Mi perfil habilita la edición tras cargar el perfil propio. El formulario usa
+el `PATCH /usuarios/me` del contrato desplegado, con ocupación, ciudad,
+descripción breve y Sobre mí. Manda los campos modificados; borrar un valor
+envía `null`. Nombre, edad, fecha de nacimiento y correo quedan fuera del PATCH.
+Género y región/comuna de interés requieren la ruta y el esquema acordados con
+TI2. La foto tiene su propia tarea.
+
+Tras un PATCH 200 se consulta `GET /usuarios/me` con la misma identidad. La
+vista solo se actualiza con ese resultado. Si se rechaza el PATCH, se conserva
+el borrador. Si el PATCH responde 200 y falla el GET, se puede volver a consultar
+sin repetir el guardado.
+
+Prueba física: editar la ciudad y una descripción en una cuenta de prueba,
+guardar, comprobar ambos valores en Mi perfil y cerrar y reabrir Expo Go. Borrar
+la descripción y repetir. Si se interrumpe la conexión antes de guardar, el
+borrador debe seguir visible y debe ser posible reintentar. La evidencia del
+contrato final debe incluir los campos adicionales que TI2 confirme.
+
+Validación física del 17/11/2026 en Expo Go contra Render: se guardaron ciudad,
+ocupación y ambas descripciones. Tras cerrar y reabrir, persistieron los datos.
+Luego se borraron ambas descripciones y volvió a comprobarse el resultado tras
+reabrir. Las capturas muestran el perfil cargado antes y después de ambos guardados.
+
+En Expo Web desde `http://localhost:8081`, el Gateway respondió `200` en
+`/health` y `405` sin cabeceras CORS a las preconsultas `OPTIONS` para GET y
+PATCH de `/usuarios/me` y POST de `/local/v1/perfil/inicializacion`. El navegador
+bloquea las solicitudes de perfil. Para verificar la corrección, TI2 debe
+permitir el origen de Expo Web y los métodos y cabeceras correspondientes en el
+Gateway. Después se repite la lectura y el guardado en el navegador.
