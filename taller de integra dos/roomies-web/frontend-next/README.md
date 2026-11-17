@@ -22,6 +22,23 @@ Compose, el Gateway expuesto en el host escucha en el puerto 8010.
 `WEB_AUTH_ORIGIN` debe coincidir con el origen público exacto de Next.js.
 Las variables de autenticación y de transporte pertenecen al servidor.
 
+### Cuenta y perfil · SCRUM-111
+
+Para probar el contrato común, configurar `WEB_AUTH_PROVIDER=supabase` y
+`WEB_PROFILE_CONTRACT=v1` en el servidor de Next.js. El Gateway debe publicar
+`GET/POST/PATCH /api/usuarios/me` y `PUT /api/usuarios/me/foto` (contrato de
+microservicios v1.0, secciones 2 y 3.2, y backlog TI2 v1.4, sección 13).
+La sesión se conserva en cookies HttpOnly. El BFF envía al Gateway el token de
+Supabase y mantiene separadas la edición de datos y la subida de foto.
+El Gateway también sirve las rutas públicas del catálogo geográfico
+`/api/regiones` y `/api/regiones/{id}/comunas`.
+
+Usar `npm run test:supabase-auth` y `npm run test:profile` para probar el
+adaptador con respuestas de prueba. Una vez disponible SCRUM-94, validar en
+el entorno compartido el registro, la confirmación, el cambio entre cuentas
+y el reemplazo de foto tras cerrar y reabrir sesión. Hasta entonces, la
+configuración existente de desarrollo sigue usando su contrato local.
+
 ## Rutas
 
 | Ruta | Función |

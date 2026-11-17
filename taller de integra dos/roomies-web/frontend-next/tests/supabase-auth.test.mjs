@@ -24,6 +24,46 @@ test("proveedor local explícito; remoto, secreto y proveedor desconocido se rec
   assert.equal(authConfig({ ...env, WEB_SUPABASE_PUBLISHABLE_KEY: `fixture.${Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url")}.signature` }), null);
   assert.equal(authConfig({ ...env, WEB_AUTH_PROVIDER: "legacy" }).provider, undefined);
 });
+
+test("la cuenta del contrato v1 usa solo el perfil común y sale mediante Supabase", async () => {
+  const common = authConfig({ ...env, WEB_PROFILE_CONTRACT: "v1" });
+  assert.equal(common.profileContract, "v1");
+  assert.equal(authConfig({ ...env, WEB_PROFILE_CONTRACT: "v1", WEB_AUTH_PROVIDER: "legacy" }), null);
+  const calls = [];
+  const transport = async (url, options) => {
+    calls.push([url, options.method ?? "GET"]);
+    if (url.endsWith("/token?grant_type=password")) return ok(session);
+    if (url.endsWith("/user")) return ok(identity);
+    assert.equal(url, common.backend + "/api/usuarios/me");
+    assert.equal(options.headers.Authorization, `Bearer ${token}`);
+    if (options.method === "POST") {
+      assert.deepEqual(JSON.parse(options.body), { nombre: "Ficticio", fecha_nacimiento: "2000-01-01" });
+      return ok({ nombre: "Ficticio" });
+    }
+    return calls.length === 3 ? new Response(null, { status: 404 }) : ok({ nombre: "Ficticio" });
+  };
+  assert.equal((await handleAuth(req("login", credentials), "login", common, transport)).status, 200);
+  assert.deepEqual(calls.slice(2).map((entry) => entry[1]), ["GET", "POST", "GET"]);
+  const result = await handleAuth(req("logout", {}, { cookie: `${cookieName(common)}=${token}` }), "logout", common, async (url) => {
+    assert.equal(url, common.supabase.origin + "/auth/v1/logout?scope=local");
+    return new Response(null, { status: 204 });
+  });
+  assert.equal(result.status, 200);
+  assert.match(result.headers.get("Set-Cookie"), /Max-Age=0/);
+});
+
+test("registro autoconfirmado en laboratorio y registro duplicado comparten respuesta sin sesión", async () => {
+  const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
+  const local = await handleAuth(req("registro", input), "registro", config, async () => ok(session));
+  const duplicate = await handleAuth(req("registro", input), "registro", config,
+    async () => Response.json({ error_code: "user_already_exists" }, { status: 422 }));
+  assert.equal(local.status, 200);
+  assert.equal(duplicate.status, 200);
+  assert.deepEqual(await local.json(), await duplicate.json());
+  assert.doesNotMatch(local.headers.get("Set-Cookie"), /roomies_sb_dev_(access|refresh)=/);
+  const hosted = { ...config, supabase: { ...config.supabase, allowLocalSignupSession: false } };
+  assert.equal((await handleAuth(req("registro", input), "registro", hosted, async () => ok(session))).status, 503);
+});
 test("registro valida mayoría de edad y rechaza permisos y enlaces de identidad", async () => {
   const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
   for (const body of [{ ...input, fecha_nacimiento: "2020-01-01" }, { ...input, admin: true }, { ...input, id_usuario: 1 }]) assert.equal((await handleAuth(req("registro", body), "registro", config, () => { throw Error("no network"); })).status, 422);
