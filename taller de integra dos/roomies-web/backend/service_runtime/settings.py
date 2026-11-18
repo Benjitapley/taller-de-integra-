@@ -76,15 +76,28 @@ def database_url(variable, role):
 
 
 def service_url(variable, *, docker_hosts=()):
-    runtime_mode()
+    mode = runtime_mode()
+    # Remote destinations come only from these operator-controlled settings.
+    upstream_variables = {"AUTH_USERS_UPSTREAM_URL", "LISTADO_UPSTREAM_URL", "MATCH_UPSTREAM_URL"}
     value = os.environ.get(variable, "")
     try:
         parsed = urlsplit(value)
-        valid = (parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost", *docker_hosts} and
-                 parsed.port and not parsed.username and not parsed.password and
-                 parsed.path in {"", "/"} and not parsed.query and not parsed.fragment)
+        port = parsed.port
+        local = (parsed.scheme == "http" and
+                 parsed.hostname in {"127.0.0.1", "localhost", *docker_hosts} and
+                 port is not None and port > 0)
+        remote = (mode == "supabase" and variable in upstream_variables and
+                  parsed.scheme == "https" and
+                  re.fullmatch(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", parsed.hostname or "") and
+                  len(parsed.hostname) <= 253 and (port is None or port > 0))
+        valid = ((local or remote) and
+                 re.fullmatch(r"[A-Za-z0-9.-]+(?::[0-9]+)?", parsed.netloc) and
+                 parsed.username is None and parsed.password is None and
+                 parsed.path in {"", "/"} and
+                 not any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in value) and
+                 not any(c in value for c in ("\\", "?", "#", "%")))
     except ValueError:
         valid = False
     if not valid:
-        raise DependencyUnavailable("El servicio local no está configurado.")
+        raise DependencyUnavailable("El destino del servicio no está configurado o no es válido.")
     return value.rstrip("/")

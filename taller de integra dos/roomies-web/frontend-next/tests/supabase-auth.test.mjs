@@ -43,6 +43,70 @@ test("CSRF y cookie de otro proveedor nunca acreditan sesión", async () => {
   const response = await handleAuth(new Request(config.origin, { headers: { cookie: `haycupo_dev_session=${token}` } }), "sesion", config, () => { throw Error("no network"); });
   assert.equal(response.status, 401);
 });
+test("registro local autoconfirmado y duplicado tienen la misma respuesta sin sesión", async () => {
+  const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
+  const accepted = await handleAuth(req("registro", input), "registro", config, async () => ok(session));
+  const duplicate = await handleAuth(req("registro", input), "registro", config, async () =>
+    Response.json({ error_code: "user_already_exists" }, { status: 422 }));
+  assert.equal(accepted.status, 200);
+  assert.equal(duplicate.status, 200);
+  const result = await accepted.json();
+  assert.deepEqual(await duplicate.json(), result);
+  assert.equal(JSON.stringify(result).includes(token), false);
+  for (const response of [accepted, duplicate]) {
+    assert.doesNotMatch(response.headers.get("set-cookie"), /roomies_sb_dev_(access|refresh)=/);
+  }
+  const confirmationRequired = { ...config, localSignupAutoconfirm: false };
+  const unexpectedSession = await handleAuth(req("registro", input), "registro", confirmationRequired, async () => ok(session));
+  assert.equal(unexpectedSession.status, 503);
+});
+
+test("registro con confirmación y duplicado mantienen el mismo contrato público", async () => {
+  const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
+  const ref = "a".repeat(20);
+  const shared = authConfig({ ...env, NODE_ENV: "production", ROOMIES_LOCAL_MODE: "0",
+    ROOMIES_RUNTIME_MODE: "supabase", ROOMIES_SUPABASE_PROJECT_REF: ref,
+    WEB_AUTH_ORIGIN: "https://web.example.com", WEB_AUTH_FASTAPI_ORIGIN: "https://gateway.example.com",
+    WEB_SUPABASE_ORIGIN: `https://${ref}.supabase.co` });
+  assert.equal(shared.localSignupAutoconfirm, false);
+  const responses = [];
+  for (const providerResponse of [ok(identity), Response.json({ code: "user_already_exists" }, { status: 422 })]) {
+    const response = await handleAuth(req("registro", input, { origin: shared.origin }), "registro", shared, async () => providerResponse);
+    assert.equal(response.status, 200);
+    const cookies = response.headers.getSetCookie();
+    assert.match(cookies[0], /__Host-roomies_pkce=.+; Path=\/; HttpOnly; SameSite=Lax; Max-Age=3600; Secure/);
+    assert.doesNotMatch(cookies.join(" "), /__Host-roomies_sb_(access|refresh)=/);
+    responses.push({ body: await response.json(), cookies: cookies.map(cookie => cookie.replace(/(__Host-roomies_pkce=)[^;]+/, "$1<proof>")) });
+  }
+  assert.deepEqual(responses[0], responses[1]);
+  const unexpected = await handleAuth(req("registro", input, { origin: shared.origin }), "registro", shared, async () => ok(session));
+  assert.equal(unexpected.status, 503);
+  assert.equal(unexpected.headers.get("set-cookie"), null);
+});
+
+test("autoconfirmación solo pertenece al laboratorio y los errores conservan su estado", async () => {
+  assert.equal(authConfig({ ...env, NODE_ENV: "development" }).localSignupAutoconfirm, true);
+  const productionLab = authConfig({ ...env, NODE_ENV: "production",
+    WEB_AUTH_ORIGIN: "https://web.example.com", WEB_AUTH_FASTAPI_ORIGIN: "https://gateway.example.com" });
+  assert.equal(productionLab.localSignupAutoconfirm, false);
+  const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
+  for (const [status, body, expected] of [
+    [429, { error_code: "user_already_exists" }, 429],
+    [500, { error_code: "user_already_exists" }, 503],
+    [503, { error_code: "unexpected_failure" }, 503],
+    [422, { error_code: "weak_password" }, 422],
+  ]) {
+    const response = await handleAuth(req("registro", input), "registro", config,
+      async () => Response.json(body, { status }));
+    assert.equal(response.status, expected);
+    assert.equal(response.headers.get("set-cookie"), null);
+  }
+  const malformed = await handleAuth(req("registro", input), "registro", config, async () => new Response("invalid JSON"));
+  assert.equal(malformed.status, 503);
+  const unavailable = await handleAuth(req("registro", input), "registro", config, async () => { throw new Error("network"); });
+  assert.equal(unavailable.status, 503);
+});
+
 test("login BFF confirma usuario y perfil; cookies HttpOnly sin tokens en JSON", async () => {
   const response = await handleAuth(req("login", credentials), "login", config, defaultTransport);
   assert.equal(response.status, 200);
