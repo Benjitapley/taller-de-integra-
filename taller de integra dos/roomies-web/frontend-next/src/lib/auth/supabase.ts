@@ -264,7 +264,8 @@ export async function handleSupabaseAuth(request: Request, action: string, confi
     }
     if (action === "registro") {
       if (!validBirthDate(data.fecha_nacimiento) || (data.nombre as string).trim().length > 200 || !(data.nombre as string).trim() || (data.contrasena as string).length < 8 || (data.contrasena as string).length > 128 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.correo))) return bridge.error(422);
-      const verifier = randomBytes(48).toString("base64url");
+      // Un reintento en este navegador comparte el comprobante de confirmación pendiente.
+      const verifier = readPkce(request, config) || randomBytes(48).toString("base64url");
       const challenge = createHash("sha256").update(verifier).digest("base64url");
       const response = await provider(config, `/signup?redirect_to=${encodeURIComponent(config.origin + "/web-api/auth/confirmar")}`, transport, { email: data.correo, password: data.contrasena, data: { nombre: (data.nombre as string).trim(), fecha_nacimiento: data.fecha_nacimiento }, code_challenge: challenge, code_challenge_method: "s256" });
       if (response.status === 429) return bridge.error(429);

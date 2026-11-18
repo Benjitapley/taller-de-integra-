@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import ts from "typescript";
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 const compile = source => `data:text/javascript;base64,${Buffer.from(ts.transpileModule(source.replace('import "server-only";', ''), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText).toString("base64")}`;
 const adapter = compile(await readFile(new URL("../src/lib/auth/supabase.ts", import.meta.url), "utf8"));
@@ -82,6 +82,42 @@ test("registro con confirmación y duplicado mantienen el mismo contrato públic
   const unexpected = await handleAuth(req("registro", input, { origin: shared.origin }), "registro", shared, async () => ok(session));
   assert.equal(unexpected.status, 503);
   assert.equal(unexpected.headers.get("set-cookie"), null);
+});
+
+test("el enlace original confirma después de repetir un registro pendiente en el mismo navegador", async () => {
+  const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
+  const code = "original-confirmation-code";
+  let originalChallenge;
+  let browserCookie = "";
+  const transport = async (url, options) => {
+    if (url.includes("/signup?")) {
+      if (originalChallenge) return Response.json({ error_code: "user_already_exists" }, { status: 422 });
+      originalChallenge = JSON.parse(options.body).code_challenge;
+      return ok(identity);
+    }
+    if (url.includes("grant_type=pkce")) {
+      const { auth_code, code_verifier } = JSON.parse(options.body);
+      const challenge = createHash("sha256").update(code_verifier).digest("base64url");
+      return auth_code === code && challenge === originalChallenge ? ok(session) : new Response(null, { status: 400 });
+    }
+    return defaultTransport(url, options);
+  };
+
+  const signup = async () => {
+    const response = await handleAuth(req("registro", input, { cookie: browserCookie }), "registro", config, transport);
+    assert.equal(response.status, 200);
+    const pkce = response.headers.getSetCookie().find(cookie => cookie.startsWith("roomies_pkce_dev="));
+    if (pkce) browserCookie = pkce.split(";")[0];
+    return response.json();
+  };
+  const first = await signup();
+  assert.ok(browserCookie);
+  assert.deepEqual(await signup(), first);
+  const callback = new Request(config.origin + "/web-api/auth/confirmar?code=" + code, { headers: { cookie: browserCookie } });
+  const confirmed = await handleAuth(callback, "confirmar", config, transport);
+  assert.equal(confirmed.status, 303);
+  assert.equal(confirmed.headers.get("location"), config.origin + "/?correo=verificado");
+  assert.match(confirmed.headers.get("set-cookie"), /roomies_pkce_dev=;.*Max-Age=0/);
 });
 
 test("autoconfirmación solo pertenece al laboratorio y los errores conservan su estado", async () => {
