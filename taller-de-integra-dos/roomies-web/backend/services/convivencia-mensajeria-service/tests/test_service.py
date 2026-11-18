@@ -305,6 +305,32 @@ class ApiTests(unittest.TestCase):
         self.assertEqual([row["id_mensaje"] for row in second.json()["items"]], [1])
         self.assertIsNone(second.json()["siguiente_cursor"])
 
+    def test_outside_member_cannot_read_or_send_chat(self):
+        def outsider():
+            return Actor(
+                UUID("00000000-0000-0000-0000-000000000999"),
+                999,
+                True,
+                False,
+            )
+
+        self.test_app.dependency_overrides[confirmed_actor] = outsider
+        try:
+            denied_read = self.client.get("/api/conversaciones/5/mensajes")
+            denied_send = self.client.post(
+                "/api/conversaciones/5/mensajes",
+                json={
+                    "id_cliente": str(uuid4()),
+                    "contenido": "mensaje no autorizado",
+                },
+            )
+            self.assertEqual(denied_read.status_code, 404)
+            self.assertEqual(denied_send.status_code, 404)
+        finally:
+            self.test_app.dependency_overrides[confirmed_actor] = lambda: Actor(
+                UUID("00000000-0000-0000-0000-000000000007"), 7, True, False
+            )
+
     def test_member_and_conversation_lists_are_paginated(self):
         members = self.client.get("/api/arriendos/1/integrantes?limite=2")
         self.assertEqual([row["id_pertenencia"] for row in members.json()["items"]], [3, 2])
