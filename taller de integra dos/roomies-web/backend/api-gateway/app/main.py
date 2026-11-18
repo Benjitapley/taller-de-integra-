@@ -17,7 +17,7 @@ class RouteGuard:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         path = scope["path"]
-        private = path.rstrip("/") == "/usuarios/me"
+        private = path.rstrip("/") == "/usuarios/me" or path.startswith("/api/arriendos/")
 
         async def send_private(message):
             if private and message["type"] == "http.response.start":
