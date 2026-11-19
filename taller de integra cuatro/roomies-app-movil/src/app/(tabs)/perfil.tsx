@@ -5,12 +5,13 @@ import AppHeader from "@/components/AppHeader";
 import BarraBusqueda from "@/components/BarraBusqueda";
 import { CustomButton } from "@/components/CustomButton";
 import { ContenidoPerfil } from "@/components/perfil/ContenidoPerfil";
+import { EditorFotoPerfil } from "@/components/perfil/EditorFotoPerfil";
 import { useAuth } from "@/hooks/useAuth";
 import { usePerfilPropio } from "@/hooks/usePerfilPropio";
 
 export default function Perfil() {
-  const { cerrarSesion } = useAuth();
-  const { estado, reintentar } = usePerfilPropio();
+  const { cerrarSesion, usuarioActual } = useAuth();
+  const { estado, reintentar, actualizarFoto } = usePerfilPropio();
   const [busqueda, setBusqueda] = useState("");
   const [cerrandoSesion, setCerrandoSesion] = useState(false);
   const [errorCierre, setErrorCierre] = useState("");
@@ -46,6 +47,10 @@ export default function Perfil() {
       <AppHeader fotoUsuarioUrl={perfil?.fotoPerfilUrl ?? undefined} />
       <BarraBusqueda valor={busqueda} onCambiarValor={setBusqueda} />
       <Text style={styles.titulo}>Mi perfil</Text>
+      {perfil && usuarioActual && (
+        <EditorFotoPerfil key={usuarioActual.identidad.id} identidad={usuarioActual.identidad.id}
+          tieneFoto={Boolean(perfil.fotoPerfilUrl)} onGuardada={actualizarFoto} />
+      )}
       <ContenidoPerfil estado={estado} onReintentar={reintentar} />
       {errorCierre ? (
         <Text accessibilityRole="alert" style={styles.errorCierre}>{errorCierre}</Text>

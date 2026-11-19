@@ -24,7 +24,7 @@ function textoDisponible(valor: string | null): string | null {
   return valor?.trim() || null;
 }
 
-function fotoDisponible(valor: string | null): string | null {
+export function fotoDisponible(valor: string | null): string | null {
   const texto = textoDisponible(valor);
   if (!texto) return null;
   try {

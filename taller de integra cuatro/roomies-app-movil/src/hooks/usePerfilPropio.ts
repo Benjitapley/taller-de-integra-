@@ -49,5 +49,12 @@ export function usePerfilPropio() {
     if (perfilPreparado) setIntento((valor) => valor + 1);
     else reintentarProvisionPerfil();
   }, [perfilPreparado, reintentarProvisionPerfil]);
-  return { estado, reintentar };
+  function actualizarFoto(identidad: string, fotoPerfilUrl: string) {
+    setConsulta(actual => {
+      if (actual.identidadId !== identidad || actual.estado.tipo !== "resultado" || !actual.estado.resultado.exito) return actual;
+      const perfil = { ...actual.estado.resultado.perfil, fotoPerfilUrl };
+      return { ...actual, estado: { tipo: "resultado", resultado: { exito: true, perfil } } };
+    });
+  }
+  return { estado, reintentar, actualizarFoto };
 }

@@ -17,7 +17,7 @@ const extensionDe = (texto?: string | null): string | undefined => {
 
 // Devuelve null si la foto es válida. Si el selector no informa el formato o el
 // peso (pasa en algunas plataformas) no se rechaza: el backend vuelve a validar.
-export function motivoRechazoFoto(foto: FotoElegida): MotivoRechazoFoto | null {
+export function motivoRechazoFoto(foto: FotoElegida, limiteBytes = TAMANO_MAX_FOTO_BYTES): MotivoRechazoFoto | null {
   const mime = foto.mimeType?.toLowerCase();
   if (mime) {
     if (!MIMES_FOTO_PERMITIDOS.includes(mime)) return 'formato';
@@ -28,7 +28,7 @@ export function motivoRechazoFoto(foto: FotoElegida): MotivoRechazoFoto | null {
     }
   }
 
-  if (typeof foto.fileSize === 'number' && foto.fileSize > TAMANO_MAX_FOTO_BYTES) {
+  if (typeof foto.fileSize === 'number' && foto.fileSize > limiteBytes) {
     return 'tamano';
   }
 
