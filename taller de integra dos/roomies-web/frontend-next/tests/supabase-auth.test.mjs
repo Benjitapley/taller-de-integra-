@@ -43,6 +43,23 @@ test("CSRF y cookie de otro proveedor nunca acreditan sesión", async () => {
   const response = await handleAuth(new Request(config.origin, { headers: { cookie: `haycupo_dev_session=${token}` } }), "sesion", config, () => { throw Error("no network"); });
   assert.equal(response.status, 401);
 });
+test("registro local autoconfirmado y duplicado tienen la misma respuesta sin sesión", async () => {
+  const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
+  const accepted = await handleAuth(req("registro", input), "registro", config, async () => ok(session));
+  const duplicate = await handleAuth(req("registro", input), "registro", config, async () =>
+    Response.json({ error_code: "user_already_exists" }, { status: 422 }));
+  assert.equal(accepted.status, 200);
+  assert.equal(duplicate.status, 200);
+  const result = await accepted.json();
+  assert.deepEqual(await duplicate.json(), result);
+  assert.equal(JSON.stringify(result).includes(token), false);
+  for (const response of [accepted, duplicate]) {
+    assert.doesNotMatch(response.headers.get("set-cookie"), /roomies_sb_dev_(access|refresh)=/);
+  }
+  const confirmationRequired = { ...config, localSignupAutoconfirm: false };
+  const unexpectedSession = await handleAuth(req("registro", input), "registro", confirmationRequired, async () => ok(session));
+  assert.equal(unexpectedSession.status, 503);
+});
 test("login BFF confirma usuario y perfil; cookies HttpOnly sin tokens en JSON", async () => {
   const response = await handleAuth(req("login", credentials), "login", config, defaultTransport);
   assert.equal(response.status, 200);

@@ -1,6 +1,6 @@
 """Configuración real preparada; estas pruebas NO abren conexiones remotas."""
 import pytest
-from backend.service_runtime.settings import database_url, auth_provider_url, runtime_mode
+from backend.service_runtime.settings import database_url, auth_provider_url, runtime_mode, service_url
 from backend.service_runtime.contracts import DependencyUnavailable
 
 REF = "a" * 20
@@ -47,3 +47,81 @@ def test_dpapi_recovers_fixture_bytes():
     protected = dpapi(source)
     assert source not in protected
     assert dpapi(protected, decrypt=True) == source
+
+
+@pytest.mark.parametrize("variable", [
+    "AUTH_USERS_UPSTREAM_URL", "LISTADO_UPSTREAM_URL", "MATCH_UPSTREAM_URL",
+])
+@pytest.mark.parametrize("origin", [
+    "https://roomies-auth.example.com",
+    "https://roomies-listado.onrender.com/",
+    "https://roomies-match.onrender.com:443",
+])
+def test_shared_services_use_configured_https_origins(real, monkeypatch, variable, origin):
+    monkeypatch.setenv(variable, origin)
+    assert service_url(variable) == origin.rstrip("/")
+
+
+@pytest.mark.parametrize("origin", [
+    "", "http://roomies-auth.onrender.com:8000",
+    "https://user:password@roomies-auth.onrender.com",
+    "https://@roomies-auth.onrender.com",
+    "https://roomies-auth.onrender.com/api",
+    "https://roomies-auth.onrender.com?query=1",
+    "https://roomies-auth.onrender.com?",
+    "https://roomies-auth.onrender.com#fragment",
+    "https://roomies-auth.onrender.com#",
+    "https://roomies-auth.onrender.com:0",
+    "https://roomies-auth.onrender.com:65536",
+    "https://roomies-auth.onrender.com:",
+    "https://roomies-auth.onrender.com:invalid",
+    "https://roomies-auth.onrender.com\\@evil.example",
+    " https://roomies-auth.onrender.com",
+    "https://roomies-auth.onrender.com\n",
+    "https://roomies-auth.onrender.com\t",
+    "https://roomies-auth.onrender.com\x00",
+    "https://roomies-auth.onrender.com\x7f",
+    "https://roomies-auth.onrender.com/%2f",
+    "https://roomies_auth.onrender.com",
+    "https://-roomies.onrender.com",
+    "https://roomies..onrender.com",
+    "https://127.0.0.1",
+    "https://169.254.169.254",
+    "https://[::1]",
+    "//roomies-auth.onrender.com",
+    "file:///etc/passwd",
+])
+def test_shared_services_reject_invalid_origins(real, monkeypatch, origin):
+    monkeypatch.setenv("AUTH_USERS_UPSTREAM_URL", origin)
+    with pytest.raises(DependencyUnavailable):
+        service_url("AUTH_USERS_UPSTREAM_URL")
+
+
+def test_request_values_cannot_select_a_remote_service(real, monkeypatch):
+    monkeypatch.setenv("REQUEST_URL", "https://untrusted.example.com")
+    with pytest.raises(DependencyUnavailable):
+        service_url("REQUEST_URL")
+    monkeypatch.delenv("AUTH_USERS_UPSTREAM_URL", raising=False)
+    with pytest.raises(DependencyUnavailable):
+        service_url("AUTH_USERS_UPSTREAM_URL")
+
+
+@pytest.mark.parametrize("mode", ["disposable", "supabase"])
+@pytest.mark.parametrize("origin", [
+    "http://127.0.0.1:8010", "http://localhost:8010/",
+    "http://auth-users:8000", "http://listado-applications:8000",
+])
+def test_existing_local_destinations_remain_supported(real, monkeypatch, mode, origin):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", mode)
+    if mode == "disposable":
+        monkeypatch.setenv("ROOMIES_LOCAL_MODE", "1")
+    monkeypatch.setenv("AUTH_USERS_UPSTREAM_URL", origin)
+    assert service_url("AUTH_USERS_UPSTREAM_URL", docker_hosts=("auth-users", "listado-applications")) == origin.rstrip("/")
+
+
+def test_disposable_mode_keeps_remote_services_disabled(real, monkeypatch):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "disposable")
+    monkeypatch.setenv("ROOMIES_LOCAL_MODE", "1")
+    monkeypatch.setenv("AUTH_USERS_UPSTREAM_URL", "https://roomies-auth.onrender.com")
+    with pytest.raises(DependencyUnavailable):
+        service_url("AUTH_USERS_UPSTREAM_URL")
