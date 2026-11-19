@@ -1,12 +1,14 @@
 # SCRUM-99 · Anexo técnico de reconciliación de ramas
 
-**Estado: en revisión, sin merge.** Corte documental: **18 de noviembre de 2026**. La reconciliación se publicó en la rama de Jira y se propone integrar a `dev-web` mediante [PR #42](https://github.com/Benjitapley/taller-de-integra-/pull/42). La rama de trabajo y de seguimiento remoto apuntaban a **`8b9611e`** después del último push comunicado por el responsable. El PR incluye `a3f5bed` (reconciliación y anexo) y `8b9611e` (corrección de regresión PKCE). La integración, los despliegues y los criterios adicionales de S3R-B01 siguen pendientes. **No confundir pruebas locales aprobadas con evidencia en el entorno de entrega.**
+**Estado en revisión.** Al corte del 18/11/2026, el equipo identifica tres commits publicados en el [PR #42 hacia `dev-web`](https://github.com/Benjitapley/taller-de-integra-/pull/42): `a3f5bed` (reconciliación y anexo), `8b9611e` (PKCE) y `013e105` (documentación de S3R-B01). Este cotejo corresponde al código de `013e105`. La integración y la verificación del entorno de entrega siguen pendientes.
 
 **Fuentes de alcance:** *Roomies_Backlog_TI2_Sprint3_v1.4.pdf*, versión 1.4, 15/11/2026: sección 2 y decisiones D06 y D08–D12 (p. 5), arquitectura (p. 7), calendario/capacidad (pp. 9–10), definición de terminado (p. 11), S3R-B01 (pp. 15–16), y S3R-B02 (p. 16). El backlog define criterios; este documento distingue **implementación**, **verificación** y **confirmación humana**.
 
+**Referencia contractual vigente recibida del equipo.** El Scrum Master distribuyó *Contrato_Microservicios_Roomies_Sprint3_v2_editado.pdf*, fechado el 18/11/2026. Se revisaron las 27 páginas del ejemplar con SHA-256 `78a292d7eed3c1311c61a04f60a85b9ca9c6233beeda2f54ae2e5729cd1a15e9`. Define API pública por Gateway, API interna, DTO, permisos, errores, eventos, incorporación a un arriendo y almacenamiento de imágenes para Auth/Users, Listado/Applications, Match/Conexión, Convivencia/Mensajería y Reputación/Historial/Reportes. La [matriz contractual](contracts/SCRUM-99-contrato-alcance-S3-v1.4.md) identifica qué existe en el repositorio y qué puede consumir cada cliente. Faltan constancia de aprobación formal y recepción por TI4.
+
 ## 1. Objetivo y alcance
 
-Trasladar a la línea web los ajustes de comunicación entre microservicios y del registro con Supabase que el equipo había preparado sobre `main`. Este anexo identifica qué se trasladó, qué evidencia respalda el cambio y qué falta antes de integrarlo. El alcance comprende once archivos existentes y este documento. La aplicación móvil, las migraciones y la publicación de infraestructura quedan para decisiones separadas.
+Trasladar a la línea web los ajustes de comunicación entre microservicios y del registro con Supabase que el equipo había preparado sobre `main`. Este anexo identifica qué se trasladó, qué evidencia respalda el cambio y qué falta antes de integrarlo. La reconciliación inicial comprendió once archivos de código y este anexo. Los dos commits posteriores incorporaron la corrección PKCE y documentación complementaria. La aplicación móvil, las migraciones y la publicación de infraestructura quedan para decisiones separadas.
 
 ## 2. Estado inicial de las ramas
 
@@ -17,7 +19,7 @@ Trasladar a la línea web los ajustes de comunicación entre microservicios y de
 | `origin/dev-web` | `616747f` | Base elegida para integrar. Contiene la transición a Next.js y la web en `taller de integra dos/roomies-web`. |
 | `SCRUM-99-Cerrar-la-reconciliación-de-ramas-y-publicar-el-anexo-técnico` | `616747f` al crearla | Rama de Jira creada desde `dev-web`. La columna conserva **el estado inicial**, no el estado actual. |
 
-La inspección se hizo en `C:\Proyectos\roomies-scrum99-dev-web`. **Corte posterior:** el primer commit publicado fue `a3f5bed` y el segundo `8b9611e`; tras el push de este último, `git status -sb` no informó divergencia `ahead/behind` entre la rama local y la remota. El responsable confirmó el [PR #42](https://github.com/Benjitapley/taller-de-integra-/pull/42), **origen** la rama de Jira y **base** `dev-web`. El SHA remoto actual de `dev-web` debe volver a comprobarse antes del merge; `616747f` es la base inspeccionada, no una afirmación de que sigue siendo el último commit del destino.
+La inspección se hizo en `C:\Proyectos\roomies-scrum99-dev-web`. **Corte posterior:** la rama local y su referencia de seguimiento apuntan a `013e105`, después de `a3f5bed` y `8b9611e`. El responsable confirmó el [PR #42](https://github.com/Benjitapley/taller-de-integra-/pull/42), **origen** la rama de Jira y **base** `dev-web`. El SHA remoto actual de `dev-web` debe volver a comprobarse antes del merge; `616747f` es la base inspeccionada, no una afirmación de que sigue siendo el último commit del destino.
 
 ## 3. Motivo para evitar un merge completo
 
@@ -166,7 +168,7 @@ La comparación de commits y directorios permite ubicar estas diferencias. La eq
 
 ## 14. PR #42 y procedimiento pendiente hacia `dev-web`
 
-El PR **[#42](https://github.com/Benjitapley/taller-de-integra-/pull/42)** ya fue creado hacia `dev-web`. El responsable publicó `a3f5bed` y `8b9611e` en la misma rama de Jira; el último `git status -sb` compartido solo mostraba **dos carpetas temporales sin seguimiento** (`.scrum99-check-*` y `frontend-next/.npm-cache/`), excluidas de los commits. Según la observación del equipo, el PR figuraba como **Open**, no como Draft, y sin conflictos de fusión; **eso no implica aprobación**. Se recomendó convertirlo a Draft mientras falten criterios y verificaciones.
+El PR **[#42](https://github.com/Benjitapley/taller-de-integra-/pull/42)** ya fue creado hacia `dev-web`. El responsable publicó `a3f5bed`, `8b9611e` y `013e105` en la misma rama de Jira; el último `git status -sb` compartido solo mostraba **dos carpetas temporales sin seguimiento** (`.scrum99-check-*` y `frontend-next/.npm-cache/`), excluidas de los commits. Según la observación del equipo, el PR figuraba como **Open**, no como Draft, y sin conflictos de fusión; **eso no implica aprobación**. Se recomendó convertirlo a Draft mientras falten criterios y verificaciones.
 
 **Checks observados por el equipo en el PR #42:** dos Vercel deployments fallidos, uno `Vercel Preview Comments` aprobado. El motivo exacto de los dos errores de deployment requiere los logs; no atribuirlo sin prueba a PKCE, al sistema de archivos o a restricciones de sockets del ejecutor local.
 
@@ -224,9 +226,9 @@ Estas decisiones son **criterios objetivo del release**. Documentarlas **no equi
 | D09 · migración | Preservar datos e identidades reales al migrar a PostgreSQL Kubero. Una base vacía de demostración no acredita la migración. | La captura histórica carece del SQL íntegro y de evidencia de ejecución en Kubero. | S3R-B03 ejecuta y documenta la migración y su verificación. |
 | D10 · cupos exactos | El filtro objetivo `cupos_disponibles=n` compara por igualdad con la disponibilidad real. En la transición se espera HTTP 422 si también se envía `cupos_min` (backlog, pp. 20 y 27 para el nombre). | Hoy se filtra con `cupos_min`. El DTO devuelve el campo `cupos_disponibles`, que puede ser `null` cuando no se obtiene la ocupación. | Coordinar filtro, validación y paginación con Listado, Next.js y Expo. |
 | D11 · geografía | Los **selectores de web y móvil** muestran únicamente comunas de **La Araucanía**; el catálogo API nacional y las publicaciones existentes se conservan. Validar comuna/región consistente. | No comprobado en las interfaces reales de esta revisión. | Coordinación con web/TI4 y Listado; no restringir el backend a una sola región. |
-| D12 · CLP | Precio entero de **0 a 999999999999**; rechazar fracciones y valores fuera de rango; `bigint` o `numeric(12,0)` y validación previa a la migración, sin redondear/truncar. | No comprobado en DTO/API/BD de esta revisión; no se modificó el precio en SCRUM-99. | Listado y migración S3R-B03; inventario de datos previos y decisiones documentadas. |
+| D12 · CLP | Precio entero de **0 a 999999999999**; rechazar fracciones y valores fuera de rango; `bigint` o `numeric(12,0)` y validación previa a la migración, sin redondear/truncar. | El dominio admite hasta dos decimales y el router serializa el precio como `float`. Queda pendiente verificar los datos persistidos. | Listado y migración S3R-B03; inventario de datos previos y decisiones documentadas. |
 
-**Contrato de referencia señalado por backlog:** Contrato de Microservicios v1.0 del **08/11/2026** más decisiones del **14/11** y backlog v1.4 del **15/11**; las decisiones específicas vigentes del release prevalecen sobre rutas más amplias fuera del alcance. En esta tarea **no se adjuntó ni comparó íntegramente ese contrato del 08/11**. Por ello, la matriz en el documento complementario es una base de trabajo **no aprobada** y debe contrastarse con el contrato real y código actual antes de llamarla "contrato único entregado a TI4".
+El documento del 18/11 permite cotejar el contrato vigente con los routers y modelos. El contrato del 08/11 citado por el backlog queda como antecedente histórico pendiente de comparación.
 
 ## 18. MER, propiedad de datos y DTO
 
@@ -265,18 +267,18 @@ Registrar el acta de capacidad en un archivo separado facilita recoger datos hum
 
 ## 20. Matriz de contratos y entrega a TI4
 
-La tarea requiere una **matriz método/ruta/DTO de entrada y salida/errores/servicio**, comparada con el contrato vigente y la implementación real. El documento complementario `contracts/SCRUM-99-contrato-alcance-S3-v1.4.md` registra las reglas objetivo y una **matriz preliminar**: lo que el backlog especifica se marca como tal, y los DTO/errores no comprobados se dejan sin confirmar. **No llamarlo contrato canónico ni entregarlo como acuerdo final a TI4 hasta completar evidencia y obtener conformidad.**
+La [matriz HTTP de Sprint 3](contracts/SCRUM-99-contrato-alcance-S3-v1.4.md) contrasta los cinco dominios del PDF del 18/11 con el código de `013e105`. Separa operaciones públicas e internas y describe permisos, DTO, errores, reglas y consumo de Next.js y Expo. Entre las diferencias comprobadas están el catálogo en arreglo con `offset`, el borrado físico de conexiones y la aceptación de postulaciones con incorporación pendiente. Los dos últimos afectan respectivamente el historial para reportes y el acceso de un residente a su arriendo.
 
-Acciones pendientes para cerrar esta sección: inspeccionar fuentes de rutas/DTO/OpenAPI de cada servicio, comparar el contrato v1.0 del 08/11, registrar cambios compatibles para Next y Expo, publicar versión y enlace, y dejar constancia del responsable TI4 que recibió el documento.
+Quedan pendientes la versión de OpenAPI y MER conciliados, la comparación histórica con el 08/11 y la entrega con enlace, fecha y receptor TI4. La prueba en dispositivo y la ejecución contra el entorno final requieren evidencia independiente.
 
 ## 21. Evidencia y decisión de cierre de S3R-B01
 
 | Requisito de aceptación | Estado al corte 18/11 | Evidencia / próxima acción |
 |---|---|---|
-| Reconciliación selectiva publicada y documentada | **Cumplido en la rama de revisión** | PR #42, commits `a3f5bed` y `8b9611e`; sin merge. |
+| Reconciliación selectiva publicada y documentada | **Cumplido en la rama de revisión** | PR #42, commits `a3f5bed`, `8b9611e` y `013e105`; sin merge. |
 | No arrastrar TI4, Auth propio o HTML retirado | **Cumplido para el diff revisado** | Comparación local y exclusiones de rutas, sección 16. |
 | Matriz PR #35/#36 por archivo | **Parcial** | Nueve archivos de `e10740d` y 48 rutas de limpieza de `616747f` comparados localmente. Faltan los SHA oficiales y el cotejo por archivo de ambos PR. |
-| Contrato único método/ruta/DTO/errores/servicio | **Parcial; no aprobado** | Matriz preliminar, contrastar contra contrato 08/11 y fuentes de código. |
+| Contrato único método/ruta/DTO/errores/servicio | **Cotejo documentado; conformidad pendiente** | PDF vigente del 18/11 y matriz pública/interna de los cinco servicios frente a `013e105`. Falta validar compatibilidad y entrega con TI4. |
 | D10–D12 y política de cursores versionados | **Documentados como objetivo; implementación no acreditada** | Reglas en sección 17 y doc complementario; revisión y versión canónica pendientes. |
 | MER conciliado | **Parcial** | Decisiones de propiedad documentadas, faltan versión y reconciliación por DTO/SQL. |
 | Acta de capacidad y decisión de 17/11 | **Pendiente de evidencia humana** | Sin confirmaciones de horas, fechas ni acuerdo. |
