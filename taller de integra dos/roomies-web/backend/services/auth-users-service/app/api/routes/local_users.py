@@ -1,4 +1,4 @@
-"""Contratos LOCALES v1; no sustituyen los DTO compartidos pendientes con TI4."""
+"""Contratos comunes del recorrido acordados entre Web, Móvil (TI4) y Servicios — SCRUM-93."""
 import hmac
 import os
 from datetime import date
@@ -47,6 +47,7 @@ class Initialization(BaseModel):
 
 
 @router.post("/local/v1/perfil/inicializacion")
+@router.post("/api/v1/perfil/inicializacion")
 def initialize(data: Initialization, who=Depends(identity), service=Depends(users)):
     user = service.initialize(who[0],data.nombre,data.fecha_nacimiento,who[1])
     return {"id_usuario":user.id_usuario,"inicializado":True}
@@ -60,6 +61,7 @@ def internal_identity(who=Depends(identity), service=Depends(users)):
 
 
 @router.get("/local/v1/perfil")
+@router.get("/api/v1/perfil")
 def profile(who=Depends(identity), service=Depends(users)):
     user=service.own(who[0])
     return {"nombre":user.nombre,"edad":user.age(),"ocupacion":user.ocupacion,"ciudad":user.ciudad,
@@ -68,6 +70,7 @@ def profile(who=Depends(identity), service=Depends(users)):
 
 
 @router.post("/local/v1/sesion/revocar")
+@router.post("/api/v1/sesion/revocar")
 def revoke_session(token=Depends(access_token),who=Depends(identity),service=Depends(users)):
     service.own(who[0])
     PostgresUsers().revoke(UUID(verified_claims(token)["session_id"]),who[0])
@@ -85,6 +88,7 @@ class LocalProfilePatch(BaseModel):
 
 
 @router.patch("/local/v1/perfil")
+@router.patch("/api/v1/perfil")
 def patch_local_profile(data: LocalProfilePatch, who=Depends(identity), service=Depends(users)):
     if not who[1]:
         raise HTTPException(403, "Confirma tu correo.")
@@ -92,6 +96,7 @@ def patch_local_profile(data: LocalProfilePatch, who=Depends(identity), service=
 
 
 @router.put("/local/v1/perfil")
+@router.put("/api/v1/perfil")
 async def update_profile(request: Request, who=Depends(identity), service=Depends(users)):
     if not who[1]:
         raise HTTPException(403,"Confirma tu correo.")
@@ -120,6 +125,7 @@ async def update_profile(request: Request, who=Depends(identity), service=Depend
 
 
 @router.get("/local/v1/usuarios/publicos")
+@router.get("/api/v1/usuarios/publicos")
 def public_profiles(ids: str | None=None, presupuesto_max: int | None=Query(None,ge=0,le=2147483647), zona: str | None=Query(None,max_length=250), ocupacion: str | None=Query(None,max_length=100), excluir_id: int | None=Query(None,ge=1,le=2147483647), service=Depends(users)):
     filters={k:v for k,v in {"presupuesto_max":presupuesto_max,"zona":zona,"ocupacion":ocupacion,"excluir_id":excluir_id}.items() if v is not None}
     if ids is not None:
@@ -152,6 +158,7 @@ def notify(data: Notification, request: Request, service=Depends(users)):
 
 
 @router.get("/local/v1/notificaciones")
+@router.get("/api/v1/notificaciones")
 def notifications(who=Depends(identity),service=Depends(users)):
     return service.repository.notifications(service.own(who[0]).id_usuario)
 

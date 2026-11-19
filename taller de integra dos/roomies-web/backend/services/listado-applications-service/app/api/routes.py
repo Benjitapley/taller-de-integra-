@@ -52,6 +52,7 @@ def mine(identity=Depends(confirmed_actor),app=Depends(service)):
 
 
 @router.get("/local/v1/publicaciones/resumen")
+@router.get("/api/v1/publicaciones/resumen")
 def my_count(identity=Depends(confirmed_actor),app=Depends(service)):
     return {"total_publicaciones":app.repository.count(identity.user_id)}
 
