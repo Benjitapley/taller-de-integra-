@@ -11,7 +11,7 @@ const validText = (value: unknown, limit: number): value is string =>
   typeof value === "string" && value.trim().length > 0 && Array.from(value.trim()).length <= limit && !value.includes("\0");
 const responseFields = ["id_reporte", "tipo", "id_usuario_reportado", "id_publicacion_reportada", "categoria", "descripcion", "estado", "fecha"] as const;
 
-function publicReport(value: unknown): Report {
+export function publicReport(value: unknown): Report {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
   const report = value as Record<string, unknown>;
   const person = positiveId(report.id_usuario_reportado) && report.id_publicacion_reportada === null && report.tipo === "Usuario";

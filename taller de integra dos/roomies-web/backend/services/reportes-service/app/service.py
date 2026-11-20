@@ -6,6 +6,16 @@ from backend.service_runtime.contracts import RuleViolation
 from backend.service_runtime.reporting_security import service_key
 from app.models import MAX_ID
 
+TRANSITIONS = {
+    "Pendiente": {"En_Revision", "Descartado"},
+    "En_Revision": {"Resuelto", "Descartado"},
+}
+
+
+def check_transition(before, after):
+    if after not in TRANSITIONS.get(before, ()):
+        raise RuleViolation("Transición de estado no permitida. Actualiza el reporte.", 409)
+
 
 class Reports:
     def __init__(self, repository, relationships):
@@ -25,12 +35,34 @@ class Reports:
         return self.repository.create(actor_id, data)
 
     def mine(self, actor_id, limit, cursor):
+        return self._page(actor_id, limit, cursor, "mis-reportes",
+                          lambda size, before: self.repository.mine(actor_id, size, before))
+
+    def admin_queue(self, admin_id, limit, cursor, status, kind):
+        return self._page(admin_id, limit, cursor, "admin-reportes",
+                          lambda size, before: self.repository.moderation_queue(status, kind, size, before),
+                          {"estado": status, "tipo": kind})
+
+    def detail(self, report_id):
+        row = self.repository.detail(report_id)
+        if row is None:
+            raise RuleViolation("Reporte no encontrado.", 404)
+        return row
+
+    def review(self, report_id, administrator_id, data):
+        row = self.repository.review(report_id, administrator_id, data, check_transition)
+        if row is None:
+            raise RuleViolation("Reporte no encontrado.", 404)
+        return row
+
+    @staticmethod
+    def _page(actor_id, limit, cursor, audience, load, filters=None):
         key = service_key("REPORTES_CURSOR_SECRET")
         before = None
         if cursor is not None:
             try:
-                data = jwt.decode(cursor, key, algorithms=["HS256"], audience="mis-reportes")
-                if data["sub"] != str(actor_id) or type(data["id"]) is not int or not 0 < data["id"] <= MAX_ID:
+                data = jwt.decode(cursor, key, algorithms=["HS256"], audience=audience)
+                if data["sub"] != str(actor_id) or data.get("filtros") != filters or type(data["id"]) is not int or not 0 < data["id"] <= MAX_ID:
                     raise ValueError()
                 date = datetime.fromisoformat(data["fecha"])
                 if date.tzinfo is None:
@@ -38,13 +70,13 @@ class Reports:
                 before = (date, data["id"])
             except (jwt.PyJWTError, TypeError, ValueError, KeyError):
                 raise RuleViolation("Cursor inválido.", 422) from None
-        rows = self.repository.mine(actor_id, limit + 1, before)
+        rows = load(limit + 1, before)
         items = rows[:limit]
         next_cursor = None
         if len(rows) > limit:
             last = items[-1]
-            next_cursor = jwt.encode(
-                {"sub": str(actor_id), "aud": "mis-reportes", "fecha": last["fecha"].isoformat(), "id": last["id_reporte"]},
-                key, algorithm="HS256",
-            )
+            claims = {"sub": str(actor_id), "aud": audience, "fecha": last["fecha"].isoformat(), "id": last["id_reporte"]}
+            if filters is not None:
+                claims["filtros"] = filters
+            next_cursor = jwt.encode(claims, key, algorithm="HS256")
         return {"items": items, "siguiente_cursor": next_cursor}

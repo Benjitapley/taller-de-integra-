@@ -26,4 +26,4 @@ Las consultas usan JWT con emisor `reportes`, audiencia exacta del servicio y vi
 
 El ensayo de integración se ejecuta en Windows desde `roomies-web` con `python -I -B backend/local_stack/run_stack.py --pg-bin "<directorio bin de PostgreSQL>" --reports`. Añadir `--progressive` para ensayar también las tablas heredadas en `haycupo`. El runner crea su propia base, sus roles y un proveedor de identidad ficticio en loopback.
 
-La revisión administrativa, la actualización de estado y el evento `reporte_actualizado` pertenecen al flujo de moderación posterior. Las migraciones de SCRUM-95 quedan preparadas para aplicar en el entorno de despliegue tras revisar el esquema y respaldarlo.
+La [revisión administrativa de SCRUM-96](SCRUM-96-revision-de-reportes.md) añade la migración 002 y la configuración del aviso `reporte_actualizado` al overlay. Las migraciones quedan preparadas para aplicar en el entorno de despliegue tras revisar el esquema y respaldarlo.

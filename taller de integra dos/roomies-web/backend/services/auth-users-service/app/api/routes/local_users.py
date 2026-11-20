@@ -3,8 +3,9 @@ import hmac
 import os
 import re
 from datetime import date
+from typing import Annotated, Literal
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.datastructures import UploadFile
 from app.application.local_users import Users, require_confirmed_email
@@ -12,6 +13,7 @@ from app.domain.local_users import User
 from app.infrastructure.persistence.local_users import PostgresUsers
 from app.infrastructure.security.local_provider import confirmed_email
 from backend.service_runtime.security import access_token, verified_claims
+from backend.service_runtime.reporting_security import verify_report_service
 from backend.service_runtime.images import Images
 
 router = APIRouter()
@@ -207,6 +209,30 @@ def notify(data: Notification, request: Request, service=Depends(users)):
         raise HTTPException(422,"Evento inconsistente.")
     service.repository.notify(data.model_dump())
     return {"success":True}
+
+
+class ReportNotification(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event_key: str = Field(pattern=r"^reporte_actualizado:[1-9][0-9]{0,18}$")
+    tipo: Literal["reporte_actualizado"]
+    id_usuario: int = Field(strict=True, gt=0, le=9223372036854775807)
+    referencia_id: int = Field(strict=True, gt=0, le=9223372036854775807)
+    estado: Literal["En_Revision", "Resuelto", "Descartado"]
+
+
+@router.post("/internal/notificaciones")
+def notify_report(
+    data: ReportNotification,
+    idempotency_key: Annotated[str, Header(max_length=150)],
+    authorization: Annotated[str | None, Header()] = None,
+    service=Depends(users),
+):
+    verify_report_service(authorization, "auth-users", "REPORTES_AUTH_JWT_KEY")
+    if idempotency_key != data.event_key:
+        raise HTTPException(422, "La clave debe coincidir con el evento.")
+    if not service.repository.notify_report(data.model_dump()):
+        raise HTTPException(409, "La clave del evento ya tiene otro contenido.")
+    return {"success": True}
 
 
 @router.get("/local/v1/notificaciones")

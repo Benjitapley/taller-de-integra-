@@ -1,22 +1,54 @@
+import asyncio
+import logging
+import os
+from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends, FastAPI, Path, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
 from backend.service_runtime.contracts import Actor, DependencyUnavailable, RuleViolation
 from backend.service_runtime.http import configure
-from backend.service_runtime.security import actor, confirmed_actor
-from app.models import Report, ReportInput, ReportPage
+from backend.service_runtime.security import actor, admin_actor, confirmed_actor
+from app.models import AdminReportDetail, AdminReportPage, MAX_ID, Report, ReportInput, ReportPage, ReportStatus, ReportType, ReviewInput
+from app.notifications import NotificationDelivery
 from app.relationships import Relationships
 from app.repository import ReportRepository
 from app.service import Reports
 
 
-app = FastAPI(title="Roomies Reportes")
+async def deliver_notifications(stop):
+    delivery = NotificationDelivery(ReportRepository())
+    while not stop.is_set():
+        try:
+            if await asyncio.to_thread(delivery.deliver_next):
+                continue
+        except Exception:
+            logging.getLogger(__name__).warning("No se pudo procesar la cola de notificaciones de reportes.")
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=2)
+        except TimeoutError:
+            pass
+
+
+@asynccontextmanager
+async def lifespan(application):
+    stop = asyncio.Event()
+    task = asyncio.create_task(deliver_notifications(stop)) if os.environ.get("REPORTES_AUTH_JWT_KEY") else None
+    try:
+        yield
+    finally:
+        stop.set()
+        if task is not None:
+            await task
+
+
+app = FastAPI(title="Roomies Reportes", lifespan=lifespan)
 configure(app)
-ERRORS = {401: "NO_AUTENTICADO", 403: "PROHIBIDO", 404: "NO_ENCONTRADO", 422: "SOLICITUD_INVALIDA", 503: "DEPENDENCIA_NO_DISPONIBLE"}
+ERRORS = {401: "NO_AUTENTICADO", 403: "PROHIBIDO", 404: "NO_ENCONTRADO", 409: "TRANSICION_INVALIDA",
+          422: "SOLICITUD_INVALIDA", 503: "DEPENDENCIA_NO_DISPONIBLE"}
 
 
 def error(status, message, headers=None, **extra):
@@ -73,3 +105,29 @@ def mine(
     cursor: Annotated[str | None, Query(min_length=1, max_length=512)] = None,
 ):
     return service.mine(identity.user_id, limite, cursor)
+
+
+AdminIdentity = Annotated[Actor, Depends(admin_actor)]
+ReportId = Annotated[int, Path(gt=0, le=MAX_ID)]
+
+
+@app.get("/api/admin/reportes", response_model=AdminReportPage)
+def admin_queue(
+    identity: AdminIdentity,
+    service: Annotated[Reports, Depends(reports)],
+    estado: ReportStatus | None = None,
+    tipo: ReportType | None = None,
+    limite: Annotated[int, Query(ge=1, le=100)] = 20,
+    cursor: Annotated[str | None, Query(min_length=1, max_length=512)] = None,
+):
+    return service.admin_queue(identity.user_id, limite, cursor, estado, tipo)
+
+
+@app.get("/api/admin/reportes/{id}", response_model=AdminReportDetail)
+def report_detail(id: ReportId, identity: AdminIdentity, service: Annotated[Reports, Depends(reports)]):
+    return service.detail(id)
+
+
+@app.patch("/api/admin/reportes/{id}", response_model=AdminReportDetail)
+def review_report(id: ReportId, data: ReviewInput, identity: AdminIdentity, service: Annotated[Reports, Depends(reports)]):
+    return service.review(id, identity.user_id, data)

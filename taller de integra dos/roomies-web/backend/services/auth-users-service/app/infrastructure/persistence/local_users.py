@@ -78,6 +78,23 @@ class PostgresUsers:
         with self.connect() as connection:
             return connection.execute("SELECT id,tipo,referencia_id,estado,creado_en FROM auth_users.notificacion WHERE id_usuario=%s ORDER BY id DESC LIMIT 100", (user_id,)).fetchall()
 
+    def notify_report(self, event):
+        with self.connect() as connection:
+            columns = ("id_usuario", "tipo", "referencia_id", "estado")
+            values = tuple(event[key] for key in columns)
+            inserted = connection.execute(
+                """INSERT INTO auth_users.notificacion (id_usuario,tipo,referencia_id,estado,event_key)
+                   VALUES (%s,%s,%s,%s,%s) ON CONFLICT (event_key) DO NOTHING RETURNING id""",
+                (*values, event["event_key"]),
+            ).fetchone()
+            if inserted is not None:
+                return True
+            existing = connection.execute(
+                "SELECT id_usuario,tipo,referencia_id,estado FROM auth_users.notificacion WHERE event_key=%s",
+                (event["event_key"],),
+            ).fetchone()
+            return existing is not None and tuple(existing[key] for key in columns) == values
+
     def count(self):
         with self.connect() as connection:
             return connection.execute(f"SELECT count(*) AS total FROM {self.table}").fetchone()["total"]

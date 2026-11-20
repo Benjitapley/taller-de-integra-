@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_vali
 
 MAX_ID = 9223372036854775807
 BusinessId = Annotated[int, Field(strict=True, gt=0, le=MAX_ID)]
+ReportType = Literal["Usuario", "Publicacion"]
+ReportStatus = Literal["Pendiente", "En_Revision", "Resuelto", "Descartado"]
 
 
 class ReportInput(BaseModel):
@@ -31,15 +33,50 @@ class ReportInput(BaseModel):
 
 class Report(BaseModel):
     id_reporte: int
-    tipo: Literal["Usuario", "Publicacion"]
+    tipo: ReportType
     id_usuario_reportado: int | None
     id_publicacion_reportada: int | None
     categoria: str
     descripcion: str
-    estado: Literal["Pendiente", "En_Revision", "Resuelto", "Descartado"]
+    estado: ReportStatus
     fecha: datetime
 
 
 class ReportPage(BaseModel):
     items: list[Report]
     siguiente_cursor: str | None
+
+
+class ReviewInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    estado: ReportStatus
+    nota_interna: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)] | None = None
+
+    @field_validator("nota_interna")
+    @classmethod
+    def reject_null_byte(cls, value):
+        if value is not None and "\x00" in value:
+            raise ValueError("Nota inválida.")
+        return value
+
+
+class AdminReport(Report):
+    id_denunciante: int
+
+
+class AdminReportPage(BaseModel):
+    items: list[AdminReport]
+    siguiente_cursor: str | None
+
+
+class ReviewEntry(BaseModel):
+    id_actuacion: int
+    id_administrador: int
+    estado_anterior: ReportStatus
+    estado_nuevo: ReportStatus
+    nota_interna: str | None
+    fecha: datetime
+
+
+class AdminReportDetail(AdminReport):
+    historial: list[ReviewEntry]

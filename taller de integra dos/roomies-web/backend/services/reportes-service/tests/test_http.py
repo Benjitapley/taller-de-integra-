@@ -1,3 +1,4 @@
+import json
 import time
 from unittest.mock import Mock
 from uuid import uuid4
@@ -9,6 +10,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.main import actor, app, reports
+from app.notifications import NotificationDelivery
 from app.relationships import Relationships
 from app.service import Reports
 from backend.service_runtime.contracts import Actor
@@ -61,3 +63,27 @@ def test_service_token_checks_audience_and_lifetime(monkeypatch):
     with pytest.raises(HTTPException) as error:
         verify_report_service(f"Bearer {token}", "match-conexion", "TEST_KEY")
     assert error.value.status_code == 403
+
+
+def test_failed_notification_is_retried_with_same_key_and_without_internal_note(monkeypatch):
+    monkeypatch.setenv("ROOMIES_LOCAL_MODE", "1")
+    monkeypatch.setenv("AUTH_USERS_UPSTREAM_URL", "http://127.0.0.1:9980")
+    monkeypatch.setenv("REPORTES_AUTH_JWT_KEY", "fixture-auth-" * 3)
+    repo = Mock()
+    repo.next_notification.return_value = {"id_actuacion": 5, "id_usuario": 3, "referencia_id": 9,
+                                           "estado": "En_Revision", "nota_interna": "Privada"}
+    replies = iter([httpx.Response(503), httpx.Response(200, json={"success": True})])
+
+    def send(request):
+        verify_report_service(request.headers["Authorization"], "auth-users", "REPORTES_AUTH_JWT_KEY")
+        assert request.url.path == "/internal/notificaciones"
+        assert request.headers["Idempotency-Key"] == "reporte_actualizado:5"
+        assert json.loads(request.content) == {"event_key": "reporte_actualizado:5", "tipo": "reporte_actualizado",
+                                              "id_usuario": 3, "referencia_id": 9, "estado": "En_Revision"}
+        return next(replies)
+
+    delivery = NotificationDelivery(repo, httpx.MockTransport(send))
+    assert delivery.deliver_next()
+    repo.mark_delivered.assert_not_called()
+    assert delivery.deliver_next()
+    repo.mark_delivered.assert_called_once_with(5)
