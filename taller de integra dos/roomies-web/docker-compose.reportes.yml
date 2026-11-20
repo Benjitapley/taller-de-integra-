@@ -18,8 +18,12 @@ services:
       REPORTES_LISTADO_JWT_KEY: ${REPORTES_LISTADO_JWT_KEY:?Clave Reportes-Listado requerida}
       REPORTES_MATCH_JWT_KEY: ${REPORTES_MATCH_JWT_KEY:?Clave Reportes-Match requerida}
       REPORTES_CONVIVENCIA_JWT_KEY: ${REPORTES_CONVIVENCIA_JWT_KEY:?Clave Reportes-Convivencia requerida}
+      REPORTES_AUTH_JWT_KEY: ${REPORTES_AUTH_JWT_KEY:?Clave Reportes-Auth requerida}
     depends_on:
       roomies-db: {condition: service_healthy}
+  auth-users:
+    environment:
+      REPORTES_AUTH_JWT_KEY: ${REPORTES_AUTH_JWT_KEY:?Clave Reportes-Auth requerida}
   listado-applications:
     environment:
       REPORTES_LISTADO_JWT_KEY: ${REPORTES_LISTADO_JWT_KEY:?Clave Reportes-Listado requerida}

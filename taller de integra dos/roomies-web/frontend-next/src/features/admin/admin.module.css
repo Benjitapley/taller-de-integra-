@@ -8,4 +8,13 @@
 .table caption { padding: 12px; text-align: left; }
 .table th, .table td { padding: 14px; border-top: 1px solid var(--line); overflow-wrap: anywhere; max-width: 300px; }
 .pages { display: flex; align-items: center; gap: 16px; }
+.reportFilters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.reportFilters label, .reviewForm label { display: grid; gap: 5px; }
+.reportFilters select, .reviewForm :is(select, textarea) {
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; background: white; color: var(--foreground); font: inherit;
+}
+.reviewForm { display: grid; gap: 12px; padding: 12px 0 0; border: 0; min-width: 0; }
+.reviewForm button { justify-self: start; }
+.reviewForm textarea { resize: vertical; }
+.reportText { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 600px) { .stats { grid-template-columns: 1fr; } }

@@ -50,7 +50,7 @@ def run_integration(fixture, urls, clean, processes, web=False, baseline=None, p
             variables.update(convivencia="CONVIVENCIA_DATABASE_URL", reportes="REPORTES_DATABASE_URL")
             common.update(CONVIVENCIA_UPSTREAM_URL=origins["convivencia"], REPORTES_UPSTREAM_URL=origins["reportes"])
             report_keys = {service: (f"REPORTES_{service.upper()}_JWT_KEY", secrets.token_hex(32))
-                           for service in ("listado", "match", "convivencia")}
+                           for service in ("auth", "listado", "match", "convivencia")}
         if progressive: common["ROOMIES_PERSISTENCE_LAYOUT"] = "haycupo-v1"
         try:
             for service in ports:
