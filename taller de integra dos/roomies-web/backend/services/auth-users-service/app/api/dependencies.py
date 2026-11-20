@@ -27,10 +27,6 @@ bearer_scheme = HTTPBearer(auto_error=False)
 def get_profile_repository() -> ProfileRepository:
     """Build the real adapter only from explicit, isolated dev configuration."""
 
-    import os
-    if os.environ.get("ROOMIES_LOCAL_MODE")=="1" or os.environ.get("ROOMIES_RUNTIME_MODE")=="supabase":
-        from app.infrastructure.persistence.local_profile_adapter import LocalProfileAdapter
-        return LocalProfileAdapter()
     try:
         settings = PostgresDatabaseSettings.from_environment()
     except DatabaseSettingsError:
@@ -67,12 +63,6 @@ def get_current_identity(
             detail="Se requiere un access token Bearer válido.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    import os
-    if os.environ.get("ROOMIES_LOCAL_MODE")=="1" or os.environ.get("ROOMIES_RUNTIME_MODE")=="supabase":
-        from app.api.routes.local_users import identity
-        subject,_=identity(credentials.credentials)
-        return VerifiedIdentity(supabase_user_id=subject)
 
     try:
         return verifier.verify(credentials.credentials)
