@@ -60,7 +60,10 @@ function records(value: unknown): Record<string, unknown>[] {
 }
 
 function publications(value: unknown): Publication[] {
-  return records(value).map((item) => {
+  const page = value && typeof value === "object" && "items" in value
+    ? (value as { items: unknown }).items
+    : value;
+  return records(page).map((item) => {
     if (!Number.isSafeInteger(item.id) || Number(item.id) < 1 ||
         (item.titulo !== null && typeof item.titulo !== "string") ||
         typeof item.precio !== "number" || !Number.isFinite(item.precio) ||

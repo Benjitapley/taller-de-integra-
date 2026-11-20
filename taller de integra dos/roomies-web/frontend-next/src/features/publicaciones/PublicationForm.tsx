@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
@@ -8,12 +8,39 @@ import { validatePublicationForm } from "./validation";
 import styles from "./publicaciones.module.css";
 
 type PublicationKind = "Compartida" | "Arrendador";
+type Region = { id_region: number; nombre: string };
+type Commune = { id_comuna: number; nombre: string };
 
 export default function PublicationForm({ kind, onBack }: { kind: PublicationKind; onBack: () => void }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [communes, setCommunes] = useState<Commune[]>([]);
+  const [regionId, setRegionId] = useState("");
   const shared = kind === "Compartida";
+
+  useEffect(() => {
+    fetch("/api/regiones", { credentials: "same-origin", cache: "no-store" })
+      .then((response) => response.ok ? response.json() : [])
+      .then((value: unknown) => {
+        if (Array.isArray(value)) setRegions(value.filter((item): item is Region =>
+          !!item && typeof item === "object" && typeof item.id_region === "number" && typeof item.nombre === "string"));
+      })
+      .catch(() => setRegions([]));
+  }, []);
+
+  useEffect(() => {
+    setCommunes([]);
+    if (!regionId) return;
+    fetch(`/api/regiones/${regionId}/comunas`, { credentials: "same-origin", cache: "no-store" })
+      .then((response) => response.ok ? response.json() : [])
+      .then((value: unknown) => {
+        if (Array.isArray(value)) setCommunes(value.filter((item): item is Commune =>
+          !!item && typeof item === "object" && typeof item.id_comuna === "number" && typeof item.nombre === "string"));
+      })
+      .catch(() => setCommunes([]));
+  }, [regionId]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,11 +104,20 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
             <option value="departamento">Departamento</option><option value="habitacion">Habitación</option>
           </select>
         </label>
-        <label>Región y comuna
-          <input name="ubicacion" required maxLength={250} placeholder="Región y comuna del lugar" />
+        <label>Región
+          <select name="id_region" value={regionId} onChange={(event) => setRegionId(event.target.value)} required>
+            <option value="" disabled>Selecciona una región</option>
+            {regions.map((region) => <option key={region.id_region} value={region.id_region}>{region.nombre}</option>)}
+          </select>
+        </label>
+        <label>Comuna
+          <select name="id_comuna" required disabled={!regionId}>
+            <option value="" disabled>Selecciona una comuna</option>
+            {communes.map((commune) => <option key={commune.id_comuna} value={commune.id_comuna}>{commune.nombre}</option>)}
+          </select>
         </label>
         <label>{shared ? "Precio indicado en el aviso externo (CLP)" : "Precio del arriendo (CLP)"}
-          <input name="precio" type="number" min="0" max="999999999999.99" step="0.01" required />
+          <input name="precio" type="number" min="0" max="999999999999" step="1" required />
         </label>
         <label>{shared ? "Capacidad total indicada en el aviso" : "Capacidad total del espacio"}
           <input name="cupos_totales" type="number" min="1" max="2147483647" step="1" required />

@@ -32,7 +32,7 @@ def validate_publication(data):
         raise RuleViolation("Tipo o características de publicación inválidos.")
     try:
         price=Decimal(str(data["precio"]))
-        if not price.is_finite() or price<0 or price>=Decimal("1000000000000") or price.as_tuple().exponent < -2:
+        if not price.is_finite() or price<0 or price>=Decimal("1000000000000") or price != price.to_integral_value():
             raise ValueError()
         total=int(str(data["cupos_totales"]))
         if str(total)!=str(data["cupos_totales"]) or not 1<=total<=2147483647:

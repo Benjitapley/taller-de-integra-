@@ -113,12 +113,29 @@ function PublicationEditor({ id }: { id: string }) {
             </select>
           </label>
           <label style={{ display: "grid", gap: 8 }}>
-            <span>Ubicación</span>
-            <input name="ubicacion" required maxLength={250} defaultValue={publication.ubicacion || ""} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }} />
+            <span>Región</span>
+            <select name="id_region" required defaultValue="9" style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}>
+              <option value="9">La Araucanía</option>
+            </select>
+          </label>
+          <label style={{ display: "grid", gap: 8 }}>
+            <span>Comuna</span>
+            <select name="id_comuna" required defaultValue="9101" style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}>
+              <option value="9101">Temuco</option>
+              <option value="9102">Padre Las Casas</option>
+              <option value="9103">Angol</option>
+              <option value="9104">Villarrica</option>
+              <option value="9105">Pucón</option>
+              <option value="9106">Lautaro</option>
+              <option value="9107">Nueva Imperial</option>
+              <option value="9108">Carahue</option>
+              <option value="9109">Gorbea</option>
+              <option value="9110">Lonquimay</option>
+            </select>
           </label>
           <label style={{ display: "grid", gap: 8 }}>
             <span>Precio</span>
-            <input name="precio" type="number" min="0" step="0.01" required defaultValue={publication.precio ?? 0} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }} />
+            <input name="precio" type="number" min="0" max="999999999999" step="1" required defaultValue={publication.precio ?? 0} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }} />
           </label>
           <label style={{ display: "grid", gap: 8 }}>
             <span>Cupos</span>

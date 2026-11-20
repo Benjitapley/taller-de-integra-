@@ -55,9 +55,14 @@ class PostgresPublications:
             value=filters["consulta"].replace("\\","\\\\").replace("%","\\%").replace("_","\\_")
             where.append("(p.titulo ILIKE %s OR p.ubicacion ILIKE %s OR p.descripcion ILIKE %s)");params.extend(["%"+value+"%"]*3)
         condition=" WHERE "+" AND ".join(where) if where else ""
-        params.extend([filters.get("limite",100),filters.get("offset",0)])
         date_column = "m.fecha_publicacion" if self.progressive else "p.fecha_publicacion"
-        return self.query(self.select+condition+f" ORDER BY {date_column} DESC NULLS LAST,p.id_publicacion DESC LIMIT %s OFFSET %s",params,True)
+        cursor=filters.get("cursor")
+        if cursor:
+            where.append(f"({date_column} < %s OR ({date_column} = %s AND p.id_publicacion < %s))")
+            params.extend([cursor["fecha"],cursor["fecha"],cursor["id"]])
+            condition=" WHERE "+" AND ".join(where) if where else ""
+        params.append(filters.get("limite",20)+1)
+        return self.query(self.select+condition+f" ORDER BY {date_column} DESC NULLS LAST,p.id_publicacion DESC LIMIT %s",params,True)
 
     def create(self,owner,data):
         if self.progressive: data = {**data, "estado": "Disponible"}
