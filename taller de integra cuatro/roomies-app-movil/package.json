@@ -48,7 +48,9 @@
     "test:http": "node --test tests/httpClient.test.mjs",
     "test:perfil": "node --test tests/usuariosService.test.mjs tests/perfil.test.mjs tests/provisionPerfilService.test.mjs",
     "test:publicaciones": "node --test tests/publicacionesService.test.mjs",
-    "test:convivencia": "node --test tests/convivencia.test.mjs"
+    "test:convivencia": "node --test tests/convivencia.test.mjs",
+    "test:arriendos": "node --test tests/arriendosService.test.mjs tests/miArriendo.test.mjs",
+    "mock:arriendos": "node scripts/mock-arriendos.mjs"
   },
   "private": true
 }

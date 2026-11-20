@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { CONVIVENCIA_DEMO_ACTIVA } from "@/config/modoDemo";
 import { INTEGRANTES_MOCK } from "@/data/convivenciaMock";
 
 const CHATS_SIN_LEER_MOCK = 3;
@@ -42,22 +43,25 @@ export default function SelectorChatArriendo() {
             Tu espacio de convivencia
           </Text>
         </View>
-        <View style={styles.grupoAvatares}>
-          {INTEGRANTES_MOCK.map((integrante, indice) => (
-            <View
-              key={integrante.id}
-              style={[
-                styles.avatarInicial,
-                {
-                  backgroundColor: COLORES_AVATAR[indice % COLORES_AVATAR.length],
-                  marginLeft: indice === 0 ? 0 : -8,
-                },
-              ]}
-            >
-              <Text style={styles.avatarInicialTexto}>{integrante.nombre.charAt(0)}</Text>
-            </View>
-          ))}
-        </View>
+        {/* M4S3-D01: las iniciales de integrantes de muestra solo se ven en modo demo. */}
+        {CONVIVENCIA_DEMO_ACTIVA ? (
+          <View style={styles.grupoAvatares}>
+            {INTEGRANTES_MOCK.map((integrante, indice) => (
+              <View
+                key={integrante.id}
+                style={[
+                  styles.avatarInicial,
+                  {
+                    backgroundColor: COLORES_AVATAR[indice % COLORES_AVATAR.length],
+                    marginLeft: indice === 0 ? 0 : -8,
+                  },
+                ]}
+              >
+                <Text style={styles.avatarInicialTexto}>{integrante.nombre.charAt(0)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
         <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
       </Pressable>
     </View>

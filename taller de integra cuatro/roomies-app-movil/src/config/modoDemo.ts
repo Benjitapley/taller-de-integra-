@@ -1,0 +1,1 @@
+export const CONVIVENCIA_DEMO_ACTIVA = process.env.EXPO_PUBLIC_CONVIVENCIA_DEMO === "1";
