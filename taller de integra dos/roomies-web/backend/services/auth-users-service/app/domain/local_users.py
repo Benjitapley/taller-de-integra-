@@ -3,13 +3,15 @@ from dataclasses import dataclass
 from datetime import date
 from uuid import UUID
 
+from app.domain.profile import age_on
+
 
 @dataclass(frozen=True)
 class User:
     id_usuario: int
-    supabase_user_id: UUID
+    supabase_user_id: UUID | None
     nombre: str
-    fecha_nacimiento: date
+    fecha_nacimiento: date | None
     ocupacion: str | None = None
     ciudad: str | None = None
     breve_descripcion: str | None = None
@@ -18,9 +20,11 @@ class User:
     presupuesto: int | None = None
     zona_interes: str | None = None
 
-    def age(self, today=None):
-        today = today or date.today()
-        return today.year - self.fecha_nacimiento.year - ((today.month, today.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day))
+    def age(self, today: date | None = None) -> int | None:
+        if self.fecha_nacimiento is None:
+            return None
+        age = age_on(self.fecha_nacimiento, today or date.today())
+        return age if 0 <= age <= 120 else None
 
     def public(self):
         return {"id_usuario_PK": self.id_usuario, "nombre": self.nombre, "edad": self.age(),

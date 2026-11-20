@@ -52,7 +52,7 @@ export default function ProfileEditor({ profile, onClose, onSaved, onExpired }: 
       <fieldset className={styles.editFields} disabled={pending}>
         <legend className={styles.legend}>Datos del perfil</legend>
         <label htmlFor="profile-age">Edad</label>
-        <input id="profile-age" name="edad" type="number" min="0" max="120" step="1" readOnly={profile.edad_calculada} defaultValue={profile.edad ?? ""} />
+        <input id="profile-age" name="edad" type="number" min="0" max="120" step="1" readOnly={profile.edad_calculada !== undefined} defaultValue={profile.edad ?? ""} />
         {profile.edad_calculada && <small>Calculada desde tu fecha de nacimiento.</small>}
         {([["ocupacion", "Ocupación"], ["ciudad", "Ciudad"], ["breve_descripcion", "Descripción breve"], ["sobre_mi", "Sobre mí (biografía)"]] as const).map(([name, label]) => <div key={name} className={styles.editField}>
           <label htmlFor={`profile-${name}`}>{label}</label>
