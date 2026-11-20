@@ -15,6 +15,8 @@ export interface ErrorHttp {
   codigo: CodigoErrorHttp;
   error: string;
   estadoHttp?: number;
+  //codigo` del error del contrato (p. ej. "correo_no_verificado"), si el servidor lo envió//
+  codigoServidor?: string;
 }
 
 export type ResultadoHttp =
@@ -30,6 +32,11 @@ export interface OpcionesPeticionHttp {
   identidadEsperada?: string;
   /** Tiempo máximo de fetch y lectura del cuerpo; por defecto, 15 segundos. */
   tiempoLimiteMs?: number;
+  /**
+   * Cabeceras adicionales (p. ej. `Idempotency-Key`). No pueden reemplazar
+   * Authorization, Content-Type ni Accept: si lo intentan, la petición se rechaza.
+   */
+  headers?: Record<string, string>;
 }
 
 /** Formulario multipart; fetch genera Content-Type con su boundary. */

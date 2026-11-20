@@ -5,7 +5,34 @@ function fallo(codigo: CodigoErrorHttp, error: string, estadoHttp?: number): Err
   return { exito: false, codigo, error, ...(estadoHttp === undefined ? {} : { estadoHttp }) };
 }
 
-function falloRespuesta(estadoHttp: number): ErrorHttp {
+// El contrato (1.4) responde los errores con { codigo, mensaje, detalles? }. Solo se
+// conserva el `codigo` (slug estable) y únicamente si tiene forma de slug: el texto
+// del servidor no se propaga porque puede contener datos internos.
+async function leerCodigoServidor(respuesta: Response): Promise<string | undefined> {
+  try {
+    const cuerpo: unknown = await respuesta.json();
+    const codigo = (cuerpo as { codigo?: unknown } | null)?.codigo;
+    return typeof codigo === "string" && /^[a-z0-9_]{1,64}$/.test(codigo) ? codigo : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Respaldo cuando el cuerpo no trae `codigo` (p. ej. un servicio que aún responde
+// {"detail": ...}): solo los estados que el contrato (1.4) asocia a un único código.
+function codigoPorEstado(estadoHttp: number): string | undefined {
+  if (estadoHttp === 413) return "archivo_muy_grande";
+  if (estadoHttp === 415) return "tipo_archivo_no_permitido";
+  return undefined;
+}
+
+async function falloRespuesta(respuesta: Response): Promise<ErrorHttp> {
+  const error = fallosPorEstado(respuesta.status);
+  const codigoServidor = (await leerCodigoServidor(respuesta)) ?? codigoPorEstado(respuesta.status);
+  return codigoServidor ? { ...error, codigoServidor } : error;
+}
+
+function fallosPorEstado(estadoHttp: number): ErrorHttp {
   if (estadoHttp === 401) {
     return fallo("no_autorizado", "El servicio no aceptó tu sesión.", estadoHttp);
   }
@@ -42,6 +69,9 @@ export async function solicitarFormulario(
 ): Promise<ResultadoHttp> {
   return solicitar(ruta, { ...opciones, metodo: opciones.metodo ?? "POST" }, "formulario");
 }
+
+// Cabeceras que el cliente fija él mismo: no se aceptan desde `opciones.headers`.
+const RESERVADAS = ["authorization", "content-type", "accept", "host", "content-length"];
 
 function esFormulario(cuerpo: unknown): cuerpo is FormData {
   return typeof FormData !== "undefined" && cuerpo instanceof FormData;
@@ -109,6 +139,19 @@ async function solicitar(
   }
 
   const headers: Record<string, string> = { Accept: "application/json" };
+  if (opciones.headers !== undefined) {
+    // Solo cabeceras simples y nunca las que controla este cliente (token, formato).
+    for (const [nombre, valor] of Object.entries(opciones.headers)) {
+      if (
+        !/^[A-Za-z0-9-]+$/.test(nombre) ||
+        RESERVADAS.includes(nombre.toLowerCase()) ||
+        typeof valor !== "string" || !valor || /[\r\n]/.test(valor)
+      ) {
+        return fallo("peticion_invalida", "Las cabeceras de la solicitud no son válidas.");
+      }
+      headers[nombre] = valor;
+    }
+  }
   if (formato === "json" && cuerpo !== undefined) headers["Content-Type"] = "application/json";
   if (opciones.autenticada !== false) {
     if (!estaSupabaseConfigurado()) {
@@ -138,7 +181,7 @@ async function solicitar(
       signal: controlador.signal,
       credentials: "omit",
     });
-    if (!respuesta.ok) return falloRespuesta(respuesta.status);
+    if (!respuesta.ok) return await falloRespuesta(respuesta);
     if (respuesta.status === 204) return { exito: true, datos: null, estadoHttp: 204 };
     try {
       const datos: unknown = await respuesta.json();
