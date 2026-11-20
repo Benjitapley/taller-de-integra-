@@ -8,7 +8,16 @@ import { armarParametrosBorrador } from "@/utils/borradorPublicacion";
 
 export default function Compartida() {
   const router = useRouter();
-  const { valores, errores, cambiarCampo, validarFormulario } =
+  const {
+    valores,
+    errores,
+    cambiarCampo,
+    cambiarCampos,
+    validarFormulario,
+    borradorListo,
+    borradorRecuperado,
+    descartarBorrador,
+  } =
     useFormularioPublicacion("Compartida");
 
   function continuar() {
@@ -45,6 +54,10 @@ export default function Compartida() {
         valores={valores}
         errores={errores}
         onCambiar={cambiarCampo}
+        onCambiarVarios={cambiarCampos}
+        borradorListo={borradorListo}
+        borradorRecuperado={borradorRecuperado}
+        onDescartarBorrador={descartarBorrador}
         onContinuar={continuar}
       />
     </>

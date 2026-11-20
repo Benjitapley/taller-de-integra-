@@ -1,4 +1,3 @@
-import { esTipoMascota } from '@/constants/mascotas';
 import { esTipoVivienda } from '@/constants/tipoVivienda';
 import { validarFormularioPublicacion } from '@/hooks/useFormularioPublicacion';
 import type {
@@ -20,9 +19,18 @@ const primero = (valor: ValorParametro): string =>
 const esOrigenValido = (tipo: string): tipo is TipoPublicacion =>
   tipo === 'Arrendador' || tipo === 'Compartida';
 
-// Los parámetros de ruta son texto: los sí/no viajan como 'si'/'no' y la lista de
-// mascotas separada por comas.
-const SEPARADOR_LISTA = ',';
+// Los parámetros de ruta son texto: los sí/no viajan como 'si'/'no'.
+
+// Las reglas viajan como JSON; un valor roto equivale a "sin reglas".
+function leerReglas(texto: string): string[] {
+  if (!texto) return [];
+  try {
+    const lista: unknown = JSON.parse(texto);
+    return Array.isArray(lista) ? lista.filter((r): r is string => typeof r === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 // Parámetros para navegar al paso siguiente.
 export function armarParametrosBorrador(
@@ -32,15 +40,17 @@ export function armarParametrosBorrador(
     tipo: valores.tipo,
     titulo: valores.titulo,
     precio: valores.precio,
-    ubicacion: valores.ubicacion,
+    idRegion: valores.idRegion,
+    idComuna: valores.idComuna,
+    nombreRegion: valores.nombreRegion,
+    nombreComuna: valores.nombreComuna,
     tipoVivienda: valores.tipoVivienda,
     cupos: valores.cupos,
     descripcion: valores.descripcion,
     enlaceReferencia: valores.enlaceReferencia,
     aceptaMascotas: valores.aceptaMascotas ? 'si' : 'no',
-    tiposMascotas: valores.tiposMascotas.join(SEPARADOR_LISTA),
-    condicionesMascotas: valores.condicionesMascotas,
     permitirComentarios: valores.permitirComentarios ? 'si' : 'no',
+    reglas: JSON.stringify(valores.reglas),
   };
 }
 
@@ -55,24 +65,22 @@ export function leerBorradorDesdeParams(
 
   // Un valor desconocido se trata como "sin elegir": la validación lo rechaza.
   const tipoVivienda = primero(params.tipoVivienda);
-  // Se descartan los tipos de mascota desconocidos o repetidos.
-  const tiposMascotas = Array.from(
-    new Set(primero(params.tiposMascotas).split(SEPARADOR_LISTA).filter(esTipoMascota)),
-  );
 
   const valores: FormularioPublicacionValores = {
     tipo,
     titulo: primero(params.titulo),
     precio: primero(params.precio),
-    ubicacion: primero(params.ubicacion),
+    idRegion: primero(params.idRegion),
+    idComuna: primero(params.idComuna),
+    nombreRegion: primero(params.nombreRegion),
+    nombreComuna: primero(params.nombreComuna),
     tipoVivienda: esTipoVivienda(tipoVivienda) ? tipoVivienda : '',
     cupos: primero(params.cupos),
     descripcion: primero(params.descripcion),
     enlaceReferencia: primero(params.enlaceReferencia),
     aceptaMascotas: primero(params.aceptaMascotas) === 'si',
-    tiposMascotas,
-    condicionesMascotas: primero(params.condicionesMascotas),
     permitirComentarios: primero(params.permitirComentarios) === 'si',
+    reglas: leerReglas(primero(params.reglas)),
   };
 
   if (Object.keys(validarFormularioPublicacion(valores)).length > 0) return null;

@@ -4,6 +4,7 @@ import AppHeader from "@/components/AppHeader";
 import { TipoPublicacionCard } from "@/components/publicaciones/TipoPublicacionCard";
 import { USUARIO_ACTUAL_MOCK } from "@/data/convivenciaMock";
 import { paletaPublicacion } from "@/constants/origenPublicacion";
+import { OFRECER_COMPARTIDA } from "@/constants/camposPublicacion";
 import { colors } from "@/theme/colors";
 
 export default function Publicar() {
@@ -24,12 +25,16 @@ export default function Publicar() {
         </Text>
       </View>
 
-      <TipoPublicacionCard
-        tipo="Compartida"
-        titulo="Compartir oportunidad"
-        descripcion="Encontré un lugar y busco con quién compartirlo."
-        onPress={() => router.push("/publicacion/crear/compartida")} // formulario compartida
-      />
+      {/* Compartida queda fuera del release (alcance TI2 v1.4): el código se conserva
+          y se reactiva con OFRECER_COMPARTIDA = true. */}
+      {OFRECER_COMPARTIDA && (
+        <TipoPublicacionCard
+          tipo="Compartida"
+          titulo="Compartir oportunidad"
+          descripcion="Encontré un lugar y busco con quién compartirlo."
+          onPress={() => router.push("/publicacion/crear/compartida")} // formulario compartida
+        />
+      )}
 
       <TipoPublicacionCard
         tipo="Arrendador"

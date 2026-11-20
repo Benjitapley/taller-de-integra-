@@ -1,6 +1,18 @@
-import { useState } from "react";
-import { ENVIAR_DETALLE_MASCOTAS } from "@/constants/camposPublicacion";
-import { MAX_CARACTERES_CONDICIONES_MASCOTAS } from "@/constants/mascotas";
+import { useEffect, useRef, useState } from "react";
+import {
+  MAX_CARACTERES_DESCRIPCION,
+  MAX_CARACTERES_REGLA,
+  MAX_CARACTERES_TITULO,
+  MAX_CUPOS_TOTALES,
+  MAX_REGLAS_ARRENDADOR,
+  PRECIO_MAXIMO,
+} from "@/constants/contratoPublicacion";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  descartarBorradorPersistido,
+  guardarValoresBorrador,
+  leerBorradorPersistido,
+} from "@/utils/borradorPersistente";
 import {
   formularioPublicacionInicialConOrigen,
   type ErroresFormularioPublicacion,
@@ -19,17 +31,23 @@ export function validarFormularioPublicacion(valores: FormularioPublicacionValor
 
   if (!valores.titulo.trim()) {
     errores.titulo = "Ingresa un título.";
+  } else if (valores.titulo.trim().length > MAX_CARACTERES_TITULO || valores.titulo.includes("\0")) {
+    errores.titulo = `El título puede tener hasta ${MAX_CARACTERES_TITULO} caracteres.`;
   }
 
+  // Contrato: CLP entero de 0 a 999.999.999.999 (el 0 es válido).
   const precio = valores.precio.trim();
   if (!precio) {
     errores.precio = "Ingresa el precio mensual.";
-  } else if (!SOLO_DIGITOS.test(precio) || Number(precio) <= 0) {
-    errores.precio = "Ingresa un precio mayor a 0.";
+  } else if (!SOLO_DIGITOS.test(precio) || Number(precio) > PRECIO_MAXIMO) {
+    errores.precio = "Ingresa un precio entre 0 y 999.999.999.999.";
   }
 
-  if (!valores.ubicacion.trim()) {
-    errores.ubicacion = "Ingresa la comuna o sector.";
+  if (!valores.idRegion) {
+    errores.idRegion = "Elige la región.";
+  }
+  if (!valores.idComuna) {
+    errores.idComuna = "Elige la comuna.";
   }
 
   if (!valores.tipoVivienda) {
@@ -38,13 +56,15 @@ export function validarFormularioPublicacion(valores: FormularioPublicacionValor
 
   const cupos = valores.cupos.trim();
   if (!cupos) {
-    errores.cupos = "Ingresa los cupos disponibles.";
-  } else if (!SOLO_DIGITOS.test(cupos) || Number(cupos) < 1) {
-    errores.cupos = "Ingresa al menos 1 cupo.";
+    errores.cupos = "Ingresa la capacidad total.";
+  } else if (!SOLO_DIGITOS.test(cupos) || Number(cupos) < 1 || Number(cupos) > MAX_CUPOS_TOTALES) {
+    errores.cupos = `Ingresa un entero entre 1 y ${MAX_CUPOS_TOTALES.toLocaleString("es-CL")}.`;
   }
 
   if (!valores.descripcion.trim()) {
     errores.descripcion = "Agrega una descripción.";
+  } else if (valores.descripcion.trim().length > MAX_CARACTERES_DESCRIPCION) {
+    errores.descripcion = `La descripción puede tener hasta ${MAX_CARACTERES_DESCRIPCION} caracteres.`;
   }
 
   // El enlace es opcional y solo existe en Compartida: si se escribe, debe tener
@@ -55,21 +75,13 @@ export function validarFormularioPublicacion(valores: FormularioPublicacionValor
       "Ingresa un enlace válido que empiece con http:// o https://.";
   }
 
-  // Preferencias de mascotas: solo se revisan si se aceptan. Son las mismas
-  // exigencias de la API (al menos un tipo; "otro" pide aclarar cuál).
-  // Si el detalle está oculto (ENVIAR_DETALLE_MASCOTAS en false), no se exige: la
-  // persona no tiene cómo llenarlo.
-  if (valores.aceptaMascotas && ENVIAR_DETALLE_MASCOTAS) {
-    if (valores.tiposMascotas.length === 0) {
-      errores.tiposMascotas = "Elige al menos un tipo de mascota.";
-    } else if (
-      valores.tiposMascotas.includes("otro") &&
-      !valores.condicionesMascotas.trim()
-    ) {
-      errores.condicionesMascotas = "Indica qué otro animal se acepta.";
-    }
-    if (valores.condicionesMascotas.length > MAX_CARACTERES_CONDICIONES_MASCOTAS) {
-      errores.condicionesMascotas = `Máximo ${MAX_CARACTERES_CONDICIONES_MASCOTAS} caracteres.`;
+  // Reglas del arrendador (opcionales): hasta 20 textos de máximo 300 caracteres.
+  if (valores.tipo === "Arrendador") {
+    const reglas = valores.reglas.map((r) => r.trim()).filter(Boolean);
+    if (reglas.length > MAX_REGLAS_ARRENDADOR) {
+      errores.reglas = `Máximo ${MAX_REGLAS_ARRENDADOR} reglas.`;
+    } else if (reglas.some((r) => r.length > MAX_CARACTERES_REGLA)) {
+      errores.reglas = `Cada regla puede tener máximo ${MAX_CARACTERES_REGLA} caracteres.`;
     }
   }
 
@@ -77,26 +89,78 @@ export function validarFormularioPublicacion(valores: FormularioPublicacionValor
 }
 
 export function useFormularioPublicacion(tipo: TipoPublicacion) {
+  const { sesion } = useAuth();
+  const idUsuario = sesion?.user.id ?? null;
+
   const [valores, setValores] = useState<FormularioPublicacionValores>(() =>
     formularioPublicacionInicialConOrigen(tipo),
   );
-  
   const [errores, setErrores] = useState<ErroresFormularioPublicacion>({});
+  // El borrador guardado se aplica una sola vez y, hasta entonces, no se guarda nada
+  // para no pisarlo con un formulario vacío. Sin sesión no hay borrador que esperar.
+  const [borradorLeido, setBorradorLeido] = useState(false);
+  const borradorListo = !idUsuario || borradorLeido;
+  const [borradorRecuperado, setBorradorRecuperado] = useState(false);
+  const huboCambios = useRef(false);
+
+  useEffect(() => {
+    if (!idUsuario) return;
+    let vigente = true;
+    leerBorradorPersistido(idUsuario).then((guardado) => {
+      if (!vigente) return;
+      // Solo se recupera si es del mismo origen y la persona no empezó a escribir.
+      if (guardado && guardado.valores.tipo === tipo && !huboCambios.current) {
+        setValores(guardado.valores);
+        setBorradorRecuperado(true);
+      }
+      setBorradorLeido(true);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [idUsuario, tipo]);
+
+  // Guarda el borrador (con una pequeña espera) mientras se edita.
+  useEffect(() => {
+    if (!borradorListo || !idUsuario || !huboCambios.current) return;
+    const espera = setTimeout(() => {
+      guardarValoresBorrador(idUsuario, valores);
+    }, 400);
+    return () => clearTimeout(espera);
+  }, [valores, borradorListo, idUsuario]);
 
   function cambiarCampo<K extends keyof FormularioPublicacionValores>(
     campo: K,
     valor: FormularioPublicacionValores[K],
   ) {
+    huboCambios.current = true;
     setValores((anterior) => ({ ...anterior, [campo]: valor }));
-    // Al editar un campo se limpia su error, y el de los campos que dependen de él.
-    setErrores((anterior) => ({
-      ...anterior,
-      [campo]: undefined,
-      ...(campo === "aceptaMascotas"
-        ? { tiposMascotas: undefined, condicionesMascotas: undefined }
-        : {}),
-      ...(campo === "tiposMascotas" ? { condicionesMascotas: undefined } : {}),
-    }));
+    // Al editar un campo se limpia su error.
+    setErrores((anterior) => ({ ...anterior, [campo]: undefined }));
+  }
+
+  // Cambia varios campos a la vez (región y comuna van juntas con sus nombres).
+  // `automatico`: lo fija la app (región inicial) y no cuenta como edición de la
+  // persona, así no se guarda un borrador que ella nunca escribió.
+  function cambiarCampos(cambios: Partial<FormularioPublicacionValores>, automatico = false) {
+    if (!automatico) huboCambios.current = true;
+    setValores((anterior) => ({ ...anterior, ...cambios }));
+    setErrores((anterior) => {
+      const siguiente = { ...anterior };
+      for (const campo of Object.keys(cambios) as (keyof FormularioPublicacionValores)[]) {
+        siguiente[campo] = undefined;
+      }
+      return siguiente;
+    });
+  }
+
+  // Descarta el borrador guardado y deja el formulario vacío.
+  async function descartarBorrador() {
+    if (idUsuario) await descartarBorradorPersistido(idUsuario);
+    huboCambios.current = false;
+    setValores(formularioPublicacionInicialConOrigen(tipo));
+    setErrores({});
+    setBorradorRecuperado(false);
   }
 
   // Devuelve true si el formulario es válido; si no, deja los errores en pantalla.
@@ -106,5 +170,14 @@ export function useFormularioPublicacion(tipo: TipoPublicacion) {
     return Object.keys(nuevos).length === 0;
   }
 
-  return { valores, errores, cambiarCampo, validarFormulario };
+  return {
+    valores,
+    errores,
+    cambiarCampo,
+    cambiarCampos,
+    validarFormulario,
+    borradorListo,
+    borradorRecuperado,
+    descartarBorrador,
+  };
 }

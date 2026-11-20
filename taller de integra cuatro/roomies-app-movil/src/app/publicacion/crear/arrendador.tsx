@@ -11,7 +11,16 @@ export default function Arrendador() {
 
   // Se usa el mismo formulario que Compartida, solo cambia el origen, y los
   // textos y campos que muestra.
-  const { valores, errores, cambiarCampo, validarFormulario } =
+  const {
+    valores,
+    errores,
+    cambiarCampo,
+    cambiarCampos,
+    validarFormulario,
+    borradorListo,
+    borradorRecuperado,
+    descartarBorrador,
+  } =
     useFormularioPublicacion("Arrendador");
 
   function continuar() {
@@ -48,6 +57,10 @@ export default function Arrendador() {
         valores={valores}
         errores={errores}
         onCambiar={cambiarCampo}
+        onCambiarVarios={cambiarCampos}
+        borradorListo={borradorListo}
+        borradorRecuperado={borradorRecuperado}
+        onDescartarBorrador={descartarBorrador}
         onContinuar={continuar}
       />
     </>

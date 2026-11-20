@@ -3,8 +3,6 @@ import type { TipoVivienda } from '@/types/Publicacion';
 
 type NombreIcono = keyof typeof Ionicons.glyphMap;
 
-// Opciones del selector de tipo de vivienda. Los `valor` son exactamente los que
-// acepta `tipo_vivienda` en PublicacionCrear (publicaciones_service/schemas.py).
 export const OPCIONES_TIPO_VIVIENDA: readonly {
   valor: TipoVivienda;
   etiqueta: string;

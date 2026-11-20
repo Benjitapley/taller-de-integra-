@@ -2,11 +2,8 @@ export type TipoPublicacion = 'Arrendador' | 'Compartida';
 
 export type EstadoPublicacion = 'Disponible' | 'Activa' | 'Cerrada';
 
-/** Valores que acepta `tipo_vivienda` en PublicacionCrear (publicaciones_service). */
+/** Valores de `tipo_vivienda` del contrato (cap. 4.1): Casa | Departamento | Habitacion. */
 export type TipoVivienda = 'casa' | 'departamento' | 'habitacion';
-
-/** Valores que acepta `tipos_mascotas_aceptadas` en la API de TI2. */
-export type TipoMascota = 'perro' | 'gato' | 'ave' | 'tortuga' | 'conejo' | 'pez' | 'otro';
 
 /**
  * Modelo de publicación utilizado por el cliente móvil.
@@ -38,15 +35,20 @@ export interface FormularioPublicacionValores {
   tipo: TipoPublicacion;
   titulo: string;
   precio: string; // solo dígitos, ejemplo. "11000"
-  ubicacion: string;
+  /** Ids del catálogo de TI2 en texto; "" mientras no se elige. */
+  idRegion: string;
+  idComuna: string;
+  /** Nombres solo para mostrarlos (vista previa); no se envían. */
+  nombreRegion: string;
+  nombreComuna: string;
   tipoVivienda: TipoVivienda | ''; 
   cupos: string; // solo dígitos (1 cupo, 2 cupos, etc.)
   descripcion: string;
   enlaceReferencia: string; // opcional, solo aplica a Compartida (el enlace de la publicación de otro sitio)
-  aceptaMascotas: boolean;
-  tiposMascotas: TipoMascota[]; // solo se usa si aceptaMascotas es true
-  condicionesMascotas: string; // opcional; obligatoria si se elige "otro"
+  aceptaMascotas: boolean; // el contrato solo pide mascota "si"/"no"
   permitirComentarios: boolean;
+  /** Solo Arrendador: hasta 20 textos de máx. 300 caracteres. */
+  reglas: string[];
 }
 
 export const formularioPublicacionInicialConOrigen = (
@@ -55,15 +57,17 @@ export const formularioPublicacionInicialConOrigen = (
   tipo,
   titulo: '',
   precio: '',
-  ubicacion: '',
+  idRegion: '',
+  idComuna: '',
+  nombreRegion: '',
+  nombreComuna: '',
   tipoVivienda: '',
   cupos: '',
   descripcion: '',
   enlaceReferencia: '',
   aceptaMascotas: false,
-  tiposMascotas: [],
-  condicionesMascotas: '',
   permitirComentarios: false,
+  reglas: [],
 });
 
 export type ErroresFormularioPublicacion = Partial<
