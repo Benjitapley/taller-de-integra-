@@ -54,7 +54,8 @@ export async function handleApplications(request: Request, config: WebAuthConfig
       if (!item || typeof item !== "object") throw new Error();
       const row = item as Record<string, unknown>;
       if (![row.id_postulacion, row.id_publicacion, row.id_usuario].every(id => Number.isSafeInteger(id) && Number(id) > 0) || !["Pendiente", "Preseleccionada", "Aceptada", "Rechazada", "Cancelada"].includes(String(row.estado))) throw new Error();
-      return Object.fromEntries(["id_postulacion", "id_publicacion", "id_usuario", "titulo", "estado", "motivo", "fecha_postulacion", "incorporacion_pendiente"].filter(key => key in row).map(key => [key, row[key]]));
+      if (row.id_arriendo !== undefined && row.id_arriendo !== null && (!Number.isSafeInteger(row.id_arriendo) || Number(row.id_arriendo) < 1)) throw new Error();
+      return Object.fromEntries(["id_postulacion", "id_publicacion", "id_usuario", "titulo", "estado", "motivo", "fecha_postulacion", "id_arriendo", "incorporacion_pendiente"].filter(key => key in row).map(key => [key, row[key]]));
     };
     if (request.method === "GET" && !Array.isArray(value)) throw new Error();
     return authReply(request.method === "POST" ? 201 : 200, Array.isArray(value) ? value.map(normalize) : normalize(value));
