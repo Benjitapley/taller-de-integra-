@@ -3,7 +3,7 @@ import "server-only";
 /** Server transport. No credentials from the browser are forwarded as headers.
  * FastAPI remains the authority for signature, expiry and session revocation.
  */
-export type WebAuthConfig = { origin: string; backend: string; secure: boolean; provider?: "supabase"; supabase?: { origin: string; key: string }; recoverySecret?: string };
+export type WebAuthConfig = { origin: string; backend: string; secure: boolean; provider?: "supabase"; supabase?: { origin: string; key: string }; localSignupAutoconfirm?: boolean; recoverySecret?: string };
 export type Transport = typeof fetch;
 export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig | null {
   if (env.WEB_AUTH_ENABLED !== "true") return null;
@@ -26,7 +26,7 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
       if (!(real || disposable) ||
           !["http:", "https:"].includes(identity.protocol) || identity.username || identity.password || identity.pathname !== "/" || identity.search || identity.hash || !key || key.length > 4096 || key.startsWith("sb_secret_") || /[\r\n]/.test(key)) return null;
       if (key.split(".").length === 3 && JSON.parse(Buffer.from(key.split(".")[1], "base64url").toString()).role !== "anon") return null;
-      return { origin: web.origin, backend: backend.origin, secure: web.protocol === "https:", provider: "supabase", supabase: { origin: identity.origin, key }, ...(env.WEB_AUTH_RECOVERY_SECRET ? { recoverySecret: env.WEB_AUTH_RECOVERY_SECRET } : {}) };
+      return { origin: web.origin, backend: backend.origin, secure: web.protocol === "https:", provider: "supabase", supabase: { origin: identity.origin, key }, localSignupAutoconfirm: disposable && env.NODE_ENV !== "production", ...(env.WEB_AUTH_RECOVERY_SECRET ? { recoverySecret: env.WEB_AUTH_RECOVERY_SECRET } : {}) };
     }
     return { origin: web.origin, backend: backend.origin, secure: web.protocol === "https:" };
   } catch { return null; }
