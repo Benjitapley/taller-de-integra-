@@ -3,8 +3,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { PostulationStatus } from "@/features/recorrido/JourneyStatus";
 
-type Application = { id_postulacion: number; id_publicacion: number; id_usuario: number; titulo?: string; estado: string; motivo?: string | null };
+type Application = { id_postulacion: number; id_publicacion: number; id_usuario: number; titulo?: string; estado: "Pendiente" | "Preseleccionada" | "Aceptada" | "Rechazada" | "Cancelada"; motivo?: string | null; id_arriendo?: number | null };
 export default function Applications({ publication }: { publication?: number }) {
   const [items, setItems] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,8 +38,9 @@ export default function Applications({ publication }: { publication?: number }) 
     {!loading && !items.length && <Card><p>No hay postulaciones para mostrar.</p></Card>}
     {!loading && items.map(item => <Card key={item.id_postulacion}>
       <h2>{publication ? `Postulación ${item.id_postulacion}` : item.titulo || "Publicación"}</h2>
-      <p>Estado: {item.estado}</p>{item.motivo && <p>Motivo: {item.motivo}</p>}
-      {item.estado === "Aceptada" && <p>Tu postulación fue aceptada. La incorporación al arriendo aún está pendiente.</p>}
+      <p>Estado: <PostulationStatus estado={item.estado} /></p>{item.motivo && <p>Motivo: {item.motivo}</p>}
+      {item.estado === "Aceptada" && <p>Tu postulación fue aceptada y la incorporación ya quedó registrada.</p>}
+      {item.estado === "Aceptada" && item.id_arriendo && <p><Link href="/mi-arriendo">Abrir Mi arriendo</Link></p>}
       <p><Link href={`/publicaciones/${item.id_publicacion}`}>Ver publicación</Link></p>
       {["Pendiente", "Preseleccionada"].includes(item.estado) && <>
         <label>Motivo<input value={reasons[item.id_postulacion] || ""} maxLength={1000} onChange={event => setReasons(previous => ({ ...previous, [item.id_postulacion]: event.target.value }))} /></label>
