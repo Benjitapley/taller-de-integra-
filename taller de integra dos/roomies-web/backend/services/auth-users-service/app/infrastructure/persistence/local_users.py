@@ -70,15 +70,21 @@ class PostgresUsers:
         with self.connect() as connection:
             return [User(**row) for row in connection.execute(self.select + condition + " ORDER BY u.id_usuario LIMIT 100", params).fetchall()]
 
-    def notify(self, event):
-        with self.connect() as connection:
-            connection.execute("INSERT INTO auth_users.notificacion (id_usuario,event_key,tipo,referencia_id,estado) VALUES (%s,%s,'Postulacion_Resultado',%s,%s) ON CONFLICT (event_key) DO NOTHING", (event["id_usuario"],event["event_key"],event["referencia_id"],event["estado"]))
-
     def notifications(self, user_id):
         with self.connect() as connection:
             return connection.execute("SELECT id,tipo,referencia_id,estado,creado_en FROM auth_users.notificacion WHERE id_usuario=%s ORDER BY id DESC LIMIT 100", (user_id,)).fetchall()
 
-    def notify_report(self, event):
+    def notification_page(self, user_id, limit, before):
+        boundary = " AND (creado_en,id)<(%s,%s)" if before else ""
+        with self.connect() as connection:
+            return connection.execute(
+                f"""SELECT id,tipo,referencia_id,creado_en FROM auth_users.notificacion
+                    WHERE id_usuario=%s AND tipo IN ('Postulacion_Resultado','expulsion','reporte_actualizado'){boundary}
+                    ORDER BY creado_en DESC,id DESC LIMIT %s""",
+                (user_id, *(before or ()), limit),
+            ).fetchall()
+
+    def notify(self, event):
         with self.connect() as connection:
             columns = ("id_usuario", "tipo", "referencia_id", "estado")
             values = tuple(event[key] for key in columns)

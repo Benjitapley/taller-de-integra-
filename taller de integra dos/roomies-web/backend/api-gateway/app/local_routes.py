@@ -15,6 +15,7 @@ ROUTES=[
  (r"/(?:local|api)/v1/perfil/inicializacion",{"POST"},"upstream"),
  (r"/(?:local|api)/v1/perfil",{"GET","PUT","PATCH"},"upstream"),
  (r"/(?:local|api)/v1/notificaciones",{"GET"},"upstream"),
+ (r"/api/notificaciones",{"GET"},"upstream"),
  (r"/(?:local|api)/v1/usuarios/publicos",{"GET"},"upstream"),
  (r"/api/publicaciones(?:/buscar)?",{"GET","POST"},"listado_upstream"),
  (r"/api/mis-publicaciones",{"GET"},"listado_upstream"),

@@ -46,11 +46,13 @@ def run_integration(fixture, urls, clean, processes, web=False, baseline=None, p
                   "ROOMIES_ALLOWED_PORTS": json.dumps([*ports.values(), urlsplit(identity.origin).port, urlsplit(urls["auth"]).port])}
         variables = {"auth": "AUTH_USERS_DATABASE_URL", "listado": "LISTADO_DATABASE_URL", "match": "MATCH_DATABASE_URL"}
         report_keys = {}
+        notice_keys = {}
         if report_owner:
             variables.update(convivencia="CONVIVENCIA_DATABASE_URL", reportes="REPORTES_DATABASE_URL")
             common.update(CONVIVENCIA_UPSTREAM_URL=origins["convivencia"], REPORTES_UPSTREAM_URL=origins["reportes"])
             report_keys = {service: (f"REPORTES_{service.upper()}_JWT_KEY", secrets.token_hex(32))
                            for service in ("auth", "listado", "match", "convivencia")}
+            notice_keys = {f"{service}_AUTH_JWT_KEY": secrets.token_hex(32) for service in ("LISTADO", "CONVIVENCIA")}
         if progressive: common["ROOMIES_PERSISTENCE_LAYOUT"] = "haycupo-v1"
         try:
             for service in ports:
@@ -60,6 +62,10 @@ def run_integration(fixture, urls, clean, processes, web=False, baseline=None, p
                 elif service in report_keys:
                     name, key = report_keys[service]
                     env[name] = key
+                if notice_keys and service == "auth":
+                    env.update(notice_keys, AUTH_NOTIFICATIONS_CURSOR_SECRET=secrets.token_hex(32))
+                elif notice_keys and service == "listado":
+                    env["LISTADO_AUTH_JWT_KEY"] = notice_keys["LISTADO_AUTH_JWT_KEY"]
                 if service in variables: env[variables[service]] = urls[service]
                 log = open(fixture / (service + ".log"), "w+b")
                 logs.append(log)
@@ -174,6 +180,8 @@ def run_integration(fixture, urls, clean, processes, web=False, baseline=None, p
                 finally:
                     account["email_confirmed_at"] = confirmed_at
                 exercise_reports(report_owner, request, ids, pub, connection)
+                from notificaciones import exercise_notifications
+                exercise_notifications(report_owner, request, client, origins["auth"], notice_keys, ids, common["ROOMIES_INTERNAL_TOKEN"])
             print(f"PASS {checks} comprobaciones HTTP: identidad, perfil, publicaciones, postulaciones, notificaciones, conexiones, admin y revocación", flush=True)
             if web:
                 from web_integration import run_web
