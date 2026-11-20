@@ -63,3 +63,11 @@ class PostgresConnections:
 
     def count(self):
         return self.query("SELECT count(*) AS total FROM match_conexion.conexion")["total"]
+
+    def ever_accepted(self, a, b):
+        return self.query(
+            """SELECT EXISTS (
+                SELECT FROM match_conexion.relacion_aceptada WHERE usuario_menor=%s AND usuario_mayor=%s
+            ) AS existio""",
+            (min(a, b), max(a, b)),
+        )["existio"]

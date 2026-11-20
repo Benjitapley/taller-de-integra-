@@ -42,6 +42,12 @@ class PostgresPublications:
     def publication(self,id,lock=False):
         return self.query(self.select+" WHERE p.id_publicacion=%s"+(" FOR UPDATE OF p" if lock else ""),(id,))
 
+    def report_target(self, publication_id):
+        return self.query(
+            """SELECT id_publicacion,id_usuario AS id_propietario,tipo,estado,cupos_totales
+               FROM listado_applications.publicacion WHERE id_publicacion=%s""", (publication_id,),
+        )
+
     def list_publications(self,filters,owner=None):
         where,params=[],[]
         if owner is not None:

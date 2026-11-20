@@ -1,14 +1,26 @@
 """Adaptadores compatibles con las rutas actuales de conexiones."""
-from typing import Literal
-from fastapi import APIRouter,Depends,Query,Response
+from typing import Annotated, Literal
+from fastapi import APIRouter,Depends,Header,Query,Response
 from pydantic import BaseModel,ConfigDict,Field
 from app.application.service import Connections
 from app.infrastructure.repository import PostgresConnections
 from app.infrastructure.clients import HttpProfiles,HttpPublications
 from backend.service_runtime.security import confirmed_actor,admin_actor
+from backend.service_runtime.reporting_security import verify_report_service
 from backend.service_runtime.contracts import RuleViolation
 
 router=APIRouter(prefix="/conexiones")
+internal_router = APIRouter(prefix="/internal/conexiones")
+
+
+@internal_router.get("/relacion")
+def accepted_relationship(
+    a: Annotated[int, Query(gt=0, le=9223372036854775807)],
+    b: Annotated[int, Query(gt=0, le=9223372036854775807)],
+    authorization: Annotated[str | None, Header()] = None,
+):
+    verify_report_service(authorization, "match-conexion", "REPORTES_MATCH_JWT_KEY")
+    return {"existio": PostgresConnections().ever_accepted(a, b)}
 
 
 def service(): return Connections(PostgresConnections(),HttpProfiles())

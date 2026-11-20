@@ -5,7 +5,7 @@ import os
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, Header, Path, Request
+from fastapi import Depends, FastAPI, Header, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.http import configure
 from backend.service_runtime.security import confirmed_actor
+from backend.service_runtime.reporting_security import verify_report_service
 from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, unavailable
 from app.ports import HttpIdentity, HttpPublications
 from app.repository import PostgresRepository
@@ -81,6 +82,16 @@ def create_app(instance=None, run_recovery=True):
     @application.get("/health")
     def health():
         return {"status": "ok", "scope": "base-incorporacion-v1"}
+
+    @application.get("/internal/convivencia/relacion")
+    def rental_relationship(
+        a: Annotated[int, Query(gt=0, le=9223372036854775807)],
+        b: Annotated[int, Query(gt=0, le=9223372036854775807)],
+        application_service=Depends(service),
+        authorization: Annotated[str | None, Header()] = None,
+    ):
+        verify_report_service(authorization, "convivencia-mensajeria", "REPORTES_CONVIVENCIA_JWT_KEY")
+        return {"coincidio": application_service.repository.overlapped(a, b)}
 
     errors = {status: {"model": ErrorResponse} for status in (401, 403, 404, 409, 422, 503)}
 
