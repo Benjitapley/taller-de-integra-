@@ -5,15 +5,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { CustomButton } from "@/components/CustomButton";
 import { PublicacionCard } from "@/components/Publicacion_Card";
 import { PasoPublicacion } from "@/components/publicaciones/PasoPublicacion";
-import { ENVIAR_DETALLE_MASCOTAS, ENVIAR_ENLACE_REFERENCIA } from "@/constants/camposPublicacion";
-import { etiquetaMascota } from "@/constants/mascotas";
+import {
+  ENVIAR_ENLACE_REFERENCIA,
+  ENVIAR_PERMITIR_COMENTARIOS,
+} from "@/constants/camposPublicacion";
 import { paletaPublicacion } from "@/constants/origenPublicacion";
 import { OPCIONES_TIPO_VIVIENDA } from "@/constants/tipoVivienda";
 import { useAuth } from "@/hooks/useAuth";
-import { crearPublicacion } from "@/services/publicacionesService";
+import { consultarPublicacionCreada, crearPublicacion } from "@/services/publicacionesService";
 import { colors } from "@/theme/colors";
-import type { FormularioPublicacionValores, Publicacion } from "@/types/Publicacion";
-import { leerBorradorDesdeParams } from "@/utils/borradorPublicacion";
+import type { Publicacion } from "@/types/Publicacion";
+import { armarParametrosBorrador, leerBorradorDesdeParams } from "@/utils/borradorPublicacion";
+import { descartarBorradorPersistido } from "@/utils/borradorPersistente";
+import { mensajeDeError } from "@/types/erroresServidor";
+import { claveParaBorrador, olvidarClaveBorrador } from "@/utils/claveIdempotencia";
 import { leerFotosBorrador, limpiarFotosBorrador } from "@/utils/fotosBorrador";
 
 function FilaDetalle({
@@ -36,17 +41,11 @@ function FilaDetalle({
   );
 }
 
-function textoMascotas(valores: FormularioPublicacionValores): string {
-  if (!valores.aceptaMascotas) return "No se aceptan mascotas";
-  if (!ENVIAR_DETALLE_MASCOTAS) return "Se aceptan mascotas";
-  const tipos = valores.tiposMascotas.map(etiquetaMascota).join(", ");
-  return `Se aceptan mascotas: ${tipos}`;
-}
-
 export default function Previa() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { cerrarSesion } = useAuth();
+  const { cerrarSesion, sesion } = useAuth();
+  const idUsuario = sesion?.user.id ?? null;
   // El ref bloquea el doble toque al instante; el estado solo cambia la interfaz.
   const publicandoRef = useRef(false);
   const [publicando, setPublicando] = useState(false);
@@ -111,14 +110,14 @@ export default function Previa() {
     titulo: valores.titulo.trim(),
     descripcion: valores.descripcion.trim(),
     precio: Number(valores.precio),
-    ubicacion: valores.ubicacion.trim(),
+    ubicacion: `${valores.nombreComuna}, ${valores.nombreRegion}`,
     estado: "Disponible",
     cuposTotales: Number(valores.cupos),
     cuposDisponibles: Number(valores.cupos),
     imagenPrincipalUrl: fotos[0],
   };
 
-  // M4-C08: crea la publicación según su origen. Las reglas de negocio las valida
+  // Crea la publicación según su origen. Las reglas de negocio las valida
   // el backend; aquí solo se interpreta su respuesta. Un error nunca se trata
   // como creación exitosa.
   const publicar = async () => {
@@ -126,22 +125,44 @@ export default function Previa() {
     publicandoRef.current = true;
     setPublicando(true);
 
-    // El servicio guarda UNA imagen: se envía la primera foto del borrador.
-    const resultado = await crearPublicacion(valores, undefined, fotos[0]);
-
-    publicandoRef.current = false;
-    setPublicando(false);
+    // Una clave por borrador: si el envío se repite con lo mismo (timeout, red, doble
+    // toque), el servidor devuelve la misma respuesta en vez de crear un duplicado.
+    // Si algo cambió, la huella cambia y se usa una clave nueva.
+    const huella = JSON.stringify(armarParametrosBorrador(valores)) + "|" + fotos.join("|");
+    const resultado = await crearPublicacion(valores, undefined, {
+      imagenesUris: fotos,
+      claveIdempotencia: claveParaBorrador(huella),
+    });
 
     if (resultado.exito) {
+      // 201 confirmado: el borrador ya no hace falta. Luego se consulta el detalle.
+      olvidarClaveBorrador();
       limpiarFotosBorrador();
+      if (idUsuario) await descartarBorradorPersistido(idUsuario);
+      const detalle = await consultarPublicacionCreada(resultado.datos.id);
+
+      publicandoRef.current = false;
+      setPublicando(false);
+
       // Se cierra el flujo de creación para que "atrás" no vuelva a un formulario lleno.
       router.dismissAll();
+      if (!detalle.exito) {
+        // La publicación existe (el POST respondió 201): no se ofrece crearla otra vez.
+        Alert.alert(
+          "Publicación creada",
+          "Tu publicación se creó, pero no pudimos cargar su detalle ahora. Revísala en unos momentos.",
+        );
+        return;
+      }
       router.push({
         pathname: "/publicacion/[id]",
-        params: { id: String(resultado.datos.id) },
+        params: { id: String(detalle.idPublicacion) },
       });
       return;
     }
+
+    publicandoRef.current = false;
+    setPublicando(false);
 
     // Sin sesión o sesión rechazada por el servicio. /login está protegido por
     // `Stack.Protected guard={!estaAutenticado}` en app/_layout.tsx, así que no
@@ -178,7 +199,7 @@ export default function Previa() {
       return;
     }
 
-    Alert.alert("No se pudo publicar", resultado.error);
+    Alert.alert("No se pudo publicar", mensajeDeError(resultado));
   };
 
   return (
@@ -210,21 +231,24 @@ export default function Previa() {
             <FilaDetalle icono={vivienda.icono} texto={vivienda.etiqueta} />
             <FilaDetalle
               icono="paw-outline"
-              texto={textoMascotas(valores)}
-              secundario={
-                ENVIAR_DETALLE_MASCOTAS && valores.aceptaMascotas && valores.condicionesMascotas.trim()
-                  ? valores.condicionesMascotas.trim()
-                  : undefined
-              }
+              texto={valores.aceptaMascotas ? "Se aceptan mascotas" : "No se aceptan mascotas"}
             />
-            <FilaDetalle
-              icono="chatbubbles-outline"
-              texto={
-                valores.permitirComentarios
-                  ? "Se permiten comentarios"
-                  : "Comentarios desactivados"
-              }
-            />
+            {ENVIAR_PERMITIR_COMENTARIOS && (
+              <FilaDetalle
+                icono="chatbubbles-outline"
+                texto={
+                  valores.permitirComentarios
+                    ? "Se permiten comentarios"
+                    : "Comentarios desactivados"
+                }
+              />
+            )}
+            {valores.reglas.length > 0 && (
+              <FilaDetalle
+                icono="list-outline"
+                texto={`${valores.reglas.length} ${valores.reglas.length === 1 ? "regla" : "reglas"} de la casa`}
+              />
+            )}
           </View>
         ) : null}
 

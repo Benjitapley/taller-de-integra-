@@ -1,9 +1,21 @@
-import { ENVIAR_DETALLE_MASCOTAS, ENVIAR_ENLACE_REFERENCIA } from "@/constants/camposPublicacion";
-import { solicitarFormulario } from "@/services/httpClient";
+import { ENVIAR_ENLACE_REFERENCIA } from "@/constants/camposPublicacion";
+import {
+  CAMPOS_API_PUBLICACION,
+  CAMPO_REGLAS_LISTADO,
+  CATEGORIA_LISTADO,
+  ESTADO_HTTP_CREADA,
+  MAX_LARGO_UBICACION,
+  MAX_CARACTERES_REGLA,
+  MAX_IMAGENES_ARRENDADOR,
+  MAX_REGLAS_ARRENDADOR,
+  PRECIO_MAXIMO,
+  TIPO_VIVIENDA_API,
+  TIPO_VIVIENDA_API_LISTADO,
+} from "@/constants/contratoPublicacion";
+import { solicitarFormulario, solicitarJson } from "@/services/httpClient";
 import { publicacionesMock } from "@/mocks/publicaciones";
 import type { ErrorHttp } from "@/types/Http";
 import type {
-  CategoriaPublicacionDto,
   PublicacionArrendadorCreateDto,
   PublicacionCompartidaCreateDto,
   PublicacionCreadaResponse,
@@ -11,7 +23,6 @@ import type {
 } from "@/types/api/PublicacionCreateDto";
 import type {
   FormularioPublicacionValores,
-  TipoMascota,
   TipoPublicacion,
   TipoVivienda,
   Publicacion,
@@ -19,37 +30,27 @@ import type {
 
 // Las banderas ENVIAR_* viven en constants/camposPublicacion.ts: también las usan
 // el formulario y la vista previa.
-export { ENVIAR_DETALLE_MASCOTAS, ENVIAR_ENLACE_REFERENCIA };
+export { ENVIAR_ENLACE_REFERENCIA };
 
 // Servicio de publicaciones. Este archivo es compartido con la búsqueda
 // (M4-B07, M4-B08): las funciones de listado y detalle se agregan aquí, no en
-// un segundo servicio. M4-C07 cubre la creación; B08-B10 conservan por ahora
+// un segundo servicio. Aquí vive la creación; B08-B10 conservan por ahora
 // su fuente demostrativa hasta confirmar y conectar el contrato de consulta.
 //
 // Las llamadas salen por el cliente HTTP único (`solicitarFormulario`, M4-A07), que
 // agrega el Bearer de la sesión de Supabase. Ese cliente nunca lanza: aquí tampoco; el resultado es
 // `exito: true` con los datos, o el `ErrorHttp` tal cual.
 //
-// CONTRATO REAL (listado-applications-service, app/api/routes.py): la creación
-// es UNA sola ruta, POST /api/publicaciones, y recibe un FORMULARIO (multipart),
-// no JSON. El origen va en el campo `tipo`, no en la ruta. Las rutas separadas
-// /publicaciones/arrendador y /compartidas del backlog no existen.
+// CONTRATO (Contrato de microservicios, cap. 4.1): la creación es UNA sola ruta,
+// POST /api/publicaciones, con un FORMULARIO (multipart). El origen va en el campo
+// `tipo`. Responde 201 con la publicación en estado Disponible; cualquier otro estado
+// (aunque sea 2xx) NO se trata como creación.
 
 // Rutas (endpoints). Hoy son la misma; se deja por origen para separarlas con un
-// solo cambio si TI2 crea las rutas del backlog.
+// solo cambio si TI2 crea rutas distintas.
 export const RUTA_CREAR_PUBLICACION: Record<TipoPublicacion, string> = {
   Arrendador: "/api/publicaciones",
   Compartida: "/api/publicaciones",
-};
-
-/**
- * La API pide `categoria` ("busco" | "ofrezco") además del origen. En la app
- * son lo mismo: quien publica un arriendo lo ofrece; quien comparte una
- * oportunidad busca con quién arrendarla.
- */
-export const CATEGORIA_POR_ORIGEN: Record<TipoPublicacion, CategoriaPublicacionDto> = {
-  Arrendador: "ofrezco",
-  Compartida: "busco",
 };
 
 /**
@@ -81,7 +82,7 @@ export class PayloadPublicacionInvalidoError extends Error {
 
 function textoObligatorio(
   valores: FormularioPublicacionValores,
-  campo: "titulo" | "descripcion" | "ubicacion",
+  campo: "titulo" | "descripcion",
 ): string {
   const texto = valores[campo].trim();
   if (!texto) throw new PayloadPublicacionInvalidoError(campo);
@@ -95,62 +96,62 @@ function tipoViviendaObligatorio(
   return valores.tipoVivienda;
 }
 
-// El formulario guarda precio y cupos como texto de solo dígitos. Se convierten
-// aquí y se rechaza todo lo demás para que nunca se serialice un NaN (que JSON
-// convierte en null sin avisar).
-function enteroPositivo(
-  valores: FormularioPublicacionValores,
-  campo: "precio" | "cupos",
+// El formulario guarda los números como texto de solo dígitos. Se convierten aquí y
+// se rechaza todo lo demás para que nunca se serialice un NaN.
+function enteroEnRango(
+  texto: string,
+  campo: keyof FormularioPublicacionValores,
+  minimo: number,
+  maximo: number,
 ): number {
-  const texto = valores[campo].trim();
-  const numero = Number(texto);
-  if (!/^\d+$/.test(texto) || !Number.isSafeInteger(numero) || numero < 1) {
+  const limpio = texto.trim();
+  const numero = Number(limpio);
+  if (!/^\d+$/.test(limpio) || !Number.isSafeInteger(numero) || numero < minimo || numero > maximo) {
     throw new PayloadPublicacionInvalidoError(campo);
   }
   return numero;
 }
 
+// Reglas del arrendador: se descartan las vacías; máx. 20 de máx. 300 caracteres.
+function reglasLimpias(valores: FormularioPublicacionValores): string[] {
+  const reglas = valores.reglas.map((regla) => regla.trim()).filter(Boolean);
+  if (reglas.length > MAX_REGLAS_ARRENDADOR || reglas.some((r) => r.length > MAX_CARACTERES_REGLA)) {
+    throw new PayloadPublicacionInvalidoError("reglas");
+  }
+  return reglas;
+}
 
-// Si no se aceptan mascotas, la lista y las condiciones del formulario se
-// ignoran aunque la persona las haya llenado antes de apagar el interruptor.
-function datosMascotas(
+// Forma que hoy valida Listado (ver constants/contratoPublicacion.ts), distinta del
+// contrato v2. `ubicacion` se deriva de los nombres elegidos en el selector
+// ("Temuco, La Araucanía").
+function formaListadoArrendador(
   valores: FormularioPublicacionValores,
-): Pick<
-  PublicacionCreateBaseDto,
-  "mascota" | "tipos_mascotas_aceptadas" | "condiciones_mascotas"
-> {
-  if (!valores.aceptaMascotas) {
-    return ENVIAR_DETALLE_MASCOTAS
-      ? { mascota: "no", tipos_mascotas_aceptadas: [] }
-      : { mascota: "no" };
-  }
-
-  // Con el detalle apagado basta "si"; el formulario ya validó lo demás.
-  if (!ENVIAR_DETALLE_MASCOTAS) return { mascota: "si" };
-
-  const tipos: TipoMascota[] = Array.from(new Set(valores.tiposMascotas));
-  if (tipos.length === 0) throw new PayloadPublicacionInvalidoError("tiposMascotas");
-
-  const condiciones = valores.condicionesMascotas.trim();
-  if (tipos.includes("otro") && !condiciones) {
-    throw new PayloadPublicacionInvalidoError("condicionesMascotas");
-  }
-
+  base: PublicacionCreateBaseDto,
+  reglas: string[],
+): PublicacionArrendadorCreateDto {
+  const ubicacion = [valores.nombreComuna, valores.nombreRegion]
+    .map((parte) => parte.trim())
+    .filter(Boolean)
+    .join(", ")
+    .slice(0, MAX_LARGO_UBICACION);
+  if (!ubicacion) throw new PayloadPublicacionInvalidoError("nombreComuna");
   return {
-    mascota: "si",
-    tipos_mascotas_aceptadas: tipos,
-    ...(condiciones ? { condiciones_mascotas: condiciones } : {}),
+    ...base,
+    tipo_vivienda: TIPO_VIVIENDA_API_LISTADO[tipoViviendaObligatorio(valores)],
+    tipo: "Arrendador",
+    categoria: CATEGORIA_LISTADO,
+    ubicacion,
+    ...(reglas.length > 0 ? { [CAMPO_REGLAS_LISTADO]: reglas } : {}),
   };
 }
 
 /**
  * Transforma el estado del formulario en la solicitud: nombres en snake_case,
- * números como número y el origen en `tipo` (que el servicio exige).
+ * números como número y el origen en `tipo`.
  *
  * Función pura: no envía nada. Asume un formulario que ya pasó
  * `validarFormularioPublicacion` y lanza `PayloadPublicacionInvalidoError`
- * si no es así. Las reglas de negocio (límite de cupos activos, etc.) las
- * valida el backend.
+ * si no es así. Las reglas de negocio las valida el backend.
  */
 export function armarSolicitudCreacion(
   valores: FormularioPublicacionValores,
@@ -158,20 +159,20 @@ export function armarSolicitudCreacion(
   const base: PublicacionCreateBaseDto = {
     titulo: textoObligatorio(valores, "titulo"),
     descripcion: textoObligatorio(valores, "descripcion"),
-    precio: enteroPositivo(valores, "precio"),
-    ubicacion: textoObligatorio(valores, "ubicacion"),
-    categoria: CATEGORIA_POR_ORIGEN[valores.tipo],
-    tipo_vivienda: tipoViviendaObligatorio(valores),
-    cupos_totales: enteroPositivo(valores, "cupos"),
-    ...datosMascotas(valores),
-    permitir_comentarios: valores.permitirComentarios,
+    precio: enteroEnRango(valores.precio, "precio", 0, PRECIO_MAXIMO),
+    id_region: enteroEnRango(valores.idRegion, "idRegion", 1, Number.MAX_SAFE_INTEGER),
+    id_comuna: enteroEnRango(valores.idComuna, "idComuna", 1, Number.MAX_SAFE_INTEGER),
+    tipo_vivienda: TIPO_VIVIENDA_API[tipoViviendaObligatorio(valores)],
+    cupos_totales: enteroEnRango(valores.cupos, "cupos", 1, 2_147_483_647),
+    mascota: valores.aceptaMascotas ? "si" : "no",
   };
 
   if (valores.tipo === "Arrendador") {
+    const reglas = reglasLimpias(valores);
     return {
       origen: "Arrendador",
       ruta: RUTA_CREAR_PUBLICACION.Arrendador,
-      cuerpo: { ...base, tipo: "Arrendador" },
+      cuerpo: formaListadoArrendador(valores, base, reglas),
     };
   }
 
@@ -212,39 +213,65 @@ const TIPOS_IMAGEN: Record<string, string> = {
   webp: "image/webp",
 };
 
-// El servicio acepta UNA imagen en el campo `imagen` (JPG, PNG o WEBP, máx. 5 MB)
-// y la valida él mismo. React Native acepta { uri, name, type } como archivo.
-function adjuntarImagen(formulario: FormData, uri: string): void {
-  const extension = uri.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
-  const conocida = extension in TIPOS_IMAGEN;
-  formulario.append("imagen", {
-    uri,
-    name: `foto.${conocida ? extension : "jpg"}`,
-    type: conocida ? TIPOS_IMAGEN[extension] : "image/jpeg",
-  } as unknown as Blob);
+// El contrato acepta varias imágenes repitiendo el campo `imagenes` (JPG, PNG o WEBP,
+// máx. 5 MB c/u, hasta 5 en Arrendador); el servidor las valida. React Native acepta
+// { uri, name, type } como archivo en FormData nativo. La primera es la portada.
+function adjuntarImagenes(formulario: FormData, uris: string[]): void {
+  uris.forEach((uri, i) => {
+    const extension = uri.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
+    const conocida = extension in TIPOS_IMAGEN;
+    formulario.append(CAMPOS_API_PUBLICACION.imagenes, {
+      uri,
+      name: `foto-${i + 1}.${conocida ? extension : "jpg"}`,
+      type: conocida ? TIPOS_IMAGEN[extension] : "image/jpeg",
+    } as unknown as Blob);
+  });
 }
 
-// `datos` llega como unknown: JSON válido no es una respuesta válida.
+// `datos` llega como unknown: JSON válido no es una respuesta válida. El contrato
+// responde la publicación con `id_publicacion`; se acepta `id` por compatibilidad.
 function leerPublicacionCreada(datos: unknown): PublicacionCreadaResponse | null {
   if (typeof datos !== "object" || datos === null) return null;
-  const { id, mensaje } = datos as Record<string, unknown>;
+  const registro = datos as Record<string, unknown>;
+  const id = registro.id_publicacion ?? registro.id;
   if (typeof id !== "number" || !Number.isSafeInteger(id) || id < 1) return null;
+  const mensaje = registro.mensaje;
   return typeof mensaje === "string" ? { id, mensaje } : { id };
+}
+
+export interface OpcionesCreacion {
+  /** Fotos del borrador (URIs locales); se envían todas bajo `imagenes`. */
+  imagenesUris?: string[];
+  /** Idempotency-Key del borrador, reutilizada en los reintentos. */
+  claveIdempotencia?: string;
 }
 
 async function enviarSolicitud(
   solicitud: SolicitudCreacionPublicacion,
   enviar: EnviarFormulario,
-  imagenUri?: string,
+  opciones: OpcionesCreacion,
 ): Promise<ResultadoCreacionPublicacion> {
   const formulario = cuerpoAFormulario(solicitud.cuerpo);
-  if (imagenUri) adjuntarImagen(formulario, imagenUri);
+  if (opciones.imagenesUris?.length) adjuntarImagenes(formulario, opciones.imagenesUris);
 
   const resultado = await enviar(solicitud.ruta, {
     metodo: "POST",
     cuerpo: formulario,
+    ...(opciones.claveIdempotencia
+      ? { headers: { "Idempotency-Key": opciones.claveIdempotencia } }
+      : {}),
   });
   if (!resultado.exito) return resultado;
+
+  // Solo 201 es "creada". Un 200/202/204 no confirma que exista la publicación.
+  if (resultado.estadoHttp !== ESTADO_HTTP_CREADA) {
+    return {
+      exito: false,
+      codigo: "respuesta_invalida",
+      error: "El servicio no confirmó la creación de la publicación.",
+      estadoHttp: resultado.estadoHttp,
+    };
+  }
 
   const creada = leerPublicacionCreada(resultado.datos);
   if (!creada) {
@@ -259,13 +286,12 @@ async function enviarSolicitud(
 }
 
 /**
- * Crea la publicación según el origen del formulario (la usa M4-C08).
- * `imagenUri`: foto principal opcional; el servicio guarda una sola imagen.
+ * Crea la publicación (la usa M4S3-C01). Éxito = 201 con una publicación válida.
  */
 export async function crearPublicacion(
   valores: FormularioPublicacionValores,
   enviar: EnviarFormulario = solicitarFormulario,
-  imagenUri?: string,
+  opciones: OpcionesCreacion = {},
 ): Promise<ResultadoCreacionPublicacion> {
   let solicitud: SolicitudCreacionPublicacion;
   try {
@@ -280,7 +306,51 @@ export async function crearPublicacion(
     }
     throw error;
   }
-  return enviarSolicitud(solicitud, enviar, imagenUri);
+  if ((opciones.imagenesUris?.length ?? 0) > MAX_IMAGENES_ARRENDADOR) {
+    return {
+      exito: false,
+      codigo: "peticion_invalida",
+      error: `Puedes subir hasta ${MAX_IMAGENES_ARRENDADOR} fotos.`,
+    };
+  }
+  return enviarSolicitud(solicitud, enviar, opciones);
+}
+
+export type SolicitarJson = typeof solicitarJson;
+
+export type ResultadoDetalleCreada =
+  | { exito: true; idPublicacion: number; estado: string | null }
+  | ErrorHttp;
+
+/**
+ * Consulta GET /api/publicaciones/{id} tras la creación para confirmar que existe.
+ * Solo comprueba la respuesta mínima (id y estado); el modelo completo del detalle
+ * lo arma el servicio de consulta (B03). No reintenta ni crea nada.
+ */
+export async function consultarPublicacionCreada(
+  id: number,
+  solicitar: SolicitarJson = solicitarJson,
+): Promise<ResultadoDetalleCreada> {
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return { exito: false, codigo: "peticion_invalida", error: "La publicación no es válida." };
+  }
+  const resultado = await solicitar(`/api/publicaciones/${id}`, { autenticada: false });
+  if (!resultado.exito) return resultado;
+  const datos = resultado.datos as Record<string, unknown> | null;
+  const idRecibido = datos && typeof datos === "object" ? (datos.id_publicacion ?? datos.id) : undefined;
+  if (idRecibido !== id) {
+    return {
+      exito: false,
+      codigo: "respuesta_invalida",
+      error: "El servicio devolvió una publicación distinta a la creada.",
+      estadoHttp: resultado.estadoHttp,
+    };
+  }
+  return {
+    exito: true,
+    idPublicacion: id,
+    estado: typeof datos?.estado === "string" ? datos.estado : null,
+  };
 }
 
 export interface FiltrosArriendo {

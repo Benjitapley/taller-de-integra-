@@ -48,7 +48,8 @@
     "test:http": "node --test tests/httpClient.test.mjs",
     "test:perfil": "node --test tests/usuariosService.test.mjs tests/perfil.test.mjs tests/provisionPerfilService.test.mjs",
     "test:publicaciones": "node --test tests/publicacionesService.test.mjs",
-    "test:convivencia": "node --test tests/convivencia.test.mjs"
+    "test:convivencia": "node --test tests/convivencia.test.mjs",
+    "test:forma-listado": "node --test tests/formaListado.test.mjs"
   },
   "private": true
 }
