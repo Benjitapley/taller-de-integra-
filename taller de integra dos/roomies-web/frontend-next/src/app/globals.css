@@ -1,0 +1,20 @@
+:root {
+  color-scheme: light;
+  --primary: #563bdd;
+  --primary-hover: #4930c7;
+  --primary-secondary: #735cf1;
+  --foreground: #25243a;
+  --muted: #69647e;
+  --lavender: #f0ebff;
+  --soft: #f9f7ff;
+  --line: #e9e5f3;
+  --background: #fcfbff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: Inter, "Segoe UI", Arial, sans-serif; line-height: 1.5; }
+button, input, select, textarea { font: inherit; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+a { color: var(--primary); }
+:focus-visible { outline: 3px solid var(--primary-secondary); outline-offset: 4px; }
+h1, h2, h3 { line-height: 1.25; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
