@@ -5,8 +5,8 @@ export const LIMITE_FOTOS_POR_ORIGEN: Record<TipoPublicacion, number> = {
   Arrendador: 5,
 };
 
-export const TAMANO_MAX_FOTO_MB = 5;
-export const TAMANO_MAX_FOTO_BYTES = TAMANO_MAX_FOTO_MB * 1024 * 1024;
+export const TAMANO_MAX_FOTO_BYTES = 5_000_000;
+export const TAMANO_MAX_FOTO_MB = TAMANO_MAX_FOTO_BYTES / 1_000_000;
 
 export const MIMES_FOTO_PERMITIDOS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 export const EXTENSIONES_FOTO_PERMITIDAS = ['jpg', 'jpeg', 'png', 'webp'];
