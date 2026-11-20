@@ -84,7 +84,7 @@ export async function getSession(config: WebAuthConfig | null, token: string, tr
   } catch { return authError(503); }
 }
 const actions = ["registro", "verificar", "reenviar-codigo", "login", "logout", "sesion", "renovar", "confirmar", "recuperar", "recuperacion-callback", "cambiar-contrasena", "recuperacion-estado"];
-async function limitedJson(request: Request): Promise<Record<string, unknown>> {
+export async function limitedJson(request: Request): Promise<Record<string, unknown>> {
   const reader = request.body?.getReader();
   if (!reader) throw new Error();
   const chunks: Uint8Array[] = [];

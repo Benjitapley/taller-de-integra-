@@ -12,6 +12,7 @@ class Settings:
     listado_upstream: str | None = None
     match_upstream: str | None = None
     convivencia_upstream: str | None = None
+    reportes_upstream: str | None = None
     local_mode: bool = False
     connect_timeout: float = 3.0
     read_timeout: float = 10.0
@@ -23,7 +24,7 @@ class Settings:
     max_response_bytes: int = 2_097_152
 
     def __post_init__(self):
-        for configured in (self.listado_upstream,self.match_upstream,self.convivencia_upstream):
+        for configured in (self.listado_upstream,self.match_upstream,self.convivencia_upstream,self.reportes_upstream):
             if configured is not None:
                 Settings(upstream=configured)
         if self.upstream is not None:
@@ -56,6 +57,7 @@ class Settings:
                 listado_upstream=os.environ.get("LISTADO_UPSTREAM_URL") or None,
                 match_upstream=os.environ.get("MATCH_UPSTREAM_URL") or None,
                 convivencia_upstream=os.environ.get("CONVIVENCIA_UPSTREAM_URL") or None,
+                reportes_upstream=os.environ.get("REPORTES_UPSTREAM_URL") or None,
                 local_mode=os.environ.get("ROOMIES_LOCAL_MODE")=="1" or os.environ.get("ROOMIES_RUNTIME_MODE")=="supabase",
                 **{f"{kind}_timeout": float(os.environ.get(f"GATEWAY_{kind.upper()}_TIMEOUT", default))
                    for kind, default in (("connect", "3"), ("read", "10"), ("write", "10"),

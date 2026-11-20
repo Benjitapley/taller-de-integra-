@@ -1,14 +1,16 @@
 """Adaptadores HTTP locales; reglas y SQL permanecen fuera de los routers."""
 import os
 from decimal import Decimal
-from typing import Literal
-from fastapi import APIRouter,Depends,Request,HTTPException,Query
+from typing import Annotated, Literal
+from fastapi import APIRouter,Depends,Header,Path,Request,HTTPException,Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel,ConfigDict,Field
 from app.application.service import Publications
 from app.domain.publications import available
 from app.infrastructure.repository import PostgresPublications
 from app.infrastructure.clients import UnavailableOccupancy, HttpOwners
 from backend.service_runtime.security import confirmed_actor,admin_actor
+from backend.service_runtime.reporting_security import verify_report_service
 from backend.service_runtime.images import Images
 from backend.service_runtime.contracts import DependencyUnavailable
 
@@ -60,6 +62,19 @@ def my_count(identity=Depends(confirmed_actor),app=Depends(service)):
 @router.get("/api/publicaciones/{id}/detalle")
 def detail(id:int,app=Depends(service)):
     return dto(app.get(id),app.occupancy)
+
+
+@router.get("/internal/publicaciones/{id}")
+def publication_for_report(
+    id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+    app=Depends(service),
+    authorization: Annotated[str | None, Header()] = None,
+):
+    verify_report_service(authorization, "listado-applications", "REPORTES_LISTADO_JWT_KEY")
+    row = app.repository.report_target(id)
+    if row is None:
+        return JSONResponse({"codigo": "PUBLICACION_NO_ENCONTRADA"}, status_code=404)
+    return row
 
 
 @router.get("/api/publicaciones/{id}")

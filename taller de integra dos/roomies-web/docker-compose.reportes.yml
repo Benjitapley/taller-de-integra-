@@ -1,0 +1,38 @@
+# Overlay local junto a docker-compose.local.yml y docker-compose.convivencia.yml.
+# Aprovisionar los roles y aplicar las migraciones indicadas en docs/SCRUM-95-reportes.md.
+services:
+  reportes:
+    build:
+      context: .
+      dockerfile: backend/services/reportes-service/Dockerfile
+    environment:
+      ROOMIES_LOCAL_MODE: "1"
+      ROOMIES_AUTH_PROVIDER_URL: ${ROOMIES_LOCAL_AUTH_ORIGIN:?Proveedor Auth local requerido}
+      ROOMIES_JWT_ISSUER: ${ROOMIES_LOCAL_AUTH_ISSUER:?Issuer local requerido}
+      AUTH_USERS_UPSTREAM_URL: http://auth-users:8000
+      LISTADO_UPSTREAM_URL: http://listado-applications:8000
+      MATCH_UPSTREAM_URL: http://match-conexion:8000
+      CONVIVENCIA_UPSTREAM_URL: http://convivencia-mensajeria:8000
+      REPORTES_DATABASE_URL: postgresql://sql_reportes:${ROOMIES_REPORTES_SQL_PASSWORD:?Password exclusivo de Reportes requerido}@roomies-db:5432/roomies_sprint2_disposable
+      REPORTES_CURSOR_SECRET: ${REPORTES_CURSOR_SECRET:?Clave para cursores requerida}
+      REPORTES_LISTADO_JWT_KEY: ${REPORTES_LISTADO_JWT_KEY:?Clave Reportes-Listado requerida}
+      REPORTES_MATCH_JWT_KEY: ${REPORTES_MATCH_JWT_KEY:?Clave Reportes-Match requerida}
+      REPORTES_CONVIVENCIA_JWT_KEY: ${REPORTES_CONVIVENCIA_JWT_KEY:?Clave Reportes-Convivencia requerida}
+    depends_on:
+      roomies-db: {condition: service_healthy}
+  listado-applications:
+    environment:
+      REPORTES_LISTADO_JWT_KEY: ${REPORTES_LISTADO_JWT_KEY:?Clave Reportes-Listado requerida}
+  match-conexion:
+    environment:
+      REPORTES_MATCH_JWT_KEY: ${REPORTES_MATCH_JWT_KEY:?Clave Reportes-Match requerida}
+  convivencia-mensajeria:
+    environment:
+      REPORTES_CONVIVENCIA_JWT_KEY: ${REPORTES_CONVIVENCIA_JWT_KEY:?Clave Reportes-Convivencia requerida}
+  api-gateway:
+    environment:
+      REPORTES_UPSTREAM_URL: http://reportes:8000
+    depends_on: [reportes]
+  next-web:
+    environment:
+      WEB_REPORTES_ENABLED: "true"

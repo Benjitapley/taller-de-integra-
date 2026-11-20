@@ -1,0 +1,31 @@
+.layout {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 48rem;
+}
+
+.form {
+  display: grid;
+  gap: .65rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.form :is(input, textarea) {
+  padding: .65rem .75rem;
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  color: var(--foreground);
+  background: var(--background);
+  font: inherit;
+}
+
+.form textarea { resize: vertical; }
+.form button { justify-self: start; margin-top: .35rem; }
+
+.history { list-style: none; padding: 0; }
+.history li { padding: .85rem 0; border-bottom: 1px solid var(--line); }
+.history p { margin: .25rem 0; }
+.history time { color: var(--muted); }
+.description { white-space: pre-wrap; overflow-wrap: anywhere; }

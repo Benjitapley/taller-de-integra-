@@ -6,6 +6,8 @@ from starlette.responses import JSONResponse, Response
 from app.proxy import forward_to,bounded_body,BodyTooLarge
 
 ROUTES=[
+ (r"/api/reportes",{"POST"},"reportes_upstream"),
+ (r"/api/reportes/mios",{"GET"},"reportes_upstream"),
  (r"/usuarios/me",{"GET","PATCH"},"upstream"),
  (r"/(?:local|api)/v1/sesion/revocar",{"POST"},"upstream"),
  (r"/(?:local|api)/v1/perfil/inicializacion",{"POST"},"upstream"),

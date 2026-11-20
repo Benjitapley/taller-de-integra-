@@ -1,5 +1,6 @@
 """Pruebas reales de cuatro procesos HTTP y tres roles SQL desechables."""
 import json
+import secrets
 import socket
 import subprocess
 import sys
@@ -13,7 +14,7 @@ from testing_identity import IdentityFixture
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def run_integration(fixture, urls, clean, processes, web=False, baseline=None, progressive=False):
+def run_integration(fixture, urls, clean, processes, web=False, baseline=None, progressive=False, report_owner=None):
     baseline = baseline or {"usuarios":0,"publicaciones":0,"conexiones":0}
     checks = 0
     logs = []
@@ -34,7 +35,7 @@ def run_integration(fixture, urls, clean, processes, web=False, baseline=None, p
             response = provider("/verify", {"email": email, "token": identity.users[email]["otp"], "type": "email"})
             assert response.status_code == 200
             people.append(response.json())
-        ports = {name: port() for name in ("auth", "listado", "match", "gateway")}
+        ports = {name: port() for name in (*urls, "gateway")}
         origins = {name: f"http://127.0.0.1:{number}" for name, number in ports.items()}
         common = {**clean, "ROOMIES_LOCAL_MODE": "1", "ROOMIES_TEST_RUNNER": "disposable-only",
                   "ROOMIES_AUTH_PROVIDER_URL": identity.origin, "ROOMIES_AUTH_PUBLISHABLE_KEY": identity.publishable_key,
@@ -44,10 +45,21 @@ def run_integration(fixture, urls, clean, processes, web=False, baseline=None, p
                   "ROOMIES_ADMIN_SUBJECTS": people[0]["user"]["id"],
                   "ROOMIES_ALLOWED_PORTS": json.dumps([*ports.values(), urlsplit(identity.origin).port, urlsplit(urls["auth"]).port])}
         variables = {"auth": "AUTH_USERS_DATABASE_URL", "listado": "LISTADO_DATABASE_URL", "match": "MATCH_DATABASE_URL"}
+        report_keys = {}
+        if report_owner:
+            variables.update(convivencia="CONVIVENCIA_DATABASE_URL", reportes="REPORTES_DATABASE_URL")
+            common.update(CONVIVENCIA_UPSTREAM_URL=origins["convivencia"], REPORTES_UPSTREAM_URL=origins["reportes"])
+            report_keys = {service: (f"REPORTES_{service.upper()}_JWT_KEY", secrets.token_hex(32))
+                           for service in ("listado", "match", "convivencia")}
         if progressive: common["ROOMIES_PERSISTENCE_LAYOUT"] = "haycupo-v1"
         try:
             for service in ports:
                 env = {**common, "ROOMIES_PORT": str(ports[service]), "ROOMIES_IMAGE_DIR": str(fixture / (service + "-images"))}
+                if service == "reportes":
+                    env.update(dict(report_keys.values()), REPORTES_CURSOR_SECRET=secrets.token_hex(32))
+                elif service in report_keys:
+                    name, key = report_keys[service]
+                    env[name] = key
                 if service in variables: env[variables[service]] = urls[service]
                 log = open(fixture / (service + ".log"), "w+b")
                 logs.append(log)
@@ -148,6 +160,20 @@ def run_integration(fixture, urls, clean, processes, web=False, baseline=None, p
             request("POST", "/local/v1/sesion/revocar", person=1)
             request("GET", "/local/v1/perfil", person=1, status=401)
             request("GET", "/api/mis-publicaciones", person=1, status=401)
+            if report_owner:
+                from reportes import exercise_reports
+                people[1] = identity.session(people[1]["user"])
+                account = identity.users["local0@example.com"]["user"]
+                confirmed_at = account["email_confirmed_at"]
+                account["email_confirmed_at"] = None
+                try:
+                    assert request("GET", "/api/reportes/mios")["items"] == []
+                    request("POST", "/api/reportes", status=403, json={
+                        "categoria": "Conducta", "descripcion": "Sin confirmación", "id_usuario_reportado": ids[1],
+                    })
+                finally:
+                    account["email_confirmed_at"] = confirmed_at
+                exercise_reports(report_owner, request, ids, pub, connection)
             print(f"PASS {checks} comprobaciones HTTP: identidad, perfil, publicaciones, postulaciones, notificaciones, conexiones, admin y revocación", flush=True)
             if web:
                 from web_integration import run_web

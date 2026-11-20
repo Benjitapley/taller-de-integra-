@@ -9,7 +9,8 @@ if os.environ.get("ROOMIES_LOCAL_MODE")!="1" or os.environ.get("ROOMIES_TEST_RUN
     raise RuntimeError("Usa run_stack.py")
 root=Path(__file__).resolve().parents[2]
 services={"auth":"backend/services/auth-users-service","listado":"backend/services/listado-applications-service",
-          "match":"backend/services/match-conexion-service","gateway":"backend/api-gateway"}
+          "match":"backend/services/match-conexion-service","gateway":"backend/api-gateway",
+          "convivencia":"backend/services/convivencia-mensajeria-service","reportes":"backend/services/reportes-service"}
 service=sys.argv[1]
 if service not in services: raise RuntimeError("Servicio inválido")
 sys.path[:0]=[str(root/services[service]),str(root)]
@@ -44,7 +45,8 @@ def audit(event,args):
 sys.addaudithook(audit)
 import psycopg
 original_connect=psycopg.connect
-variables={"auth":"AUTH_USERS_DATABASE_URL","listado":"LISTADO_DATABASE_URL","match":"MATCH_DATABASE_URL"}
+variables={"auth":"AUTH_USERS_DATABASE_URL","listado":"LISTADO_DATABASE_URL","match":"MATCH_DATABASE_URL",
+           "convivencia":"CONVIVENCIA_DATABASE_URL","reportes":"REPORTES_DATABASE_URL"}
 def database(conninfo="",**kwargs):
     if service not in variables or conninfo!=os.environ[variables[service]] or set(kwargs)-{"row_factory","connect_timeout","prepare_threshold"}:
         raise RuntimeError("Base o rol fuera del servicio")
