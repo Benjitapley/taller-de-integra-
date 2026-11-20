@@ -8,6 +8,9 @@ from app.api.routes import router
 from app.infrastructure.repository import PostgresPublications
 from app.infrastructure.clients import HttpNotifications
 from app.application.notifications import dispatch
+from app.application.images import cleanup_images
+from app.infrastructure.image_operations import ImageOperations
+from app.infrastructure.storage import SupabasePublicationImages
 from backend.service_runtime.http import configure
 
 
@@ -18,6 +21,8 @@ async def lifespan(app):
         while not stopped.is_set():
             try: await asyncio.to_thread(dispatch,PostgresPublications(),HttpNotifications())
             except Exception: pass  # La outbox persiste hasta poder entregar.
+            try: await asyncio.to_thread(cleanup_images,ImageOperations(PostgresPublications()),SupabasePublicationImages())
+            except Exception: pass  # El journal conserva las limpiezas para el siguiente intento.
             try: await asyncio.wait_for(stopped.wait(),timeout=1)
             except TimeoutError: pass
     task=asyncio.create_task(deliver())
@@ -28,7 +33,7 @@ async def lifespan(app):
         await task
 
 
-app=FastAPI(title="Roomies Listado/Applications local v1",lifespan=lifespan)
+app=FastAPI(title="Roomies Listado/Applications",version="S3R-C02-v1",lifespan=lifespan)
 configure(app)
 app.include_router(router)
 @app.get("/health")

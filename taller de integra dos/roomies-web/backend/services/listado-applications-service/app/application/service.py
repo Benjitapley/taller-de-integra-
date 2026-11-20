@@ -2,6 +2,8 @@
 from typing import Protocol
 from backend.service_runtime.contracts import RuleViolation, DependencyUnavailable
 from app.domain.publications import validate_publication, available, transition
+from app.domain import pagination
+from app.application.images import save_publication
 
 
 class Repository(Protocol):
@@ -20,8 +22,8 @@ class Repository(Protocol):
 
 
 class ImagesPort(Protocol):
-    def save(self, data: bytes) -> str | None: ...
-    def delete(self, reference): ...
+    def upload(self, path: str, data: bytes, mime: str) -> str: ...
+    def delete(self, path: str): ...
 
 class OwnersPort(Protocol):
     def exists(self, user_id: int) -> bool: ...
@@ -39,43 +41,26 @@ class Publications:
         return row
 
     def list(self,filters,owner=None):
-        rows=self.repository.list_publications(filters,owner)
-        if owner is not None:
-            return rows
-        result=[]
-        for row in rows:
-            try:
-                if available(row,self.occupancy)>0:
-                    result.append(row)
-            except DependencyUnavailable:
-                continue  # No inventar vacantes de Activa sin Convivencia.
-        return result
+        limit=filters.get("limite",20)
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise RuleViolation("Límite inválido.")
+        scope=pagination.context(filters,owner)
+        query={**filters,"limite":limit+1}
+        if filters.get("cursor") is not None:
+            query["after"]=pagination.decode(filters["cursor"],scope)
+        rows=self.repository.list_publications(query,owner)
+        items=rows[:limit]
+        return {"items":items,"siguiente_cursor":pagination.encode(items[-1],scope) if len(rows)>limit else None}
 
-    def save(self,actor_id,data,image=None,id=None):
+    def save(self,actor_id,data,image=None,id=None,retained=None,key=None):
         data=validate_publication(data)
         if id is None and data["tipo"] == "Arrendador" and data["categoria"] != "ofrezco":
             raise RuleViolation("Una publicación de arrendador debe ofrecer un espacio.")
-        reference=None
-        try:
-            with self.repository.transaction():
-                if id is None:
-                    id=self.repository.create(actor_id,data)
-                else:
-                    previous=self.repository.publication(id,lock=True)
-                    if previous is None or previous["id_usuario"]!=actor_id:
-                        raise RuleViolation("Publicación no encontrada.",404)
-                    if previous["tipo"]!=data["tipo"]:
-                        raise RuleViolation("El tipo original no puede modificarse.",409)
-                    if previous["estado"]=="Activa" and data["cupos_totales"] < previous["cupos_totales"]:
-                        raise RuleViolation("La reducción de capacidad requiere confirmar ocupación.",409)
-                    self.repository.update(id,data)
-                reference=self.images.save(image)
-                if reference:
-                    self.repository.image(id,reference)
-            return id
-        except Exception:
-            self.images.delete(reference)
-            raise
+        if id is not None:
+            self.get(id,actor_id)
+        self.repository.validate_location(data["id_region"],data["id_comuna"])
+        files=[(image,None)] if isinstance(image,bytes) else image
+        return save_publication(self,actor_id,data,files,id,retained,key)
 
     def close(self,actor_id,id):
         with self.repository.transaction():
@@ -84,6 +69,22 @@ class Publications:
                 raise RuleViolation("Publicación no encontrada.",404)
             self.repository.close(id)
         return self.get(id,actor_id)
+
+    def occupancy_update(self,id,count,version):
+        with self.repository.transaction():
+            row=self.repository.publication(id,lock=True)
+            if row is None:
+                raise RuleViolation("Publicación no encontrada.",404)
+            if count > row["cupos_totales"]:
+                raise RuleViolation("Ocupación mayor que la capacidad.",409)
+            if version < row["version_ocupacion"]:
+                return row
+            if version == row["version_ocupacion"] and row["ocupacion_confirmada"] is not None:
+                if count != row["ocupacion_confirmada"]:
+                    raise RuleViolation("La versión de ocupación corresponde a otros datos.",409)
+                return row
+            self.repository.update_occupancy(id,count,version)
+        return self.get(id)
 
     def postulate(self,actor_id,id):
         with self.repository.transaction():

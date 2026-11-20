@@ -354,7 +354,7 @@ def test_continuous_upstream_fragments_total_timeout():
 
 
 @pytest.mark.parametrize("field", ["max_request_bytes", "max_response_bytes"])
-@pytest.mark.parametrize("value", [0, -1, 16_777_217, 1.5, True])
+@pytest.mark.parametrize("value", [0, -1, 32_000_001, 1.5, True])
 def test_invalid_size_settings(field, value):
     with pytest.raises(ValueError):
         Settings(**{field: value})

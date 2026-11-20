@@ -3,11 +3,14 @@ from contextlib import contextmanager
 import re
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 from backend.service_runtime.settings import database_url, persistence_layout
 from backend.service_runtime.contracts import RuleViolation
 
 SELECT="""SELECT p.*,(SELECT i.url FROM listado_applications.imagen_publicacion i
  WHERE i.id_publicacion=p.id_publicacion ORDER BY i.orden,i.id_imagen LIMIT 1) AS imagen
+ ,COALESCE((SELECT jsonb_agg(jsonb_build_object('id_imagen',i.id_imagen,'url',i.url,'orden',i.orden) ORDER BY i.orden,i.id_imagen)
+ FROM listado_applications.imagen_publicacion i WHERE i.id_publicacion=p.id_publicacion),'[]'::jsonb) AS imagenes
  FROM listado_applications.publicacion p"""
 
 
@@ -47,19 +50,36 @@ class PostgresPublications:
         if owner is not None:
             where.append("p.id_usuario=%s");params.append(owner)
         else:
-            where.extend(["p.estado IN ('Disponible','Activa')","p.cupos_totales>0"])
-        for key,op,column in [("precio_min",">=","precio"),("precio_max","<=","precio"),("cupos_min",">=","cupos_totales"),("tipo_vivienda","=","tipo_vivienda"),("mascota","=","mascota"),("categoria","=","categoria")]:
+            where.extend(["p.tipo='Arrendador'","p.estado IN ('Disponible','Activa')","p.ocupacion_confirmada IS NOT NULL","p.cupos_totales-p.ocupacion_confirmada>0"])
+        for key,op,column in [("precio_min",">=","precio"),("precio_max","<=","precio"),("tipo_vivienda","=","tipo_vivienda"),("mascota","=","mascota"),("categoria","=","categoria"),("id_region","=","id_region"),("id_comuna","=","id_comuna")]:
             if filters.get(key) is not None:
                 where.append(f"p.{column}{op}%s");params.append(filters[key])
+        for key, op in (("cupos_min", ">="), ("cupos_disponibles", "=")):
+            if filters.get(key) is not None:
+                where.append(f"p.cupos_totales-p.ocupacion_confirmada{op}%s");params.append(filters[key])
         if filters.get("consulta"):
             value=filters["consulta"].replace("\\","\\\\").replace("%","\\%").replace("_","\\_")
             where.append("(p.titulo ILIKE %s OR p.ubicacion ILIKE %s OR p.descripcion ILIKE %s)");params.extend(["%"+value+"%"]*3)
-        condition=" WHERE "+" AND ".join(where) if where else ""
-        params.extend([filters.get("limite",100),filters.get("offset",0)])
         date_column = "m.fecha_publicacion" if self.progressive else "p.fecha_publicacion"
-        return self.query(self.select+condition+f" ORDER BY {date_column} DESC NULLS LAST,p.id_publicacion DESC LIMIT %s OFFSET %s",params,True)
+        if filters.get("after"):
+            where.append(f"({date_column},p.id_publicacion)<(%s,%s)");params.extend(filters["after"])
+        condition=" WHERE "+" AND ".join(where) if where else ""
+        params.append(filters.get("limite",21))
+        return self.query(self.select+condition+f" ORDER BY {date_column} DESC,p.id_publicacion DESC LIMIT %s",params,True)
+
+    def regions(self):
+        return self.query("SELECT id_region,nombre FROM listado_applications.region ORDER BY id_region",many=True)
+
+    def communes(self,region):
+        return self.query("SELECT id_comuna,id_region,nombre FROM listado_applications.comuna WHERE id_region=%s ORDER BY nombre,id_comuna",(region,),True)
+
+    def validate_location(self,region,commune):
+        if not self.query("SELECT id_comuna FROM listado_applications.comuna WHERE id_region=%s AND id_comuna=%s",(region,commune)):
+            raise RuleViolation("La comuna no pertenece a la región indicada.")
 
     def create(self,owner,data):
+        data={**data,"ocupacion_confirmada":0,"version_ocupacion":0}
+        if "reglas" in data: data={**data,"reglas":Jsonb(data["reglas"])}
         if self.progressive: data = {**data, "estado": "Disponible"}
         columns=tuple(data)
         id = self.query("INSERT INTO listado_applications.publicacion (id_usuario,"+",".join(columns)+") VALUES ("+",".join(["%s"]*(len(columns)+1))+") RETURNING id_publicacion",(owner,*data.values()))["id_publicacion"]
@@ -68,10 +88,14 @@ class PostgresPublications:
         return id
 
     def update(self,id,data):
+        if "reglas" in data: data={**data,"reglas":Jsonb(data["reglas"])}
         self.query("UPDATE listado_applications.publicacion SET "+",".join(k+"=%s" for k in data)+" WHERE id_publicacion=%s RETURNING id_publicacion",(*data.values(),id))
 
     def close(self,id):
         self.query("UPDATE listado_applications.publicacion SET estado='Cerrada' WHERE id_publicacion=%s RETURNING id_publicacion",(id,))
+
+    def update_occupancy(self,id,count,version):
+        return self.query("UPDATE listado_applications.publicacion SET ocupacion_confirmada=%s,version_ocupacion=%s,estado=CASE WHEN estado='Cerrada' THEN estado WHEN %s>0 THEN 'Activa' ELSE 'Disponible' END WHERE id_publicacion=%s RETURNING id_publicacion",(count,version,count,id))
 
     def image(self,id,reference):
         old=self.query("SELECT id_imagen FROM listado_applications.imagen_publicacion WHERE id_publicacion=%s ORDER BY orden,id_imagen LIMIT 1",(id,))

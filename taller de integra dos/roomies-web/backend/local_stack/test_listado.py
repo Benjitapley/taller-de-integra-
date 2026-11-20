@@ -6,7 +6,7 @@ from backend.service_runtime.contracts import RuleViolation, DependencyUnavailab
 
 PUB = {"id_publicacion": 7, "id_usuario": 1, "estado": "Disponible", "tipo": "Arrendador", "cupos_totales": 2}
 APP = {"id_postulacion": 9, "id_publicacion": 7, "id_usuario": 2, "estado": "Pendiente"}
-DATA = {"titulo": "Habitación", "descripcion": "Prueba", "ubicacion": "Temuco", "precio": "250000.50", "cupos_totales": "2", "tipo": "Arrendador", "categoria": "ofrezco", "tipo_vivienda": "habitacion", "mascota": "no"}
+DATA = {"titulo": "Habitación", "descripcion": "Prueba", "ubicacion": "Temuco", "precio": "250000", "cupos_totales": "2", "tipo": "Arrendador", "categoria": "ofrezco", "tipo_vivienda": "habitacion", "mascota": "no", "id_region":"9", "id_comuna":"9101"}
 
 def test_cupos_no_inventa_ocupacion():
     occupancy = Mock()
