@@ -90,6 +90,25 @@ def test_response_contract(status, kind):
         assert name not in result.headers
 
 
+@pytest.mark.parametrize("method,path", [
+    ("PATCH", "/api/postulaciones/8/estado"),
+    ("GET", "/api/postulaciones/8"),
+    ("POST", "/api/postulaciones/8/retiro"),
+])
+def test_postulaciones_usan_listado_y_conservan_clave_de_operacion(method, path):
+    def handler(request):
+        assert request.url.host == "listado.test"
+        assert request.url.path == path
+        assert request.method == method
+        assert request.headers["idempotency-key"] == "fixture-operation"
+        return reply(200, content=b"{}")
+
+    result = exercise(handler, method, path,
+                      settings=Settings(local_mode=True, listado_upstream="http://listado.test"),
+                      headers={"Idempotency-Key": "fixture-operation"})
+    assert result.status_code == 200
+
+
 @pytest.mark.parametrize("failure,status", [(httpx.ConnectTimeout, 504), (httpx.ReadTimeout, 504),
     (httpx.WriteTimeout, 504), (httpx.PoolTimeout, 504), (httpx.ConnectError, 502),
     (httpx.RemoteProtocolError, 502)])

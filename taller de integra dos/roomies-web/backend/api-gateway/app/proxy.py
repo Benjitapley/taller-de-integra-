@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse, Response
 
 HOP_HEADERS = {b"connection", b"keep-alive", b"proxy-authenticate", b"proxy-authorization",
                b"te", b"trailer", b"transfer-encoding", b"upgrade", b"content-length"}
-REQUEST_HEADERS = {b"authorization", b"content-type", b"content-encoding", b"accept", b"accept-language"}
+REQUEST_HEADERS = {b"authorization", b"content-type", b"content-encoding", b"accept", b"accept-language", b"idempotency-key"}
 RESPONSE_HEADERS = {b"content-type", b"content-language", b"www-authenticate", b"retry-after"}
 
 
