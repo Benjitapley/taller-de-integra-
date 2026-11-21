@@ -39,15 +39,16 @@ el entorno compartido el registro, la confirmación, el cambio entre cuentas
 y el reemplazo de foto tras cerrar y reabrir sesión. Hasta entonces, la
 configuración existente de desarrollo sigue usando su contrato local.
 
-La integración con SCRUM-94 usa por defecto `WEB_PROFILE_CONTRACT=existing`.
-Consulta y guarda en `/api/v1/perfil` y crea el perfil en
-`/api/v1/perfil/inicializacion`. Esta transición acepta el DTO publicado por
+La integración con SCRUM-94 usa por defecto `WEB_PROFILE_CONTRACT=local-v1`
+con Supabase, para coincidir con el servicio desplegado en Render. Consulta y
+guarda en `/local/v1/perfil` y crea el perfil en
+`/local/v1/perfil/inicializacion`. Esta transición acepta el DTO publicado por
 Valderrama y conserva sus campos y límites. La edad siempre se consulta como
 dato de solo lectura. Si Listado no responde, el perfil sigue disponible sin
 inventar un total de publicaciones.
 
-Para un despliegue anterior que solo publica `/local/v1/perfil`, configurar
-`WEB_PROFILE_CONTRACT=local-v1`. La inicialización y la consulta usan ese mismo
+Cuando estén publicados los aliases `/api/v1/perfil`, se puede configurar
+`WEB_PROFILE_CONTRACT=existing`. La inicialización y la consulta usan ese mismo
 prefijo. Seleccionar la versión según las rutas publicadas por el servicio;
 no se reintenta automáticamente contra otra ruta ante una credencial rechazada.
 

@@ -21,7 +21,7 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
     const backend = new URL(env.WEB_AUTH_FASTAPI_ORIGIN ?? "");
     const provider = env.WEB_AUTH_PROVIDER ?? "legacy";
     if (!["legacy", "supabase"].includes(provider)) return null;
-    const profileContract = env.WEB_PROFILE_CONTRACT ?? "existing";
+    const profileContract = env.WEB_PROFILE_CONTRACT ?? (provider === "supabase" ? "local-v1" : "existing");
     if (!["existing", "local-v1", "v1"].includes(profileContract) || (profileContract !== "existing" && provider !== "supabase")) return null;
     for (const url of [web, backend]) {
       if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) return null;

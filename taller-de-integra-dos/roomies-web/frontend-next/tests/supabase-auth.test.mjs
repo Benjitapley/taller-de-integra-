@@ -16,10 +16,11 @@ const identity = { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", email_confirmed_a
 const credentials = { correo: "fiction@example.com", contrasena: "Test-password-123" };
 const req = (action, body = {}, overrides = {}) => new Request(`${config.origin}/web-api/auth/${action}`, { method: "POST", headers: { origin: config.origin, "content-type": "application/json", "x-haycupo-csrf": "1", ...overrides }, body: JSON.stringify(body) });
 const ok = data => Response.json(data);
-const defaultTransport = async url => url.includes("/token?") || url.endsWith("/verify") ? ok(session) : url.endsWith("/user") ? ok(identity) : url.endsWith("/api/v1/perfil") ? ok({ nombre: "Ficticio" }) : ok({});
+const defaultTransport = async url => url.includes("/token?") || url.endsWith("/verify") ? ok(session) : url.endsWith("/user") ? ok(identity) : url.endsWith("/local/v1/perfil") ? ok({ nombre: "Ficticio" }) : ok({});
 
 test("proveedor local explícito; remoto, secreto y proveedor desconocido se rechazan", () => {
   assert.equal(config.provider, "supabase");
+  assert.equal(config.profileContract, "local-v1");
   for (const overrides of [{ ROOMIES_LOCAL_MODE: "0" }, { WEB_SUPABASE_ORIGIN: "https://production.supabase.co" }, { WEB_AUTH_PROVIDER: "both" }, { WEB_SUPABASE_PUBLISHABLE_KEY: "sb_secret_forbidden" }]) assert.equal(authConfig({ ...env, ...overrides }), null);
   assert.equal(authConfig({ ...env, WEB_SUPABASE_PUBLISHABLE_KEY: `fixture.${Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url")}.signature` }), null);
   assert.equal(authConfig({ ...env, WEB_AUTH_PROVIDER: "legacy" }).provider, undefined);
@@ -199,8 +200,8 @@ test("inicialización usa UUID acreditado, sin consulta ni unión por correo", a
   const calls = [];
   const response = await handleAuth(req("login", credentials), "login", config, async (url, options) => {
     calls.push({ url, options });
-    if (url.endsWith("/api/v1/perfil") && calls.filter(c => c.url === url).length === 1) return new Response("{}", { status: 404 });
-    if (url.endsWith("/api/v1/perfil/inicializacion")) return ok({ id_usuario: 12, inicializado: true });
+    if (url.endsWith("/local/v1/perfil") && calls.filter(c => c.url === url).length === 1) return new Response("{}", { status: 404 });
+    if (url.endsWith("/local/v1/perfil/inicializacion")) return ok({ id_usuario: 12, inicializado: true });
     return defaultTransport(url, options);
   });
   assert.equal(response.status, 200);
