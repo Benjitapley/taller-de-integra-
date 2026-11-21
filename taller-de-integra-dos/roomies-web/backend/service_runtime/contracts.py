@@ -1,4 +1,4 @@
-"""Contratos internos locales v1. Tipos puros, sin proveedores ni HTTP."""
+"""Contratos comunes del dominio acordados entre Web, Móvil (TI4) y Servicios — SCRUM-93."""
 from dataclasses import dataclass
 from uuid import UUID
 

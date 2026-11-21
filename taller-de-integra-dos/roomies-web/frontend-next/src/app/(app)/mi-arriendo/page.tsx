@@ -22,32 +22,33 @@ export default function MyArriendoPage() {
   const [arriendo, setArriendo] = useState<Arriendo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [requestVersion, setRequestVersion] = useState(0);
 
-  async function load() {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch("/web-api/arriendos/mio", { credentials: "same-origin", cache: "no-store" });
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    void fetch("/web-api/arriendos/mio", { credentials: "same-origin", cache: "no-store", signal }).then(async response => {
+      if (signal.aborted) return;
       if (response.status === 404) {
         setArriendo(null);
         setLoading(false);
         return;
       }
       if (!response.ok) throw new Error();
-      setArriendo(await response.json());
-    } catch {
-      setError("No pudimos cargar tu arriendo. Intenta nuevamente.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { void load(); }, []);
+      const data = await response.json();
+      if (!signal.aborted) setArriendo(data);
+    }).catch(() => {
+      if (!signal.aborted) setError("No pudimos cargar tu arriendo. Intenta nuevamente.");
+    }).finally(() => {
+      if (!signal.aborted) setLoading(false);
+    });
+    return () => controller.abort();
+  }, [requestVersion]);
 
   return <main>
     <PageHeader title="Mi arriendo" description="Consulta el estado de tu incorporación y de la convivencia." />
     {loading ? <Card><p role="status">Cargando tu arriendo…</p></Card> : null}
-    {!loading && error ? <Card><p role="alert">{error}</p><Button onClick={() => void load()}>Reintentar</Button></Card> : null}
+    {!loading && error ? <Card><p role="alert">{error}</p><Button onClick={() => { setLoading(true); setError(""); setRequestVersion(value => value + 1); }}>Reintentar</Button></Card> : null}
     {!loading && !error && !arriendo ? <Card><p>Aún no tienes un arriendo activo.</p><Link href="/mis-postulaciones">Ver mis postulaciones</Link></Card> : null}
     {!loading && arriendo ? <Card>
       <div className={styles.header}>

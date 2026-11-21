@@ -1,0 +1,153 @@
+{
+  "date": "2026-11-18",
+  "timezone": "America/Santiago",
+  "branch": "dev-web",
+  "base_commit": "616747fa15692d65278b7b31e200f892eba85ac3",
+  "status": "working-tree-uncommitted",
+  "scope": "taller-de-integra-dos/roomies-web",
+  "jira": "A cargo del usuario",
+  "pr": "No creado",
+  "validation": {
+    "gateway": 134,
+    "listado": 40,
+    "convivencia_offline": 34,
+    "postgres_passed": 22,
+    "postgres_runner_total": 56,
+    "total_unique": 230,
+    "tcp_smoke": "passed",
+    "docker": "not-run",
+    "external_providers": "simulated"
+  },
+  "excluded": [
+    "manifest propio",
+    "output/",
+    "tmp/"
+  ],
+  "sha256_files_manifest": "1722bfdd6b7e8d4d71c2caaebd56e77ce6b403cd74611ea496ce515269fd6ca2",
+  "files": [
+    {
+      "path": "backend/api-gateway/app/config.py",
+      "sha256": "bae7b05bd0acf41e1c5477cf1ac9d4dda0126b493ef832f9285f8caffe3c6f2c"
+    },
+    {
+      "path": "backend/api-gateway/app/local_routes.py",
+      "sha256": "f8566c84af173e1ca1cfb0c11565e27f1549e88810ada90cb0a4f5c38c0b08da"
+    },
+    {
+      "path": "backend/api-gateway/app/main.py",
+      "sha256": "6834a2d570e6c9b207dfb1f9efa989796b7a2c12d58a76fa10bd21e573c39c96"
+    },
+    {
+      "path": "backend/api-gateway/tests/test_convivencia_routes.py",
+      "sha256": "b32d467730d4b2e8752e669cda2f73a64362b78d02295bdc51b5abfddda5cd90"
+    },
+    {
+      "path": "backend/local_stack/test_listado.py",
+      "sha256": "7763684c565502aeaa2aaea6f41123dfe0637096fc50ccd59ac3117d44f4b99f"
+    },
+    {
+      "path": "backend/services/.env.example",
+      "sha256": "4daefb714283e4ebca20af12b9f54b6d513b1fc97848b541f8f5f5c5613ce605"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/Dockerfile",
+      "sha256": "bf79c8b6619ce8952be1fbe17cc0934c7ae950ba508df2940fd0838472f6b9f4"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/README.md",
+      "sha256": "ed1981c50212bbd4c9487043a31698121f72a376e93d8eda1f29f77400a653cc"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/app/__init__.py",
+      "sha256": "83673001ebec62d9b2c1b53c721e86047f302552fce261d4c2181bbacd756883"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/app/main.py",
+      "sha256": "d2cffde8efe10601c1374b9a89a35d79628e007170e364a5ab0d05313b31a32b"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/app/models.py",
+      "sha256": "c78c1aee2ab0225157fd6e04a4b99f86d2226b87847b00ca5609f6c9f949b115"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/app/ports.py",
+      "sha256": "3c6bb07d7d8927d4ee3e9225a924a71e41009fc6fd487c3cc1c8ad8d4002c131"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/app/repository.py",
+      "sha256": "c32acdf411867ff9848e028b6cb8882202ece2f851c3514c2d2290cb4d327801"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/app/service.py",
+      "sha256": "0249f8d389169539646eddaaccd55036bb7934dff00db18078f723fc37e8bc97"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/migrations/001_convivencia_schema.down.sql",
+      "sha256": "db05a3408c4972e5d6d06f8af2ce1d106822b2c20d66550081068b90c948fb86"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/migrations/001_convivencia_schema.up.sql",
+      "sha256": "f7a2becd7ad8234f3807f763c0197e32e32358aad47c1d233b4be8e6c38df11f"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/requirements.txt",
+      "sha256": "079550408227ece714e5d2360250b28084d5ee7c177aefa3a0cb5538e544e162"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/tests/conftest.py",
+      "sha256": "39f2dd407b0078a2c491f14b5683baf4c1b873a7407bec9e876bc2bef3975bc5"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/tests/requirements.txt",
+      "sha256": "543a97dbbb696f6cc90304e2b2a3140e70ec7bb2b9545949c612578e789e0b39"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/tests/run_isolated.py",
+      "sha256": "1fb404161b1be851477455c086cdb88e9f25b2f3ad080752d0f76991c2aba66e"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/tests/run_offline.py",
+      "sha256": "5206c1d8b4f6f8d615dcd0a815276d578994301e131a5dcd9bada91e89eca956"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/tests/run_smoke.py",
+      "sha256": "201ce50f54bfe54a41be3bf113f1019ce685de58c62edf0aa684ec989c5406d2"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/tests/test_http.py",
+      "sha256": "df014352019cb626bda6d65781e7cf158e70a14059b49d9720d081334bb1856f"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/tests/test_incorporaciones.py",
+      "sha256": "854d1f7dd4460f7edc147163c106af6bea2f1d472c0130fe6aed02254fbf6f82"
+    },
+    {
+      "path": "backend/services/convivencia-mensajeria-service/tests/test_ports.py",
+      "sha256": "86f3df74f9e6561ea21a2914df9442da7a10ccfde4d6ab320751a0f3780ba8d6"
+    },
+    {
+      "path": "backend/services/listado-applications-service/app/infrastructure/clients.py",
+      "sha256": "ee7605140625fa3527737692b20ac82ce87c613448583d3b2f3a082d014ea9c7"
+    },
+    {
+      "path": "backend/services/run_service.py",
+      "sha256": "7ee66849271f9065d754567bb1db725afde6f8af64f4ac590ed2c18f81e06ca6"
+    },
+    {
+      "path": "docker-compose.convivencia.yml",
+      "sha256": "734d9ca38ae63777aba67ef7952905530e71fe9a006d3fdcb3ace2023311110d"
+    },
+    {
+      "path": "docs/contracts/incorporacion.evidencia.md",
+      "sha256": "36472ed57495cc88af6d59a9b85a4ffe1bb7714216a43052ef4309a218d76bfb"
+    },
+    {
+      "path": "docs/contracts/incorporacion.md",
+      "sha256": "650a53235de6c2d198240b1f6df52a5a0e068392ba3a4376c2baa22e76338f1c"
+    },
+    {
+      "path": "docs/contracts/incorporacion.openapi.json",
+      "sha256": "9a17e9320cd8938d2f8cdf807eef329e9056dbdb6799baddfabff50a56f08c9e"
+    }
+  ]
+}

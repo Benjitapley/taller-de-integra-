@@ -1,18 +1,21 @@
-"""Contrato local de enrutamiento; solo destinos del operador y rutas permitidas."""
+"""Contratos comunes de enrutamiento acordados para el recorrido entre Web, Móvil (TI4) y Servicios — SCRUM-93."""
 import asyncio
 import re
 from fastapi import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from app.proxy import forward_to,bounded_body,BodyTooLarge
 
 ROUTES=[
- (r"/local/v1/sesion/revocar",{"POST"},"upstream"),
- (r"/local/v1/perfil/inicializacion",{"POST"},"upstream"),
- (r"/local/v1/perfil",{"GET","PUT","PATCH"},"upstream"),
- (r"/local/v1/notificaciones",{"GET"},"upstream"),
+ (r"/api/arriendos/(?:mio|[1-9][0-9]*)",{"GET"},"convivencia_upstream"),
+ (r"/usuarios/me",{"GET","PATCH"},"upstream"),
+ (r"/(?:local|api)/v1/sesion/revocar",{"POST"},"upstream"),
+ (r"/(?:local|api)/v1/perfil/inicializacion",{"POST"},"upstream"),
+ (r"/(?:local|api)/v1/perfil",{"GET","PUT","PATCH"},"upstream"),
+ (r"/(?:local|api)/v1/notificaciones",{"GET"},"upstream"),
+ (r"/(?:local|api)/v1/usuarios/publicos",{"GET"},"upstream"),
  (r"/api/publicaciones(?:/buscar)?",{"GET","POST"},"listado_upstream"),
  (r"/api/mis-publicaciones",{"GET"},"listado_upstream"),
- (r"/local/v1/publicaciones/resumen",{"GET"},"listado_upstream"),
+ (r"/(?:local|api)/v1/publicaciones/resumen",{"GET"},"listado_upstream"),
  (r"/api/publicaciones/[1-9][0-9]*",{"GET","PUT"},"listado_upstream"),
  (r"/api/publicaciones/[1-9][0-9]*/(?:detalle|cupos|postulantes)",{"GET"},"listado_upstream"),
  (r"/api/publicaciones/[1-9][0-9]*/cerrar",{"PATCH"},"listado_upstream"),
@@ -31,17 +34,35 @@ ROUTES=[
 ]
 
 
-def reply(status,body):
-    return JSONResponse(body,status_code=status,headers={"Cache-Control":"no-store"})
+def reply(status,body,origin=None):
+    headers={"Cache-Control":"no-store"}
+    if origin:
+        headers["Access-Control-Allow-Origin"]=origin
+    return JSONResponse(body,status_code=status,headers=headers)
+
+
+def cors_preflight(request: Request, methods: set[str]):
+    origin = request.headers.get("origin", "*")
+    return Response(
+        status_code=204,
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Methods": ", ".join(sorted(methods | {"OPTIONS"})),
+            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Accept-Language, x-roomies-service, x-haycupo-csrf",
+            "Access-Control-Max-Age": "86400",
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 async def summary(request):
+    origin=request.headers.get("origin")
     config=request.app.state.settings
     try:
         async with asyncio.timeout(config.client_body_timeout):
             body=await bounded_body(request.stream(),config.max_request_bytes)
-    except BodyTooLarge: return reply(413,{"detail":"Solicitud demasiado grande."})
-    except TimeoutError: return reply(408,{"detail":"Tiempo de recepción agotado."})
+    except BodyTooLarge: return reply(413,{"detail":"Solicitud demasiado grande."},origin=origin)
+    except TimeoutError: return reply(408,{"detail":"Tiempo de recepción agotado."},origin=origin)
     targets=[(config.upstream,"/internal/v1/resumen","usuarios"),
              (config.listado_upstream,"/internal/v1/resumen","publicaciones"),
              (config.match_upstream,"/conexiones/internal/v1/resumen","conexiones")]
@@ -59,9 +80,9 @@ async def summary(request):
         results=await asyncio.gather(*(count(*target) for target in targets))
         for error,item in results:
             if error is not None: return error
-        return reply(200,dict(item for error,item in results))
+        return reply(200,dict(item for error,item in results),origin=origin)
     except Exception:
-        return reply(503,{"detail":"No se pudo consultar el resumen."})
+        return reply(503,{"detail":"No se pudo consultar el resumen."},origin=origin)
 
 
 async def dispatch(request:Request):
@@ -70,10 +91,14 @@ async def dispatch(request:Request):
     if b"%" in raw or b"\\" in raw or "//" in path or ".." in path:
         return reply(404,{"detail":"Ruta no disponible."})
     if path=="/api/admin/resumen":
+        if request.method=="OPTIONS" and request.headers.get("origin"):
+            return cors_preflight(request, {"GET"})
         if request.method!="GET": return reply(405,{"detail":"Método no permitido."})
         return await summary(request)
     for pattern,methods,setting in ROUTES:
         if re.fullmatch(pattern,path):
+            if request.method=="OPTIONS" and request.headers.get("origin"):
+                return cors_preflight(request, methods)
             if request.method not in methods:
                 return reply(405,{"detail":"Método no permitido."})
             return await forward_to(request,getattr(request.app.state.settings,setting),path)

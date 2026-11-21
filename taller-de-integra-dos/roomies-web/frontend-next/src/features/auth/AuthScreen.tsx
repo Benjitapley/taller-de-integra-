@@ -9,7 +9,7 @@ import EmailConfirmation from "./EmailConfirmation";
 import type { AuthMode } from "./validation";
 import styles from "./auth.module.css";
 
-export default function AuthScreen({ mode, supabaseAuth = false, notice = "", passwordMinimum = 6 }: { mode: AuthMode | "verify"; supabaseAuth?: boolean; notice?: string; passwordMinimum?: number }) {
+export default function AuthScreen({ mode, supabaseAuth = false, notice = "", noticeType = "error", passwordMinimum = 6 }: { mode: AuthMode | "verify"; supabaseAuth?: boolean; notice?: string; noticeType?: "info" | "error"; passwordMinimum?: number }) {
   const register = mode === "register";
   const verify = mode === "verify";
   return <>
@@ -34,7 +34,7 @@ export default function AuthScreen({ mode, supabaseAuth = false, notice = "", pa
         <p className={styles.subtitle}>{verify ? (supabaseAuth ? "Abre el enlace de confirmación que recibiste por correo." : "Introduce tu correo y el código de seis dígitos.") : register ? "Encuentra tu próximo espacio ideal." : "Inicia sesión para encontrar tu próximo hogar."}</p>
         {register && <p className={styles.hint}>Usa un correo al que tengas acceso. Te enviaremos las instrucciones para confirmar tu cuenta.</p>}
         {!verify && notice && <p role="status">{notice}</p>}
-        {verify ? supabaseAuth ? <EmailConfirmation error={notice} /> : <VerificationForm /> : <AuthForm key={mode} mode={mode} passwordMinimum={passwordMinimum} supabaseAuth={supabaseAuth} />}
+        {verify ? supabaseAuth ? <EmailConfirmation error={noticeType === "error" ? notice : ""} notice={noticeType === "info" ? notice : ""} /> : <VerificationForm /> : <AuthForm key={mode} mode={mode} passwordMinimum={passwordMinimum} supabaseAuth={supabaseAuth} />}
       </Card>
     </main>
   </>;

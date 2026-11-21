@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import ts from "typescript";
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 const compile = source => `data:text/javascript;base64,${Buffer.from(ts.transpileModule(source.replace('import "server-only";', ''), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText).toString("base64")}`;
 const adapter = compile(await readFile(new URL("../src/lib/auth/supabase.ts", import.meta.url), "utf8"));
@@ -16,7 +16,7 @@ const identity = { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", email_confirmed_a
 const credentials = { correo: "fiction@example.com", contrasena: "Test-password-123" };
 const req = (action, body = {}, overrides = {}) => new Request(`${config.origin}/web-api/auth/${action}`, { method: "POST", headers: { origin: config.origin, "content-type": "application/json", "x-haycupo-csrf": "1", ...overrides }, body: JSON.stringify(body) });
 const ok = data => Response.json(data);
-const defaultTransport = async url => url.includes("/token?") || url.endsWith("/verify") ? ok(session) : url.endsWith("/user") ? ok(identity) : url.endsWith("/local/v1/perfil") ? ok({ nombre: "Ficticio" }) : ok({});
+const defaultTransport = async url => url.includes("/token?") || url.endsWith("/verify") ? ok(session) : url.endsWith("/user") ? ok(identity) : url.endsWith("/api/v1/perfil") ? ok({ nombre: "Ficticio" }) : ok({});
 
 test("proveedor local explícito; remoto, secreto y proveedor desconocido se rechazan", () => {
   assert.equal(config.provider, "supabase");
@@ -43,6 +43,106 @@ test("CSRF y cookie de otro proveedor nunca acreditan sesión", async () => {
   const response = await handleAuth(new Request(config.origin, { headers: { cookie: `haycupo_dev_session=${token}` } }), "sesion", config, () => { throw Error("no network"); });
   assert.equal(response.status, 401);
 });
+test("registro local autoconfirmado y duplicado tienen la misma respuesta sin sesión", async () => {
+  const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
+  const accepted = await handleAuth(req("registro", input), "registro", config, async () => ok(session));
+  const duplicate = await handleAuth(req("registro", input), "registro", config, async () =>
+    Response.json({ error_code: "user_already_exists" }, { status: 422 }));
+  assert.equal(accepted.status, 200);
+  assert.equal(duplicate.status, 200);
+  const result = await accepted.json();
+  assert.deepEqual(await duplicate.json(), result);
+  assert.equal(JSON.stringify(result).includes(token), false);
+  for (const response of [accepted, duplicate]) {
+    assert.doesNotMatch(response.headers.get("set-cookie"), /roomies_sb_dev_(access|refresh)=/);
+  }
+  const confirmationRequired = { ...config, localSignupAutoconfirm: false };
+  const unexpectedSession = await handleAuth(req("registro", input), "registro", confirmationRequired, async () => ok(session));
+  assert.equal(unexpectedSession.status, 503);
+});
+
+test("registro con confirmación y duplicado mantienen el mismo contrato público", async () => {
+  const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
+  const ref = "a".repeat(20);
+  const shared = authConfig({ ...env, NODE_ENV: "production", ROOMIES_LOCAL_MODE: "0",
+    ROOMIES_RUNTIME_MODE: "supabase", ROOMIES_SUPABASE_PROJECT_REF: ref,
+    WEB_AUTH_ORIGIN: "https://web.example.com", WEB_AUTH_FASTAPI_ORIGIN: "https://gateway.example.com",
+    WEB_SUPABASE_ORIGIN: `https://${ref}.supabase.co` });
+  assert.equal(shared.localSignupAutoconfirm, false);
+  const responses = [];
+  for (const providerResponse of [ok(identity), Response.json({ code: "user_already_exists" }, { status: 422 })]) {
+    const response = await handleAuth(req("registro", input, { origin: shared.origin }), "registro", shared, async () => providerResponse);
+    assert.equal(response.status, 200);
+    const cookies = response.headers.getSetCookie();
+    assert.match(cookies[0], /__Host-roomies_pkce=.+; Path=\/; HttpOnly; SameSite=Lax; Max-Age=3600; Secure/);
+    assert.doesNotMatch(cookies.join(" "), /__Host-roomies_sb_(access|refresh)=/);
+    responses.push({ body: await response.json(), cookies: cookies.map(cookie => cookie.replace(/(__Host-roomies_pkce=)[^;]+/, "$1<proof>")) });
+  }
+  assert.deepEqual(responses[0], responses[1]);
+  const unexpected = await handleAuth(req("registro", input, { origin: shared.origin }), "registro", shared, async () => ok(session));
+  assert.equal(unexpected.status, 503);
+  assert.equal(unexpected.headers.get("set-cookie"), null);
+});
+
+test("el enlace original confirma después de repetir un registro pendiente en el mismo navegador", async () => {
+  const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
+  const code = "original-confirmation-code";
+  let originalChallenge;
+  let browserCookie = "";
+  const transport = async (url, options) => {
+    if (url.includes("/signup?")) {
+      if (originalChallenge) return Response.json({ error_code: "user_already_exists" }, { status: 422 });
+      originalChallenge = JSON.parse(options.body).code_challenge;
+      return ok(identity);
+    }
+    if (url.includes("grant_type=pkce")) {
+      const { auth_code, code_verifier } = JSON.parse(options.body);
+      const challenge = createHash("sha256").update(code_verifier).digest("base64url");
+      return auth_code === code && challenge === originalChallenge ? ok(session) : new Response(null, { status: 400 });
+    }
+    return defaultTransport(url, options);
+  };
+
+  const signup = async () => {
+    const response = await handleAuth(req("registro", input, { cookie: browserCookie }), "registro", config, transport);
+    assert.equal(response.status, 200);
+    const pkce = response.headers.getSetCookie().find(cookie => cookie.startsWith("roomies_pkce_dev="));
+    if (pkce) browserCookie = pkce.split(";")[0];
+    return response.json();
+  };
+  const first = await signup();
+  assert.ok(browserCookie);
+  assert.deepEqual(await signup(), first);
+  const callback = new Request(config.origin + "/web-api/auth/confirmar?code=" + code, { headers: { cookie: browserCookie } });
+  const confirmed = await handleAuth(callback, "confirmar", config, transport);
+  assert.equal(confirmed.status, 303);
+  assert.equal(confirmed.headers.get("location"), config.origin + "/?correo=verificado");
+  assert.match(confirmed.headers.get("set-cookie"), /roomies_pkce_dev=;.*Max-Age=0/);
+});
+
+test("autoconfirmación solo pertenece al laboratorio y los errores conservan su estado", async () => {
+  assert.equal(authConfig({ ...env, NODE_ENV: "development" }).localSignupAutoconfirm, true);
+  const productionLab = authConfig({ ...env, NODE_ENV: "production",
+    WEB_AUTH_ORIGIN: "https://web.example.com", WEB_AUTH_FASTAPI_ORIGIN: "https://gateway.example.com" });
+  assert.equal(productionLab.localSignupAutoconfirm, false);
+  const input = { ...credentials, nombre: "Ficticio", fecha_nacimiento: "2000-01-01" };
+  for (const [status, body, expected] of [
+    [429, { error_code: "user_already_exists" }, 429],
+    [500, { error_code: "user_already_exists" }, 503],
+    [503, { error_code: "unexpected_failure" }, 503],
+    [422, { error_code: "weak_password" }, 422],
+  ]) {
+    const response = await handleAuth(req("registro", input), "registro", config,
+      async () => Response.json(body, { status }));
+    assert.equal(response.status, expected);
+    assert.equal(response.headers.get("set-cookie"), null);
+  }
+  const malformed = await handleAuth(req("registro", input), "registro", config, async () => new Response("invalid JSON"));
+  assert.equal(malformed.status, 503);
+  const unavailable = await handleAuth(req("registro", input), "registro", config, async () => { throw new Error("network"); });
+  assert.equal(unavailable.status, 503);
+});
+
 test("login BFF confirma usuario y perfil; cookies HttpOnly sin tokens en JSON", async () => {
   const response = await handleAuth(req("login", credentials), "login", config, defaultTransport);
   assert.equal(response.status, 200);
@@ -57,7 +157,8 @@ test("inicialización usa UUID acreditado, sin consulta ni unión por correo", a
   const calls = [];
   const response = await handleAuth(req("login", credentials), "login", config, async (url, options) => {
     calls.push({ url, options });
-    if (url.endsWith("/local/v1/perfil") && calls.filter(c => c.url === url).length === 1) return new Response("{}", { status: 404 });
+    if (url.endsWith("/api/v1/perfil") && calls.filter(c => c.url === url).length === 1) return new Response("{}", { status: 404 });
+    if (url.endsWith("/api/v1/perfil/inicializacion")) return ok({ id_usuario: 12, inicializado: true });
     return defaultTransport(url, options);
   });
   assert.equal(response.status, 200);

@@ -44,3 +44,16 @@ test("errores de autorización se conservan sin detalles internos ni éxito fict
     assert.equal(Boolean(response.headers.get("set-cookie")), status === 401);
   }
 });
+
+test("aceptación conserva arriendo e incorporación pendiente sin aceptar IDs inválidos", async () => {
+  for (const pending of [true, false]) {
+    const accepted = { ...row, estado: "Aceptada", id_arriendo: 12, incorporacion_pendiente: pending };
+    const response = await handleApplications(req("GET"), config, async () => Response.json([accepted]));
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), [accepted]);
+  }
+  for (const id of [0, -1, true, "12"]) {
+    const response = await handleApplications(req("GET"), config, async () => Response.json([{ ...row, id_arriendo: id }]));
+    assert.equal(response.status, 503);
+  }
+});

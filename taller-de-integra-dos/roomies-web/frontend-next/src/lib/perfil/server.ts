@@ -77,12 +77,13 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
     if (!response.ok) return unavailable();
     let data = await response.json();
     if (config.provider === "supabase") {
+      if (typeof data?.edad_calculada !== "boolean" || typeof data?.verificado !== "boolean") return unavailable();
       const count = await upstream(config, "/local/v1/publicaciones/resumen", token, undefined, transport);
       if (!count.ok) return unavailable();
       const totals = await count.json();
       data = { ...data, total_publicaciones: totals.total_publicaciones };
     }
-    return authReply(200, { ...normalizeProfile(data), ...(config.provider === "supabase" ? { edad_calculada: true } : {}) });
+    return authReply(200, { ...normalizeProfile(data), ...(config.provider === "supabase" ? { edad_calculada: data.edad_calculada } : {}) });
   } catch {
     return request.method === "PUT" ? authReply(503, { detail: "No se confirmó el guardado. Consulta tu perfil antes de volver a intentar." }) : unavailable();
   }
