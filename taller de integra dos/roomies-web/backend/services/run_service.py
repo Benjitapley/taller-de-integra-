@@ -6,7 +6,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser()
-parser.add_argument("service", choices=["auth", "listado", "match", "gateway"])
+parser.add_argument("service", choices=["auth", "listado", "match", "convivencia", "gateway"])
 parser.add_argument("--port", type=int)
 parser.add_argument("--env-file", type=Path, help="Configuración privada explícita; no carga .env automáticamente")
 parser.add_argument("--check", action="store_true", help="Comprobar conexión y tablas con transacción de solo lectura")
@@ -15,11 +15,11 @@ if args.env_file:
     from dotenv import load_dotenv
     if not args.env_file.is_file(): raise SystemExit("Falta el archivo de configuración privado.")
     load_dotenv(args.env_file, override=True)
-variables = {"auth": "AUTH_USERS_DATABASE_URL", "listado": "LISTADO_DATABASE_URL", "match": "MATCH_DATABASE_URL"}
+variables = {"auth": "AUTH_USERS_DATABASE_URL", "listado": "LISTADO_DATABASE_URL", "match": "MATCH_DATABASE_URL", "convivencia": "CONVIVENCIA_DATABASE_URL"}
 for name in {"DATABASE_URL", *variables.values()} - {variables.get(args.service)}:
     os.environ.pop(name, None)
 paths = {"auth": "backend/services/auth-users-service", "listado": "backend/services/listado-applications-service",
-         "match": "backend/services/match-conexion-service", "gateway": "backend/api-gateway"}
+         "match": "backend/services/match-conexion-service", "convivencia": "backend/services/convivencia-mensajeria-service", "gateway": "backend/api-gateway"}
 sys.path[:0] = [str(ROOT / paths[args.service]), str(ROOT)]
 from backend.service_runtime.settings import runtime_mode, auth_provider_url, database_url, persistence_layout
 
@@ -28,21 +28,24 @@ try:
     if mode == "supabase" and args.service != "gateway":
         required = [variables[args.service]]
         if args.service == "auth": required.append("ROOMIES_AUTH_PUBLISHABLE_KEY")
-        if args.service in {"auth", "listado"}: required.append("ROOMIES_INTERNAL_TOKEN")
+        if args.service in {"auth", "listado", "convivencia"}: required.append("ROOMIES_INTERNAL_TOKEN")
         if any(not os.environ.get(name) or "REPLACE_" in os.environ[name] for name in required):
             raise ValueError("Completa la configuración autorizada")
     if args.service != "gateway":
         auth_provider_url()
         variable, role = {"auth": ("AUTH_USERS_DATABASE_URL", "sql_auth_users"),
                           "listado": ("LISTADO_DATABASE_URL", "sql_listado_applications"),
-                          "match": ("MATCH_DATABASE_URL", "sql_match_conexion")}[args.service]
+                          "match": ("MATCH_DATABASE_URL", "sql_match_conexion"),
+                          "convivencia": ("CONVIVENCIA_DATABASE_URL", "sql_convivencia_mensajeria")}[args.service]
         database_url(variable, role)
-    port = args.port or {"auth": 8001, "listado": 8002, "match": 8003, "gateway": 8000}[args.service]
+    port = args.port or {"auth": 8001, "listado": 8002, "match": 8003, "convivencia": 8004, "gateway": 8000}[args.service]
     if not 1024 <= port <= 65535: raise ValueError()
     if args.check:
         import httpx
         if args.service == "gateway":
-            for name in ("AUTH_USERS_UPSTREAM_URL", "LISTADO_UPSTREAM_URL", "MATCH_UPSTREAM_URL"):
+            names = ["AUTH_USERS_UPSTREAM_URL", "LISTADO_UPSTREAM_URL", "MATCH_UPSTREAM_URL"]
+            if os.environ.get("CONVIVENCIA_UPSTREAM_URL"): names.append("CONVIVENCIA_UPSTREAM_URL")
+            for name in names:
                 with httpx.Client(timeout=5, trust_env=False) as client:
                     client.get(os.environ[name] + "/health").raise_for_status()
         else:
@@ -51,7 +54,8 @@ try:
             progressive = persistence_layout() == "haycupo-v1"
             checks = {"auth": [("haycupo.usuario", "id_usuario"), ("auth_users.identidad", "supabase_user_id")] if progressive else [("auth_users.usuario", "supabase_user_id")],
                       "listado": [("haycupo.publicacion" if progressive else "listado_applications.publicacion", "id_publicacion"), ("listado_applications.postulacion", "id_postulacion")],
-                      "match": [("haycupo.conexion" if progressive else "match_conexion.conexion", "id_conexion")]}
+                      "match": [("haycupo.conexion" if progressive else "match_conexion.conexion", "id_conexion")],
+                      "convivencia": [("convivencia_mensajeria.arriendo", "id_arriendo"), ("convivencia_mensajeria.pertenencia", "id_pertenencia"), ("convivencia_mensajeria.incorporacion", "id_operacion"), ("convivencia_mensajeria.outbox", "id_outbox")]}
             with psycopg.connect(database_url(variable, role), prepare_threshold=None, connect_timeout=5) as connection:
                 connection.read_only = True
                 assert connection.execute("SELECT current_user").fetchone()[0] == role
@@ -65,7 +69,8 @@ except Exception:
     raise SystemExit("Configuración o comprobación fallida: revisa modo, proyecto, URL Auth, DSN del rol y TLS. No se ejecutaron migraciones.") from None
 
 if args.check:
-    print("PASS comprobación de solo lectura; no acredita registro ni persistencia de usuarios.")
+    print("PASS comprobación de solo lectura; no acredita admisión integrada." if args.service == "convivencia"
+          else "PASS comprobación de solo lectura; no acredita registro ni persistencia de usuarios.")
     raise SystemExit(0)
 
 import uvicorn

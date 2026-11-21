@@ -24,6 +24,7 @@ parser.add_argument("--verify-backup", metavar="SOURCE_ENV", help="Respaldo remo
 parser.add_argument("--backup-ca", help="Certificado CA oficial para verificar TLS del respaldo")
 parser.add_argument("--restore-backup", metavar="DPAPI_ARCHIVE", help="Descifrar y restaurar respaldo guardado, solo en clúster local desechable")
 parser.add_argument("--progressive", action="store_true", help="Ensayar etapa aditiva con tablas en haycupo")
+parser.add_argument("--reports", action="store_true", help="Incluir SCRUM-95 con migraciones y servicios locales")
 args=parser.parse_args()
 if sum(bool(value) for value in (args.compatibility,args.progressive,args.verify_backup,args.restore_backup))>1:
     parser.error("Selecciona un único ensayo o modo de respaldo")
@@ -132,9 +133,12 @@ def run():
                     connection.execute(sql.SQL("ALTER ROLE {} LOGIN PASSWORD {}").format(sql.Identifier(role),sql.Literal(passwords[service])))
             urls={service:f"postgresql://{role}:{passwords[service]}@127.0.0.1:{port}/roomies_sprint2_disposable" for service,role in roles.items()}
             verify_schema(owner,urls,args.progressive)
+            if args.reports:
+                from reportes import prepare_reports
+                urls.update(prepare_reports(owner, port))
             if not args.schema_only:
                 from integration import run_integration
-                run_integration(fixture,urls,clean,processes,web=args.web,baseline={"usuarios":1,"publicaciones":1,"conexiones":1} if args.compatibility or args.progressive else None,progressive=args.progressive)
+                run_integration(fixture,urls,clean,processes,web=args.web,baseline={"usuarios":1,"publicaciones":1,"conexiones":1} if args.compatibility or args.progressive else None,progressive=args.progressive, report_owner=owner if args.reports else None)
             if args.compatibility:
                 from compatibility import verify_rollback
                 # Simular la ventana sin escritores exigida por la reversión.

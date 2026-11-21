@@ -8,7 +8,8 @@ export type WebAuthConfig = {
   backend: string;
   secure: boolean;
   provider?: "supabase";
-  supabase?: { origin: string; key: string; allowLocalSignupSession?: boolean };
+  supabase?: { origin: string; key: string };
+  localSignupAutoconfirm?: boolean;
   recoverySecret?: string;
   profileContract?: "v1";
 };
@@ -38,7 +39,8 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
       if (key.split(".").length === 3 && JSON.parse(Buffer.from(key.split(".")[1], "base64url").toString()).role !== "anon") return null;
       return {
         origin: web.origin, backend: backend.origin, secure: web.protocol === "https:", provider: "supabase",
-        supabase: { origin: identity.origin, key, allowLocalSignupSession: disposable && env.NODE_ENV !== "production" },
+        supabase: { origin: identity.origin, key },
+        localSignupAutoconfirm: disposable && env.NODE_ENV !== "production",
         ...(env.WEB_AUTH_RECOVERY_SECRET ? { recoverySecret: env.WEB_AUTH_RECOVERY_SECRET } : {}),
         ...(profileContract === "v1" ? { profileContract } : {}),
       };
@@ -49,7 +51,7 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
 export const cookieName = (config: WebAuthConfig) => config.provider === "supabase" ? (config.secure ? "__Host-roomies_sb_access" : "roomies_sb_dev_access") : (config.secure ? "__Host-haycupo_session" : "haycupo_dev_session");
 export const profilePath = (config: WebAuthConfig) => {
   if (config.profileContract === "v1") return "/api/usuarios/me";
-  return config.provider === "supabase" ? "/local/v1/perfil" : "/api/perfil";
+  return config.provider === "supabase" ? "/api/v1/perfil" : "/api/perfil";
 };
 export function sessionCookie(config: WebAuthConfig, token = "", maxAge = 0) {
   return `${cookieName(config)}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${config.secure ? "; Secure" : ""}`;

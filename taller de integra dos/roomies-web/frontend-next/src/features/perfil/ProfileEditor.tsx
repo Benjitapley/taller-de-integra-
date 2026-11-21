@@ -106,7 +106,7 @@ export default function ProfileEditor({ profile, onClose, onSaved, onPhotoSaved,
       <fieldset className={styles.editFields} disabled={pending}>
         <legend className={styles.legend}>Datos del perfil</legend>
         <label htmlFor="profile-age">Edad</label>
-        <input id="profile-age" name={canonical ? undefined : "edad"} type="number" min="0" max="120" step="1" readOnly={profile.edad_calculada} defaultValue={profile.edad ?? ""} />
+        <input id="profile-age" name={canonical ? undefined : "edad"} type="number" min="0" max="120" step="1" readOnly={profile.edad_calculada !== undefined} defaultValue={profile.edad ?? ""} />
         {profile.edad_calculada && <small>Calculada desde tu fecha de nacimiento.</small>}
         {canonical && ([["ocupacion", "Ocupación", profileOccupations], ["genero", "Género", profileGenders]] as const).map(([name, label, options]) => <div key={name} className={styles.editField}>
           <label htmlFor={`profile-${name}`}>{label}</label>

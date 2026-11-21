@@ -105,7 +105,12 @@ async function initialize(config: WebAuthConfig, token: string, identity: Record
     headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ nombre: data.nombre, fecha_nacimiento: data.fecha_nacimiento }),
   });
-  if (!response.ok) throw new Error("profile-unavailable");
+  if (response.status !== 200 && response.status !== 201) throw new Error("profile-unavailable");
+  const initialized = await response.json();
+  const valid = config.profileContract === "v1" ? typeof initialized?.nombre === "string" : initialized?.inicializado === true;
+  if (!valid || !Number.isSafeInteger(initialized.id_usuario) || initialized.id_usuario < 1) {
+    throw new Error("profile-unavailable");
+  }
 }
 function validBirthDate(value: unknown) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -268,14 +273,14 @@ export async function handleSupabaseAuth(request: Request, action: string, confi
       const name = String(data.nombre).trim();
       const nameLimit = config.profileContract === "v1" ? 120 : 200;
       if (!validBirthDate(data.fecha_nacimiento) || !name || name.length > nameLimit || (data.contrasena as string).length < 8 || (data.contrasena as string).length > 128 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.correo))) return bridge.error(422);
-      const verifier = randomBytes(48).toString("base64url");
+      const verifier = readPkce(request, config) || randomBytes(48).toString("base64url");
       const challenge = createHash("sha256").update(verifier).digest("base64url");
       const response = await provider(config, `/signup?redirect_to=${encodeURIComponent(config.origin + "/web-api/auth/confirmar")}`, transport, { email: data.correo, password: data.contrasena, data: { nombre: name, fecha_nacimiento: data.fecha_nacimiento }, code_challenge: challenge, code_challenge_method: "s256" });
       if (response.status === 429) return bridge.error(429);
       if (response.status >= 500) return bridge.error(503);
       const result = await response.json().catch(() => null);
       if (!response.ok && (result?.error_code ?? result?.code) !== "user_already_exists") return bridge.error(422);
-      if (response.ok && (!result || typeof result !== "object" || (result.access_token && !config.supabase.allowLocalSignupSession))) return bridge.error(503);
+      if (response.ok && (!result || typeof result !== "object" || (result.access_token && !config.localSignupAutoconfirm))) return bridge.error(503);
       // A local autoconfirmed signup still goes through normal sign-in and profile initialization.
       const created = bridge.reply(200, { success: true, verificacion_pendiente: true, message: "Revisa tu correo o inicia sesión si tu cuenta ya está confirmada." }, { "Set-Cookie": pkceCookie(config, verifier, 3600) });
       created.headers.append("Set-Cookie", recoveryCookie(config,"",0,true));

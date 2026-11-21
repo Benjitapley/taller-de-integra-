@@ -1,18 +1,41 @@
 """Adaptadores HTTP locales; reglas y SQL permanecen fuera de los routers."""
 import os
+import base64
+import json
 from decimal import Decimal
-from typing import Literal
-from fastapi import APIRouter,Depends,Request,HTTPException,Query
+from typing import Annotated, Literal
+from fastapi import APIRouter,Depends,Header,Path,Request,HTTPException,Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel,ConfigDict,Field
 from app.application.service import Publications
 from app.domain.publications import available
 from app.infrastructure.repository import PostgresPublications
 from app.infrastructure.clients import UnavailableOccupancy, HttpOwners
 from backend.service_runtime.security import confirmed_actor,admin_actor
+from backend.service_runtime.reporting_security import verify_report_service
 from backend.service_runtime.images import Images
 from backend.service_runtime.contracts import DependencyUnavailable
 
 router=APIRouter()
+
+
+REGIONES=[
+    {"id_region":9,"nombre":"La Araucanía"},
+]
+COMUNAS={
+    9:[
+        {"id_comuna":9101,"nombre":"Temuco"},
+        {"id_comuna":9102,"nombre":"Padre Las Casas"},
+        {"id_comuna":9103,"nombre":"Angol"},
+        {"id_comuna":9104,"nombre":"Villarrica"},
+        {"id_comuna":9105,"nombre":"Pucón"},
+        {"id_comuna":9106,"nombre":"Lautaro"},
+        {"id_comuna":9107,"nombre":"Nueva Imperial"},
+        {"id_comuna":9108,"nombre":"Carahue"},
+        {"id_comuna":9109,"nombre":"Gorbea"},
+        {"id_comuna":9110,"nombre":"Lonquimay"},
+    ],
+}
 
 
 def service():
@@ -23,27 +46,65 @@ def dto(row,occupancy):
     try: slots=available(row,occupancy)
     except DependencyUnavailable: slots=None
     return {"id":row["id_publicacion"],"titulo":row["titulo"],"tipo":row["tipo"],"descripcion":row["descripcion"],
-            "precio":float(row["precio"]),"ubicacion":row["ubicacion"],"estado":row["estado"],
+            "precio":int(row["precio"]),"ubicacion":row["ubicacion"],"estado":row["estado"],
             "cupos_totales":row["cupos_totales"],"cupos":row["cupos_totales"],"cupos_disponibles":slots,
             "tipo_vivienda":row["tipo_vivienda"],"categoria":row["categoria"],"mascota":row["mascota"],
             "permitir_comentarios":row["permitir_comentarios"],"imagen":row.get("imagen"),"fecha_publicacion":row["fecha_publicacion"]}
 
 
+@router.get("/api/regiones")
+def regions():
+    return REGIONES
+
+
+@router.get("/api/regiones/{id_region}/comunas")
+def communes(id_region:int):
+    if id_region not in {region["id_region"] for region in REGIONES}:
+        raise HTTPException(404,"La región no existe.")
+    return COMUNAS.get(id_region,[])
+
+
 @router.get("/api/publicaciones")
 @router.get("/api/publicaciones/buscar")
 def catalog(consulta: str|None=Query(None,max_length=250),precio_min:Decimal|None=Query(None,ge=0),precio_max:Decimal|None=Query(None,ge=0),
+            cupos_disponibles:int|None=Query(None,ge=1,le=2147483647),
             cupos_min:int|None=Query(None,ge=1,le=2147483647),tipo_vivienda:Literal["casa","departamento","habitacion"]|None=None,
             mascota:Literal["si","no"]|None=None,categoria:Literal["busco","ofrezco"]|None=None,
+            id_region:int|None=Query(None,ge=1),id_comuna:int|None=Query(None,ge=1),
+            limite:int=Query(20,ge=1,le=100),cursor:str|None=None,
             tipo:Literal["casa","departamento","habitacion"]|None=None,mascotas:Literal["si","no"]|None=None,
-            personas:Literal["1","2","3"]|None=None,limite:int=Query(100,ge=1,le=100),offset:int=Query(0,ge=0,le=1000000),app=Depends(service)):
+            personas:Literal["1","2","3"]|None=None,offset:int=Query(0,ge=0,le=1000000),app=Depends(service)):
     if precio_min is not None and precio_max is not None and precio_min>precio_max:
         raise HTTPException(422,"Rango de precios inválido.")
+    if cupos_disponibles is not None and cupos_min is not None:
+        raise HTTPException(422,"No combines cupos_disponibles con cupos_min.")
+    if id_comuna is not None and id_region is not None:
+        if id_comuna not in {commune["id_comuna"] for commune in COMUNAS.get(id_region,[])}:
+            raise HTTPException(422,"La comuna no pertenece a la región.")
     if (tipo and tipo_vivienda and tipo!=tipo_vivienda) or (mascotas and mascota and mascotas!=mascota):
         raise HTTPException(422,"Filtros incompatibles.")
     if consulta and "\x00" in consulta:
         raise HTTPException(422,"Consulta inválida.")
-    filters={"consulta":consulta,"precio_min":precio_min,"precio_max":precio_max,"cupos_min":cupos_min or (int(personas) if personas else None),"tipo_vivienda":tipo_vivienda or tipo,"mascota":mascota or mascotas,"categoria":categoria,"limite":limite,"offset":offset}
-    return [dto(row,app.occupancy) for row in app.list(filters)]
+    cursor_data=None
+    if cursor:
+        try:
+            padding="="*((4-len(cursor)%4)%4)
+            cursor_data=json.loads(base64.urlsafe_b64decode(cursor+padding).decode())
+            if not isinstance(cursor_data,dict) or not isinstance(cursor_data.get("fecha"),str) or not isinstance(cursor_data.get("id"),int):
+                raise ValueError()
+        except Exception:
+            raise HTTPException(422,"Cursor inválido.")
+    filters={"consulta":consulta,"precio_min":precio_min,"precio_max":precio_max,"cupos_min":cupos_min or (int(personas) if personas else None),"cupos_disponibles":cupos_disponibles,"tipo_vivienda":tipo_vivienda or tipo,"mascota":mascota or mascotas,"categoria":categoria,"limite":limite,"offset":offset,"cursor":cursor_data}
+    rows=app.list(filters)
+    items=[dto(row,app.occupancy) for row in rows[:limite]]
+    siguiente_cursor=None
+    if len(rows)>limite:
+        last=rows[limite-1]
+        siguiente_cursor=base64.urlsafe_b64encode(json.dumps({
+            "fecha":str(last["fecha_publicacion"]),
+            "id":last["id_publicacion"],
+        },separators=(",",":")).encode()).decode().rstrip("=")
+    return {"items":items,"siguiente_cursor":siguiente_cursor}
 
 
 @router.get("/api/mis-publicaciones")
@@ -52,6 +113,7 @@ def mine(identity=Depends(confirmed_actor),app=Depends(service)):
 
 
 @router.get("/local/v1/publicaciones/resumen")
+@router.get("/api/v1/publicaciones/resumen")
 def my_count(identity=Depends(confirmed_actor),app=Depends(service)):
     return {"total_publicaciones":app.repository.count(identity.user_id)}
 
@@ -59,6 +121,19 @@ def my_count(identity=Depends(confirmed_actor),app=Depends(service)):
 @router.get("/api/publicaciones/{id}/detalle")
 def detail(id:int,app=Depends(service)):
     return dto(app.get(id),app.occupancy)
+
+
+@router.get("/internal/publicaciones/{id}")
+def publication_for_report(
+    id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+    app=Depends(service),
+    authorization: Annotated[str | None, Header()] = None,
+):
+    verify_report_service(authorization, "listado-applications", "REPORTES_LISTADO_JWT_KEY")
+    row = app.repository.report_target(id)
+    if row is None:
+        return JSONResponse({"codigo": "PUBLICACION_NO_ENCONTRADA"}, status_code=404)
+    return row
 
 
 @router.get("/api/publicaciones/{id}")
@@ -74,10 +149,21 @@ def slots(id:int,app=Depends(service)):
 
 async def publication_form(request):
     form=await request.form(max_files=1,max_fields=12,max_part_size=5*1024*1024)
-    allowed={"titulo","descripcion","ubicacion","precio","tipo","categoria","tipo_vivienda","mascota","cupos_totales","permitir_comentarios","imagen"}
+    allowed={"titulo","descripcion","id_region","id_comuna","precio","tipo","categoria","tipo_vivienda","mascota","cupos_totales","permitir_comentarios","imagen"}
     if set(form)-allowed or any(len(form.getlist(k))!=1 for k in form):
         raise HTTPException(422,"Campos no permitidos o repetidos.")
     data={k:v for k,v in form.items() if k!="imagen"}
+    if "id_region" in data and "id_comuna" in data:
+        try:
+            region_id=int(str(data["id_region"]))
+            commune_id=int(str(data["id_comuna"]))
+        except (TypeError,ValueError):
+            raise HTTPException(422,"Región o comuna inválidas.")
+        commune=next((item for item in COMUNAS.get(region_id,[]) if item["id_comuna"]==commune_id),None)
+        if commune is None:
+            raise HTTPException(422,"La comuna no pertenece a la región.")
+        region=next((item for item in REGIONES if item["id_region"]==region_id),None)
+        data["ubicacion"]=f'{commune["nombre"]}, {region["nombre"]}'
     image=form.get("imagen")
     if image is not None and not hasattr(image,"read"):
         raise HTTPException(422,"Imagen inválida.")

@@ -179,8 +179,9 @@ def test_busqueda_comparte_contrato_y_parametriza_filtros(api_sql):
         "precio_min": "100000", "precio_max": "200000", "limite": 10, "offset": 20,
     })
     assert catalogo.status_code == busqueda.status_code == 200
-    assert catalogo.json() == busqueda.json()
-    publicacion = busqueda.json()[0]
+    assert "items" in catalogo.json() and "siguiente_cursor" in catalogo.json()
+    assert catalogo.json()["items"] == busqueda.json()["items"]
+    publicacion = busqueda.json()["items"][0]
     assert publicacion["descripcion"] == "Actual" and publicacion["cupos_disponibles"] == 2
     sql, parametros = conexion.consultas[-1]
     assert texto not in sql and "OR 1=1" not in sql

@@ -12,7 +12,8 @@ class UsersRepository(Protocol):
     def ensure(self, subject: UUID, name: str, birth_date: date) -> User: ...
     def patch(self, subject: UUID, changes: dict) -> User | None: ...
     def public_search(self, filters: dict) -> list[User]: ...
-    def notify(self, event: dict): ...
+    def notify(self, event: dict) -> bool: ...
+    def notification_page(self, user_id: int, limit: int, before) -> list[dict]: ...
     def notifications(self, user_id: int) -> list[dict]: ...
     def count(self) -> int: ...
 
@@ -30,14 +31,9 @@ class Users:
         return user
 
     def initialize(self, subject, name, birth_date, confirmed):
-        if not confirmed:
-            raise RuleViolation("Confirma tu correo antes de inicializar el perfil.", 403)
+        require_confirmed_email(confirmed)
         try:
             initial = ProfileInitialization(name, birth_date)
-            today = date.today()
-            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
-            if age > 120:
-                raise ValueError("Fecha de nacimiento fuera de rango.")
         except ValueError as error:
             raise RuleViolation(str(error)) from None
         user = self.repository.ensure(subject, initial.nombre, initial.fecha_nacimiento)
@@ -64,3 +60,8 @@ class Users:
         if updated is None or updated.supabase_user_id != subject:
             raise RuleViolation("Perfil no disponible.", 404)
         return updated
+
+
+def require_confirmed_email(confirmed: bool) -> None:
+    if not confirmed:
+        raise RuleViolation("Confirma tu correo antes de continuar.", 403)

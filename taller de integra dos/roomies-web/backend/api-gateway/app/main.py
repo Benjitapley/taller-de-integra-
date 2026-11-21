@@ -17,7 +17,7 @@ class RouteGuard:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         path = scope["path"]
-        private = path.rstrip("/") == "/usuarios/me"
+        private = path.rstrip("/") == "/usuarios/me" or path.startswith("/api/arriendos/")
 
         async def send_private(message):
             if private and message["type"] == "http.response.start":
@@ -71,7 +71,7 @@ def create_app(settings: Settings | None = None, *, transport=None):
     app.add_api_route("/usuarios/me", forward, methods=["GET", "PATCH"])
     if config.local_mode:
         from .local_routes import dispatch
-        app.add_api_route("/{path:path}",dispatch,methods=["GET","POST","PUT","PATCH","DELETE"])
+        app.add_api_route("/{path:path}",dispatch,methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"])
     return app
 
 

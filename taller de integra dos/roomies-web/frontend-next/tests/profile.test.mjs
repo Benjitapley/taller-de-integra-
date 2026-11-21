@@ -152,6 +152,21 @@ const canonical = { ...config, provider: "supabase", profileContract: "v1", supa
 const storagePhoto = canonical.supabase.origin + "/storage/v1/object/public/perfiles/17/new.webp";
 const canonicalHeaders = { cookie: "__Host-roomies_sb_access=fixture.token.signature", Origin: canonical.origin, "X-Haycupo-CSRF": "1" };
 
+test("SCRUM-94 mantiene perfil y edad desconocida aunque Listado no responda", async () => {
+  const transition = { ...config, provider: "supabase" };
+  const response = await handleProfile(new Request(config.origin, { headers: canonicalHeaders }), transition, async url => {
+    if (url.endsWith("/api/v1/perfil")) return Response.json({ ...profile, edad: null, edad_calculada: false });
+    assert.equal(url, config.backend + "/api/v1/publicaciones/resumen");
+    return Response.json({}, { status: 503 });
+  });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.nombre, profile.nombre);
+  assert.equal(result.edad, null);
+  assert.equal(result.edad_calculada, false);
+  assert.equal(result.total_publicaciones, null);
+});
+
 test("el perfil común consulta un solo endpoint y adapta el correo y la foto de Storage", async () => {
   const response = await handleProfile(new Request(canonical.origin, { headers: canonicalHeaders }), canonical, async (url, options) => {
     assert.equal(url, canonical.backend + "/api/usuarios/me");

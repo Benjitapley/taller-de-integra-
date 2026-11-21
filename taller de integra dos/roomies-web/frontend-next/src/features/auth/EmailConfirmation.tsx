@@ -7,7 +7,7 @@ import VerificationForm from "./VerificationForm";
 import { submitAuth } from "./client";
 import styles from "./auth.module.css";
 
-export default function EmailConfirmation({ error = "" }: { error?: string }) {
+export default function EmailConfirmation({ error = "", notice = "" }: { error?: string; notice?: string }) {
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -24,6 +24,7 @@ export default function EmailConfirmation({ error = "" }: { error?: string }) {
     if (result.retryAfter) setRetryAt(Date.now()+result.retryAfter*1000);
   }
   return <section>
+    {notice && <p role="status" className={styles.formMessage}>{notice}</p>}
     {error && <p role="alert" className={styles.errorMessage}>{error}</p>}
     <p>Ábrelo en el mismo navegador donde creaste tu cuenta. Si el correo no aparece, revisa también la carpeta de spam.</p>
     <p><Link className={styles.headerLink} href="/">Ya confirmé mi correo, iniciar sesión</Link></p>

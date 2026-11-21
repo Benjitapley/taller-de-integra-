@@ -39,6 +39,30 @@ el entorno compartido el registro, la confirmación, el cambio entre cuentas
 y el reemplazo de foto tras cerrar y reabrir sesión. Hasta entonces, la
 configuración existente de desarrollo sigue usando su contrato local.
 
+La integración con SCRUM-94 usa por defecto `WEB_PROFILE_CONTRACT=existing`.
+Consulta y guarda en `/api/v1/perfil` y crea el perfil en
+`/api/v1/perfil/inicializacion`. Esta transición acepta el DTO publicado por
+Valderrama y conserva sus campos y límites. La edad siempre se consulta como
+dato de solo lectura. Si Listado no responde, el perfil sigue disponible sin
+inventar un total de publicaciones.
+
+La ruta separada de fotografía y Supabase Storage del contrato v2 permanecen
+condicionadas a su publicación en Auth/Users y Gateway. En la transición,
+la foto viaja en el formulario multipart a Auth/Users y conserva el
+almacenamiento configurado por ese servicio. Para acreditar Storage, repetir
+la prueba con el modo v1 y comprobar la foto en otra sesión y después del
+redeploy. Las pruebas con archivos temporales locales solo acreditan la carga
+en el contrato de transición.
+
+`npm run test:profile-http` ejecuta el BFF contra el router FastAPI de SCRUM-94
+en localhost, con identidad y repositorio de perfiles de prueba y archivos
+temporales. Comprueba edición, carga y lectura de imagen, aislamiento entre
+dos cuentas y conservación de la foto anterior tras rechazar un archivo.
+En Windows utiliza `.venv/Scripts/python.exe` del repositorio. Se puede
+seleccionar otro intérprete con `ROOMIES_TEST_PYTHON`; debe tener instaladas
+las dependencias de Auth/Users. Esta prueba no verifica Supabase Cloud,
+PostgreSQL ni la durabilidad del almacenamiento de producción.
+
 ## Rutas
 
 | Ruta | Función |

@@ -22,7 +22,7 @@ export function normalizeProfile(value: unknown, config?: WebAuthConfig): Profil
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid profile");
   const data = value as Record<string, unknown>;
   const canonical = config?.profileContract === "v1";
-  const count = data.total_publicaciones ?? (canonical ? null : undefined);
+  const count = data.total_publicaciones === undefined ? (canonical ? null : undefined) : data.total_publicaciones;
   if (typeof data.nombre !== "string" ||
       (count !== null && (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0))) throw new Error("Invalid profile");
   let age: number | null = null;
@@ -179,12 +179,12 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
     if (!response.ok) return unavailable();
     let data = await response.json();
     if (config.provider === "supabase" && !canonical) {
-      const count = await upstream(config, "/local/v1/publicaciones/resumen", token, undefined, transport);
-      if (!count.ok) return unavailable();
-      const totals = await count.json();
-      data = { ...data, total_publicaciones: totals.total_publicaciones };
+      // Profile availability does not depend on the optional publication counter.
+      const count = await upstream(config, "/api/v1/publicaciones/resumen", token, undefined, transport).catch(() => null);
+      const totals = count?.ok ? await count.json().catch(() => null) : null;
+      data = { ...data, total_publicaciones: Number.isSafeInteger(totals?.total_publicaciones) && totals.total_publicaciones >= 0 ? totals.total_publicaciones : null };
     }
-    return authReply(200, { ...normalizeProfile(data, config), ...(config.provider === "supabase" ? { edad_calculada: true } : {}) });
+    return authReply(200, { ...normalizeProfile(data, config), ...(config.provider === "supabase" && !canonical ? { edad_calculada: data.edad_calculada } : {}) });
   } catch {
     return request.method === "GET" ? unavailable() : saveUnavailable();
   }
