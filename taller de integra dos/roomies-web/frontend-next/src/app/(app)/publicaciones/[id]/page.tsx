@@ -4,6 +4,7 @@ import Card from "@/components/ui/Card";
 import PageHeader from "@/components/layout/PageHeader";
 import { authConfig } from "@/lib/auth/gateway";
 import PostulateButton from "@/features/publicaciones/PostulateButton";
+import { reportsEnabled } from "@/lib/reportes";
 
 export default async function PublicationDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -32,6 +33,7 @@ export default async function PublicationDetail({ params }: { params: Promise<{ 
       <p>Vivienda: {text("tipo_vivienda")} · Mascotas: {text("mascota")}</p>
       <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{text("descripcion")}</p>
       {config?.provider === "supabase" && publication.tipo === "Arrendador" && publication.estado !== "Cerrada" && <PostulateButton id={Number(id)} />}
+      {reportsEnabled(config) && <p><Link href={`/mis-reportes?publicacion=${id}`}>Reportar publicación</Link></p>}
     </> : <p role="alert">No se pudo cargar esta publicación. Vuelve a intentarlo desde Inicio.</p>}</Card>
     <p><Link href="/inicio">Volver a Inicio</Link></p>
   </main>;

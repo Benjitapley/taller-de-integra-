@@ -60,7 +60,10 @@ function records(value: unknown): Record<string, unknown>[] {
 }
 
 function publications(value: unknown): Publication[] {
-  return records(value).map((item) => {
+  const page = value && typeof value === "object" && "items" in value
+    ? (value as { items: unknown }).items
+    : value;
+  return records(page).map((item) => {
     if (!Number.isSafeInteger(item.id) || Number(item.id) < 1 ||
         (item.titulo !== null && typeof item.titulo !== "string") ||
         typeof item.precio !== "number" || !Number.isFinite(item.precio) ||
@@ -99,7 +102,7 @@ function price(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
 
-export default function HomeContent() {
+export default function HomeContent({ canReport = false }: { canReport?: boolean }) {
   const params = useSearchParams();
   const router = useRouter();
   const value = params.get("vista") === "personas" ? "personas" : "arriendos";
@@ -233,7 +236,10 @@ export default function HomeContent() {
         <span className={styles.avatar}>{person.nombre.trim().slice(0, 1).toUpperCase() || "?"}</span>
         <div><h3>{person.nombre}</h3><p>{person.ocupacion || "Ocupación no informada"}</p>
           <small>{person.zona_interes || "Zona no informada"}{person.presupuesto !== null ? ` · Presupuesto ${price(person.presupuesto)}` : ""}</small></div>
-        <Button disabled={sending !== null} onClick={() => void connect(person.id_usuario_PK)}>{sending === person.id_usuario_PK ? "Enviando…" : "Conectar"}</Button>
+        <div>
+          <Button disabled={sending !== null} onClick={() => void connect(person.id_usuario_PK)}>{sending === person.id_usuario_PK ? "Enviando…" : "Conectar"}</Button>
+          {canReport && <p><Link href={`/mis-reportes?usuario=${person.id_usuario_PK}`} aria-label={`Reportar a ${person.nombre}`}>Reportar</Link></p>}
+        </div>
       </article>)}</div>
       : <EmptyState icon="user" title="No hay personas para estos filtros" description="Prueba con otra comuna, presupuesto u ocupación." />)}
     {!loading && !error && !isPeople && (listings.length

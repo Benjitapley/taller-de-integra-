@@ -78,7 +78,7 @@ def database_url(variable, role):
 def service_url(variable, *, docker_hosts=()):
     mode = runtime_mode()
     # Remote destinations come only from these operator-controlled settings.
-    upstream_variables = {"AUTH_USERS_UPSTREAM_URL", "LISTADO_UPSTREAM_URL", "MATCH_UPSTREAM_URL"}
+    upstream_variables = {"AUTH_USERS_UPSTREAM_URL", "LISTADO_UPSTREAM_URL", "MATCH_UPSTREAM_URL", "CONVIVENCIA_UPSTREAM_URL"}
     value = os.environ.get(variable, "")
     try:
         parsed = urlsplit(value)

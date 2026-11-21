@@ -7,7 +7,7 @@ import Card from "@/components/ui/Card";
 import type { AdminData } from "./contracts";
 import styles from "./admin.module.css";
 
-export default function AdminPanel() {
+export default function AdminPanel({ showReports = false }: { showReports?: boolean }) {
   const [page, setPage] = useState(1), [attempt, retry] = useState(0);
   const [data, setData] = useState<AdminData | null>(null);
   const [status, setStatus] = useState(0);
@@ -30,6 +30,7 @@ export default function AdminPanel() {
     {status === 403 && <Card><p role="alert">Tu cuenta no tiene acceso administrativo.</p><Link href="/inicio">Volver al inicio</Link></Card>}
     {status >= 400 && ![401, 403].includes(status) && <Card><p role="alert">No se pudo consultar el panel. Intenta nuevamente más tarde.</p><Button onClick={() => load()}>Reintentar</Button></Card>}
     {data && <>
+      {showReports && <p><Link href="/admin/reportes">Revisar reportes</Link></p>}
       <dl className={styles.stats}>{Object.entries(data.resumen).map(([label, value]) => <Card key={label}><dt>{label}</dt><dd>{value}</dd></Card>)}</dl>
       <h2>Publicaciones existentes</h2>
       <Button variant="secondary" onClick={() => load()}>Actualizar panel</Button>

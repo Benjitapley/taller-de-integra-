@@ -45,7 +45,9 @@ class Publications:
         result=[]
         for row in rows:
             try:
-                if available(row,self.occupancy)>0:
+                slots=available(row,self.occupancy)
+                exact=filters.get("cupos_disponibles")
+                if slots>0 and (exact is None or slots==exact):
                     result.append(row)
             except DependencyUnavailable:
                 continue  # No inventar vacantes de Activa sin Convivencia.

@@ -2,16 +2,20 @@
 import hmac
 import os
 import re
-from datetime import date
+from datetime import date, datetime
+from typing import Annotated, Literal
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Query
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from starlette.datastructures import UploadFile
 from app.application.local_users import Users, require_confirmed_email
+from app.application.notifications import APPLICATION_TYPE, MAX_ID, notification_page
 from app.domain.local_users import User
 from app.infrastructure.persistence.local_users import PostgresUsers
 from app.infrastructure.security.local_provider import confirmed_email
 from backend.service_runtime.security import access_token, verified_claims
+from backend.service_runtime.notifications import PRODUCERS
+from backend.service_runtime.reporting_security import verify_service_token
 from backend.service_runtime.images import Images
 
 router = APIRouter()
@@ -193,26 +197,103 @@ def public_profiles(ids: str | None=None, presupuesto_max: int | None=Query(None
 class Notification(BaseModel):
     model_config=ConfigDict(extra="forbid")
     event_key: str=Field(pattern=r"^postulacion:[1-9][0-9]*:(Preseleccionada|Aceptada|Rechazada|Cancelada)$",max_length=150)
-    id_usuario: int=Field(gt=0)
-    referencia_id: int=Field(gt=0)
+    id_usuario: int=Field(gt=0, le=MAX_ID)
+    referencia_id: int=Field(gt=0, le=MAX_ID)
     estado: str=Field(pattern=r"^(Preseleccionada|Aceptada|Rechazada|Cancelada)$")
 
 
 @router.post("/internal/v1/notificaciones")
 def notify(data: Notification, request: Request, service=Depends(users)):
     expected=os.environ.get("ROOMIES_INTERNAL_TOKEN", "")
-    if len(expected)<32 or not hmac.compare_digest(request.headers.get("x-roomies-service", ""),expected):
+    supplied = request.headers.get("x-roomies-service", "")
+    if len(expected)<32 or not expected.isascii() or not supplied.isascii() or not hmac.compare_digest(supplied,expected):
         raise HTTPException(403,"Servicio no autorizado.")
     if data.event_key != f"postulacion:{data.referencia_id}:{data.estado}":
         raise HTTPException(422,"Evento inconsistente.")
-    service.repository.notify(data.model_dump())
+    persist_notification(service.repository, data.model_dump(), APPLICATION_TYPE)
     return {"success":True}
+
+
+APPLICATION_STATES = {"Preseleccionada", "Aceptada", "Rechazada", "Cancelada"}
+REPORT_STATES = {"En_Revision", "Resuelto", "Descartado"}
+NotificationType = Literal["postulacion_resultado", "expulsion", "reporte_actualizado"]
+
+
+class NotificationEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event_key: str = Field(min_length=1, max_length=150)
+    tipo: NotificationType
+    id_usuario: int = Field(strict=True, gt=0, le=MAX_ID)
+    referencia_id: int = Field(strict=True, gt=0, le=MAX_ID)
+    estado: str | None = Field(default=None, min_length=1, max_length=20)
+
+    @model_validator(mode="after")
+    def validate_event(self):
+        if self.tipo == "postulacion_resultado":
+            valid = self.estado in APPLICATION_STATES and self.event_key == f"postulacion:{self.referencia_id}:{self.estado}"
+        elif self.tipo == "reporte_actualizado":
+            valid = self.estado in REPORT_STATES and re.fullmatch(r"reporte_actualizado:[1-9][0-9]{0,18}", self.event_key)
+        else:
+            prefix, _, operation = self.event_key.partition(":")
+            try:
+                valid = self.estado in {None, "Expulsado"} and prefix == "expulsion" and str(UUID(operation)) == operation
+            except ValueError:
+                valid = False
+        if not valid:
+            raise ValueError("Evento inconsistente.")
+        if self.tipo == "expulsion":
+            self.estado = "Expulsado"
+        return self
+
+
+def persist_notification(repository, event, stored_type):
+    if not repository.notify({**event, "tipo": stored_type}):
+        raise HTTPException(409, "La clave del evento ya tiene otro contenido.")
+
+
+@router.post("/internal/notificaciones")
+def accept_notification(
+    data: NotificationEvent,
+    idempotency_key: Annotated[str, Header(max_length=150)],
+    authorization: Annotated[str | None, Header()] = None,
+    service=Depends(users),
+):
+    issuer, variable = PRODUCERS[data.tipo]
+    verify_service_token(authorization, issuer, "auth-users", variable)
+    if idempotency_key != data.event_key:
+        raise HTTPException(422, "La clave debe coincidir con el evento.")
+    stored_type = APPLICATION_TYPE if data.tipo == "postulacion_resultado" else data.tipo
+    persist_notification(service.repository, data.model_dump(), stored_type)
+    return {"success": True}
 
 
 @router.get("/local/v1/notificaciones")
 @router.get("/api/v1/notificaciones")
 def notifications(who=Depends(identity),service=Depends(users)):
     return service.repository.notifications(service.own(who[0]).id_usuario)
+
+
+class NotificationSummary(BaseModel):
+    id_notificacion: int
+    tipo: NotificationType
+    referencia_id: int
+    fecha: datetime
+
+
+class NotificationsPage(BaseModel):
+    items: list[NotificationSummary]
+    siguiente_cursor: str | None
+
+
+@router.get("/api/notificaciones", response_model=NotificationsPage)
+def my_notifications(
+    who=Depends(identity),
+    service=Depends(users),
+    limite: Annotated[int, Query(ge=1, le=100)] = 20,
+    cursor: Annotated[str | None, Query(min_length=1, max_length=512)] = None,
+):
+    user = service.own(who[0])
+    return notification_page(service.repository, user.id_usuario, limite, cursor)
 
 
 @router.get("/internal/v1/resumen")
