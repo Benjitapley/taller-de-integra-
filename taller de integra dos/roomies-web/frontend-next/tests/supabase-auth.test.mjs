@@ -23,6 +23,8 @@ test("proveedor local explícito; remoto, secreto y proveedor desconocido se rec
   for (const overrides of [{ ROOMIES_LOCAL_MODE: "0" }, { WEB_SUPABASE_ORIGIN: "https://production.supabase.co" }, { WEB_AUTH_PROVIDER: "both" }, { WEB_SUPABASE_PUBLISHABLE_KEY: "sb_secret_forbidden" }]) assert.equal(authConfig({ ...env, ...overrides }), null);
   assert.equal(authConfig({ ...env, WEB_SUPABASE_PUBLISHABLE_KEY: `fixture.${Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url")}.signature` }), null);
   assert.equal(authConfig({ ...env, WEB_AUTH_PROVIDER: "legacy" }).provider, undefined);
+  assert.equal(authConfig({ ...env, WEB_PROFILE_CONTRACT: "local-v1" }).profileContract, "local-v1");
+  assert.equal(authConfig({ ...env, WEB_PROFILE_CONTRACT: "local-v1", WEB_AUTH_PROVIDER: "legacy" }), null);
 });
 
 test("la cuenta del contrato v1 usa solo el perfil común y sale mediante Supabase", async () => {

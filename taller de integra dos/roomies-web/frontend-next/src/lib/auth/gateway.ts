@@ -11,7 +11,7 @@ export type WebAuthConfig = {
   supabase?: { origin: string; key: string };
   localSignupAutoconfirm?: boolean;
   recoverySecret?: string;
-  profileContract?: "v1";
+  profileContract?: "v1" | "local-v1";
 };
 export type Transport = typeof fetch;
 export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig | null {
@@ -22,7 +22,7 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
     const provider = env.WEB_AUTH_PROVIDER ?? "legacy";
     if (!["legacy", "supabase"].includes(provider)) return null;
     const profileContract = env.WEB_PROFILE_CONTRACT ?? "existing";
-    if (!["existing", "v1"].includes(profileContract) || (profileContract === "v1" && provider !== "supabase")) return null;
+    if (!["existing", "local-v1", "v1"].includes(profileContract) || (profileContract !== "existing" && provider !== "supabase")) return null;
     for (const url of [web, backend]) {
       if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) return null;
       const localGateway = url === backend && (env.ROOMIES_LOCAL_MODE === "1" || env.ROOMIES_RUNTIME_MODE === "supabase") && env.NODE_ENV !== "production" && url.hostname === "api-gateway";
@@ -42,7 +42,7 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
         supabase: { origin: identity.origin, key },
         localSignupAutoconfirm: disposable && env.NODE_ENV !== "production",
         ...(env.WEB_AUTH_RECOVERY_SECRET ? { recoverySecret: env.WEB_AUTH_RECOVERY_SECRET } : {}),
-        ...(profileContract === "v1" ? { profileContract } : {}),
+        ...(profileContract === "v1" || profileContract === "local-v1" ? { profileContract } : {}),
       };
     }
     return { origin: web.origin, backend: backend.origin, secure: web.protocol === "https:" };
@@ -51,6 +51,7 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
 export const cookieName = (config: WebAuthConfig) => config.provider === "supabase" ? (config.secure ? "__Host-roomies_sb_access" : "roomies_sb_dev_access") : (config.secure ? "__Host-haycupo_session" : "haycupo_dev_session");
 export const profilePath = (config: WebAuthConfig) => {
   if (config.profileContract === "v1") return "/api/usuarios/me";
+  if (config.profileContract === "local-v1") return "/local/v1/perfil";
   return config.provider === "supabase" ? "/api/v1/perfil" : "/api/perfil";
 };
 export function sessionCookie(config: WebAuthConfig, token = "", maxAge = 0) {

@@ -167,6 +167,18 @@ test("SCRUM-94 mantiene perfil y edad desconocida aunque Listado no responda", a
   assert.equal(result.total_publicaciones, null);
 });
 
+test("el despliegue local-v1 usa solo las rutas configuradas sin fallback de identidad", async () => {
+  const transition = { ...config, provider: "supabase", profileContract: "local-v1" };
+  const visited = [];
+  const response = await handleProfile(new Request(config.origin, { headers: canonicalHeaders }), transition, async url => {
+    visited.push(url);
+    return url.endsWith("/perfil") ? Response.json({ ...profile, edad_calculada: true })
+      : Response.json({ total_publicaciones: 2 });
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(visited, [config.backend + "/local/v1/perfil", config.backend + "/local/v1/publicaciones/resumen"]);
+});
+
 test("el perfil común consulta un solo endpoint y adapta el correo y la foto de Storage", async () => {
   const response = await handleProfile(new Request(canonical.origin, { headers: canonicalHeaders }), canonical, async (url, options) => {
     assert.equal(url, canonical.backend + "/api/usuarios/me");

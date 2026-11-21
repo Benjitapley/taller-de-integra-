@@ -180,7 +180,8 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
     let data = await response.json();
     if (config.provider === "supabase" && !canonical) {
       // Profile availability does not depend on the optional publication counter.
-      const count = await upstream(config, "/api/v1/publicaciones/resumen", token, undefined, transport).catch(() => null);
+      const summary = config.profileContract === "local-v1" ? "/local/v1/publicaciones/resumen" : "/api/v1/publicaciones/resumen";
+      const count = await upstream(config, summary, token, undefined, transport).catch(() => null);
       const totals = count?.ok ? await count.json().catch(() => null) : null;
       data = { ...data, total_publicaciones: Number.isSafeInteger(totals?.total_publicaciones) && totals.total_publicaciones >= 0 ? totals.total_publicaciones : null };
     }

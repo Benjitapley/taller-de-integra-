@@ -46,6 +46,11 @@ Valderrama y conserva sus campos y límites. La edad siempre se consulta como
 dato de solo lectura. Si Listado no responde, el perfil sigue disponible sin
 inventar un total de publicaciones.
 
+Para un despliegue anterior que solo publica `/local/v1/perfil`, configurar
+`WEB_PROFILE_CONTRACT=local-v1`. La inicialización y la consulta usan ese mismo
+prefijo. Seleccionar la versión según las rutas publicadas por el servicio;
+no se reintenta automáticamente contra otra ruta ante una credencial rechazada.
+
 La ruta separada de fotografía y Supabase Storage del contrato v2 permanecen
 condicionadas a su publicación en Auth/Users y Gateway. En la transición,
 la foto viaja en el formulario multipart a Auth/Users y conserva el
