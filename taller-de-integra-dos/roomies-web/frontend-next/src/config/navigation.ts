@@ -7,6 +7,7 @@ export const routes = {
   home: "/inicio",
   profile: "/perfil",
   publish: "/publicar",
+  myRental: "/mi-arriendo",
 } as const;
 
 // Enlaces explícitos; no implican registro o verificación satisfactorios.

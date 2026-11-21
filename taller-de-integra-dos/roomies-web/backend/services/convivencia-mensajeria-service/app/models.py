@@ -45,6 +45,27 @@ class Rental(BaseModel):
     ocupacion: Annotated[int, Field(strict=True, ge=0)]
 
 
+class Member(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_usuario: PositiveId
+    fecha_ingreso: str
+    fecha_salida: str | None = None
+    es_responsable: bool
+
+
+class MemberPage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    items: list[Member]
+    siguiente_cursor: str | None = None
+
+
+class Expulsion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_usuario: PositiveId
+    motivo: Annotated[str, Field(min_length=1, max_length=500)]
+    confirmo: Literal[True]
+
+
 class ErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     detail: str

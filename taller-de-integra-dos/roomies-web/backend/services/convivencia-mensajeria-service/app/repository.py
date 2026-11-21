@@ -53,6 +53,57 @@ class PostgresRepository:
                 raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
         return self.get(row["id_arriendo"], user_id)
 
+    def publication(self, rental_id):
+        with self.transaction() as c:
+            row = c.execute("SELECT id_publicacion FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
+            if row is None:
+                raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+            return row["id_publicacion"]
+
+    def members(self, rental_id, user_id, active_only=True, access_checked=False):
+        with self.transaction() as c:
+            rental = c.execute("SELECT id_arriendo FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
+            if rental is None:
+                raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+            if not access_checked:
+                allowed = c.execute("""SELECT 1 FROM convivencia_mensajeria.pertenencia
+                    WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa'""", (rental_id, user_id)).fetchone()
+                if allowed is None:
+                    raise ServiceError("FORBIDDEN", "No tienes acceso a los integrantes.", 403)
+            where = "AND p.estado='Activa'" if active_only else ""
+            rows = c.execute(f"""SELECT p.id_usuario,p.creada_en,
+                CASE WHEN p.id_pertenencia=(SELECT min(p2.id_pertenencia) FROM convivencia_mensajeria.pertenencia p2
+                  WHERE p2.id_arriendo=p.id_arriendo AND p2.estado='Activa') THEN true ELSE false END AS es_responsable
+                FROM convivencia_mensajeria.pertenencia p
+                WHERE p.id_arriendo=%s {where}
+                ORDER BY p.creada_en ASC,p.id_pertenencia ASC""", (rental_id,)).fetchall()
+            items = [{"id_usuario": row["id_usuario"],
+                      "fecha_ingreso": row["creada_en"].isoformat().replace("+00:00", "Z"),
+                      "fecha_salida": None,
+                      "es_responsable": row["es_responsable"]} for row in rows]
+            return {"items": items, "siguiente_cursor": None}
+
+    def expel(self, rental_id, actor_id, payload):
+        with self.transaction() as c:
+            target = c.execute("""SELECT p.* FROM convivencia_mensajeria.pertenencia p
+                WHERE p.id_arriendo=%s AND p.id_usuario=%s AND p.estado='Activa'
+                FOR UPDATE""", (rental_id, payload["id_usuario"])).fetchone()
+            if target is None:
+                repeated = c.execute("""SELECT 1 FROM convivencia_mensajeria.pertenencia
+                    WHERE id_arriendo=%s AND id_usuario=%s""", (rental_id, payload["id_usuario"])).fetchone()
+                if repeated is None:
+                    raise ServiceError("MEMBER_NOT_ACTIVE", "El integrante no pertenece al arriendo.", 409)
+                return {"id_arriendo": rental_id, "id_usuario": payload["id_usuario"], "retirado": True}
+            c.execute("""UPDATE convivencia_mensajeria.pertenencia
+                SET estado='Inactiva',terminada_en=clock_timestamp()
+                WHERE id_pertenencia=%s""", (target["id_pertenencia"],))
+            c.execute("""INSERT INTO convivencia_mensajeria.expulsion
+                (id_arriendo,id_pertenencia,id_usuario,id_ejecutor,motivo)
+                VALUES (%s,%s,%s,%s,%s)
+                ON CONFLICT DO NOTHING""",
+                (rental_id, target["id_pertenencia"], payload["id_usuario"], actor_id, payload["motivo"]))
+            return {"id_arriendo": rental_id, "id_usuario": payload["id_usuario"], "retirado": True}
+
     def overlapped(self, a, b):
         with self.transaction() as c:
             return c.execute("""SELECT EXISTS (

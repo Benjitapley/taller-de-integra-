@@ -21,7 +21,8 @@
     "test:reports": "node --test tests/reportes.test.mjs tests/admin-reportes.test.mjs",
     "test:reports-browser": "node --test tests/reportes-browser.test.mjs",
     "test:supabase-auth": "node --test tests/supabase-auth.test.mjs",
-    "test:applications": "node --test tests/applications.test.mjs"
+    "test:applications": "node --test tests/applications.test.mjs",
+    "test:arriendos": "node --test tests/arriendos.test.mjs"
   },
   "dependencies": {
     "next": "16.4.3",

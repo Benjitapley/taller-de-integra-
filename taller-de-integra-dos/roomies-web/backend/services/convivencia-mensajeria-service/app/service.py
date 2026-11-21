@@ -10,6 +10,20 @@ class Convivencia:
     def __init__(self, repository, identity, publications):
         self.repository, self.identity, self.publications = repository, identity, publications
 
+    def members(self, rental_id, user_id, active_only=True):
+        publication_id = self.repository.publication(rental_id)
+        owner = getattr(self.publications, "owner", None)
+        if callable(owner) and owner(publication_id) == user_id:
+            return self.repository.members(rental_id, user_id, active_only, access_checked=True)
+        return self.repository.members(rental_id, user_id, active_only)
+
+    def expel(self, rental_id, actor_id, payload):
+        publication_id = self.repository.publication(rental_id)
+        owner = getattr(self.publications, "owner", None)
+        if not callable(owner) or owner(publication_id) != actor_id:
+            raise ServiceError("FORBIDDEN", "Solo el dueño del aviso puede retirar integrantes.", 403)
+        return self.repository.expel(rental_id, actor_id, payload)
+
     def incorporate(self, key: UUID, payload: dict):
         result = self._incorporate(key, payload)
         if result[0] >= 400:
