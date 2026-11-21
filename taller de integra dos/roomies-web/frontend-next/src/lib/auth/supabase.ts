@@ -9,6 +9,7 @@ type Bridge = {
   token: (cookie: string | null, config: WebAuthConfig) => string;
   accessCookie: (config: WebAuthConfig, token?: string, age?: number) => string;
   session: (config: WebAuthConfig | null, token: string, transport?: Transport) => Promise<Response>;
+  profilePath: (config: WebAuthConfig) => string;
 };
 
 const pkceName = (config: WebAuthConfig) => config.secure ? "__Host-roomies_pkce" : "roomies_pkce_dev";
@@ -90,22 +91,24 @@ async function user(config: WebAuthConfig, token: string, transport: Transport) 
   if (typeof result.id !== "string" || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(result.id) || typeof result.email_confirmed_at !== "string" || !result.email_confirmed_at) throw new Error();
   return result;
 }
-async function initialize(config: WebAuthConfig, token: string, identity: Record<string, unknown>, transport: Transport) {
-  const current = await transport(`${config.backend}/api/v1/perfil`, { cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000), headers: { Authorization: `Bearer ${token}` } });
+async function initialize(config: WebAuthConfig, token: string, identity: Record<string, unknown>, transport: Transport, profile: string) {
+  const current = await transport(`${config.backend}${profile}`, { cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000), headers: { Authorization: `Bearer ${token}` } });
   if (current.ok) return;
   if (current.status !== 404) throw new Error("profile-unavailable");
   const metadata = identity.user_metadata;
   if (!metadata || typeof metadata !== "object") throw new Error("profile-incomplete");
   const data = metadata as Record<string, unknown>;
   if (typeof data.nombre !== "string" || !data.nombre.trim() || data.nombre.length > 200 || typeof data.fecha_nacimiento !== "string") throw new Error("profile-incomplete");
-  const response = await transport(`${config.backend}/api/v1/perfil/inicializacion`, {
+  const creation = config.profileContract === "v1" ? profile : `${profile}/inicializacion`;
+  const response = await transport(`${config.backend}${creation}`, {
     method: "POST", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
     headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ nombre: data.nombre, fecha_nacimiento: data.fecha_nacimiento }),
   });
   if (response.status !== 200 && response.status !== 201) throw new Error("profile-unavailable");
   const initialized = await response.json();
-  if (initialized?.inicializado !== true || !Number.isSafeInteger(initialized.id_usuario) || initialized.id_usuario < 1) {
+  const valid = config.profileContract === "v1" ? typeof initialized?.nombre === "string" : initialized?.inicializado === true;
+  if (!valid || !Number.isSafeInteger(initialized.id_usuario) || initialized.id_usuario < 1) {
     throw new Error("profile-unavailable");
   }
 }
@@ -194,7 +197,7 @@ export async function handleSupabaseAuth(request: Request, action: string, confi
       const session = tokens(await response.json());
       const identity = await user(config, session.access, transport);
       let profilePending = false;
-      try { await initialize(config, session.access, identity, transport); } catch { profilePending = true; }
+      try { await initialize(config, session.access, identity, transport, bridge.profilePath(config)); } catch { profilePending = true; }
       await provider(config, "/logout?scope=local", transport, {}, session.access);
       return redirect(config, "/?correo=verificado" + (profilePending ? "&perfil=pendiente" : ""), [pkceCookie(config)]);
     } catch { return redirect(config, "/verificar?estado=servicio-no-disponible"); }
@@ -253,7 +256,7 @@ export async function handleSupabaseAuth(request: Request, action: string, confi
         return bridge.reply([400,422].includes(changed.status) ? 422 : changed.status === 429 ? 429 : 401, { detail: "No se pudo actualizar la contraseña. Usa una diferente o solicita un enlace nuevo." });
       }
       await provider(config, "/logout?scope=global", transport, {}, context.access).catch(() => null);
-      if (token) await transport(`${config.backend}/local/v1/sesion/revocar`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: "{}", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) }).catch(() => null);
+      if (token && config.profileContract !== "v1") await transport(`${config.backend}/local/v1/sesion/revocar`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: "{}", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) }).catch(() => null);
       const response = clear(bridge.reply(200, { success: true, message: "Contraseña actualizada correctamente. Ya puedes iniciar sesión." }), config, bridge);
       response.headers.append("Set-Cookie", recoveryCookie(config));
       response.headers.append("Set-Cookie", recoveryCookie(config,"",0,true));
@@ -261,26 +264,25 @@ export async function handleSupabaseAuth(request: Request, action: string, confi
     }
     if (action === "logout") {
       if (!token) return clear(bridge.error(401), config, bridge);
-      const revoked = await transport(`${config.backend}/local/v1/sesion/revocar`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: "{}", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) });
+      const revoked = config.profileContract === "v1" || (await transport(`${config.backend}/local/v1/sesion/revocar`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: "{}", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) })).ok;
       const signedOut = await provider(config, "/logout?scope=local", transport, {}, token);
       rotations.delete(config.supabase.origin + ":" + readRefresh(request, config));
-      return clear(revoked.ok && signedOut.ok ? bridge.reply(200, { success: true, message: "Sesión cerrada." }) : bridge.error(503), config, bridge);
+      return clear(revoked && signedOut.ok ? bridge.reply(200, { success: true, message: "Sesión cerrada." }) : bridge.error(503), config, bridge);
     }
     if (action === "registro") {
-      if (!validBirthDate(data.fecha_nacimiento) || (data.nombre as string).trim().length > 200 || !(data.nombre as string).trim() || (data.contrasena as string).length < 8 || (data.contrasena as string).length > 128 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.correo))) return bridge.error(422);
-      // Un reintento en este navegador comparte el comprobante de confirmación pendiente.
+      const name = String(data.nombre).trim();
+      const nameLimit = config.profileContract === "v1" ? 120 : 200;
+      if (!validBirthDate(data.fecha_nacimiento) || !name || name.length > nameLimit || (data.contrasena as string).length < 8 || (data.contrasena as string).length > 128 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.correo))) return bridge.error(422);
       const verifier = readPkce(request, config) || randomBytes(48).toString("base64url");
       const challenge = createHash("sha256").update(verifier).digest("base64url");
-      const response = await provider(config, `/signup?redirect_to=${encodeURIComponent(config.origin + "/web-api/auth/confirmar")}`, transport, { email: data.correo, password: data.contrasena, data: { nombre: (data.nombre as string).trim(), fecha_nacimiento: data.fecha_nacimiento }, code_challenge: challenge, code_challenge_method: "s256" });
+      const response = await provider(config, `/signup?redirect_to=${encodeURIComponent(config.origin + "/web-api/auth/confirmar")}`, transport, { email: data.correo, password: data.contrasena, data: { nombre: name, fecha_nacimiento: data.fecha_nacimiento }, code_challenge: challenge, code_challenge_method: "s256" });
       if (response.status === 429) return bridge.error(429);
       if (response.status >= 500) return bridge.error(503);
       const result = await response.json().catch(() => null);
-      if (!response.ok && (result?.error_code ?? result?.code) !== "user_already_exists") {
-        return bridge.error(422);
-      }
+      if (!response.ok && (result?.error_code ?? result?.code) !== "user_already_exists") return bridge.error(422);
       if (response.ok && (!result || typeof result !== "object" || (result.access_token && !config.localSignupAutoconfirm))) return bridge.error(503);
-      // Local autoconfirmation never establishes a web session. Login still checks identity and profile.
-      const created = bridge.reply(200, { success: true, verificacion_pendiente: true, message: "Si recibes un correo de confirmación, abre el enlace. Si tu cuenta ya está habilitada, inicia sesión." }, { "Set-Cookie": pkceCookie(config, verifier, 3600) });
+      // A local autoconfirmed signup still goes through normal sign-in and profile initialization.
+      const created = bridge.reply(200, { success: true, verificacion_pendiente: true, message: "Revisa tu correo o inicia sesión si tu cuenta ya está confirmada." }, { "Set-Cookie": pkceCookie(config, verifier, 3600) });
       created.headers.append("Set-Cookie", recoveryCookie(config,"",0,true));
       return created;
     }
@@ -294,7 +296,7 @@ export async function handleSupabaseAuth(request: Request, action: string, confi
       if (!response.ok) return bridge.error(response.status === 429 ? 429 : 400);
       const session = tokens(await response.json());
       const identity = await user(config, session.access, transport);
-      await initialize(config, session.access, identity, transport);
+      await initialize(config, session.access, identity, transport, bridge.profilePath(config));
       await provider(config, "/logout?scope=local", transport, {}, session.access);
       return bridge.reply(200, { success: true, message: "Correo verificado. Ya puedes iniciar sesión." }, { "Set-Cookie": pkceCookie(config) });
     }
@@ -315,7 +317,7 @@ export async function handleSupabaseAuth(request: Request, action: string, confi
     } else return bridge.reply(404, { detail: "Ruta no disponible." });
     const session = tokens(result);
     const identity = await user(config, session.access, transport);
-    await initialize(config, session.access, identity, transport);
+    await initialize(config, session.access, identity, transport, bridge.profilePath(config));
     if (!(await bridge.session(config, session.access, transport)).ok) return clear(bridge.error(401), config, bridge);
     const response = bridge.reply(200, { success: true });
     response.headers.append("Set-Cookie", bridge.accessCookie(config, session.access, session.remaining));

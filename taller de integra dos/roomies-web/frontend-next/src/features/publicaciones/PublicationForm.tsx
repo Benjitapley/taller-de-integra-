@@ -31,15 +31,16 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
   }, []);
 
   useEffect(() => {
-    setCommunes([]);
     if (!regionId) return;
-    fetch(`/api/regiones/${regionId}/comunas`, { credentials: "same-origin", cache: "no-store" })
+    const controller = new AbortController();
+    fetch(`/api/regiones/${regionId}/comunas`, { credentials: "same-origin", cache: "no-store", signal: controller.signal })
       .then((response) => response.ok ? response.json() : [])
       .then((value: unknown) => {
-        if (Array.isArray(value)) setCommunes(value.filter((item): item is Commune =>
+        if (!controller.signal.aborted && Array.isArray(value)) setCommunes(value.filter((item): item is Commune =>
           !!item && typeof item === "object" && typeof item.id_comuna === "number" && typeof item.nombre === "string"));
       })
-      .catch(() => setCommunes([]));
+      .catch(() => { if (!controller.signal.aborted) setCommunes([]); });
+    return () => controller.abort();
   }, [regionId]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -105,7 +106,7 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
           </select>
         </label>
         <label>Región
-          <select name="id_region" value={regionId} onChange={(event) => setRegionId(event.target.value)} required>
+          <select name="id_region" value={regionId} onChange={(event) => { setCommunes([]); setRegionId(event.target.value); }} required>
             <option value="" disabled>Selecciona una región</option>
             {regions.map((region) => <option key={region.id_region} value={region.id_region}>{region.nombre}</option>)}
           </select>
