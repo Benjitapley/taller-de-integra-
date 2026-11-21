@@ -15,6 +15,9 @@ function fastApiOrigin(): string {
 }
 
 const nextConfig: NextConfig = {
+  experimental: {
+    agentUpgrade: "security",
+  },
   logging: {
     incomingRequests: { ignore: [/\/web-api\/auth\/(confirmar|recuperacion-callback)/, /[?&](code|token_hash|access_token|refresh_token)=/] },
     serverFunctions: false,
