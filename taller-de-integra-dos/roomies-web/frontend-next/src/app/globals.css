@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light;
+  --primary: #563bdd;
+  --primary-hover: #4930c7;
+  --primary-secondary: #735cf1;
+  --foreground: #25243a;
+  --muted: #69647e;
+  --lavender: #f0ebff;
+  --soft: #f9f7ff;
+  --line: #e9e5f3;
+  --background: #fcfbff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: Inter, "Segoe UI", Arial, sans-serif; line-height: 1.5; }
+button, input, select, textarea { font: inherit; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+a { color: var(--primary); }
+:focus-visible { outline: 3px solid var(--primary-secondary); outline-offset: 4px; }
+h1, h2, h3 { line-height: 1.25; }
+.journey-status { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+.journey-status-pending { background: #fff7d6; color: #8a5b00; }
+.journey-status-positive { background: #dcfce7; color: #166534; }
+.journey-status-negative { background: #fee2e2; color: #991b1b; }
+.journey-status-neutral { background: #eef0f4; color: #4b5563; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
