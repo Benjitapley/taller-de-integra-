@@ -41,6 +41,7 @@ export async function solicitarFormulario(
   opciones: OpcionesFormularioHttp,
 ): Promise<ResultadoHttp> {
   return solicitar(ruta, { ...opciones, metodo: opciones.metodo ?? "POST" }, "formulario");
+  
 }
 
 function esFormulario(cuerpo: unknown): cuerpo is FormData {

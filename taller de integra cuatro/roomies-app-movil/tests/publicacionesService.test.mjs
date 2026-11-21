@@ -5,10 +5,15 @@ import { runInNewContext } from "node:vm";
 import ts from "typescript";
 
 // Ejecuta los módulos reales. Ninguna prueba tiene acceso a Supabase, .env o red.
+let ultimaRuta = null;
+let ultimasOpciones = null;
+let respuestaListado = null;
+
 const cache = new Map();
 const rutas = {
   "@/constants/camposPublicacion": "../src/constants/camposPublicacion.ts",
   "@/mocks/publicaciones": "../src/mocks/publicaciones.ts",
+  "@/adapters/publicacionAdapter": "../src/adapters/publicacionAdapter.ts",
 };
 function cargar(ruta) {
   if (cache.has(ruta)) return cache.get(ruta);
@@ -20,9 +25,11 @@ function cargar(ruta) {
   runInNewContext(compilado, {
     exports: modulo.exports,
     FormData,
+    process,
     require(nombre) {
       if (nombre === "@/services/httpClient") return {
         solicitarFormulario: () => { throw new Error("El transporte real no está permitido en estas pruebas"); },
+        solicitarJson: async (ruta, opciones) => { ultimaRuta = ruta; ultimasOpciones = opciones; return respuestaListado; },
       };
       assert.ok(rutas[nombre], `Dependencia inesperada: ${nombre}`);
       return cargar(rutas[nombre]);
@@ -99,4 +106,62 @@ test("la creación mantiene el error de sesión sin tratarlo como éxito", async
   const error = { exito: false, codigo: "no_autorizado", error: "Sesión rechazada", estadoHttp: 401 };
   const resultado = await servicio.crearPublicacion(valores, async () => error);
   assert.equal(resultado, error);
+});
+
+const publicacionApi = (id) => ({
+  id,
+  titulo: `Publicación ${id}`,
+  tipo: "Arrendador",
+  descripcion: "Casa",
+  precio: 120000.0,
+  ubicacion: "Temuco",
+  estado: "Disponible",
+  cupos_totales: 2,
+  cupos_disponibles: 1,
+  imagen: "/imagenes/p_ejemplo.png",
+});
+
+test("listarPublicaciones envía filtros y paginación y adapta la respuesta", async () => {
+  process.env.EXPO_PUBLIC_IMAGENES_URL = "https://imagenes.ejemplo.test";
+  respuestaListado = { exito: true, estadoHttp: 200, datos: [publicacionApi(33)] };
+
+  const resultado = await servicio.listarPublicaciones(
+    { consulta: "  Temuco ", precioMax: 200000, personas: "2" },
+    3,
+  );
+
+  assert.equal(ultimaRuta, "/api/publicaciones?limite=10&offset=20&consulta=Temuco&precio_max=200000&personas=2");
+  assert.equal(ultimasOpciones.autenticada, false);
+  assert.equal(resultado.exito, true);
+  assert.equal(resultado.publicaciones[0].idPublicacion, 33);
+  assert.equal(resultado.publicaciones[0].cuposDisponibles, 1);
+  assert.equal(resultado.publicaciones[0].imagenPrincipalUrl, "https://imagenes.ejemplo.test/imagenes/p_ejemplo.png");
+  assert.equal(resultado.hayMas, false);
+});
+
+test("listarPublicaciones indica que hay más cuando llega una página completa", async () => {
+  respuestaListado = {
+    exito: true,
+    estadoHttp: 200,
+    datos: Array.from({ length: 10 }, (_, i) => publicacionApi(i + 1)),
+  };
+  const resultado = await servicio.listarPublicaciones();
+  assert.equal(ultimaRuta, "/api/publicaciones?limite=10&offset=0");
+  assert.equal(resultado.hayMas, true);
+});
+
+test("listarPublicaciones propaga el error y rechaza formatos inesperados", async () => {
+  respuestaListado = { exito: false, codigo: "red", error: "Sin conexión" };
+  const conError = await servicio.listarPublicaciones();
+  assert.equal(conError.exito, false);
+  assert.equal(conError.error, "Sin conexión");
+
+  respuestaListado = { exito: true, estadoHttp: 200, datos: { no: "es una lista" } };
+  assert.equal((await servicio.listarPublicaciones()).exito, false);
+});
+
+test("listarPublicaciones avisa si ninguna publicación tiene el formato esperado", async () => {
+  respuestaListado = { exito: true, estadoHttp: 200, datos: [{ id_publicacion: 7, titulo: "X" }] };
+  const resultado = await servicio.listarPublicaciones();
+  assert.equal(resultado.exito, false);
 });

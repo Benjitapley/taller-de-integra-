@@ -16,7 +16,8 @@ export type TipoMascota = 'perro' | 'gato' | 'ave' | 'tortuga' | 'conejo' | 'pez
  */
 export interface Publicacion {
   idPublicacion: number;
-  idUsuario: number;
+  /** El listado público no entrega el autor. */
+  idUsuario?: number;
   tipo: TipoPublicacion;
   titulo: string;
   descripcion: string;

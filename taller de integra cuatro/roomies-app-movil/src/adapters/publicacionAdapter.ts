@@ -1,4 +1,4 @@
-import type { Publicacion } from "@/types/Publicacion";
+import type { EstadoPublicacion, Publicacion, TipoPublicacion } from "@/types/Publicacion";
 
 
 export interface PublicacionBackendAPI {
@@ -33,4 +33,50 @@ export const adaptarPublicacion = (data: PublicacionBackendAPI): ResumenPublicac
 
 export const adaptarListaPublicaciones = (lista: PublicacionBackendAPI[]): ResumenPublicacionBackend[] => {
     return lista.map((item) => adaptarPublicacion(item));
+}
+
+// ---------------------------------------------------------------------------
+// Listado real: GET /api/publicaciones (Listado, vía Gateway).
+// ---------------------------------------------------------------------------
+const TIPOS: TipoPublicacion[] = ['Arrendador', 'Compartida'];
+const ESTADOS: EstadoPublicacion[] = ['Disponible', 'Activa', 'Cerrada'];
+
+function urlImagen(imagen: string, urlBase: string): string {
+    if (/^https?:\/\//.test(imagen)) return imagen;
+    return `${urlBase.replace(/\/+$/, '')}${imagen.startsWith('/') ? '' : '/'}${imagen}`;
+}
+
+/** Convierte una publicación de GET /api/publicaciones; devuelve null si no tiene la forma esperada. */
+export function adaptarPublicacionListado(dato: unknown, urlBase: string): Publicacion | null {
+    if (typeof dato !== 'object' || dato === null) return null;
+    const p = dato as Record<string, unknown>;
+    const precio = Number(p.precio);
+
+    if (
+        typeof p.id !== 'number' ||
+        typeof p.titulo !== 'string' ||
+        typeof p.descripcion !== 'string' ||
+        typeof p.ubicacion !== 'string' ||
+        !Number.isFinite(precio) ||
+        !TIPOS.includes(p.tipo as TipoPublicacion) ||
+        !ESTADOS.includes(p.estado as EstadoPublicacion) ||
+        typeof p.cupos_totales !== 'number' ||
+        typeof p.cupos_disponibles !== 'number'
+    ) {
+        return null;
+    }
+
+    return {
+        idPublicacion: p.id,
+        tipo: p.tipo as TipoPublicacion,
+        titulo: p.titulo,
+        descripcion: p.descripcion,
+        precio,
+        ubicacion: p.ubicacion,
+        estado: p.estado as EstadoPublicacion,
+        cuposTotales: p.cupos_totales,
+        cuposDisponibles: p.cupos_disponibles,
+        imagenPrincipalUrl:
+            typeof p.imagen === 'string' && p.imagen ? urlImagen(p.imagen, urlBase) : undefined,
+    };
 }

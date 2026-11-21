@@ -39,10 +39,6 @@ export default function FiltrosModal({ visible, valores, onCerrar, onAplicar }: 
   const [personas, setPersonas] = useState(valores.personas);
   const [precioMaximo, setPrecioMaximo] = useState(valores.precioMaximo);
 
-  function alternar(lista: string[], item: string, actualizar: (nueva: string[]) => void) {
-    actualizar(lista.includes(item) ? lista.filter((x) => x !== item) : [...lista, item]);
-  }
-
   function limpiar() {
     setZonas([]);
     setPersonas([]);
@@ -69,7 +65,7 @@ export default function FiltrosModal({ visible, valores, onCerrar, onAplicar }: 
                   <Pressable
                     key={zona}
                     style={[styles.chip, activo && styles.chipActivo]}
-                    onPress={() => alternar(zonas, zona, setZonas)}
+                    onPress={() => setZonas(activo ? [] : [zona])}
                   >
                     <Text style={[styles.chipTexto, activo && styles.chipTextoActivo]}>{zona}</Text>
                   </Pressable>
@@ -85,7 +81,7 @@ export default function FiltrosModal({ visible, valores, onCerrar, onAplicar }: 
                   <Pressable
                     key={opcion}
                     style={[styles.chip, activo && styles.chipActivo]}
-                    onPress={() => alternar(personas, opcion, setPersonas)}
+                    onPress={() => setPersonas(activo ? [] : [opcion])}
                   >
                     <Text style={[styles.chipTexto, activo && styles.chipTextoActivo]}>{opcion}</Text>
                   </Pressable>

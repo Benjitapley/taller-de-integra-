@@ -1,5 +1,6 @@
 import { ENVIAR_DETALLE_MASCOTAS, ENVIAR_ENLACE_REFERENCIA } from "@/constants/camposPublicacion";
-import { solicitarFormulario } from "@/services/httpClient";
+import { solicitarFormulario, solicitarJson } from "@/services/httpClient";
+import { adaptarPublicacionListado } from "@/adapters/publicacionAdapter";
 import { publicacionesMock } from "@/mocks/publicaciones";
 import type { ErrorHttp } from "@/types/Http";
 import type {
@@ -309,4 +310,50 @@ export async function obtenerPublicacionPorId(id: string | number): Promise<Publ
   const numero = Number(id);
   if (!Number.isSafeInteger(numero) || numero < 1) return null;
   return publicacionesMock.find((publicacion) => publicacion.idPublicacion === numero) ?? null;
+}
+
+export const TAMANO_PAGINA = 10;
+
+export interface FiltrosListado {
+  consulta?: string;
+  precioMax?: number;
+  personas?: "1" | "2" | "3";
+}
+
+export type ResultadoListado =
+  | { exito: true; publicaciones: Publicacion[]; hayMas: boolean }
+  | { exito: false; error: string };
+
+/** Listado real: GET /api/publicaciones (Listado, vía Gateway), paginado con limite y offset. */
+export async function listarPublicaciones(
+  filtros: FiltrosListado = {},
+  pagina = 1,
+): Promise<ResultadoListado> {
+  const partes = [`limite=${TAMANO_PAGINA}`, `offset=${(pagina - 1) * TAMANO_PAGINA}`];
+  if (filtros.consulta?.trim()) partes.push(`consulta=${encodeURIComponent(filtros.consulta.trim())}`);
+  if (filtros.precioMax !== undefined) partes.push(`precio_max=${filtros.precioMax}`);
+  if (filtros.personas) partes.push(`personas=${filtros.personas}`);
+
+  // El listado es público: no hace falta enviar el token de sesión.
+  const resultado = await solicitarJson(`/api/publicaciones?${partes.join("&")}`, { autenticada: false });
+  if (!resultado.exito) return { exito: false, error: resultado.error };
+  if (!Array.isArray(resultado.datos)) {
+    return { exito: false, error: "El servicio devolvió el listado en un formato inesperado." };
+  }
+
+  // Las imágenes pueden estar en otro servidor que el Gateway.
+  // (Referencias estáticas: así Expo incluye los valores del entorno.)
+  const urlBase =
+    process.env.EXPO_PUBLIC_IMAGENES_URL?.trim() || process.env.EXPO_PUBLIC_API_URL?.trim() || "";
+  const publicaciones = resultado.datos
+    .map((dato) => adaptarPublicacionListado(dato, urlBase))
+    .filter((p): p is Publicacion => p !== null);
+
+  // Si el servicio cambia de formato, es mejor avisar que mostrar una lista vacía.
+  if (resultado.datos.length > 0 && publicaciones.length === 0) {
+    return { exito: false, error: "El servicio devolvió publicaciones en un formato que la app no reconoce." };
+  }
+
+  // La API no entrega el total: si llegó una página completa, puede haber más.
+  return { exito: true, publicaciones, hayMas: resultado.datos.length === TAMANO_PAGINA };
 }

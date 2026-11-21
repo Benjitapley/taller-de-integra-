@@ -1,75 +1,104 @@
-import { useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import BarraBusqueda from "@/components/BarraBusqueda";
+import { CustomButton } from "@/components/CustomButton";
+import EstadoVacio from "@/components/EstadoVacio";
 import FiltrosModal, {
   FILTROS_VACIOS,
   type FiltrosSeleccionados,
 } from "@/components/FiltrosModal";
 import { PublicacionCard } from "@/components/Publicacion_Card";
-import { publicacionesMock } from "@/mocks";
+import { listarPublicaciones, type FiltrosListado } from "@/services/publicacionesService";
 import type { Publicacion } from "@/types/Publicacion";
-import EstadoVacio from './EstadoVacio';
 
+const PERSONAS_API: Record<string, "1" | "2" | "3"> = {
+  "1 persona": "1",
+  "2 personas": "2",
+  "3 o más": "3",
+};
 
-function coincideBusqueda(publicacion: Publicacion, busqueda: string): boolean {
-  const termino = busqueda.trim().toLocaleLowerCase("es-CL");
-  if (!termino) return true;
-
-  return [
-    publicacion.titulo,
-    publicacion.descripcion,
-    publicacion.ubicacion,
-  ].some((campo) => campo.toLocaleLowerCase("es-CL").includes(termino));
+// El servidor solo acepta un texto de búsqueda (`consulta`): si el usuario escribe algo
+// se usa ese texto; si no, se usa la zona elegida.
+function aFiltrosListado(busqueda: string, filtros: FiltrosSeleccionados): FiltrosListado {
+  const precioMax = Number(filtros.precioMaximo);
+  const personas = filtros.personas[0];
+  return {
+    consulta: busqueda.trim() || filtros.zonas[0],
+    precioMax:
+      filtros.precioMaximo !== "" && Number.isFinite(precioMax) && precioMax >= 0
+        ? precioMax
+        : undefined,
+    personas: personas ? PERSONAS_API[personas] : undefined,
+  };
 }
 
-function coincideFiltros(
-  publicacion: Publicacion,
-  filtros: FiltrosSeleccionados,
-): boolean {
-  const coincideZona =
-    filtros.zonas.length === 0 ||
-    filtros.zonas.some((zona) =>
-      publicacion.ubicacion.toLocaleLowerCase("es-CL").includes(zona.toLocaleLowerCase("es-CL")),
-    );
-
-  const coincidePersonas =
-    filtros.personas.length === 0 ||
-    filtros.personas.some((opcion) => {
-      if (opcion === "1 persona") return publicacion.cuposDisponibles === 1;
-      if (opcion === "2 personas") return publicacion.cuposDisponibles === 2;
-      return publicacion.cuposDisponibles >= 3;
-    });
-
-  const precioMaximo = Number(filtros.precioMaximo);
-  const coincidePrecio =
-    !filtros.precioMaximo || Number.isNaN(precioMaximo)
-      ? true
-      : publicacion.precio <= precioMaximo;
-
-  return coincideZona && coincidePersonas && coincidePrecio;
-}
-
-type Props = { publicaciones?: readonly Publicacion[] };
-
-export default function BuscadorPublicaciones({ publicaciones = publicacionesMock }: Props) {
+export default function BuscadorPublicaciones() {
   const [busqueda, setBusqueda] = useState("");
   const [filtrosVisibles, setFiltrosVisibles] = useState(false);
   const [filtros, setFiltros] = useState<FiltrosSeleccionados>(FILTROS_VACIOS);
 
-  const publicacionesFiltradas = useMemo(
-    () =>
-      publicaciones.filter(
-        (publicacion) =>
-          coincideBusqueda(publicacion, busqueda) &&
-          coincideFiltros(publicacion, filtros),
-      ),
-    [publicaciones, busqueda, filtros],
-  );
+  const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
+  const [pagina, setPagina] = useState(1);
+  const [hayMas, setHayMas] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const [error, setError] = useState("");
+  const [errorMas, setErrorMas] = useState("");
+  const [intento, setIntento] = useState(0);
+
+  // Carga la primera página cada vez que cambia la búsqueda o los filtros.
+  // La espera de 400 ms evita una petición por cada letra que se escribe.
+  useEffect(() => {
+    let vigente = true;
+    const espera = setTimeout(async () => {
+      setCargando(true);
+      setError("");
+      setErrorMas("");
+      const resultado = await listarPublicaciones(aFiltrosListado(busqueda, filtros), 1);
+      if (!vigente) return;
+      if (resultado.exito) {
+        setPublicaciones(resultado.publicaciones);
+        setHayMas(resultado.hayMas);
+        setPagina(1);
+      } else {
+        setPublicaciones([]);
+        setHayMas(false);
+        setError(resultado.error);
+      }
+      setCargando(false);
+    }, 400);
+    return () => {
+      vigente = false;
+      clearTimeout(espera);
+    };
+  }, [busqueda, filtros, intento]);
+
+  async function cargarMas() {
+    if (cargandoMas) return;
+    setCargandoMas(true);
+    setErrorMas("");
+    const resultado = await listarPublicaciones(aFiltrosListado(busqueda, filtros), pagina + 1);
+    if (resultado.exito) {
+      // Evita repetir una publicación si el listado cambió entre dos páginas.
+      setPublicaciones((actuales) => {
+        const ids = new Set(actuales.map((p) => p.idPublicacion));
+        return [...actuales, ...resultado.publicaciones.filter((p) => !ids.has(p.idPublicacion))];
+      });
+      setPagina(pagina + 1);
+      setHayMas(resultado.hayMas);
+    } else {
+      setErrorMas(resultado.error);
+    }
+    setCargandoMas(false);
+  }
 
   const hayFiltrosActivos =
     filtros.zonas.length > 0 ||
     filtros.personas.length > 0 ||
     filtros.precioMaximo !== "";
+
+  // La API no entrega el total: el "+" indica que hay más páginas por cargar.
+  const total = `${publicaciones.length}${hayMas ? "+" : ""}`;
 
   return (
     <View style={styles.contenedor}>
@@ -79,11 +108,11 @@ export default function BuscadorPublicaciones({ publicaciones = publicacionesMoc
         onPresionarFiltros={() => setFiltrosVisibles(true)}
       />
 
-      {(busqueda !== "" || hayFiltrosActivos) && (
+      {!cargando && !error && (busqueda !== "" || hayFiltrosActivos) && (
         <View style={styles.resumenBusqueda}>
           <Text style={styles.resumenTexto}>
-            {publicacionesFiltradas.length}{" "}
-            {publicacionesFiltradas.length === 1
+            {total}{" "}
+            {publicaciones.length === 1 && !hayMas
               ? "publicación encontrada"
               : "publicaciones encontradas"}
           </Text>
@@ -92,25 +121,36 @@ export default function BuscadorPublicaciones({ publicaciones = publicacionesMoc
 
       <View style={styles.encabezadoListado}>
         <Text style={styles.tituloListado}>Publicaciones disponibles</Text>
-        <Text style={styles.cantidadListado}>
-          {publicacionesFiltradas.length}
-        </Text>
+        {!cargando && !error ? <Text style={styles.cantidadListado}>{total}</Text> : null}
       </View>
 
-      {publicacionesFiltradas.length > 0 ? (
+      {cargando ? (
+        <ActivityIndicator size="large" color="#4F46E5" />
+      ) : error ? (
+        <View style={styles.errorCaja}>
+          <Text style={styles.errorTexto}>{error}</Text>
+          <CustomButton titulo="Reintentar" onPress={() => setIntento((n) => n + 1)} />
+        </View>
+      ) : publicaciones.length > 0 ? (
         <View style={styles.lista}>
-          {publicacionesFiltradas.map((publicacion) => (
-            <PublicacionCard
-              key={publicacion.idPublicacion}
-              publicacion={publicacion}
-            />
+          {publicaciones.map((publicacion) => (
+            <PublicacionCard key={publicacion.idPublicacion} publicacion={publicacion} />
           ))}
+          {errorMas ? <Text style={styles.errorTexto}>{errorMas}</Text> : null}
+          {hayMas ? (
+            <CustomButton
+              titulo="Cargar más"
+              variante="contorno"
+              cargando={cargandoMas}
+              onPress={cargarMas}
+            />
+          ) : null}
         </View>
       ) : (
         <EstadoVacio
-            titulo="No encontramos publicaciones"
-            mensaje="Prueba buscando en otras zonas o flexibiliza el precio máximo en los filtros."
-            icono="home-outline"
+          titulo="No encontramos publicaciones"
+          mensaje="Prueba buscando en otras zonas o flexibiliza el precio máximo en los filtros."
+          icono="home-outline"
         />
       )}
 
@@ -165,23 +205,13 @@ const styles = StyleSheet.create({
   lista: {
     gap: 12,
   },
-  sinResultados: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 20,
+  errorCaja: {
+    gap: 12,
     alignItems: "center",
   },
-  sinResultadosTitulo: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  sinResultadosTexto: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "#6B7280",
+  errorTexto: {
+    fontSize: 13,
+    color: "#B42318",
     textAlign: "center",
   },
 });
