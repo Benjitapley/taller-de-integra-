@@ -15,6 +15,7 @@ type Publication = {
   cupos?: number | string;
   estado?: string;
   cupos_disponibles?: number | null;
+  id_arriendo?: number | null;
 };
 
 const formatPrice = (value: number | string | undefined) => new Intl.NumberFormat("es-CL", {
@@ -97,6 +98,7 @@ export default function MyPublications() {
         <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
           <Link href={`/publicaciones/${item.id}`}>Ver detalle</Link>
           {item.tipo === "Arrendador" && <Link href={`/postulantes/${item.id}`}>Ver postulantes</Link>}
+          {item.id_arriendo && <Link href="/mi-arriendo">Ver mi arriendo</Link>}
           <Link href={`/editar-publicacion?id=${item.id}`} style={{ display: "inline-block", textDecoration: "none", padding: "10px 14px", borderRadius: 8, background: "#e5e7eb", color: "#111827", fontWeight: 700 }}>Editar</Link>
           <Button variant="secondary" disabled={item.estado === "Cerrada"} onClick={() => void close(item.id)}>Cerrar publicación</Button>
         </div>

@@ -19,7 +19,8 @@
     "test:publications": "node --test tests/publications.test.mjs",
     "test:admin": "node --test tests/admin.test.mjs",
     "test:supabase-auth": "node --test tests/supabase-auth.test.mjs",
-    "test:applications": "node --test tests/applications.test.mjs"
+    "test:applications": "node --test tests/applications.test.mjs",
+    "test:arriendos": "node --test tests/arriendos.test.mjs"
   },
   "dependencies": {
     "next": "16.4.3",
