@@ -6,6 +6,7 @@ x-business: &business
   ROOMIES_JWT_ISSUER: ${ROOMIES_LOCAL_AUTH_ISSUER:?Issuer LOCAL exacto requerido}
   AUTH_USERS_UPSTREAM_URL: http://auth-users:8000
   LISTADO_UPSTREAM_URL: http://listado-applications:8000
+  CONVIVENCIA_UPSTREAM_URL: http://convivencia-mensajeria:8000
   ROOMIES_INTERNAL_TOKEN: ${ROOMIES_LOCAL_SERVICE_TOKEN:?Token interno local de al menos 32 caracteres}
   ROOMIES_ADMIN_SUBJECTS: ${ROOMIES_LOCAL_ADMIN_UUIDS:-}
 services:
@@ -19,10 +20,13 @@ services:
       ROOMIES_AUTH_SQL_PASSWORD: ${ROOMIES_AUTH_SQL_PASSWORD:?Password hexadecimal local requerido}
       ROOMIES_LISTADO_SQL_PASSWORD: ${ROOMIES_LISTADO_SQL_PASSWORD:?Password hexadecimal local requerido}
       ROOMIES_MATCH_SQL_PASSWORD: ${ROOMIES_MATCH_SQL_PASSWORD:?Password hexadecimal local requerido}
+      ROOMIES_CONVIVENCIA_SQL_PASSWORD: ${ROOMIES_CONVIVENCIA_SQL_PASSWORD:?Password hexadecimal local requerido}
     volumes:
       - roomies-local-db:/var/lib/postgresql
       - ./backend/local_stack/bootstrap.sql:/docker-entrypoint-initdb.d/00-bootstrap.sql:ro
       - ./backend/local_stack/passwords.sh:/docker-entrypoint-initdb.d/01-passwords.sh:ro
+      - ./backend/services/convivencia-mensajeria-service/migrations/001_convivencia_mensajeria.up.sql:/docker-entrypoint-initdb.d/02-convivencia-mensajeria.sql:ro
+      - ./backend/services/listado-applications-service/migrations/001_capacity_coordination.up.sql:/docker-entrypoint-initdb.d/03-capacity-coordination.sql:ro
     healthcheck:
       test: [CMD-SHELL, "pg_isready -U roomies_local_owner -d roomies_sprint2_disposable"]
       interval: 5s
@@ -63,6 +67,16 @@ services:
       MATCH_DATABASE_URL: postgresql://sql_match_conexion:${ROOMIES_MATCH_SQL_PASSWORD}@roomies-db:5432/roomies_sprint2_disposable
     depends_on:
       roomies-db: {condition: service_healthy}
+  convivencia-mensajeria:
+    build:
+      context: .
+      dockerfile: backend/services/convivencia-mensajeria-service/Dockerfile
+    environment:
+      <<: *business
+      CONVIVENCIA_DATABASE_URL: postgresql://sql_convivencia_mensajeria:${ROOMIES_CONVIVENCIA_SQL_PASSWORD}@roomies-db:5432/roomies_sprint2_disposable
+      ROOMIES_CURSOR_SECRET: ${ROOMIES_CURSOR_SECRET:?Secreto de cursor exclusivo local de al menos 32 caracteres}
+    depends_on:
+      roomies-db: {condition: service_healthy}
   api-gateway:
     build: ./backend/api-gateway
     environment:
@@ -70,8 +84,9 @@ services:
       AUTH_USERS_UPSTREAM_URL: http://auth-users:8000
       LISTADO_UPSTREAM_URL: http://listado-applications:8000
       MATCH_UPSTREAM_URL: http://match-conexion:8000
+      CONVIVENCIA_UPSTREAM_URL: http://convivencia-mensajeria:8000
     ports: ["127.0.0.1:8010:8000"]
-    depends_on: [auth-users, listado-applications, match-conexion]
+    depends_on: [auth-users, listado-applications, match-conexion, convivencia-mensajeria]
   next-web:
     build:
       context: .
