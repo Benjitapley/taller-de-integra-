@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 
 
 class IdentityFixture:
-    def __init__(self):
+    def __init__(self, admin_key=None):
         self.key = ec.generate_private_key(ec.SECP256R1())
         self.users = {}
         self.refreshes = {}
@@ -34,6 +34,13 @@ class IdentityFixture:
                     if path == "/.well-known/jwks.json":
                         key = json.loads(jwt.algorithms.ECAlgorithm.to_jwk(fixture.key.public_key()))
                         return self.reply(200, {"keys": [{**key, "kid": fixture.key_id, "alg": "ES256", "use": "sig"}]})
+                    if path.startswith("/admin/users/"):
+                        if not admin_key or self.headers.get("apikey") != admin_key:
+                            return self.reply(401, {"error": "invalid_key"})
+                        subject = path.removeprefix("/admin/users/")
+                        record = next((r for r in fixture.users.values() if r["user"]["id"] == subject), None)
+                        return self.reply(200, {**record["user"], "is_anonymous": False,
+                                               "banned_until": None, "deleted_at": None}) if record else self.reply(404, {})
                     if self.headers.get("apikey") != fixture.publishable_key:
                         return self.reply(401, {"error": "invalid_key"})
                     if path == "/signup":

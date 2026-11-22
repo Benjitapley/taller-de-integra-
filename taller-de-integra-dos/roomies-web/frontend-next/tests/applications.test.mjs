@@ -44,3 +44,76 @@ test("errores de autorización se conservan sin detalles internos ni éxito fict
     assert.equal(Boolean(response.headers.get("set-cookie")), status === 401);
   }
 });
+
+test("solo una incorporación confirmada conserva el estado Aceptada", async () => {
+  const accepted = { ...row, estado: "Aceptada", id_arriendo: 12, incorporacion_pendiente: false };
+  const response = await handleApplications(req("GET"), config, async () => Response.json([accepted]));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), [accepted]);
+  for (const invalid of [{ ...accepted, incorporacion_pendiente: true }, { ...accepted, incorporacion_pendiente: "false" }, { ...accepted, id_arriendo: null }, { ...row, estado: "Aceptada" }]) {
+    assert.equal((await handleApplications(req("GET"), config, async () => Response.json([invalid]))).status, 503);
+  }
+  for (const id of [0, -1, true, "12"]) {
+    const response = await handleApplications(req("GET"), config, async () => Response.json([{ ...row, id_arriendo: id }]));
+    assert.equal(response.status, 503);
+  }
+});
+
+const operationKey = "aafab040-efdf-4bd0-a7ed-4dfb5e35b3bb";
+const waiting = { ...row, estado: "Preseleccionada", id_arriendo: null, incorporacion_pendiente: true, operacion: { id_operacion: operationKey, estado: "Pendiente" } };
+
+test("aceptar exige UUID y reenvía la misma clave con Bearer al reintentar", async () => {
+  const transport = () => { throw Error("no-network"); };
+  for (const key of [undefined, "bad-key", ""]) {
+    assert.equal((await handleApplications(req("PATCH", { id: 8, estado: "Aceptada" }, key === undefined ? {} : { "Idempotency-Key": key }), config, transport)).status, 422);
+  }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await handleApplications(req("PATCH", { id: 8, estado: "Aceptada" }, { "Idempotency-Key": operationKey }), config, async (url, options) => {
+      assert.equal(url, config.backend + "/api/postulaciones/8/estado");
+      assert.equal(options.headers["Idempotency-Key"], operationKey);
+      assert.equal(options.headers.Authorization, "Bearer fixture.claims.signature");
+      assert.deepEqual(JSON.parse(options.body), { estado: "Aceptada" });
+      return Response.json(waiting, { status: 202 });
+    });
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), waiting);
+  }
+});
+
+test("consulta individual recupera la operación persistida y filtra campos privados", async () => {
+  const response = await handleApplications(req("GET"), config, async (url, options) => {
+    assert.equal(url, config.backend + "/api/postulaciones/8");
+    assert.equal(options.headers.Authorization, "Bearer fixture.claims.signature");
+    assert.equal(options.cache, "no-store");
+    return Response.json({ ...waiting, internal_token: "private", operacion: { ...waiting.operacion, payload: "private" } });
+  }, "8");
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+  assert.deepEqual(await response.json(), waiting);
+  for (const id of ["../auth/login", "0", "8?owner=999"]) assert.equal((await handleApplications(req("GET"), config, () => { throw Error("no-network"); }, id)).status, 422);
+  const injected = new Request(config.origin + "/web-api/postulaciones/8?publicacion=7", { headers });
+  assert.equal((await handleApplications(injected, config, () => { throw Error("no-network"); }, "8")).status, 422);
+});
+
+test("detalle ajeno y conflictos no revelan datos; un ID diferente nunca confirma éxito", async () => {
+  for (const status of [401, 403, 404, 409, 503]) {
+    const response = await handleApplications(req("GET"), config, async () => Response.json({ ...waiting, private: "database-password" }, { status }), "8");
+    assert.equal(response.status, status);
+    assert.doesNotMatch(await response.text(), /database-password|id_operacion/);
+  }
+  assert.equal((await handleApplications(req("GET"), config, async () => Response.json({ ...waiting, id_postulacion: 9 }), "8")).status, 503);
+  const confirmed = { ...waiting, estado: "Aceptada", id_arriendo: 12, incorporacion_pendiente: false, operacion: { id_operacion: operationKey, estado: "Confirmada" } };
+  const response = await handleApplications(req("PATCH", { id: 8, estado: "Aceptada" }, { "Idempotency-Key": operationKey }), config, async () => Response.json(confirmed));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), confirmed);
+  for (const operation of [{ ...confirmed.operacion, estado: "Pendiente" }, { ...confirmed.operacion, id_operacion: "private" }]) {
+    assert.equal((await handleApplications(req("GET"), config, async () => Response.json({ ...confirmed, operacion: operation }), "8")).status, 503);
+  }
+  for (const inconsistent of [
+    { ...waiting, operacion: null },
+    { ...waiting, incorporacion_pendiente: false },
+    { ...waiting, id_arriendo: 12 },
+    { ...waiting, operacion: { id_operacion: operationKey, estado: "Rechazada" } },
+    [waiting],
+  ]) assert.equal((await handleApplications(req("GET"), config, async () => Response.json(inconsistent), "8")).status, 503);
+});

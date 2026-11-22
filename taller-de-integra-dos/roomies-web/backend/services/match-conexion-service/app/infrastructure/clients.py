@@ -23,10 +23,17 @@ class HttpProfiles:
 class HttpPublications:
     def search(self,filters):
         try:
-            url=service_url("LISTADO_UPSTREAM_URL",docker_hosts=("listado",))
+            url=service_url("LISTADO_UPSTREAM_URL",docker_hosts=("listado", "listado-applications"))
             with httpx.Client(timeout=5,trust_env=False,follow_redirects=False) as client:
-                response=client.get(url+"/api/publicaciones",params=filters)
+                response=client.get(url+"/api/publicaciones",params={"limite":100,**filters})
             response.raise_for_status()
-            return [{"id_publicacion_PK":r["id"],"titulo":r["titulo"],"precio":r["precio"],"ubicacion":r["ubicacion"],"tipo":r["tipo"],"cupos_totales":r["cupos_totales"],"tipo_vivienda":r["tipo_vivienda"],"mascotas":r["mascota"]} for r in response.json()]
+            page=response.json()
+            if not isinstance(page,dict) or not isinstance(page.get("items"),list) or "siguiente_cursor" not in page:
+                raise ValueError()
+            rows=page["items"]
+            if len(rows)>100 or any(not isinstance(row,dict) or type(row.get("id_publicacion")) is not int or row["id_publicacion"]<1 for row in rows):
+                raise ValueError()
+            # shortcut: Match conserva su arreglo de hasta 100; retirar el alias cuando TI4 use el catálogo con cursor.
+            return [{"id_publicacion_PK":r["id_publicacion"],"titulo":r["titulo"],"precio":r["precio"],"ubicacion":r["ubicacion"],"tipo":r["tipo"],"cupos_totales":r["cupos_totales"],"tipo_vivienda":r["tipo_vivienda"],"mascotas":r["mascota"]} for r in rows]
         except Exception:
             raise DependencyUnavailable() from None

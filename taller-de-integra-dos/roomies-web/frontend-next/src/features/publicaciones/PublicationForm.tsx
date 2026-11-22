@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { validatePublicationForm } from "./validation";
+import LocationFields from "./LocationFields";
+import ImageFields from "./ImageFields";
 import styles from "./publicaciones.module.css";
 
 type PublicationKind = "Compartida" | "Arrendador";
-
 export default function PublicationForm({ kind, onBack }: { kind: PublicationKind; onBack: () => void }) {
   const router = useRouter();
+  const operation = useRef<string | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const shared = kind === "Compartida";
@@ -33,7 +35,7 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
         method: "POST",
         body: form,
         credentials: "same-origin",
-        headers: { "X-Haycupo-CSRF": "1" },
+        headers: { "X-Haycupo-CSRF": "1", "Idempotency-Key": operation.current ??= crypto.randomUUID() },
         signal: AbortSignal.timeout(25_000),
       });
       if (response.status === 401) {
@@ -60,7 +62,7 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
     <button className={styles.backButton} type="button" onClick={onBack}>← Cambiar tipo de publicación</button>
     <h2>{kind === "Compartida" ? "Compartir una oportunidad" : "Publicar un arriendo"}</h2>
     <p>{shared ? "Registra la información de un aviso que encontraste fuera de Roomies para buscar con quién compartir ese lugar. No te registras como arrendador." : "Ofrece un espacio que arriendas y recibe postulaciones individuales. Tú podrás revisar y decidir sobre cada solicitud."}</p>
-    <form className={styles.publicationForm} onSubmit={submit} aria-busy={pending}>
+    <form className={styles.publicationForm} onSubmit={submit} onChange={() => { operation.current = null; }} aria-busy={pending}>
       <fieldset disabled={pending}>
         <legend>Detalles de la publicación</legend>
         <label className={styles.fullField}>Título
@@ -77,11 +79,12 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
             <option value="departamento">Departamento</option><option value="habitacion">Habitación</option>
           </select>
         </label>
-        <label>Región y comuna
+        <LocationFields />
+        <label>Dirección o sector
           <input name="ubicacion" required maxLength={250} placeholder="Región y comuna del lugar" />
         </label>
         <label>{shared ? "Precio indicado en el aviso externo (CLP)" : "Precio del arriendo (CLP)"}
-          <input name="precio" type="number" min="0" max="999999999999.99" step="0.01" required />
+          <input name="precio" type="number" min="0" max="999999999999" step="1" required />
         </label>
         <label>{shared ? "Capacidad total indicada en el aviso" : "Capacidad total del espacio"}
           <input name="cupos_totales" type="number" min="1" max="2147483647" step="1" required />
@@ -92,14 +95,7 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
         <label className={styles.fullField}>Descripción
           <textarea name="descripcion" rows={5} maxLength={5000} required placeholder={shared ? "Transcribe la información externa: características, condiciones y dónde encontraste el aviso." : "Describe el espacio, sus características y las reglas que deben conocer los postulantes."} />
         </label>
-        <label className={styles.fullField}>Fotografía (opcional)
-          <input name="imagen" type="file" accept="image/jpeg,image/png,image/webp" />
-          <small>JPG, PNG o WEBP, máximo 5 MB.</small>
-        </label>
-        <label className={`${styles.fullField} ${styles.checkboxField}`}>
-          <input name="permitir_comentarios" type="checkbox" value="true" />
-          Permitir comentarios en esta publicación
-        </label>
+        <div className={styles.fullField}><ImageFields /></div>
         {shared && <label className={`${styles.fullField} ${styles.checkboxField}`}>
           <input name="confirmo_origen" type="checkbox" required />Confirmo que comparto información obtenida externamente y revisaré su disponibilidad. Esta publicación no recibe postulaciones de arrendador.
         </label>}

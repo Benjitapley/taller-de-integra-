@@ -41,6 +41,21 @@ def test_health_and_unconfigured():
     assert result.headers["cache-control"] == "no-store"
 
 
+def test_report_idempotency_key_survives_gateway_without_browser_credentials():
+    def handler(request):
+        assert request.url.host == "reportes.test"
+        assert request.headers["idempotency-key"] == "report-operation-1"
+        assert request.headers["authorization"] == "Bearer synthetic.user.token"
+        assert "cookie" not in request.headers and "x-roomies-service" not in request.headers
+        return reply(201,content=b'{}',headers={"Content-Type":"application/json"})
+    config=Settings(reportes_upstream="http://reportes.test",local_mode=True)
+    result=exercise(handler,method="POST",path="/api/reportes",settings=config,
+        headers={"Idempotency-Key":"report-operation-1","Authorization":"Bearer synthetic.user.token","Cookie":"ignored=1","X-Roomies-Service":"ignored"},json={})
+    assert result.status_code==201
+    for key in ("bad key","x"*81):
+        assert exercise(unexpected,method="POST",path="/api/reportes",settings=config,headers={"Idempotency-Key":key},json={}).status_code==422
+
+
 @pytest.mark.parametrize("method", ["GET", "PATCH"])
 def test_forward_bytes_query_bearer(method, caplog):
     caplog.set_level(logging.DEBUG)
@@ -354,7 +369,7 @@ def test_continuous_upstream_fragments_total_timeout():
 
 
 @pytest.mark.parametrize("field", ["max_request_bytes", "max_response_bytes"])
-@pytest.mark.parametrize("value", [0, -1, 16_777_217, 1.5, True])
+@pytest.mark.parametrize("value", [0, -1, 32_000_001, 1.5, True])
 def test_invalid_size_settings(field, value):
     with pytest.raises(ValueError):
         Settings(**{field: value})

@@ -103,7 +103,11 @@ async function initialize(config: WebAuthConfig, token: string, identity: Record
     headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ nombre: data.nombre, fecha_nacimiento: data.fecha_nacimiento }),
   });
-  if (!response.ok) throw new Error("profile-unavailable");
+  if (response.status !== 200 && response.status !== 201) throw new Error("profile-unavailable");
+  const initialized = await response.json();
+  if (initialized?.inicializado !== true || !Number.isSafeInteger(initialized.id_usuario) || initialized.id_usuario < 1) {
+    throw new Error("profile-unavailable");
+  }
 }
 function validBirthDate(value: unknown) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -264,13 +268,19 @@ export async function handleSupabaseAuth(request: Request, action: string, confi
     }
     if (action === "registro") {
       if (!validBirthDate(data.fecha_nacimiento) || (data.nombre as string).trim().length > 200 || !(data.nombre as string).trim() || (data.contrasena as string).length < 8 || (data.contrasena as string).length > 128 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.correo))) return bridge.error(422);
-      const verifier = randomBytes(48).toString("base64url");
+      // Un reintento en este navegador comparte el comprobante de confirmación pendiente.
+      const verifier = readPkce(request, config) || randomBytes(48).toString("base64url");
       const challenge = createHash("sha256").update(verifier).digest("base64url");
       const response = await provider(config, `/signup?redirect_to=${encodeURIComponent(config.origin + "/web-api/auth/confirmar")}`, transport, { email: data.correo, password: data.contrasena, data: { nombre: (data.nombre as string).trim(), fecha_nacimiento: data.fecha_nacimiento }, code_challenge: challenge, code_challenge_method: "s256" });
-      if (!response.ok) return bridge.error(response.status === 429 ? 429 : 422);
-      const result = await response.json();
-      if (!result || typeof result !== "object" || result.access_token) return bridge.error(503);
-      const created = bridge.reply(200, { success: true, verificacion_pendiente: true, message: "Revisa tu correo para verificar tu cuenta." }, { "Set-Cookie": pkceCookie(config, verifier, 3600) });
+      if (response.status === 429) return bridge.error(429);
+      if (response.status >= 500) return bridge.error(503);
+      const result = await response.json().catch(() => null);
+      if (!response.ok && (result?.error_code ?? result?.code) !== "user_already_exists") {
+        return bridge.error(422);
+      }
+      if (response.ok && (!result || typeof result !== "object" || (result.access_token && !config.localSignupAutoconfirm))) return bridge.error(503);
+      // Local autoconfirmation never establishes a web session. Login still checks identity and profile.
+      const created = bridge.reply(200, { success: true, verificacion_pendiente: true, message: "Si recibes un correo de confirmación, abre el enlace. Si tu cuenta ya está habilitada, inicia sesión." }, { "Set-Cookie": pkceCookie(config, verifier, 3600) });
       created.headers.append("Set-Cookie", recoveryCookie(config,"",0,true));
       return created;
     }

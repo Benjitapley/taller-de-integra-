@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 import anyio
 import httpx
@@ -8,8 +9,8 @@ from starlette.responses import JSONResponse, Response
 
 HOP_HEADERS = {b"connection", b"keep-alive", b"proxy-authenticate", b"proxy-authorization",
                b"te", b"trailer", b"transfer-encoding", b"upgrade", b"content-length"}
-REQUEST_HEADERS = {b"authorization", b"content-type", b"content-encoding", b"accept", b"accept-language"}
-RESPONSE_HEADERS = {b"content-type", b"content-language", b"www-authenticate", b"retry-after"}
+REQUEST_HEADERS = {b"authorization", b"content-type", b"content-encoding", b"accept", b"accept-language", b"idempotency-key"}
+RESPONSE_HEADERS = {b"content-type", b"content-language", b"www-authenticate", b"retry-after", b"idempotency-replayed"}
 
 
 def filtered(headers, allowed):
@@ -21,12 +22,15 @@ def filtered(headers, allowed):
             if name.lower() in allowed and name.lower() not in blocked]
 
 
-def unavailable(status):
+def unavailable(status, origin=None):
     messages = {408: "Tiempo de recepción agotado.", 413: "Solicitud demasiado grande.",
                 415: "Codificación de solicitud no admitida.",
                 502: "Error de comunicación con el servicio.",
                 503: "Servicio no configurado.", 504: "Tiempo de espera agotado."}
-    return JSONResponse({"detail": messages[status]}, status_code=status)
+    headers = {"Cache-Control": "no-store"}
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
+    return JSONResponse({"detail": messages[status]}, status_code=status, headers=headers)
 
 
 class BodyTooLarge(Exception):
@@ -49,16 +53,24 @@ async def forward(request: Request):
 
 
 async def forward_to(request: Request, upstream_url, path):
+    origin = request.headers.get("origin")
     settings = request.app.state.settings
     encodings = [value.strip().lower() for name, value in request.scope["headers"]
                  if name.lower() == b"content-encoding"]
     if encodings and encodings != [b"identity"]:
-        return unavailable(415)
+        return unavailable(415, origin=origin)
     if not upstream_url:
-        return unavailable(503)
+        return unavailable(503, origin=origin)
     url = httpx.URL(upstream_url).copy_with(
         path=path, query=request.scope["query_string"])
     headers = filtered(request.scope["headers"], REQUEST_HEADERS)
+    if path == "/api/reportes" and request.method == "POST":
+        operation = request.headers.getlist("idempotency-key")
+        if len(operation) > 1 or (operation and not re.fullmatch(r"[A-Za-z0-9:_-]{1,80}", operation[0])):
+            return JSONResponse({"codigo":"SOLICITUD_INVALIDA","mensaje":"Clave de envío inválida."}, status_code=422,
+                                headers={"Cache-Control":"no-store"})
+        if operation:
+            headers.append((b"idempotency-key", operation[0].encode("ascii")))
     # Solicitar identidad evita descompresión implícita; a la vuelta se leen bytes raw.
     headers.append((b"accept-encoding", b"identity"))
     receiving = True
@@ -81,19 +93,21 @@ async def forward_to(request: Request, upstream_url, path):
                         and "content-encoding" not in response.headers):
                     # Connection no puede hacer que bytes codificados pierdan
                     # silenciosamente la cabecera necesaria para interpretarlos.
-                    return unavailable(502)
+                    return unavailable(502, origin=origin)
                 if upstream.status_code >= 200 and upstream.status_code not in {204, 304}:
                     response.headers["Content-Length"] = str(len(body))
+                if origin:
+                    response.headers["Access-Control-Allow-Origin"] = origin
                 return response
             finally:
                 # Cerrar también tras cancelación; margen de limpieza máximo 1 s.
                 with anyio.move_on_after(1, shield=True):
                     await upstream.aclose()
     except BodyTooLarge:
-        return unavailable(413 if receiving else 502)
+        return unavailable(413 if receiving else 502, origin=origin)
     except TimeoutError:
-        return unavailable(408 if receiving else 504)
+        return unavailable(408 if receiving else 504, origin=origin)
     except httpx.TimeoutException:
-        return unavailable(504)
+        return unavailable(504, origin=origin)
     except httpx.RequestError:
-        return unavailable(502)
+        return unavailable(502, origin=origin)

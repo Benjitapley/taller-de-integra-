@@ -20,13 +20,15 @@ class ProfileRuleViolation(ValueError):
     """A profile value violates a rule already enforced by the current API."""
 
 
+def age_on(birth_date: date, today: date) -> int:
+    return today.year - birth_date.year - (
+        (today.month, today.day) < (birth_date.month, birth_date.day)
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class ProfileInitialization:
-    """Validated data needed by the proposed, authenticated D02 initialization flow.
-
-    This is an application input, not an approved public HTTP DTO. The email-
-    confirmation check must happen in the future orchestration before use.
-    """
+    """Validated data for creating an initial profile."""
 
     nombre: str
     fecha_nacimiento: date
@@ -41,13 +43,11 @@ class ProfileInitialization:
 
         if type(self.fecha_nacimiento) is not date:
             raise ProfileRuleViolation("fecha_nacimiento debe ser una fecha válida.")
-        today = date.today()
-        age = today.year - self.fecha_nacimiento.year - (
-            (today.month, today.day)
-            < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)
-        )
+        age = age_on(self.fecha_nacimiento, date.today())
         if age < 18:
             raise ProfileRuleViolation("La cuenta debe corresponder a una persona mayor de edad.")
+        if age > 120:
+            raise ProfileRuleViolation("Fecha de nacimiento fuera de rango.")
 
 
 def _validate_text(value: object, field_name: str, max_length: int) -> str:
