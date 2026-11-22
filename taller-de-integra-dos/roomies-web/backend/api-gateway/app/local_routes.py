@@ -53,7 +53,7 @@ def cors_preflight(request: Request, methods: set[str]):
         headers={
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Methods": ", ".join(sorted(methods | {"OPTIONS"})),
-            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Accept-Language, x-roomies-service, x-haycupo-csrf",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Accept-Language, Idempotency-Key, x-roomies-service, x-haycupo-csrf",
             "Access-Control-Max-Age": "86400",
             "Cache-Control": "no-store",
         },

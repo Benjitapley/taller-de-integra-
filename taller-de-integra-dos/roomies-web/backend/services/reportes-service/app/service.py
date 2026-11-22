@@ -1,4 +1,6 @@
 from datetime import datetime
+import hashlib
+import json
 
 import jwt
 
@@ -22,7 +24,12 @@ class Reports:
         self.repository = repository
         self.relationships = relationships
 
-    def create(self, actor_id, data):
+    def create(self, actor_id, data, operation=None):
+        fingerprint = hashlib.sha256(json.dumps(data.model_dump(), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        if operation is not None:
+            previous = self.repository.operation(actor_id, operation, fingerprint)
+            if previous is not None:
+                return previous
         if data.id_usuario_reportado is not None:
             if actor_id == data.id_usuario_reportado or not self.relationships.related_users(actor_id, data.id_usuario_reportado):
                 raise RuleViolation("Para reportar a una persona debes haber tenido una conexión aceptada o haber convivido con ella.", 403)
@@ -32,7 +39,7 @@ class Reports:
                 raise RuleViolation("Publicación no encontrada.", 404)
             if owner == actor_id:
                 raise RuleViolation("No puedes reportar tu propia publicación.", 403)
-        return self.repository.create(actor_id, data)
+        return self.repository.create(actor_id, data, operation, fingerprint) if operation else self.repository.create(actor_id, data)
 
     def mine(self, actor_id, limit, cursor):
         return self._page(actor_id, limit, cursor, "mis-reportes",
