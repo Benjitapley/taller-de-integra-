@@ -49,7 +49,10 @@ def configure(app):
 
     @app.exception_handler(RuleViolation)
     async def rule_error(request, error):
-        return JSONResponse({"detail": error.message}, status_code=error.status)
+        body = {"detail": error.message}
+        if getattr(error, "code", None):
+            body["code"] = error.code
+        return JSONResponse(body, status_code=error.status)
 
     @app.exception_handler(DependencyUnavailable)
     async def dependency_error(request, error):

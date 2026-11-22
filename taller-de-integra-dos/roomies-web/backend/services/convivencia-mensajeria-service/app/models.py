@@ -19,6 +19,13 @@ class Reservation(Incorporation):
     cupos_totales: PositiveId
 
 
+class OccupancyConfirmation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_arriendo: PositiveId
+    ocupacion: Annotated[int, Field(strict=True, ge=0, le=9223372036854775807)]
+    version_ocupacion: PositiveId
+
+
 class Receipt(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id_incorporacion: UUID

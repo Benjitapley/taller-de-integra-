@@ -19,6 +19,7 @@ class RouteGuard:
         path = scope["path"]
         private = (path.rstrip("/") in {"/usuarios/me", "/api/publicaciones/mias", "/api/mis-publicaciones"}
                    or path.startswith("/api/arriendos/")
+                   or path.startswith("/api/postulaciones/")
                    or (path.startswith("/api/publicaciones") and scope["method"] != "GET"))
 
         async def send_private(message):

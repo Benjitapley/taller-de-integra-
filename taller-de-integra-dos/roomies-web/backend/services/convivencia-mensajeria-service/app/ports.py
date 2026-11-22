@@ -7,7 +7,7 @@ import httpx
 from pydantic import ValidationError
 
 from backend.service_runtime.settings import service_url
-from app.models import Reservation, ServiceError, unavailable
+from app.models import Reservation, OccupancyConfirmation, ServiceError, unavailable
 
 
 class IdentityPort(Protocol):
@@ -56,8 +56,10 @@ class HttpPublications:
                 messages = {
                     "NO_CAPACITY": "No quedan cupos disponibles.",
                     "CAPACITY_VERSION_CONFLICT": "La versión de capacidad no coincide.",
-                    "APPLICATION_NOT_ACCEPTED": "La postulación no está aceptada.",
+                    "APPLICATION_NOT_ACCEPTED": "La postulación no tiene una intención de admisión vigente.",
                     "PUBLICATION_CLOSED": "La publicación está cerrada.",
+                    "IDEMPOTENCY_CONFLICT": "La clave corresponde a otra operación.",
+                    "APPLICATION_ALREADY_PROCESSED": "La postulación ya fue incorporada.",
                 }
                 if value.get("code") in messages:
                     raise ServiceError(value["code"], messages[value["code"]])
@@ -79,8 +81,12 @@ class HttpPublications:
             raise unavailable() from None
 
     def confirm(self, key, reservation):
+        try:
+            confirmation = OccupancyConfirmation.model_validate(reservation["confirmacion"]).model_dump()
+        except (KeyError, ValidationError, TypeError):
+            raise unavailable() from None
         path = f"/internal/publicaciones/{reservation['id_publicacion']}/reservas/{reservation['id_reserva']}/confirmacion"
-        self.request("PUT", path, key)
+        self.request("PUT", path, key, confirmation)
 
     def release(self, key, reservation):
         path = f"/internal/publicaciones/{reservation['id_publicacion']}/reservas/{reservation['id_reserva']}"

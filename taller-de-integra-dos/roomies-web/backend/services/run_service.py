@@ -18,6 +18,8 @@ if args.env_file:
 variables = {"auth": "AUTH_USERS_DATABASE_URL", "listado": "LISTADO_DATABASE_URL", "match": "MATCH_DATABASE_URL", "convivencia": "CONVIVENCIA_DATABASE_URL", "reportes": "REPORTES_DATABASE_URL"}
 for name in {"DATABASE_URL", *variables.values()} - {variables.get(args.service)}:
     os.environ.pop(name, None)
+if args.service != "auth":
+    os.environ.pop("ROOMIES_SUPABASE_AUTH_ADMIN_KEY", None)
 paths = {"auth": "backend/services/auth-users-service", "listado": "backend/services/listado-applications-service",
          "match": "backend/services/match-conexion-service", "convivencia": "backend/services/convivencia-mensajeria-service", "reportes": "backend/services/reportes-service", "gateway": "backend/api-gateway"}
 sys.path[:0] = [str(ROOT / paths[args.service]), str(ROOT)]
@@ -54,7 +56,7 @@ try:
             from psycopg import sql
             progressive = persistence_layout() == "haycupo-v1"
             checks = {"auth": [("haycupo.usuario", "id_usuario"), ("auth_users.identidad", "supabase_user_id")] if progressive else [("auth_users.usuario", "supabase_user_id")],
-                      "listado": [("haycupo.publicacion" if progressive else "listado_applications.publicacion", "id_publicacion"), ("listado_applications.postulacion", "id_postulacion")],
+                      "listado": [("haycupo.publicacion" if progressive else "listado_applications.publicacion", "version_capacidad"), ("listado_applications.postulacion", "id_postulacion"), ("listado_applications.admision_operacion", "id_operacion"), ("listado_applications.admision_reserva", "id_operacion")],
                       "match": [("haycupo.conexion" if progressive else "match_conexion.conexion", "id_conexion")],
                       "convivencia": [("convivencia_mensajeria.arriendo", "id_arriendo"), ("convivencia_mensajeria.pertenencia", "id_pertenencia"), ("convivencia_mensajeria.incorporacion", "id_operacion"), ("convivencia_mensajeria.outbox", "id_outbox")],
                       "reportes": [("reportes.reporte", "id_reporte"), ("reportes.operacion_envio", "clave")]}

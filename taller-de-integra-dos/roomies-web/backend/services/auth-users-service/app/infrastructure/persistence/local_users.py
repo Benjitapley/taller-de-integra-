@@ -26,6 +26,11 @@ class PostgresUsers:
             row = connection.execute(self.select + f" WHERE {self.identity_column}=%s", (subject,)).fetchone()
             return User(**row) if row else None
 
+    def get_by_id(self, user_id):
+        with self.connect() as connection:
+            row = connection.execute(self.select + " WHERE u.id_usuario=%s", (user_id,)).fetchone()
+            return User(**row) if row else None
+
     def ensure(self, subject, name, birth_date):
         with self.connect() as connection:
             if self.progressive:

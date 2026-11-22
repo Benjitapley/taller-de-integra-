@@ -4,6 +4,8 @@ import os
 import hmac
 from decimal import Decimal
 from typing import Annotated, Literal
+from uuid import UUID
+from fastapi.encoders import jsonable_encoder
 from fastapi import APIRouter,Depends,Request,HTTPException,Query,Header,Path
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.concurrency import run_in_threadpool
@@ -11,6 +13,7 @@ from fastapi.responses import JSONResponse
 from backend.service_runtime.reporting_security import verify_report_service
 from pydantic import BaseModel,ConfigDict,Field
 from app.application.service import Publications
+from app.application.admissions import Admissions
 from app.domain.publications import available
 from app.infrastructure.repository import PostgresPublications
 from app.infrastructure.clients import UnavailableOccupancy, HttpOwners
@@ -117,6 +120,22 @@ class OccupancyUpdate(BaseModel):
     version_ocupacion:int=Field(strict=True,ge=0,le=9223372036854775807)
 
 
+class ReservationRequest(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    id_operacion:UUID
+    id_postulacion:int=Field(strict=True,gt=0,le=9223372036854775807)
+    id_publicacion:int=Field(strict=True,gt=0,le=9223372036854775807)
+    id_usuario:int=Field(strict=True,gt=0,le=9223372036854775807)
+    version_capacidad:int=Field(strict=True,gt=0,le=9223372036854775807)
+
+
+class ReservationProjection(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    id_arriendo:int=Field(strict=True,gt=0,le=9223372036854775807)
+    ocupacion:int=Field(strict=True,ge=0,le=2147483647)
+    version_ocupacion:int=Field(strict=True,gt=0,le=9223372036854775807)
+
+
 def internal_service(x_roomies_service:str|None=Header(None)):
     expected=os.environ.get("ROOMIES_INTERNAL_TOKEN","")
     if len(expected)<32:
@@ -128,6 +147,21 @@ def internal_service(x_roomies_service:str|None=Header(None)):
 @router.put("/internal/publicaciones/{id}/ocupacion",dependencies=[Depends(internal_service)])
 def occupancy_update(id:int,data:OccupancyUpdate,app=Depends(service)):
     return dto(app.occupancy_update(id,data.ocupacion,data.version_ocupacion),app.occupancy)
+
+
+@router.post("/internal/publicaciones/{id}/reservas",dependencies=[Depends(internal_service)])
+def reserve(id:int,data:ReservationRequest,idempotency_key:str=Header(),app=Depends(service)):
+    return Admissions(app).reserve(id,idempotency_key,data.model_dump(mode="json"))
+
+
+@router.put("/internal/publicaciones/{id}/reservas/{reservation}/confirmacion",dependencies=[Depends(internal_service)])
+def confirm_reservation(id:int,reservation:UUID,data:ReservationProjection,idempotency_key:str=Header(),app=Depends(service)):
+    return Admissions(app).reservation_update(id,idempotency_key,reservation,data.model_dump())
+
+
+@router.delete("/internal/publicaciones/{id}/reservas/{reservation}",dependencies=[Depends(internal_service)])
+def release_reservation(id:int,reservation:UUID,idempotency_key:str=Header(),app=Depends(service)):
+    return Admissions(app).reservation_update(id,idempotency_key,reservation)
 
 
 async def publication_form(request):
@@ -199,15 +233,19 @@ def applicants(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
 
 class Decision(BaseModel):
     model_config=ConfigDict(extra="forbid")
-    estado:Literal["Preseleccionada","Aceptada","Rechazada","Cancelada"]
+    estado:Literal["Preseleccionada","Aceptada","Rechazada"]
     motivo:str|None=Field(default=None,max_length=1000)
 
 
 @router.patch("/api/postulaciones/{id}/estado")
-def decide(id:int,data:Decision,identity=Depends(confirmed_actor),app=Depends(service)):
-    result=app.decide(identity.user_id,id,data.estado,data.motivo)
-    # Sprint 2 registra la decisión; no crea un arriendo ni consume cupos.
-    return {**result,"incorporacion_pendiente":result["estado"]=="Aceptada"}
+def decide(id:int,data:Decision,idempotency_key:str|None=Header(None),identity=Depends(confirmed_actor),app=Depends(service)):
+    status,result=app.decide(identity.user_id,id,data.estado,data.motivo,idempotency_key)
+    return JSONResponse(jsonable_encoder(result),status_code=status)
+
+
+@router.get("/api/postulaciones/{id}")
+def application_detail(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
+    return Admissions(app).detail(identity.user_id,id)
 
 
 @router.get("/internal/v1/resumen")

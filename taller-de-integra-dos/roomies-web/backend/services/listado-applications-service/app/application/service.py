@@ -4,6 +4,7 @@ from backend.service_runtime.contracts import RuleViolation, DependencyUnavailab
 from app.domain.publications import validate_publication, available, transition
 from app.domain import pagination
 from app.application.images import save_publication
+from app.application.admissions import Admissions
 
 
 class Repository(Protocol):
@@ -67,6 +68,7 @@ class Publications:
             row=self.repository.publication(id,lock=True)
             if row is None or row["id_usuario"]!=actor_id:
                 raise RuleViolation("Publicación no encontrada.",404)
+            Admissions(self).guard_mutation(id)
             self.repository.close(id)
         return self.get(id,actor_id)
 
@@ -75,16 +77,19 @@ class Publications:
             row=self.repository.publication(id,lock=True)
             if row is None:
                 raise RuleViolation("Publicación no encontrada.",404)
-            if count > row["cupos_totales"]:
-                raise RuleViolation("Ocupación mayor que la capacidad.",409)
-            if version < row["version_ocupacion"]:
-                return row
-            if version == row["version_ocupacion"] and row["ocupacion_confirmada"] is not None:
-                if count != row["ocupacion_confirmada"]:
-                    raise RuleViolation("La versión de ocupación corresponde a otros datos.",409)
-                return row
-            self.repository.update_occupancy(id,count,version)
+            self.occupancy_update_locked(row,count,version)
         return self.get(id)
+
+    def occupancy_update_locked(self,row,count,version):
+        if count > row["cupos_totales"]:
+            raise RuleViolation("Ocupación mayor que la capacidad.",409)
+        if version < row["version_ocupacion"]:
+            return
+        if version == row["version_ocupacion"] and row["ocupacion_confirmada"] is not None:
+            if count != row["ocupacion_confirmada"]:
+                raise RuleViolation("La versión de ocupación corresponde a otros datos.",409)
+            return
+        self.repository.update_occupancy(row["id_publicacion"],count,version)
 
     def postulate(self,actor_id,id):
         with self.repository.transaction():
@@ -103,7 +108,9 @@ class Publications:
         self.get(id,actor_id)
         return self.repository.applications(publication=id)
 
-    def decide(self,actor_id,id,state,reason=None):
+    def decide(self,actor_id,id,state,reason=None,key=None):
+        if state=="Aceptada":
+            return Admissions(self).accept(actor_id,id,reason,key)
         with self.repository.transaction():
             # Orden estable de locks: publicación antes de postulación.
             application=self.repository.application(id)
@@ -111,7 +118,12 @@ class Publications:
                 raise RuleViolation("Postulación no encontrada.",404)
             publication=self.repository.publication(application["id_publicacion"],lock=True)
             application=self.repository.application(id,lock=True)
+            if publication["id_usuario"]!=actor_id:
+                raise RuleViolation("Solo el arrendador puede decidir.",403)
+            operation=Admissions(self).operations.latest(id)
+            if operation and operation["estado"]=="Pendiente":
+                raise RuleViolation("La aceptación está en curso; consulta su resultado.",409)
             if transition(application,publication,actor_id,state,reason):
                 application=self.repository.change(id,state,(reason or "").strip() or None)
                 self.repository.event(application)
-            return application
+            return 200,Admissions(self).view(application,operation)

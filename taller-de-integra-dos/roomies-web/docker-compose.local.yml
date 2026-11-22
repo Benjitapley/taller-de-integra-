@@ -26,6 +26,7 @@ services:
       - ./backend/services/listado-applications-service/migrations/001_publicaciones_contract.up.sql:/docker-entrypoint-initdb.d/02-publicaciones-contract.sql:ro
       - ./backend/services/listado-applications-service/migrations/002_publication_images.sql:/docker-entrypoint-initdb.d/03-publication-images.sql:ro
       - ./backend/services/listado-applications-service/migrations/003_catalogo_cut.up.sql:/docker-entrypoint-initdb.d/04-catalogo-cut.sql:ro
+      - ./backend/services/listado-applications-service/migrations/004_acceptance_operations.sql:/docker-entrypoint-initdb.d/05-acceptance.sql:ro
     healthcheck:
       test: [CMD-SHELL, "pg_isready -U roomies_local_owner -d roomies_sprint2_disposable"]
       interval: 5s
@@ -38,6 +39,7 @@ services:
     environment:
       <<: *business
       AUTH_USERS_DATABASE_URL: postgresql://sql_auth_users:${ROOMIES_AUTH_SQL_PASSWORD}@roomies-db:5432/roomies_sprint2_disposable
+      ROOMIES_SUPABASE_AUTH_ADMIN_KEY: ${ROOMIES_SUPABASE_AUTH_ADMIN_KEY:-}
       AUTH_NOTIFICATIONS_CURSOR_SECRET: ${AUTH_NOTIFICATIONS_CURSOR_SECRET:-}
       LISTADO_AUTH_JWT_KEY: ${LISTADO_AUTH_JWT_KEY:-}
       CONVIVENCIA_AUTH_JWT_KEY: ${CONVIVENCIA_AUTH_JWT_KEY:-}
