@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "demo": "node scripts/demo.mjs",
     "build": "next build",
     "build:isolated": "node tests/build-isolated.mjs",
     "start": "next start",
@@ -19,7 +20,8 @@
     "test:publications": "node --test tests/publications.test.mjs",
     "test:admin": "node --test tests/admin.test.mjs",
     "test:supabase-auth": "node --test tests/supabase-auth.test.mjs",
-    "test:applications": "node --test tests/applications.test.mjs"
+    "test:applications": "node --test tests/applications.test.mjs",
+    "test:demo": "node --test tests/demo-api.test.mjs tests/demo.test.mjs"
   },
   "dependencies": {
     "next": "16.4.6",

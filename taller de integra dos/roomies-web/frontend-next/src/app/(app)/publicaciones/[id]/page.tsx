@@ -32,7 +32,7 @@ export default async function PublicationDetail({ params }: { params: Promise<{ 
       <p>Cupos disponibles: {text("cupos_disponibles")} · Capacidad total: {text("cupos_totales")}</p>
       <p>Vivienda: {text("tipo_vivienda")} · Mascotas: {text("mascota")}</p>
       <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{text("descripcion")}</p>
-      {config?.provider === "supabase" && publication.tipo === "Arrendador" && publication.estado !== "Cerrada" && <PostulateButton id={Number(id)} />}
+      {(config?.provider === "supabase" || (process.env.NODE_ENV === "development" && process.env.ROOMIES_DEMO_MODE === "1")) && publication.tipo === "Arrendador" && publication.estado !== "Cerrada" && <PostulateButton id={Number(id)} />}
     </> : <p role="alert">No se pudo cargar esta publicación. Vuelve a intentarlo desde Inicio.</p>}</Card>
     <p><Link href="/inicio">Volver a Inicio</Link></p>
   </main>;

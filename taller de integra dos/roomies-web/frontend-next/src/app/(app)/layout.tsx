@@ -13,5 +13,8 @@ export default async function ApplicationLayout({ children }: { children: ReactN
   if (session.status === 401 && await canRenewSession()) redirect("/renovar-sesion");
   if ([401, 403].includes(session.status)) redirect("/");
   if (!session.ok) return <main><h1>Sesión no disponible</h1><p>No se pudo comprobar tu sesión. Intenta nuevamente en unos minutos.</p><Link href="/">Volver al acceso</Link></main>;
-  return <AppShell>{children}</AppShell>;
+  return <AppShell>
+    {process.env.NODE_ENV === "development" && process.env.ROOMIES_DEMO_MODE === "1" && <p className="demo-notice" role="note"><strong>Modo demo local.</strong> Datos ficticios. Puedes editar y publicar para probar; los cambios se borran al reiniciar.</p>}
+    {children}
+  </AppShell>;
 }

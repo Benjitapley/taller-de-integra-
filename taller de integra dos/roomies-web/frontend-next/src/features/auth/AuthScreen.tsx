@@ -12,6 +12,7 @@ import styles from "./auth.module.css";
 export default function AuthScreen({ mode, supabaseAuth = false, notice = "", noticeType = "error", passwordMinimum = 6 }: { mode: AuthMode | "verify"; supabaseAuth?: boolean; notice?: string; noticeType?: "info" | "error"; passwordMinimum?: number }) {
   const register = mode === "register";
   const verify = mode === "verify";
+  const demo = process.env.NODE_ENV === "development" && process.env.ROOMIES_DEMO_MODE === "1";
   return <>
     <header className={styles.topbar}>
       <Link className={styles.brand} href={routes.access}><Icon name="home" size={28} />¿Hay cupo?</Link>
@@ -32,9 +33,10 @@ export default function AuthScreen({ mode, supabaseAuth = false, notice = "", no
       <Card className={styles.card}>
         <h1>{verify ? "Verifica tu correo" : register ? "Crea tu cuenta" : "¡Bienvenido de vuelta!"}</h1>
         <p className={styles.subtitle}>{verify ? (supabaseAuth ? "Abre el enlace de confirmación que recibiste por correo." : "Introduce tu correo y el código de seis dígitos.") : register ? "Encuentra tu próximo espacio ideal." : "Inicia sesión para encontrar tu próximo hogar."}</p>
-        {register && <p className={styles.hint}>Usa un correo al que tengas acceso. Te enviaremos las instrucciones para confirmar tu cuenta.</p>}
+        {demo && <p className="demo-notice" role="note"><strong>Modo demo local.</strong> Usa datos ficticios. Cuenta: <strong>demo@haycupo.test</strong> · Clave: <strong>DemoLocal123!</strong>. El código de verificación es <strong>123456</strong>; no se envían correos.</p>}
+        {register && !demo && <p className={styles.hint}>Usa un correo al que tengas acceso. Te enviaremos las instrucciones para confirmar tu cuenta.</p>}
         {!verify && notice && <p role="status">{notice}</p>}
-        {verify ? supabaseAuth ? <EmailConfirmation error={noticeType === "error" ? notice : ""} notice={noticeType === "info" ? notice : ""} /> : <VerificationForm /> : <AuthForm key={mode} mode={mode} passwordMinimum={passwordMinimum} supabaseAuth={supabaseAuth} />}
+        {verify ? supabaseAuth ? <EmailConfirmation error={noticeType === "error" ? notice : ""} notice={noticeType === "info" ? notice : ""} /> : <VerificationForm /> : <AuthForm key={mode} mode={mode} passwordMinimum={passwordMinimum} supabaseAuth={supabaseAuth} demo={demo} />}
       </Card>
     </main>
   </>;

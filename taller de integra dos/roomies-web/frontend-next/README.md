@@ -22,6 +22,22 @@ Compose, el Gateway expuesto en el host escucha en el puerto 8010.
 `WEB_AUTH_ORIGIN` debe coincidir con el origen público exacto de Next.js.
 Las variables de autenticación y de transporte pertenecen al servidor.
 
+## Demo local sin backend
+
+Desde `frontend-next`, ejecutar `npm run demo` y abrir **http://127.0.0.1:3000**.
+La cuenta es **demo@haycupo.test**, con contraseña **DemoLocal123!**; el formulario
+de acceso viene rellenado. Para registrar otra cuenta ficticia, el código de
+verificación es **123456** y no se envían correos.
+
+La demo permite recorrer las pantallas y probar perfiles, publicaciones,
+postulaciones y conexiones con datos en memoria. Todo se reinicia al cerrar
+la demo con `Ctrl+C`. Solo escucha en este PC, no consulta el backend ni la
+base de datos reales y rechaza `NODE_ENV=production`. `npm run dev` conserva
+el funcionamiento habitual. Chat, favoritos y ajustes siguen pendientes de
+implementación, igual que en la aplicación normal.
+
+Validar la demo con `npm run test:demo`.
+
 ## Rutas
 
 | Ruta | Función |

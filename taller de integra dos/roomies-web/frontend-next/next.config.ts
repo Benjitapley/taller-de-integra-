@@ -15,6 +15,7 @@ function fastApiOrigin(): string {
 }
 
 const nextConfig: NextConfig = {
+  ...(process.env.NODE_ENV === "development" && process.env.ROOMIES_DEMO_MODE === "1" ? { distDir: ".next-demo" } : {}),
   experimental: {
     agentUpgrade: "security",
   },

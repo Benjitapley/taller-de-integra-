@@ -13,14 +13,14 @@ import { useFormReady } from "./useFormReady";
 import { validateAuth, type AuthErrors, type AuthFieldName, type AuthMode, type AuthValues } from "./validation";
 import styles from "./auth.module.css";
 
-export default function AuthForm({ mode, passwordMinimum = 6, supabaseAuth = false }: { mode: AuthMode; passwordMinimum?: number; supabaseAuth?: boolean }) {
+export default function AuthForm({ mode, passwordMinimum = 6, supabaseAuth = false, demo = false }: { mode: AuthMode; passwordMinimum?: number; supabaseAuth?: boolean; demo?: boolean }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
   const register = mode === "register";
   const ready = useFormReady();
-  const [values, setValues] = useState<AuthValues>({ nombre: "", correo: "", contrasena: "", fecha_nacimiento: "" });
+  const [values, setValues] = useState<AuthValues>({ nombre: "", correo: demo && !register ? "demo@haycupo.test" : "", contrasena: demo && !register ? "DemoLocal123!" : "", fecha_nacimiento: "" });
   const [errors, setErrors] = useState<AuthErrors>({});
   const [submitted, setSubmitted] = useState(false);
   function update(name: AuthFieldName, value: string) {
@@ -59,7 +59,7 @@ export default function AuthForm({ mode, passwordMinimum = 6, supabaseAuth = fal
     <noscript><p>Activa JavaScript para validar el formulario. El envío seguro requiere JavaScript.</p></noscript>
     <FormMessage error={submitted && (invalid || failed)}>{submitted ? invalid ? "Revisa los campos indicados." : message : null}</FormMessage>
     <p className={styles.switch}>{register ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?"} <Link href={register ? routes.access : routes.register}>{register ? "Iniciar sesión" : "Crear cuenta nueva"}</Link></p>
-    {!register && <p><Link href="/recuperar-contrasena">¿Olvidaste tu contraseña?</Link></p>}
+    {!register && !demo && <p><Link href="/recuperar-contrasena">¿Olvidaste tu contraseña?</Link></p>}
     {supabaseAuth
       ? <nav aria-label="Pasos de acceso" className={styles.flowLinks}><Link href={routes.verify}>Verificar mi correo</Link></nav>
       : <AuthFlowLinks screen={mode} />}
