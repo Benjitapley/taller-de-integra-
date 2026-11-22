@@ -18,6 +18,8 @@
     "test:connections": "node --test tests/connections.test.mjs",
     "test:publications": "node --test tests/publications.test.mjs",
     "test:admin": "node --test tests/admin.test.mjs",
+    "test:reports": "node --test tests/reportes.test.mjs tests/admin-reportes.test.mjs",
+    "test:reports-browser": "node --test tests/reportes-browser.test.mjs",
     "test:supabase-auth": "node --test tests/supabase-auth.test.mjs",
     "test:applications": "node --test tests/applications.test.mjs"
   },

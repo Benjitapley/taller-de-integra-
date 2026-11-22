@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 import anyio
 import httpx
@@ -63,6 +64,13 @@ async def forward_to(request: Request, upstream_url, path):
     url = httpx.URL(upstream_url).copy_with(
         path=path, query=request.scope["query_string"])
     headers = filtered(request.scope["headers"], REQUEST_HEADERS)
+    if path == "/api/reportes" and request.method == "POST":
+        operation = request.headers.getlist("idempotency-key")
+        if len(operation) > 1 or (operation and not re.fullmatch(r"[A-Za-z0-9:_-]{1,80}", operation[0])):
+            return JSONResponse({"codigo":"SOLICITUD_INVALIDA","mensaje":"Clave de envío inválida."}, status_code=422,
+                                headers={"Cache-Control":"no-store"})
+        if operation:
+            headers.append((b"idempotency-key", operation[0].encode("ascii")))
     # Solicitar identidad evita descompresión implícita; a la vuelta se leen bytes raw.
     headers.append((b"accept-encoding", b"identity"))
     receiving = True

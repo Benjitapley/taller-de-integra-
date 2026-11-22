@@ -4,7 +4,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Path, Query
+from fastapi import Depends, FastAPI, Header, Path, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
@@ -93,8 +93,9 @@ def health():
 
 
 @app.post("/api/reportes", status_code=201, response_model=Report)
-def create(data: ReportInput, identity: Annotated[Actor, Depends(confirmed_actor)], service: Annotated[Reports, Depends(reports)]):
-    return service.create(identity.user_id, data)
+def create(data: ReportInput, identity: Annotated[Actor, Depends(confirmed_actor)], service: Annotated[Reports, Depends(reports)],
+           idempotency_key: Annotated[str | None, Header(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9:_-]+$")] = None):
+    return service.create(identity.user_id, data, idempotency_key)
 
 
 @app.get("/api/reportes/mios", response_model=ReportPage)
