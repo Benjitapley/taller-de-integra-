@@ -1,0 +1,174 @@
+/* [project]/src/features/publicaciones/publicaciones.module.css [app-client] (css) */
+.publicaciones-module__el0XIG__publishContent {
+  max-width: 811px;
+  padding-top: 15px;
+}
+
+.publicaciones-module__el0XIG__typeGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 21px;
+  display: grid;
+}
+
+.publicaciones-module__el0XIG__publishInfo {
+  color: var(--muted);
+  margin-top: 26px;
+  font-size: 13px;
+}
+
+.publicaciones-module__el0XIG__formSection {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 20px;
+  padding: 24px;
+}
+
+.publicaciones-module__el0XIG__backButton {
+  color: var(--primary);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-weight: 700;
+}
+
+.publicaciones-module__el0XIG__formSection > h2 {
+  color: var(--primary);
+  margin: 20px 0 5px;
+  font-size: 22px;
+}
+
+.publicaciones-module__el0XIG__formSection > p {
+  color: var(--muted);
+  margin: 0 0 20px;
+  font-size: 13px;
+}
+
+.publicaciones-module__el0XIG__publicationForm fieldset {
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 18px;
+  display: grid;
+}
+
+.publicaciones-module__el0XIG__publicationForm legend {
+  color: var(--primary);
+  padding: 0 7px;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.publicaciones-module__el0XIG__publicationForm label {
+  color: var(--foreground);
+  align-content: start;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 650;
+  display: grid;
+}
+
+.publicaciones-module__el0XIG__publicationForm input:not([type="checkbox"]), .publicaciones-module__el0XIG__publicationForm select, .publicaciones-module__el0XIG__publicationForm textarea {
+  border: 1px solid var(--line);
+  width: 100%;
+  min-width: 0;
+  color: var(--foreground);
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 400;
+}
+
+.publicaciones-module__el0XIG__publicationForm small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.publicaciones-module__el0XIG__fullField {
+  grid-column: 1 / -1;
+}
+
+.publicaciones-module__el0XIG__checkboxField {
+  flex-direction: row;
+  align-items: center;
+  gap: 9px !important;
+  display: flex !important;
+}
+
+.publicaciones-module__el0XIG__checkboxField input {
+  accent-color: var(--primary);
+}
+
+.publicaciones-module__el0XIG__formActions {
+  grid-column: 1 / -1;
+  gap: 10px;
+  display: flex;
+}
+
+.publicaciones-module__el0XIG__formError {
+  color: #a3211b;
+  background: #fff1f0;
+  border-radius: 10px;
+  margin: 14px 0;
+  padding: 12px;
+}
+
+.publicaciones-module__el0XIG__publicationType {
+  flex-direction: column;
+  min-height: 330px;
+  padding: 31px;
+  display: flex;
+}
+
+.publicaciones-module__el0XIG__largeIcon {
+  color: var(--primary);
+  background: var(--lavender);
+  border-radius: 13px;
+  flex-shrink: 0;
+  place-items: center;
+  width: 67px;
+  height: 67px;
+  display: grid;
+}
+
+.publicaciones-module__el0XIG__publicationType h2 {
+  color: var(--primary);
+  margin: 22px 0 12px;
+  font-size: 23px;
+}
+
+.publicaciones-module__el0XIG__publicationType p {
+  color: var(--muted);
+  min-height: 42px;
+  margin: 0 0 20px;
+  font-size: 13px;
+}
+
+.publicaciones-module__el0XIG__publicationType > button {
+  width: 100%;
+  margin-top: auto;
+}
+
+@media (max-width: 767px) {
+  .publicaciones-module__el0XIG__typeGrid, .publicaciones-module__el0XIG__publicationForm fieldset {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .publicaciones-module__el0XIG__formSection {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .publicaciones-module__el0XIG__publicationType {
+    padding: 24px;
+  }
+
+  .publicaciones-module__el0XIG__publicationForm fieldset {
+    padding: 13px;
+  }
+}
+
+/*# sourceMappingURL=src_features_publicaciones_publicaciones_module_css_1igg3k2-ikub5._.single.css.map*/
