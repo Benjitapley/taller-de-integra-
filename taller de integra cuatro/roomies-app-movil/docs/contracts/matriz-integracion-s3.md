@@ -82,19 +82,3 @@
 "siguiente_cursor": "eyJpZCI6MX0="
 }
 
-## 3. Decisiones y divergencias abiertas
-
-1. **Lectura de integrantes para dueño no residente (M4S3-B04):**
-* *Acuerdo:* TI2 confirmó que el endpoint para consultar integrantes (tanto para residentes como para dueño no residente) es GET /api/arriendos/{id_arriendo}/integrantes.
-* *Estado:* **Resuelto**.
-
-
-2. **Campo confirmo vs. confirmar:**
-* *Problema:* El contrato PDF indica confirmo, mientras que la PR #37 usa confirmar.
-* *Acción:* El móvil implementará el nombre exacto que quede publicado en el anexo contractual.
-* *Estado:* Pendiente de confirmación TI2.
-
-
-3. **Estado actual de src/services/publicacionesService.ts en main:**
-* La creación ya utiliza POST /api/publicaciones (multipart) mediante solicitarFormulario.
-* Listado y detalle conservan publicacionesMock hasta que se ejecuten M4S3-B02 y M4S3-B03.
