@@ -5,9 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import PageHeader from "@/components/layout/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import PublicationImages, { type ExistingPublicationImage } from "./PublicationImages";
+import { validatePublicationForm } from "./validation";
 
 type Publication = {
   id: number;
+  id_publicacion?: number;
+  id_region?: number | null;
+  id_comuna?: number | null;
+  imagenes?: ExistingPublicationImage[];
+  imagen?: string | null;
   titulo: string;
   categoria?: string;
   tipo_vivienda?: string;
@@ -32,6 +39,9 @@ function PublicationEditor({ id }: { id: string }) {
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const [loading, setLoading] = useState(Boolean(id));
+  const [communes, setCommunes] = useState<{ id_comuna: number; nombre: string }[]>([]);
+  const [keptImageIds, setKeptImageIds] = useState<number[]>([]);
+  const [newImages, setNewImages] = useState<File[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -39,12 +49,24 @@ function PublicationEditor({ id }: { id: string }) {
       .then(async (response) => {
         if (!response.ok) throw new Error("No se pudo cargar la publicación para editar.");
         const data = await response.json();
-        if (!controller.signal.aborted) setPublication(data);
+        if (!controller.signal.aborted) {
+          setPublication(data);
+          setKeptImageIds(Array.isArray(data.imagenes) ? data.imagenes.map((image: ExistingPublicationImage) => image.id_imagen) : []);
+        }
       }).catch(() => {
         if (!controller.signal.aborted) setMessage("No se pudo cargar la publicación para editar.");
       }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/regiones/9/comunas", { credentials: "same-origin", cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("catalog")))
+      .then((value: unknown) => { if (!controller.signal.aborted && Array.isArray(value)) setCommunes(value); })
+      .catch(() => { if (!controller.signal.aborted) setMessage("No se pudo cargar el catálogo de comunas."); });
+    return () => controller.abort();
+  }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,6 +76,10 @@ function PublicationEditor({ id }: { id: string }) {
     if (!publication?.tipo) { setMessage("No se pudo determinar el tipo original. Recarga la publicación."); return; }
     form.set("tipo", publication.tipo);
     form.set("permitir_comentarios", form.has("permitir_comentarios") ? "true" : "false");
+    for (const imageId of keptImageIds) form.append("imagenes_conservar", String(imageId));
+    for (const image of newImages) form.append("imagenes", image);
+    const validationError = validatePublicationForm(form);
+    if (validationError) { setMessage(validationError); return; }
 
     setPending(true);
     setMessage("");
@@ -71,7 +97,7 @@ function PublicationEditor({ id }: { id: string }) {
         setMessage(payload?.detail || "No se pudo guardar la publicación.");
         return;
       }
-
+      setPublication(payload);
       router.push("/mis-publicaciones");
     } catch {
       setMessage("No se pudo actualizar la publicación.");
@@ -112,27 +138,14 @@ function PublicationEditor({ id }: { id: string }) {
               <option value="habitacion">Habitación</option>
             </select>
           </label>
-          <label style={{ display: "grid", gap: 8 }}>
-            <span>Región</span>
-            <select name="id_region" required defaultValue="9" style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}>
-              <option value="9">La Araucanía</option>
-            </select>
-          </label>
-          <label style={{ display: "grid", gap: 8 }}>
-            <span>Comuna</span>
-            <select name="id_comuna" required defaultValue="9101" style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}>
-              <option value="9101">Temuco</option>
-              <option value="9102">Padre Las Casas</option>
-              <option value="9103">Angol</option>
-              <option value="9104">Villarrica</option>
-              <option value="9105">Pucón</option>
-              <option value="9106">Lautaro</option>
-              <option value="9107">Nueva Imperial</option>
-              <option value="9108">Carahue</option>
-              <option value="9109">Gorbea</option>
-              <option value="9110">Lonquimay</option>
-            </select>
-          </label>
+          {publication.id_comuna && publication.id_region === 9 ? <>
+            <label style={{ display: "grid", gap: 8 }}><span>Región</span><input type="hidden" name="id_region" value="9" /><span>La Araucanía</span></label>
+            <label style={{ display: "grid", gap: 8 }}><span>Comuna</span>
+              <select name="id_comuna" required defaultValue={String(publication.id_comuna)} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}>
+                {communes.map((commune) => <option key={commune.id_comuna} value={commune.id_comuna}>{commune.nombre}</option>)}
+              </select>
+            </label>
+          </> : <label style={{ display: "grid", gap: 8 }}><span>Ubicación (se conserva sin cambios)</span><input type="hidden" name="ubicacion" value={publication.ubicacion || ""} /><span>{publication.ubicacion}</span></label>}
           <label style={{ display: "grid", gap: 8 }}>
             <span>Precio</span>
             <input name="precio" type="number" min="0" max="999999999999" step="1" required defaultValue={publication.precio ?? 0} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }} />
@@ -148,16 +161,14 @@ function PublicationEditor({ id }: { id: string }) {
               <option value="no">No</option>
             </select>
           </label>
-          <label style={{ display: "grid", gap: 8 }}>
-            <span>Imagen (opcional)</span>
-            <input type="file" name="imagen" accept="image/jpeg,image/png,image/webp" style={{ padding: 10 }} />
-          </label>
         </div>
 
         <label style={{ display: "grid", gap: 8 }}>
           <span>Descripción</span>
           <textarea name="descripcion" rows={6} required maxLength={5000} defaultValue={publication.descripcion || ""} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db", resize: "vertical" }} />
         </label>
+
+        <PublicationImages existing={publication.imagenes ?? []} keptIds={keptImageIds} onKeptIdsChange={setKeptImageIds} files={newImages} onFilesChange={setNewImages} />
 
         <label><input type="checkbox" name="permitir_comentarios" defaultChecked={publication.permitir_comentarios} /> Permitir comentarios</label>
         {message ? <p role="alert" style={{ color: "#b91c1c", margin: 0 }}>{message}</p> : null}

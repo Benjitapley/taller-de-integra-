@@ -7,7 +7,9 @@ from backend.service_runtime.settings import database_url, persistence_layout
 from backend.service_runtime.contracts import RuleViolation
 
 SELECT="""SELECT p.*,(SELECT i.url FROM listado_applications.imagen_publicacion i
- WHERE i.id_publicacion=p.id_publicacion ORDER BY i.orden,i.id_imagen LIMIT 1) AS imagen
+ WHERE i.id_publicacion=p.id_publicacion ORDER BY i.orden,i.id_imagen LIMIT 1) AS imagen,
+ COALESCE((SELECT json_agg(json_build_object('id_imagen',i.id_imagen,'url',i.url,'orden',i.orden) ORDER BY i.orden,i.id_imagen)
+ FROM listado_applications.imagen_publicacion i WHERE i.id_publicacion=p.id_publicacion),'[]'::json) AS imagenes
  FROM listado_applications.publicacion p"""
 
 
@@ -78,12 +80,17 @@ class PostgresPublications:
     def close(self,id):
         self.query("UPDATE listado_applications.publicacion SET estado='Cerrada' WHERE id_publicacion=%s RETURNING id_publicacion",(id,))
 
-    def image(self,id,reference):
-        old=self.query("SELECT id_imagen FROM listado_applications.imagen_publicacion WHERE id_publicacion=%s ORDER BY orden,id_imagen LIMIT 1",(id,))
-        if old:
-            self.query("UPDATE listado_applications.imagen_publicacion SET url=%s WHERE id_imagen=%s RETURNING id_imagen",(reference,old["id_imagen"]))
-        else:
-            self.query("INSERT INTO listado_applications.imagen_publicacion (id_publicacion,url,orden) VALUES (%s,%s,0) RETURNING id_imagen",(id,reference))
+    def images(self,id):
+        return self.query("SELECT id_imagen,url,orden FROM listado_applications.imagen_publicacion WHERE id_publicacion=%s ORDER BY orden,id_imagen",(id,),True)
+
+    def image(self,id,reference,orden):
+        return self.query("INSERT INTO listado_applications.imagen_publicacion (id_publicacion,url,orden) VALUES (%s,%s,%s) RETURNING id_imagen,url,orden",(id,reference,orden))
+
+    def order_image(self,id,image_id,orden):
+        self.query("UPDATE listado_applications.imagen_publicacion SET orden=%s WHERE id_publicacion=%s AND id_imagen=%s RETURNING id_imagen",(orden,id,image_id))
+
+    def remove_image(self,id,image_id):
+        return self.query("DELETE FROM listado_applications.imagen_publicacion WHERE id_publicacion=%s AND id_imagen=%s RETURNING url",(id,image_id))
 
     def postulate(self,id,user_id):
         try:

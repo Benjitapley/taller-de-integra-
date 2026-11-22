@@ -353,11 +353,15 @@ def test_continuous_upstream_fragments_total_timeout():
     assert result.headers["cache-control"] == "no-store"
 
 
-@pytest.mark.parametrize("field", ["max_request_bytes", "max_response_bytes"])
-@pytest.mark.parametrize("value", [0, -1, 16_777_217, 1.5, True])
-def test_invalid_size_settings(field, value):
+@pytest.mark.parametrize("field,invalid_value", [
+    ("max_request_bytes", 0), ("max_request_bytes", -1), ("max_request_bytes", 32_000_001),
+    ("max_response_bytes", 0), ("max_response_bytes", -1), ("max_response_bytes", 16_777_217),
+    ("max_request_bytes", 1.5), ("max_response_bytes", 1.5),
+    ("max_request_bytes", True), ("max_response_bytes", True),
+])
+def test_invalid_size_settings(field, invalid_value):
     with pytest.raises(ValueError):
-        Settings(**{field: value})
+        Settings(**{field: invalid_value})
 
 
 def test_new_environment_settings(monkeypatch):

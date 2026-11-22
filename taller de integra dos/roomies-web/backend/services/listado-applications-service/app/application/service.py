@@ -11,7 +11,10 @@ class Repository(Protocol):
     def create(self, owner, data): ...
     def update(self, id, data): ...
     def close(self, id): ...
-    def image(self, id, reference): ...
+    def images(self, id): ...
+    def image(self, id, reference, order): ...
+    def order_image(self, id, image_id, order): ...
+    def remove_image(self, id, image_id): ...
     def postulate(self, id, user_id): ...
     def application(self, id, lock=False): ...
     def applications(self, owner=None, publication=None): ...
@@ -53,11 +56,18 @@ class Publications:
                 continue  # No inventar vacantes de Activa sin Convivencia.
         return result
 
-    def save(self,actor_id,data,image=None,id=None):
+    def save(self,actor_id,data,images=None,id=None,keep_image_ids=None):
         data=validate_publication(data)
         if id is None and data["tipo"] == "Arrendador" and data["categoria"] != "ofrezco":
             raise RuleViolation("Una publicación de arrendador debe ofrecer un espacio.")
-        reference=None
+        images=list(images or [])
+        keep_image_ids=list(keep_image_ids or [])
+        if id is None and keep_image_ids:
+            raise RuleViolation("No puedes conservar imágenes de otra publicación.")
+        if len(images)+len(keep_image_ids)>5:
+            raise RuleViolation("Puedes adjuntar hasta 5 imágenes.")
+        references=[]
+        removed=[]
         try:
             with self.repository.transaction():
                 if id is None:
@@ -70,13 +80,31 @@ class Publications:
                         raise RuleViolation("El tipo original no puede modificarse.",409)
                     if previous["estado"]=="Activa" and data["cupos_totales"] < previous["cupos_totales"]:
                         raise RuleViolation("La reducción de capacidad requiere confirmar ocupación.",409)
+                    current=self.repository.images(id)
+                    current_by_id={int(image["id_imagen"]):image for image in current}
+                    if len(set(keep_image_ids))!=len(keep_image_ids) or any(image_id not in current_by_id for image_id in keep_image_ids):
+                        raise RuleViolation("La selección de imágenes ya no está vigente. Recarga la publicación.",409)
+                    removed=[current_by_id[image_id]["url"] for image_id in current_by_id if image_id not in keep_image_ids]
                     self.repository.update(id,data)
-                reference=self.images.save(image)
-                if reference:
-                    self.repository.image(id,reference)
+                    for order,image_id in enumerate(keep_image_ids):
+                        self.repository.order_image(id,image_id,order)
+                    for image_id in current_by_id:
+                        if image_id not in keep_image_ids:
+                            self.repository.remove_image(id,image_id)
+                order=len(keep_image_ids)
+                for image_data in images:
+                    reference=self.images.save(image_data)
+                    if reference:
+                        references.append(reference)
+                        self.repository.image(id,reference,order)
+                        order+=1
+            for reference in removed:
+                try: self.images.delete(reference)
+                except Exception: pass
             return id
         except Exception:
-            self.images.delete(reference)
+            for reference in references:
+                self.images.delete(reference)
             raise
 
     def close(self,actor_id,id):

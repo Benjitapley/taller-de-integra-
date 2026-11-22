@@ -13,7 +13,7 @@ async function readForm(request: Request): Promise<FormData | null> {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.length;
-    if (size > publicationImageLimit + 65_536) {
+    if (size > publicationImageLimit * 5 + 65_536) {
       await reader.cancel();
       throw new RangeError("form-too-large");
     }
@@ -62,7 +62,7 @@ export async function handleSavePublication(
   try {
     form = await readForm(request);
   } catch (error) {
-    if (error instanceof RangeError) return authReply(413, { detail: "El formulario supera el tamaño permitido de 5 MB." });
+    if (error instanceof RangeError) return authReply(413, { detail: "El formulario supera el tamaño permitido para 5 imágenes." });
     return authReply(422, { detail: "El formulario no es válido." });
   }
   if (!form) return authReply(422, { detail: "El formulario no es válido." });
@@ -80,18 +80,26 @@ export async function handleSavePublication(
     });
     if (saved.status === 401) return expired();
     if (saved.status === 403) return authReply(403, { detail: "No tienes permiso para crear publicaciones." });
-    if (saved.status === 413) return authReply(413, { detail: "La imagen debe pesar como máximo 5 MB." });
+    if (saved.status === 413) return authReply(413, { detail: "Cada imagen debe pesar como máximo 5 MB." });
+    if (saved.status === 409) {
+      let payload: unknown;
+      try { payload = await saved.json(); } catch { payload = null; }
+      return authReply(409, { detail: upstreamDetail(payload) ?? "La capacidad cambió mientras editabas. Actualiza la publicación e inténtalo de nuevo." });
+    }
     if (saved.status === 422) {
       let payload: unknown;
       try { payload = await saved.json(); } catch { payload = null; }
       return authReply(422, { detail: upstreamDetail(payload) ?? "Revisa los campos y selecciona una imagen válida." });
     }
     if (!saved.ok) return unavailable();
-    if (method === "PUT") return authReply(200, { mensaje: "Publicación actualizada" });
     const result: unknown = await saved.json();
-    if (!result || typeof result !== "object" || !("id" in result) ||
-        !Number.isSafeInteger(result.id) || (result.id as number) < 1) return unavailable();
-    return authReply(201, { id: result.id, mensaje: "Publicación creada" });
+    if (!result || typeof result !== "object") return unavailable();
+    const resultId = "id_publicacion" in result ? result.id_publicacion : "id" in result ? result.id : null;
+    if (!Number.isSafeInteger(resultId) || Number(resultId) < 1) {
+      if (method === "PUT") return authReply(200, { mensaje: "Publicación actualizada" });
+      return unavailable();
+    }
+    return authReply(method === "PUT" ? 200 : 201, { ...publication(result), mensaje: method === "PUT" ? "Publicación actualizada" : "Publicación creada" });
   } catch {
     return unavailable();
   }
@@ -100,11 +108,16 @@ export async function handleSavePublication(
 export const handleCreatePublication = handleSavePublication;
 
 type Operation = "mine" | "edit" | "close";
-const fields = ["id", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos", "cupos_totales", "cupos_disponibles", "imagen", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios"];
+const fields = ["id", "id_publicacion", "titulo", "precio", "estado", "tipo", "ubicacion", "id_region", "id_comuna", "cupos", "cupos_totales", "cupos_disponibles", "imagen", "imagenes", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios"];
 function publication(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || !("id" in value) || !Number.isSafeInteger(value.id) || Number(value.id) < 1) throw new Error("Invalid response");
+  if (!value || typeof value !== "object") throw new Error("Invalid response");
   const source = value as Record<string, unknown>;
-  return Object.fromEntries(fields.filter((key) => key in source).map((key) => [key, source[key]]));
+  const id = source.id_publicacion ?? source.id;
+  if (!Number.isSafeInteger(id) || Number(id) < 1) throw new Error("Invalid response");
+  const normalized = Object.fromEntries(fields.filter((key) => key in source).map((key) => [key, source[key]]));
+  if (!("id" in normalized)) normalized.id = id;
+  if ("id_publicacion" in source) normalized.id_publicacion = id;
+  return normalized;
 }
 
 export async function handlePublicationRequest(

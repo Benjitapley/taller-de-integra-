@@ -58,7 +58,7 @@ No usar ese ejemplo contra servicios reales en esta fase.
 
 Timeouts finitos en `(0, 120]`. Configuración inválida impide el arranque con
 mensaje genérico. HTTP permite simulación local; TLS de despliegue queda pendiente.
-Límites de bytes: enteros en `(0, 16777216]` (máximo configurable 16 MiB).
+Límite de solicitudes: enteros en `(0, 32000000]` (máximo configurable 32 MB). Límite de respuestas: enteros en `(0, 16777216]` (máximo configurable 16 MiB). En modo local/Supabase el cuerpo entrante permite hasta 27 MB para formularios multipart con cinco imágenes de hasta 5 MiB cada una.
 FastAPI 0.162.0 y Starlette 1.10.0 están fijados y verificados en el entorno local;
 el par anterior no admitía la versión corregida de Starlette.
 
