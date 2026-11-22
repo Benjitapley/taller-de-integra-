@@ -21,6 +21,8 @@ ROUTES=[
  (r"/api/publicaciones/[1-9][0-9]*/postulaciones",{"POST"},"listado_upstream"),
  (r"/api/postulaciones/mias",{"GET"},"listado_upstream"),
  (r"/api/postulaciones/[1-9][0-9]*/estado",{"PATCH"},"listado_upstream"),
+ (r"/api/arriendos/mio",{"GET"},"convivencia_upstream"),
+ (r"/api/arriendos/[1-9][0-9]*",{"GET"},"convivencia_upstream"),
  (r"/api/admin/publicaciones",{"GET"},"listado_upstream"),
  (r"/conexiones/",{"POST"},"match_upstream"),
  (r"/conexiones/[1-9][0-9]*",{"PUT","DELETE"},"match_upstream"),
