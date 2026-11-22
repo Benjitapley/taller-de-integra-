@@ -12,7 +12,6 @@ export default function PublicationChooser() {
   return <div className={styles.publishContent}>
     {!kind && <>
       <div className={styles.typeGrid}>
-        <PublicationTypeCard title="Compartir una oportunidad" description="Encontré un lugar y busco con quién compartirlo." icon="search" onSelect={() => setKind("Compartida")} />
         <PublicationTypeCard title="Publicar un arriendo" description="Soy arrendador y quiero ofrecer un espacio disponible." icon="home" onSelect={() => setKind("Arrendador")} />
       </div>
       <p className={styles.publishInfo}>El formulario permite publicar los detalles, filtros de vivienda y una fotografía opcional.</p>

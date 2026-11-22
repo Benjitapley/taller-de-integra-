@@ -190,6 +190,12 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
       await profileBrowser({base,cookie:profileCookie,setProfileMode:(mode)=>{profileMode=mode;},setVerificationMode:(mode)=>{verificationMode=mode;},playwrightPath:process.env.PROFILE_PLAYWRIGHT_PATH,browserPath:process.env.PROFILE_BROWSER_PATH});
     });
   }
+  if (process.env.PUBLICATIONS_BROWSER_TESTS === "1") {
+    await t.test("ubicación en navegador: región, 32 comunas, errores y reintento", async () => {
+      const { publicationsBrowser } = await import("./publications-browser.mjs");
+      await publicationsBrowser({ base, cookie: profileCookie, playwrightPath: process.env.PROFILE_PLAYWRIGHT_PATH, browserPath: process.env.PROFILE_BROWSER_PATH });
+    });
+  }
 
   await t.test("las rutas retiradas devuelven 404 sin contactar al upstream", async () => {
     const count = received.length;

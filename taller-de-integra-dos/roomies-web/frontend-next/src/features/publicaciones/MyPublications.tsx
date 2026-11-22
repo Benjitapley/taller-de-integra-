@@ -1,21 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/layout/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 
-type Publication = {
-  id: number;
-  titulo: string;
-  precio?: number | string;
-  tipo?: string;
-  ubicacion?: string;
-  cupos?: number | string;
-  estado?: string;
-  cupos_disponibles?: number | null;
-};
+import { appendPublications, publicationPage, type Publication } from "./contracts";
 
 const formatPrice = (value: number | string | undefined) => new Intl.NumberFormat("es-CL", {
   style: "currency",
@@ -24,23 +15,23 @@ const formatPrice = (value: number | string | undefined) => new Intl.NumberForma
 }).format(Number(value ?? 0));
 
 export default function MyPublications() {
+  const inFlight = useRef(false);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [items, setItems] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  function load(signal?: AbortSignal) {
-    return fetch("/web-api/mis-publicaciones", { credentials: "same-origin", cache: "no-store", signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("No se pudieron cargar tus publicaciones.");
-        const data: unknown = await response.json();
-        if (!Array.isArray(data)) throw new Error("Respuesta de publicaciones inválida.");
-        if (signal?.aborted) return;
-        setItems(data);
-        setError("");
-      }).catch(() => {
-        if (signal?.aborted) return;
-        setError("No se pudieron cargar tus publicaciones. Intenta nuevamente.");
-      }).finally(() => { if (!signal?.aborted) setLoading(false); });
+  function load(signal?: AbortSignal, next?: string | null) {
+    if (inFlight.current && !signal) return;
+    inFlight.current = true;
+    const query = next ? `?cursor=${encodeURIComponent(next)}` : "";
+    return fetch(`/web-api/mis-publicaciones${query}`, { credentials: "same-origin", cache: "no-store", signal }).then(async response => {
+      if (response.status === 401) { setItems([]); setCursor(null); throw new Error(); }
+      if (!response.ok) throw new Error();
+      const page = publicationPage(await response.json());
+      if (!signal?.aborted) { setItems(current => next ? appendPublications(current, page.items) : page.items); setCursor(page.siguiente_cursor); setError(""); }
+    }).catch(() => { if (!signal?.aborted) setError("No se pudieron cargar tus publicaciones. Intenta nuevamente."); })
+      .finally(() => { if (!signal?.aborted) { inFlight.current = false; setLoading(false); } });
   }
 
   useEffect(() => {
@@ -64,7 +55,8 @@ export default function MyPublications() {
       return;
     }
 
-    await load();
+    const saved = await response.json();
+    setItems(current => current.map(item => item.id_publicacion === id ? { ...item, estado: saved.estado, cupos_disponibles: saved.cupos_disponibles } : item));
     } catch { setError("No se pudo confirmar el cierre. Actualiza el listado."); }
   }
 
@@ -75,11 +67,11 @@ export default function MyPublications() {
     </div>
 
     {loading ? <Card><p>Cargando tus publicaciones…</p></Card> : null}
-    {!loading && error ? <Card><p role="alert">{error}</p><Button onClick={() => void load()}>Reintentar</Button></Card> : null}
+    {!loading && error ? <Card><p role="alert">{error}</p><Button onClick={() => { setLoading(true); void load(undefined, cursor); }}>Reintentar</Button></Card> : null}
     {!loading && !error && items.length === 0 ? <Card><p>Aún no tienes publicaciones creadas.</p><Link href="/publicar">Crear la primera</Link></Card> : null}
 
-    {!loading && !error && items.length > 0 ? <div style={{ display: "grid", gap: 16 }}>
-      {items.map((item) => <Card key={item.id}>
+    {items.length > 0 ? <div style={{ display: "grid", gap: 16 }}>
+      {items.map((item) => <Card key={item.id_publicacion}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
             <h2 style={{ margin: "0 0 8px" }}>{item.titulo}</h2>
@@ -92,15 +84,17 @@ export default function MyPublications() {
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 12, color: "#111827" }}>
           <strong>{formatPrice(item.precio)}</strong>
           <span>{item.tipo || "Sin tipo"}</span>
-          <span>{item.cupos_disponibles ?? "Por confirmar"} cupos disponibles · {item.cupos ?? "—"} totales</span>
+          <span>{item.cupos_disponibles ?? "Por confirmar"} cupos disponibles · {item.cupos_totales ?? "—"} totales</span>
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
-          <Link href={`/publicaciones/${item.id}`}>Ver detalle</Link>
-          {item.tipo === "Arrendador" && <Link href={`/postulantes/${item.id}`}>Ver postulantes</Link>}
-          <Link href={`/editar-publicacion?id=${item.id}`} style={{ display: "inline-block", textDecoration: "none", padding: "10px 14px", borderRadius: 8, background: "#e5e7eb", color: "#111827", fontWeight: 700 }}>Editar</Link>
-          <Button variant="secondary" disabled={item.estado === "Cerrada"} onClick={() => void close(item.id)}>Cerrar publicación</Button>
+          <Link href={`/publicaciones/${item.id_publicacion}`}>Ver detalle</Link>
+          {item.tipo === "Arrendador" && <Link href={`/postulantes/${item.id_publicacion}`}>Ver postulantes</Link>}
+          <Link href={`/editar-publicacion?id=${item.id_publicacion}`} style={{ display: "inline-block", textDecoration: "none", padding: "10px 14px", borderRadius: 8, background: "#e5e7eb", color: "#111827", fontWeight: 700 }}>Editar</Link>
+          <Button variant="secondary" disabled={item.estado === "Cerrada"} onClick={() => void close(item.id_publicacion)}>Cerrar publicación</Button>
         </div>
       </Card>)}
     </div> : null}
+    {cursor && <Button disabled={loading} onClick={() => { setLoading(true); void load(undefined, cursor); }}>{loading ? "Cargando..." : "Cargar más"}</Button>}
+    {!loading && !cursor && items.length > 0 && <p role="status">No hay más publicaciones.</p>}
   </main>;
 }

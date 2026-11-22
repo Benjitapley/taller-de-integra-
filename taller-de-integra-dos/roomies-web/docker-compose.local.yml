@@ -23,6 +23,9 @@ services:
       - roomies-local-db:/var/lib/postgresql
       - ./backend/local_stack/bootstrap.sql:/docker-entrypoint-initdb.d/00-bootstrap.sql:ro
       - ./backend/local_stack/passwords.sh:/docker-entrypoint-initdb.d/01-passwords.sh:ro
+      - ./backend/services/listado-applications-service/migrations/001_publicaciones_contract.up.sql:/docker-entrypoint-initdb.d/02-publicaciones-contract.sql:ro
+      - ./backend/services/listado-applications-service/migrations/002_publication_images.sql:/docker-entrypoint-initdb.d/03-publication-images.sql:ro
+      - ./backend/services/listado-applications-service/migrations/003_catalogo_cut.up.sql:/docker-entrypoint-initdb.d/04-catalogo-cut.sql:ro
     healthcheck:
       test: [CMD-SHELL, "pg_isready -U roomies_local_owner -d roomies_sprint2_disposable"]
       interval: 5s
@@ -54,6 +57,9 @@ services:
       <<: *business
       LISTADO_DATABASE_URL: postgresql://sql_listado_applications:${ROOMIES_LISTADO_SQL_PASSWORD}@roomies-db:5432/roomies_sprint2_disposable
       LISTADO_AUTH_JWT_KEY: ${LISTADO_AUTH_JWT_KEY:-}
+      ROOMIES_CURSOR_SECRET: ${ROOMIES_CURSOR_SECRET:?Firma estable de cursores de al menos 32 caracteres}
+      ROOMIES_SUPABASE_PROJECT_REF: ${ROOMIES_SUPABASE_PROJECT_REF:-}
+      ROOMIES_SUPABASE_STORAGE_KEY: ${ROOMIES_SUPABASE_STORAGE_KEY:-}
       ROOMIES_IMAGE_DIR: /images
     volumes: [roomies-local-publication-images:/images]
     depends_on:

@@ -19,6 +19,8 @@ ROUTES=[
  (r"/api/notificaciones",{"GET"},"upstream"),
  (r"/(?:local|api)/v1/usuarios/publicos",{"GET"},"upstream"),
  (r"/api/publicaciones(?:/buscar)?",{"GET","POST"},"listado_upstream"),
+ (r"/api/publicaciones/mias",{"GET"},"listado_upstream"),
+ (r"/api/regiones(?:/[1-9][0-9]*/comunas)?",{"GET"},"listado_upstream"),
  (r"/api/mis-publicaciones",{"GET"},"listado_upstream"),
  (r"/(?:local|api)/v1/publicaciones/resumen",{"GET"},"listado_upstream"),
  (r"/api/publicaciones/[1-9][0-9]*",{"GET","PUT"},"listado_upstream"),
@@ -53,7 +55,7 @@ def cors_preflight(request: Request, methods: set[str]):
         headers={
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Methods": ", ".join(sorted(methods | {"OPTIONS"})),
-            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Accept-Language, x-roomies-service, x-haycupo-csrf",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Accept-Language, Idempotency-Key, x-roomies-service, x-haycupo-csrf",
             "Access-Control-Max-Age": "86400",
             "Cache-Control": "no-store",
         },
