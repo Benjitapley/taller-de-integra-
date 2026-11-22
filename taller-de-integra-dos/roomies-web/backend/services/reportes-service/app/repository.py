@@ -1,7 +1,9 @@
 import psycopg
+import json
 from psycopg.rows import dict_row
 
 from backend.service_runtime.settings import database_url
+from backend.service_runtime.contracts import RuleViolation
 
 
 FIELDS = "id_reporte,tipo,id_usuario_reportado,id_publicacion_reportada,categoria,descripcion,estado,fecha"
@@ -25,14 +27,34 @@ class ReportRepository:
             row_factory=dict_row, connect_timeout=3, prepare_threshold=None,
         )
 
-    def create(self, actor_id, data):
+    def operation(self, actor_id, key, fingerprint, connection=None):
+        if connection is None:
+            with self.connect() as active:
+                return self.operation(actor_id, key, fingerprint, active)
+        row = connection.execute("SELECT huella,respuesta FROM reportes.operacion_envio WHERE id_denunciante=%s AND clave=%s", (actor_id, key)).fetchone()
+        if row is None:
+            return None
+        if row["huella"] != fingerprint:
+            raise RuleViolation("La clave de envío ya corresponde a otro contenido.", 409)
+        return row["respuesta"]
+
+    def create(self, actor_id, data, operation=None, fingerprint=None):
         with self.connect() as connection:
-            return connection.execute(
+            if operation is not None:
+                connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", (f"reporte:{actor_id}:{operation}",))
+                previous = self.operation(actor_id, operation, fingerprint, connection)
+                if previous is not None:
+                    return previous
+            report = connection.execute(
                 f"""INSERT INTO reportes.reporte
                     (id_denunciante,id_usuario_reportado,id_publicacion_reportada,categoria,descripcion)
                     VALUES (%s,%s,%s,%s,%s) RETURNING {FIELDS}""",
                 (actor_id, data.id_usuario_reportado, data.id_publicacion_reportada, data.categoria, data.descripcion),
             ).fetchone()
+            if operation is not None:
+                connection.execute("INSERT INTO reportes.operacion_envio(id_denunciante,clave,huella,respuesta) VALUES(%s,%s,%s,%s)",
+                                   (actor_id,operation,fingerprint,json.dumps(report,default=lambda value:value.isoformat())))
+            return report
 
     def mine(self, actor_id, limit, before):
         boundary = " AND (fecha,id_reporte)<(%s,%s)" if before else ""

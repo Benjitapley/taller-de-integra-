@@ -1,4 +1,5 @@
 export type ReportTarget = { id_usuario_reportado: number } | { id_publicacion_reportada: number };
+export const reportCategories = ["Conducta inapropiada", "Incumplimiento de reglas", "Otro"] as const;
 export type Report = {
   id_reporte: number;
   tipo: "Usuario" | "Publicacion";

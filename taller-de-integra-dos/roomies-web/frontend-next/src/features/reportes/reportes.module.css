@@ -4,6 +4,8 @@
   max-width: 48rem;
 }
 
+.panel { padding: clamp(1rem, 3vw, 1.5rem); min-width: 0; }
+
 .form {
   display: grid;
   gap: .65rem;
@@ -12,7 +14,7 @@
   border: 0;
 }
 
-.form :is(input, textarea) {
+.form :is(input:not([type="checkbox"]), textarea, select) {
   padding: .65rem .75rem;
   border: 1px solid var(--line);
   border-radius: .5rem;
@@ -22,6 +24,8 @@
 }
 
 .form textarea { resize: vertical; }
+.form :is(select, textarea) { width: 100%; min-width: 0; box-sizing: border-box; }
+.confirm { display: flex; gap: .65rem; align-items: baseline; }
 .form button { justify-self: start; margin-top: .35rem; }
 
 .history { list-style: none; padding: 0; }
