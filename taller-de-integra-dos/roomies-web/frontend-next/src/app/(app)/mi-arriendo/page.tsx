@@ -42,7 +42,10 @@ export default function MyArriendoPage() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    const request = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(request);
+  }, []);
 
   return <main>
     <PageHeader title="Mi arriendo" description="Consulta el estado de tu incorporación y de la convivencia." />
@@ -63,9 +66,21 @@ export default function MyArriendoPage() {
         <div className={styles.fact}><span>Cupos disponibles</span><strong>{arriendo.cupos_disponibles}</strong></div>
       </div>
       {arriendo.estado === "Activo" ? <div className={styles.actions}>
-        <Button disabled>Ver integrantes</Button>
-        <Button variant="secondary" disabled>Abrir chat</Button>
-        <Button variant="secondary" disabled>Ver tareas</Button>
+        <Link className={styles.actionLink} href="/mi-arriendo/integrantes">Ver integrantes</Link>
+        <Link className={styles.actionLink} href="/mi-arriendo/chat">Abrir chat</Link>
+        <Link className={styles.actionLink} href="/mi-arriendo/tareas">Ver tareas</Link>
+      </div> : null}
+      {arriendo.estado === "Activo" ? <div className={styles.overviewGrid}>
+        <section className={styles.overviewCard} aria-labelledby="chat-summary-heading">
+          <h2 id="chat-summary-heading">Chat del arriendo</h2>
+          <p>Conversación compartida por integrantes activos.</p>
+          <Link href="/mi-arriendo/chat">Abrir chat <span aria-hidden="true">›</span></Link>
+        </section>
+        <section className={styles.overviewCard} aria-labelledby="tasks-summary-heading">
+          <h2 id="tasks-summary-heading">Organización de la casa</h2>
+          <p>Consulta y organiza las tareas del hogar.</p>
+          <Link href="/mi-arriendo/tareas">Ver tareas <span aria-hidden="true">›</span></Link>
+        </section>
       </div> : null}
     </Card> : null}
   </main>;
