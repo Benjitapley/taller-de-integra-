@@ -6,6 +6,8 @@ from starlette.responses import JSONResponse, Response
 from app.proxy import forward_to,bounded_body,BodyTooLarge
 
 ROUTES=[
+ (r"/api/usuarios/me",{"POST","GET","PATCH"},"upstream"),
+ (r"/api/usuarios/me/foto",{"PUT"},"upstream"),
  (r"/api/arriendos/(?:mio|[1-9][0-9]*)",{"GET"},"convivencia_upstream"),
  (r"/api/reportes",{"POST"},"reportes_upstream"),
  (r"/api/reportes/mios",{"GET"},"reportes_upstream"),
@@ -19,6 +21,8 @@ ROUTES=[
  (r"/api/notificaciones",{"GET"},"upstream"),
  (r"/(?:local|api)/v1/usuarios/publicos",{"GET"},"upstream"),
  (r"/api/publicaciones(?:/buscar)?",{"GET","POST"},"listado_upstream"),
+ (r"/api/publicaciones/mias",{"GET"},"listado_upstream"),
+ (r"/api/regiones(?:/[1-9][0-9]*/comunas)?",{"GET"},"listado_upstream"),
  (r"/api/mis-publicaciones",{"GET"},"listado_upstream"),
  (r"/(?:local|api)/v1/publicaciones/resumen",{"GET"},"listado_upstream"),
  (r"/api/publicaciones/[1-9][0-9]*",{"GET","PUT"},"listado_upstream"),
@@ -26,7 +30,11 @@ ROUTES=[
  (r"/api/publicaciones/[1-9][0-9]*/cerrar",{"PATCH"},"listado_upstream"),
  (r"/api/publicaciones/[1-9][0-9]*/postulaciones",{"POST"},"listado_upstream"),
  (r"/api/postulaciones/mias",{"GET"},"listado_upstream"),
+ (r"/api/postulaciones/[1-9][0-9]*",{"GET"},"listado_upstream"),
  (r"/api/postulaciones/[1-9][0-9]*/estado",{"PATCH"},"listado_upstream"),
+ (r"/api/postulaciones/[1-9][0-9]*/retiro",{"POST"},"listado_upstream"),
+ (r"/api/arriendos/mio",{"GET"},"convivencia_upstream"),
+ (r"/api/arriendos/[1-9][0-9]*",{"GET"},"convivencia_upstream"),
  (r"/api/admin/publicaciones",{"GET"},"listado_upstream"),
  (r"/conexiones/",{"POST"},"match_upstream"),
  (r"/conexiones/[1-9][0-9]*",{"PUT","DELETE"},"match_upstream"),
@@ -53,7 +61,7 @@ def cors_preflight(request: Request, methods: set[str]):
         headers={
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Methods": ", ".join(sorted(methods | {"OPTIONS"})),
-            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Accept-Language, x-roomies-service, x-haycupo-csrf",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Accept-Language, Idempotency-Key, x-roomies-service, x-haycupo-csrf",
             "Access-Control-Max-Age": "86400",
             "Cache-Control": "no-store",
         },

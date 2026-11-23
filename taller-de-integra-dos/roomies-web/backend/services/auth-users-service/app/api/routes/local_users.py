@@ -5,7 +5,7 @@ import re
 from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Query, Path
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from starlette.datastructures import UploadFile
 from app.application.local_users import Users, require_confirmed_email
@@ -13,6 +13,8 @@ from app.application.notifications import APPLICATION_TYPE, MAX_ID, notification
 from app.domain.local_users import User
 from app.infrastructure.persistence.local_users import PostgresUsers
 from app.infrastructure.security.local_provider import confirmed_email
+from app.infrastructure.security.admission_provider import SupabaseAdmissionIdentity
+from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.security import access_token, verified_claims
 from backend.service_runtime.notifications import PRODUCERS
 from backend.service_runtime.reporting_security import verify_service_token
@@ -77,6 +79,27 @@ def internal_identity(who=Depends(identity), service=Depends(users)):
     user=service.own(who[0])
     return {"subject":str(who[0]),"user_id":user.id_usuario,"email_confirmed":who[1],
             "administrator":str(who[0]) in os.environ.get("ROOMIES_ADMIN_SUBJECTS", "").split(",")}
+
+
+def admission_service(x_roomies_service: Annotated[str | None, Header()] = None):
+    expected = os.environ.get("ROOMIES_INTERNAL_TOKEN", "")
+    if len(expected) < 32 or not expected.isascii():
+        raise DependencyUnavailable()
+    if not x_roomies_service or not x_roomies_service.isascii() or not hmac.compare_digest(expected, x_roomies_service):
+        raise HTTPException(403, "Servicio no autorizado.")
+
+
+def admission_identity():
+    return SupabaseAdmissionIdentity()
+
+
+@router.get("/internal/v1/usuarios/{id}/habilitacion", dependencies=[Depends(admission_service)])
+def admission_eligibility(id: Annotated[int, Path(gt=0, le=9223372036854775807)], service=Depends(users), provider=Depends(admission_identity)):
+    user = service.repository.get_by_id(id)
+    enabled = user is not None and user.supabase_user_id is not None and provider.enabled(user.supabase_user_id)
+    if type(enabled) is not bool:
+        raise DependencyUnavailable()
+    return {"id_usuario": id, "habilitado": enabled}
 
 
 class OwnProfile(BaseModel):

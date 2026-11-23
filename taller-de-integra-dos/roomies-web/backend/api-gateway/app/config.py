@@ -45,9 +45,9 @@ class Settings:
                       self.client_body_timeout, self.total_timeout):
             if not math.isfinite(value) or not 0 < value <= 120:
                 raise ValueError("Timeout fuera de rango (0, 120].")
-        for value in (self.max_request_bytes, self.max_response_bytes):
-            if type(value) is not int or not 0 < value <= 16_777_216:
-                raise ValueError("Límite de bytes fuera de rango (0, 16777216].")
+        for value, maximum in ((self.max_request_bytes, 32_000_000), (self.max_response_bytes, 16_777_216)):
+            if type(value) is not int or not 0 < value <= maximum:
+                raise ValueError("Límite de bytes fuera de rango.")
 
     @classmethod
     def from_env(cls):
@@ -62,7 +62,7 @@ class Settings:
                 **{f"{kind}_timeout": float(os.environ.get(f"GATEWAY_{kind.upper()}_TIMEOUT", default))
                    for kind, default in (("connect", "3"), ("read", "10"), ("write", "10"),
                                          ("pool", "3"), ("client_body", "5"), ("total", "15"))},
-                max_request_bytes=int(os.environ.get("GATEWAY_MAX_REQUEST_BYTES", "6291456" if os.environ.get("ROOMIES_LOCAL_MODE")=="1" or os.environ.get("ROOMIES_RUNTIME_MODE")=="supabase" else "1048576")),
+                max_request_bytes=int(os.environ.get("GATEWAY_MAX_REQUEST_BYTES", "26000000" if os.environ.get("ROOMIES_LOCAL_MODE")=="1" or os.environ.get("ROOMIES_RUNTIME_MODE")=="supabase" else "1048576")),
                 max_response_bytes=int(os.environ.get("GATEWAY_MAX_RESPONSE_BYTES", "6291456" if os.environ.get("ROOMIES_LOCAL_MODE")=="1" or os.environ.get("ROOMIES_RUNTIME_MODE")=="supabase" else "2097152")),
             )
         except (ValueError, OverflowError):

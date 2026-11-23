@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 import anyio
 import httpx
@@ -8,8 +9,8 @@ from starlette.responses import JSONResponse, Response
 
 HOP_HEADERS = {b"connection", b"keep-alive", b"proxy-authenticate", b"proxy-authorization",
                b"te", b"trailer", b"transfer-encoding", b"upgrade", b"content-length"}
-REQUEST_HEADERS = {b"authorization", b"content-type", b"content-encoding", b"accept", b"accept-language"}
-RESPONSE_HEADERS = {b"content-type", b"content-language", b"www-authenticate", b"retry-after"}
+REQUEST_HEADERS = {b"authorization", b"content-type", b"content-encoding", b"accept", b"accept-language", b"idempotency-key"}
+RESPONSE_HEADERS = {b"content-type", b"content-language", b"www-authenticate", b"retry-after", b"idempotency-replayed"}
 
 
 def filtered(headers, allowed):
@@ -63,6 +64,12 @@ async def forward_to(request: Request, upstream_url, path):
     url = httpx.URL(upstream_url).copy_with(
         path=path, query=request.scope["query_string"])
     headers = filtered(request.scope["headers"], REQUEST_HEADERS)
+    if path == "/api/reportes" and request.method == "POST":
+        operation = request.headers.getlist("idempotency-key")
+        if len(operation) > 1 or (operation and not re.fullmatch(r"[A-Za-z0-9:_-]{1,80}", operation[0])):
+            return JSONResponse({"codigo":"SOLICITUD_INVALIDA","mensaje":"Clave de envío inválida."}, status_code=422,
+                                headers={"Cache-Control":"no-store"})
+        # REQUEST_HEADERS already preserves this key; appending duplicates it.
     # Solicitar identidad evita descompresión implícita; a la vuelta se leen bytes raw.
     headers.append((b"accept-encoding", b"identity"))
     receiving = True

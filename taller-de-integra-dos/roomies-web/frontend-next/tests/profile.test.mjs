@@ -19,6 +19,22 @@ test("el estado de correo solo acepta booleanos del perfil autenticado",()=>{
   for(const value of [undefined,null,"true","false",1,0,{}]) assert.equal(normalizeProfile({...profile,verificado:value}).verificado,null);
 });
 
+test("perfil Supabase sigue disponible si falla Listado sin inventar un contador",async()=>{
+  const sb={...config,provider:"supabase",profileContract:"local-v1"};
+  const request=new Request(config.origin+"/web-api/perfil",{headers:{cookie:"__Host-roomies_sb_access=header.payload.signature"}});
+  const publicProfile={...profile,edad_calculada:true};
+  for(const failure of [async()=>{throw new Error("private-network-error");},async()=>Response.json({}, {status:503}),async()=>new Response("invalid-json"),async()=>Response.json({total_publicaciones:-1}),async()=>Response.json({})]){
+    const response=await handleProfile(request,sb,async(url)=>url.endsWith("/local/v1/perfil")?Response.json(publicProfile):failure());
+    assert.equal(response.status,200);
+    assert.deepEqual(await response.json(),{...publicProfile,total_publicaciones:null});
+    assert.equal(response.headers.get("Set-Cookie"),null);
+  }
+  for(const total of [0,7]){
+    const response=await handleProfile(request,sb,async(url)=>Response.json(url.endsWith("/local/v1/perfil")?publicProfile:{total_publicaciones:total}));
+    assert.equal((await response.json()).total_publicaciones,total);
+  }
+});
+
 test("perfil autoriza desde cookie, consulta destino fijo y permite solo campos públicos",async()=>{
   const response=await handleProfile(req(undefined,"?id_usuario=999"),config,async(url,options)=>{
     assert.equal(url,`${config.backend}/api/perfil`);

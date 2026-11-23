@@ -1,115 +1,89 @@
 """Adaptadores HTTP locales; reglas y SQL permanecen fuera de los routers."""
-import os
-import base64
 import json
+import os
+import hmac
 from decimal import Decimal
 from typing import Annotated, Literal
-from fastapi import APIRouter,Depends,Header,Path,Request,HTTPException,Query
+from uuid import UUID
+from fastapi.encoders import jsonable_encoder
+from fastapi import APIRouter,Depends,Request,HTTPException,Query,Header,Path
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials
+from backend.service_runtime.reporting_security import verify_report_service
 from pydantic import BaseModel,ConfigDict,Field
 from app.application.service import Publications
+from app.application.admissions import Admissions
 from app.domain.publications import available
 from app.infrastructure.repository import PostgresPublications
 from app.infrastructure.clients import UnavailableOccupancy, HttpOwners
-from backend.service_runtime.security import confirmed_actor,admin_actor
-from backend.service_runtime.reporting_security import verify_report_service
-from backend.service_runtime.images import Images
+from backend.service_runtime.security import access_token, actor, admin_actor, bearer, confirmed_actor
+from app.infrastructure.storage import SupabasePublicationImages, MAX_IMAGE_BYTES
+from app.api.schemas import Publication, PublicationDetail, PublicationSaved, PublicationPage, Region, Commune, MULTIPART
 from backend.service_runtime.contracts import DependencyUnavailable
 
 router=APIRouter()
 
 
-REGIONES=[
-    {"id_region":9,"nombre":"La Araucanía"},
-]
-COMUNAS={
-    9:[
-        {"id_comuna":9101,"nombre":"Temuco"},
-        {"id_comuna":9102,"nombre":"Padre Las Casas"},
-        {"id_comuna":9103,"nombre":"Angol"},
-        {"id_comuna":9104,"nombre":"Villarrica"},
-        {"id_comuna":9105,"nombre":"Pucón"},
-        {"id_comuna":9106,"nombre":"Lautaro"},
-        {"id_comuna":9107,"nombre":"Nueva Imperial"},
-        {"id_comuna":9108,"nombre":"Carahue"},
-        {"id_comuna":9109,"nombre":"Gorbea"},
-        {"id_comuna":9110,"nombre":"Lonquimay"},
-    ],
-}
-
-
 def service():
-    return Publications(PostgresPublications(),UnavailableOccupancy(),Images(os.environ.get("ROOMIES_IMAGE_DIR"),"p_"),HttpOwners())
+    return Publications(PostgresPublications(),UnavailableOccupancy(),SupabasePublicationImages(),HttpOwners())
 
 
 def dto(row,occupancy):
     try: slots=available(row,occupancy)
     except DependencyUnavailable: slots=None
-    return {"id":row["id_publicacion"],"titulo":row["titulo"],"tipo":row["tipo"],"descripcion":row["descripcion"],
+    return {"id_publicacion":row["id_publicacion"],"id":row["id_publicacion"],"titulo":row["titulo"],"tipo":row["tipo"],"descripcion":row["descripcion"],
             "precio":int(row["precio"]),"ubicacion":row["ubicacion"],"estado":row["estado"],
             "cupos_totales":row["cupos_totales"],"cupos":row["cupos_totales"],"cupos_disponibles":slots,
             "tipo_vivienda":row["tipo_vivienda"],"categoria":row["categoria"],"mascota":row["mascota"],
-            "permitir_comentarios":row["permitir_comentarios"],"imagen":row.get("imagen"),"fecha_publicacion":row["fecha_publicacion"]}
+            "permitir_comentarios":row["permitir_comentarios"],"imagen":row.get("imagen"),"fecha_publicacion":row["fecha_publicacion"],
+            "id_region":row.get("id_region"),"id_comuna":row.get("id_comuna"),"reglas":row.get("reglas",[]),"imagenes":row.get("imagenes",[])}
 
 
-@router.get("/api/regiones")
-def regions():
-    return REGIONES
-
-
-@router.get("/api/regiones/{id_region}/comunas")
-def communes(id_region:int):
-    if id_region not in {region["id_region"] for region in REGIONES}:
-        raise HTTPException(404,"La región no existe.")
-    return COMUNAS.get(id_region,[])
-
-
-@router.get("/api/publicaciones")
-@router.get("/api/publicaciones/buscar")
+@router.get("/api/publicaciones",response_model=PublicationPage)
+@router.get("/api/publicaciones/buscar",response_model=PublicationPage,deprecated=True)
 def catalog(consulta: str|None=Query(None,max_length=250),precio_min:Decimal|None=Query(None,ge=0),precio_max:Decimal|None=Query(None,ge=0),
-            cupos_disponibles:int|None=Query(None,ge=1,le=2147483647),
-            cupos_min:int|None=Query(None,ge=1,le=2147483647),tipo_vivienda:Literal["casa","departamento","habitacion"]|None=None,
+            cupos_min:int|None=Query(None,ge=1,le=2147483647),cupos_disponibles:int|None=Query(None,ge=0,le=2147483647),tipo_vivienda:Literal["casa","departamento","habitacion"]|None=None,
             mascota:Literal["si","no"]|None=None,categoria:Literal["busco","ofrezco"]|None=None,
-            id_region:int|None=Query(None,ge=1),id_comuna:int|None=Query(None,ge=1),
-            limite:int=Query(20,ge=1,le=100),cursor:str|None=None,
             tipo:Literal["casa","departamento","habitacion"]|None=None,mascotas:Literal["si","no"]|None=None,
-            personas:Literal["1","2","3"]|None=None,offset:int=Query(0,ge=0,le=1000000),app=Depends(service)):
+            personas:Literal["1","2","3"]|None=None,id_region:int|None=Query(None,ge=1),id_comuna:int|None=Query(None,ge=1),
+            limite:int=Query(20,ge=1,le=100),cursor:str|None=Query(None,max_length=1024),offset:int|None=Query(None,ge=0),app=Depends(service)):
+    if offset is not None:
+        raise HTTPException(422,"Usa cursor para paginar publicaciones.")
+    if cupos_disponibles is not None and (cupos_min is not None or personas is not None):
+        raise HTTPException(422,"No combines cupos_disponibles con cupos_min o personas.")
     if precio_min is not None and precio_max is not None and precio_min>precio_max:
         raise HTTPException(422,"Rango de precios inválido.")
-    if cupos_disponibles is not None and cupos_min is not None:
-        raise HTTPException(422,"No combines cupos_disponibles con cupos_min.")
     if id_comuna is not None and id_region is not None:
-        if id_comuna not in {commune["id_comuna"] for commune in COMUNAS.get(id_region,[])}:
-            raise HTTPException(422,"La comuna no pertenece a la región.")
+        app.repository.validate_location(id_region,id_comuna)
     if (tipo and tipo_vivienda and tipo!=tipo_vivienda) or (mascotas and mascota and mascotas!=mascota):
         raise HTTPException(422,"Filtros incompatibles.")
     if consulta and "\x00" in consulta:
         raise HTTPException(422,"Consulta inválida.")
-    cursor_data=None
-    if cursor:
-        try:
-            padding="="*((4-len(cursor)%4)%4)
-            cursor_data=json.loads(base64.urlsafe_b64decode(cursor+padding).decode())
-            if not isinstance(cursor_data,dict) or not isinstance(cursor_data.get("fecha"),str) or not isinstance(cursor_data.get("id"),int):
-                raise ValueError()
-        except Exception:
-            raise HTTPException(422,"Cursor inválido.")
-    filters={"consulta":consulta,"precio_min":precio_min,"precio_max":precio_max,"cupos_min":cupos_min or (int(personas) if personas else None),"cupos_disponibles":cupos_disponibles,"tipo_vivienda":tipo_vivienda or tipo,"mascota":mascota or mascotas,"categoria":categoria,"limite":limite,"offset":offset,"cursor":cursor_data}
-    rows=app.list(filters)
-    items=[dto(row,app.occupancy) for row in rows[:limite]]
-    siguiente_cursor=None
-    if len(rows)>limite:
-        last=rows[limite-1]
-        siguiente_cursor=base64.urlsafe_b64encode(json.dumps({
-            "fecha":str(last["fecha_publicacion"]),
-            "id":last["id_publicacion"],
-        },separators=(",",":")).encode()).decode().rstrip("=")
-    return {"items":items,"siguiente_cursor":siguiente_cursor}
+    for price in (precio_min, precio_max):
+        if price is not None and (not price.is_finite() or price != price.to_integral_value() or price > 999999999999):
+            raise HTTPException(422,"El precio debe ser un entero CLP entre 0 y 999999999999.")
+    filters={"consulta":consulta,"precio_min":precio_min,"precio_max":precio_max,"cupos_min":cupos_min or (int(personas) if personas else None),"cupos_disponibles":cupos_disponibles,"tipo_vivienda":tipo_vivienda or tipo,"mascota":mascota or mascotas,"categoria":categoria,"id_region":id_region,"id_comuna":id_comuna,"limite":limite,"cursor":cursor}
+    page=app.list(filters)
+    return {**page,"items":[dto(row,app.occupancy) for row in page["items"]]}
 
 
-@router.get("/api/mis-publicaciones")
-def mine(identity=Depends(confirmed_actor),app=Depends(service)):
-    return [dto(row,app.occupancy) for row in app.list({},identity.user_id)]
+@router.get("/api/mis-publicaciones",response_model=PublicationPage,deprecated=True)
+@router.get("/api/publicaciones/mias",response_model=PublicationPage)
+def mine(limite:int=Query(20,ge=1,le=100),cursor:str|None=Query(None,max_length=1024),identity=Depends(confirmed_actor),app=Depends(service)):
+    page=app.list({"limite":limite,"cursor":cursor},identity.user_id)
+    return {**page,"items":[dto(row,app.occupancy) for row in page["items"]]}
+
+
+@router.get("/api/regiones",response_model=list[Region])
+def regions(app=Depends(service)):
+    return app.repository.regions()
+
+
+@router.get("/api/regiones/{id}/comunas",response_model=list[Commune])
+def communes(id:int,app=Depends(service)):
+    return app.repository.communes(id)
 
 
 @router.get("/local/v1/publicaciones/resumen")
@@ -118,9 +92,34 @@ def my_count(identity=Depends(confirmed_actor),app=Depends(service)):
     return {"total_publicaciones":app.repository.count(identity.user_id)}
 
 
-@router.get("/api/publicaciones/{id}/detalle")
+@router.get("/api/publicaciones/{id}",response_model=Publication)
 def detail(id:int,app=Depends(service)):
     return dto(app.get(id),app.occupancy)
+
+
+@router.get(
+    "/api/publicaciones/{id}/detalle",
+    response_model=PublicationDetail,
+    response_model_exclude_unset=True,
+    deprecated=True,
+    summary="Detail",
+    operation_id="detail_api_publicaciones__id__detalle_get",
+    openapi_extra={"security": [{}]},
+)
+def detail_alias(
+    id: int,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+    app=Depends(service),
+):
+    row = app.get(id)
+    publication = dto(row, app.occupancy)
+    if credentials is not None:
+        try:
+            confirmed_actor(actor(access_token(credentials)))
+        except HTTPException:
+            return publication
+        publication["id_propietario"] = row["id_usuario"]
+    return publication
 
 
 @router.get("/internal/publicaciones/{id}")
@@ -136,59 +135,110 @@ def publication_for_report(
     return row
 
 
-@router.get("/api/publicaciones/{id}")
-def private_detail(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
-    return dto(app.get(id,identity.user_id),app.occupancy)
-
-
 @router.get("/api/publicaciones/{id}/cupos")
 def slots(id:int,app=Depends(service)):
     row=app.get(id)
     return {"id":id,"estado":row["estado"],"cupos_totales":row["cupos_totales"],"cupos_disponibles":available(row,app.occupancy)}
 
 
+class OccupancyUpdate(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    ocupacion:int=Field(strict=True,ge=0,le=2147483647)
+    version_ocupacion:int=Field(strict=True,ge=0,le=9223372036854775807)
+
+
+class ReservationRequest(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    id_operacion:UUID
+    id_postulacion:int=Field(strict=True,gt=0,le=9223372036854775807)
+    id_publicacion:int=Field(strict=True,gt=0,le=9223372036854775807)
+    id_usuario:int=Field(strict=True,gt=0,le=9223372036854775807)
+    version_capacidad:int=Field(strict=True,gt=0,le=9223372036854775807)
+
+
+class ReservationProjection(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    id_arriendo:int=Field(strict=True,gt=0,le=9223372036854775807)
+    ocupacion:int=Field(strict=True,ge=0,le=2147483647)
+    version_ocupacion:int=Field(strict=True,gt=0,le=9223372036854775807)
+
+
+def internal_service(x_roomies_service:str|None=Header(None)):
+    expected=os.environ.get("ROOMIES_INTERNAL_TOKEN","")
+    if len(expected)<32:
+        raise HTTPException(503,"Falta configurar autenticación entre servicios.")
+    if not x_roomies_service or not x_roomies_service.isascii() or not hmac.compare_digest(expected,x_roomies_service):
+        raise HTTPException(403,"Servicio no autorizado.")
+
+
+@router.put("/internal/publicaciones/{id}/ocupacion",dependencies=[Depends(internal_service)])
+def occupancy_update(id:int,data:OccupancyUpdate,app=Depends(service)):
+    return dto(app.occupancy_update(id,data.ocupacion,data.version_ocupacion),app.occupancy)
+
+
+@router.post("/internal/publicaciones/{id}/reservas",dependencies=[Depends(internal_service)])
+def reserve(id:int,data:ReservationRequest,idempotency_key:str=Header(),app=Depends(service)):
+    return Admissions(app).reserve(id,idempotency_key,data.model_dump(mode="json"))
+
+
+@router.put("/internal/publicaciones/{id}/reservas/{reservation}/confirmacion",dependencies=[Depends(internal_service)])
+def confirm_reservation(id:int,reservation:UUID,data:ReservationProjection,idempotency_key:str=Header(),app=Depends(service)):
+    return Admissions(app).reservation_update(id,idempotency_key,reservation,data.model_dump())
+
+
+@router.delete("/internal/publicaciones/{id}/reservas/{reservation}",dependencies=[Depends(internal_service)])
+def release_reservation(id:int,reservation:UUID,idempotency_key:str=Header(),app=Depends(service)):
+    return Admissions(app).reservation_update(id,idempotency_key,reservation)
+
+
 async def publication_form(request):
-    form=await request.form(max_files=1,max_fields=12,max_part_size=5*1024*1024)
-    allowed={"titulo","descripcion","id_region","id_comuna","precio","tipo","categoria","tipo_vivienda","mascota","cupos_totales","permitir_comentarios","imagen"}
-    if set(form)-allowed or any(len(form.getlist(k))!=1 for k in form):
-        raise HTTPException(422,"Campos no permitidos o repetidos.")
-    data={k:v for k,v in form.items() if k!="imagen"}
-    if "id_region" in data and "id_comuna" in data:
-        try:
-            region_id=int(str(data["id_region"]))
-            commune_id=int(str(data["id_comuna"]))
-        except (TypeError,ValueError):
-            raise HTTPException(422,"Región o comuna inválidas.")
-        commune=next((item for item in COMUNAS.get(region_id,[]) if item["id_comuna"]==commune_id),None)
-        if commune is None:
-            raise HTTPException(422,"La comuna no pertenece a la región.")
-        region=next((item for item in REGIONES if item["id_region"]==region_id),None)
-        data["ubicacion"]=f'{commune["nombre"]}, {region["nombre"]}'
-    image=form.get("imagen")
-    if image is not None and not hasattr(image,"read"):
-        raise HTTPException(422,"Imagen inválida.")
-    content=await image.read(5*1024*1024+1) if image and image.filename else None
-    return data,content
+    try:
+        form=await request.form(max_files=5,max_fields=18,max_part_size=100_000)
+    except StarletteHTTPException as error:
+        raise HTTPException(422,"Multipart inválido o exceso de imágenes/campos.") from error
+    try:
+        allowed={"titulo","descripcion","ubicacion","precio","tipo","categoria","tipo_vivienda","mascota","cupos_totales","permitir_comentarios","id_region","id_comuna","reglas","imagen","imagenes","imagenes_conservar"}
+        if set(form)-allowed or any(len(form.getlist(k))!=1 for k in form if k!="imagenes") or ("imagen" in form and "imagenes" in form):
+            raise HTTPException(422,"Campos no permitidos o repetidos.")
+        data={k:v for k,v in form.items() if k not in {"imagen","imagenes","imagenes_conservar"}}
+        if any(not isinstance(value,str) for value in data.values()):
+            raise HTTPException(422,"Campos de publicación inválidos.")
+        retained=None
+        if "imagenes_conservar" in form:
+            try: retained=json.loads(form["imagenes_conservar"])
+            except (ValueError,TypeError): raise HTTPException(422,"imagenes_conservar debe ser una lista JSON de IDs.") from None
+            if not isinstance(retained,list):
+                raise HTTPException(422,"imagenes_conservar debe ser una lista JSON de IDs.")
+        files=[]
+        for image in form.getlist("imagenes")+form.getlist("imagen"):
+            if not hasattr(image,"read") or not image.filename:
+                raise HTTPException(422,"Imagen inválida.")
+            if image.content_type not in {"image/jpeg","image/png","image/webp"}:
+                raise HTTPException(415,"Usa imágenes JPEG, PNG o WebP.")
+            files.append((await image.read(MAX_IMAGE_BYTES+1),image.content_type))
+        return data,files,retained
+    finally:
+        await form.close()
 
 
-@router.post("/api/publicaciones",status_code=201)
+@router.post("/api/publicaciones",status_code=201,response_model=PublicationSaved,openapi_extra=MULTIPART)
 async def create(request:Request,identity=Depends(confirmed_actor),app=Depends(service)):
-    data,image=await publication_form(request)
-    id=app.save(identity.user_id,data,image)
-    return {"id":id,"mensaje":"Publicación creada"}
+    data,images,retained=await publication_form(request)
+    id=await run_in_threadpool(app.save,identity.user_id,data,images,retained=retained,key=request.headers.get("Idempotency-Key"))
+    return {**dto(app.get(id,identity.user_id),app.occupancy),"mensaje":"Publicación creada"}
 
 
-@router.put("/api/publicaciones/{id}")
+@router.put("/api/publicaciones/{id}",response_model=PublicationSaved,openapi_extra=MULTIPART)
 async def edit(id:int,request:Request,identity=Depends(confirmed_actor),app=Depends(service)):
-    data,image=await publication_form(request)
     previous=app.get(id,identity.user_id)
+    data,images,retained=await publication_form(request)
     data.setdefault("tipo",previous["tipo"])
     data.setdefault("permitir_comentarios",previous["permitir_comentarios"])
-    app.save(identity.user_id,data,image,id)
-    return {"mensaje":"Publicación actualizada"}
+    await run_in_threadpool(app.save,identity.user_id,data,images,id,retained,key=request.headers.get("Idempotency-Key"))
+    return {**dto(app.get(id,identity.user_id),app.occupancy),"mensaje":"Publicación actualizada"}
 
 
-@router.patch("/api/publicaciones/{id}/cerrar")
+@router.patch("/api/publicaciones/{id}/cerrar",response_model=Publication)
 def close(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
     return dto(app.close(identity.user_id,id),app.occupancy)
 
@@ -199,26 +249,39 @@ def postulate(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
 
 
 @router.get("/api/postulaciones/mias")
-def my_applications(identity=Depends(confirmed_actor),app=Depends(service)):
+def my_applications(limite:int|None=Query(None,ge=1,le=100),cursor:str|None=Query(None,min_length=1,max_length=1024),estado:Literal["Pendiente","Preseleccionada","Aceptada","Rechazada","Cancelada"]|None=None,identity=Depends(confirmed_actor),app=Depends(service)):
+    if limite is not None or cursor is not None or estado is not None:
+        return app.application_page(identity.user_id,limit=limite or 20,cursor=cursor,state=estado)
     return app.repository.applications(owner=identity.user_id)
 
 
 @router.get("/api/publicaciones/{id}/postulantes")
-def applicants(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
+def applicants(id:int,limite:int|None=Query(None,ge=1,le=100),cursor:str|None=Query(None,min_length=1,max_length=1024),estado:Literal["Pendiente","Preseleccionada","Aceptada","Rechazada","Cancelada"]|None=None,identity=Depends(confirmed_actor),app=Depends(service)):
+    if limite is not None or cursor is not None or estado is not None:
+        return app.application_page(identity.user_id,publication=id,limit=limite or 20,cursor=cursor,state=estado)
     return app.applicants(identity.user_id,id)
+
+
+@router.post("/api/postulaciones/{id}/retiro")
+def withdraw(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
+    return app.withdraw(identity.user_id,id)
 
 
 class Decision(BaseModel):
     model_config=ConfigDict(extra="forbid")
-    estado:Literal["Preseleccionada","Aceptada","Rechazada","Cancelada"]
+    estado:Literal["Preseleccionada","Aceptada","Rechazada"]
     motivo:str|None=Field(default=None,max_length=1000)
 
 
 @router.patch("/api/postulaciones/{id}/estado")
-def decide(id:int,data:Decision,identity=Depends(confirmed_actor),app=Depends(service)):
-    result=app.decide(identity.user_id,id,data.estado,data.motivo)
-    # Sprint 2 registra la decisión; no crea un arriendo ni consume cupos.
-    return {**result,"incorporacion_pendiente":result["estado"]=="Aceptada"}
+def decide(id:int,data:Decision,idempotency_key:str|None=Header(None),identity=Depends(confirmed_actor),app=Depends(service)):
+    status,result=app.decide(identity.user_id,id,data.estado,data.motivo,idempotency_key)
+    return JSONResponse(jsonable_encoder(result),status_code=status)
+
+
+@router.get("/api/postulaciones/{id}")
+def application_detail(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
+    return Admissions(app).detail(identity.user_id,id)
 
 
 @router.get("/internal/v1/resumen")

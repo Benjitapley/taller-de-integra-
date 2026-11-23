@@ -28,7 +28,7 @@ test("proveedor local explícito; remoto, secreto y proveedor desconocido se rec
   assert.equal(authConfig({ ...env, WEB_PROFILE_CONTRACT: "local-v1", WEB_AUTH_PROVIDER: "legacy" }), null);
 });
 
-test("la cuenta del contrato v1 usa solo el perfil común y sale mediante Supabase", async () => {
+test("la cuenta v1 usa perfil común y revoca negocio antes de salir de Supabase", async () => {
   const common = authConfig({ ...env, WEB_PROFILE_CONTRACT: "v1" });
   assert.equal(common.profileContract, "v1");
   assert.equal(authConfig({ ...env, WEB_PROFILE_CONTRACT: "v1", WEB_AUTH_PROVIDER: "legacy" }), null);
@@ -48,7 +48,7 @@ test("la cuenta del contrato v1 usa solo el perfil común y sale mediante Supaba
   assert.equal((await handleAuth(req("login", credentials), "login", common, transport)).status, 200);
   assert.deepEqual(calls.slice(2).map((entry) => entry[1]), ["GET", "POST", "GET"]);
   const result = await handleAuth(req("logout", {}, { cookie: `${cookieName(common)}=${token}` }), "logout", common, async (url) => {
-    assert.equal(url, common.supabase.origin + "/auth/v1/logout?scope=local");
+    assert.ok([common.backend + "/local/v1/sesion/revocar", common.supabase.origin + "/auth/v1/logout?scope=local"].includes(url));
     return new Response(null, { status: 204 });
   });
   assert.equal(result.status, 200);

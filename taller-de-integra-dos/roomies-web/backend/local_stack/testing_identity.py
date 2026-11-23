@@ -13,9 +13,10 @@ from cryptography.hazmat.primitives.asymmetric import ec
 
 
 class IdentityFixture:
-    def __init__(self):
+    def __init__(self, admin_key=None):
         self.key = ec.generate_private_key(ec.SECP256R1())
         self.users = {}
+        self.storage = {}
         self.refreshes = {}
         self.key_id = "disposable-test-key"
         fixture = self
@@ -25,15 +26,40 @@ class IdentityFixture:
 
             def do_GET(self): self.handle_request()
             def do_POST(self): self.handle_request()
+            def do_DELETE(self): self.handle_request()
 
             def handle_request(self):
                 try:
                     parsed = urlsplit(self.path)
                     path = parsed.path.removeprefix("/auth/v1")
-                    data = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))) or b"{}")
+                    raw = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                    if path.startswith("/storage/v1/object/"):
+                        # Transporte Storage ficticio, exclusivo del runner local; no es Supabase.
+                        public = path.startswith("/storage/v1/object/public/")
+                        object_path = path.removeprefix("/storage/v1/object/public/" if public else "/storage/v1/object/")
+                        if self.command == "GET" and public:
+                            content = fixture.storage.get(object_path)
+                            self.send_response(200 if content is not None else 404)
+                            self.send_header("Content-Length",str(len(content or b"")))
+                            self.end_headers();self.wfile.write(content or b"");return
+                        if not admin_key or self.headers.get("apikey") != admin_key:
+                            return self.reply(403,{})
+                        if self.command == "POST":
+                            fixture.storage[object_path]=raw;return self.reply(200,{})
+                        if self.command == "DELETE":
+                            fixture.storage.pop(object_path,None);return self.reply(200,{})
+                        return self.reply(405,{})
+                    data = json.loads(raw or b"{}")
                     if path == "/.well-known/jwks.json":
                         key = json.loads(jwt.algorithms.ECAlgorithm.to_jwk(fixture.key.public_key()))
                         return self.reply(200, {"keys": [{**key, "kid": fixture.key_id, "alg": "ES256", "use": "sig"}]})
+                    if path.startswith("/admin/users/"):
+                        if not admin_key or self.headers.get("apikey") != admin_key:
+                            return self.reply(401, {"error": "invalid_key"})
+                        subject = path.removeprefix("/admin/users/")
+                        record = next((r for r in fixture.users.values() if r["user"]["id"] == subject), None)
+                        return self.reply(200, {**record["user"], "is_anonymous": False,
+                                               "banned_until": None, "deleted_at": None}) if record else self.reply(404, {})
                     if self.headers.get("apikey") != fixture.publishable_key:
                         return self.reply(401, {"error": "invalid_key"})
                     if path == "/signup":

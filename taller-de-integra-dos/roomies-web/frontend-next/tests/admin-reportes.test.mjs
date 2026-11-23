@@ -13,7 +13,8 @@ function compile(value) {
 }
 
 const gateway = compile(await source("../src/lib/auth/gateway.ts"));
-const reports = compile((await source("../src/lib/reportes.ts")).replace('"./auth/gateway"', JSON.stringify(gateway)));
+const reportContracts = compile(await source("../src/features/reportes/contracts.ts"));
+const reports = compile((await source("../src/lib/reportes.ts")).replace('"./auth/gateway"', JSON.stringify(gateway)).replace('"../features/reportes/contracts"', JSON.stringify(reportContracts)));
 const contracts = compile(await source("../src/features/admin/reportes.ts"));
 const { handleAdminReports } = await import(compile((await source("../src/lib/admin/reportes.ts"))
   .replace('"../auth/gateway"', JSON.stringify(gateway))

@@ -9,6 +9,7 @@ from app.ports import HttpIdentity, HttpPublications
 KEY = UUID("c9c989c1-7f6a-48c0-8bab-000000000001")
 PAYLOAD = {"id_usuario": 2, "id_publicacion": 7, "id_postulacion": 9, "version_capacidad": 1}
 RESERVATION = {**PAYLOAD, "id_reserva": "c9c989c1-7f6a-48c0-8bab-000000000002", "cupos_totales": 2}
+CONFIRMATION = {"id_arriendo": 1, "ocupacion": 1, "version_ocupacion": 1}
 
 
 @pytest.fixture
@@ -70,18 +71,27 @@ def test_ultimo_cupo_error_proveedor_sanitizado(transport):
 
 
 def test_confirmar_liberar_reusan_misma_identidad_reserva(transport):
+    import json
     calls = []
 
     def handler(request):
-        calls.append((request.method, request.url.path, request.headers["Idempotency-Key"]))
+        calls.append((request.method, request.url.path, request.headers["Idempotency-Key"], json.loads(request.content) if request.content else None))
         return httpx.Response(204)
 
     transport(handler)
     port = HttpPublications()
-    port.confirm(KEY, RESERVATION)
+    port.confirm(KEY, {**RESERVATION, "confirmacion": CONFIRMATION})
     port.release(KEY, RESERVATION)
     prefix = "/internal/publicaciones/7/reservas/" + RESERVATION["id_reserva"]
-    assert calls == [("PUT", prefix + "/confirmacion", str(KEY)), ("DELETE", prefix, str(KEY))]
+    assert calls == [("PUT", prefix + "/confirmacion", str(KEY), CONFIRMATION), ("DELETE", prefix, str(KEY), None)]
+
+
+def test_confirmacion_sin_proyeccion_no_inventa_cupos(transport):
+    calls = []
+    transport(lambda request: calls.append(request) or httpx.Response(204))
+    with pytest.raises(ServiceError) as error:
+        HttpPublications().confirm(KEY, RESERVATION)
+    assert error.value.status == 503 and not calls
 
 
 @pytest.mark.parametrize("body", [

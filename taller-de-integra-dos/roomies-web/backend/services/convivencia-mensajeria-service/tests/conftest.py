@@ -13,9 +13,10 @@ def migrated_database():
     dsn = os.environ.get("CONVIVENCIA_TEST_ADMIN_DSN")
     if not dsn:
         pytest.skip("Ejecutar tests/run_isolated.py: nunca se usa una DB existente.")
-    migration = Path(__file__).resolve().parents[1] / "migrations/001_convivencia_schema.up.sql"
+    migrations = Path(__file__).resolve().parents[1] / "migrations"
     with psycopg.connect(dsn) as connection:
-        connection.execute(migration.read_text(encoding="utf-8"))
+        for migration in sorted(migrations.glob("*.up.sql")):
+            connection.execute(migration.read_text(encoding="utf-8"))
         connection.execute("CREATE SCHEMA forbidden_test")
         connection.execute("REVOKE ALL ON SCHEMA forbidden_test FROM PUBLIC")
         connection.execute("CREATE TABLE forbidden_test.secret(id int)")
@@ -50,6 +51,8 @@ class Publications:
         self.lock = threading.Lock()
         self.lost_response = False
         self.confirm_down = False
+        self.release_down = False
+        self.confirmations = []
 
     def reserve(self, key, payload):
         with self.lock:
@@ -68,8 +71,11 @@ class Publications:
         if self.confirm_down:
             raise TimeoutError("synthetic timeout")
         self.confirmed.add((str(reservation["id_reserva"]), str(key)))
+        self.confirmations.append(reservation["confirmacion"].copy())
 
     def release(self, key, reservation):
+        if self.release_down:
+            raise TimeoutError("synthetic release timeout")
         self.released.add((str(reservation["id_reserva"]), str(key)))
 
 

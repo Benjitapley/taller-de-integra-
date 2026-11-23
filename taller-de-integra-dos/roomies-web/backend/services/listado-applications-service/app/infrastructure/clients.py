@@ -29,7 +29,7 @@ class IncorporationRejected(RuleViolation):
 
 
 class HttpIncorporations:
-    """Puerto preparado para F01; decidir Aceptada todavia no lo invoca."""
+    """Contrato de incorporación: solo el recibo validado permite confirmar Aceptada."""
 
     def incorporate(self, payload, idempotency_key):
         fields = {"id_postulacion", "id_publicacion", "id_usuario", "version_capacidad"}

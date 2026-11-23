@@ -179,6 +179,7 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
     if (!response.ok) return unavailable();
     let data = await response.json();
     if (config.provider === "supabase" && !canonical) {
+      if (typeof data?.edad_calculada !== "boolean" || typeof data?.verificado !== "boolean") return unavailable();
       // Profile availability does not depend on the optional publication counter.
       const summary = config.profileContract === "local-v1" ? "/local/v1/publicaciones/resumen" : "/api/v1/publicaciones/resumen";
       const count = await upstream(config, summary, token, undefined, transport).catch(() => null);

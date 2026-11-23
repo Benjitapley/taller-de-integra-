@@ -17,6 +17,9 @@ __pycache__/
 # Next.js / Node.js
 node_modules/
 .next/
+.next-demo/
+# TI2: usar exclusivamente la carpeta con guiones.
+/taller de integra dos/
 /taller-de-integra-dos/roomies-web/frontend-next/out/
 /taller-de-integra-dos/roomies-web/frontend-next/build/
 /taller-de-integra-dos/roomies-web/frontend-next/coverage/

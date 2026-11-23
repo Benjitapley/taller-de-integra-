@@ -28,6 +28,8 @@ parser.add_argument("--reports", action="store_true", help="Incluir SCRUM-95 con
 args=parser.parse_args()
 if sum(bool(value) for value in (args.compatibility,args.progressive,args.verify_backup,args.restore_backup))>1:
     parser.error("Selecciona un único ensayo o modo de respaldo")
+if not (args.schema_only or args.verify_backup or args.restore_backup):
+    parser.error("El recorrido HTTP de este runner conserva el contrato Sprint 2 (Compartida/arreglos). Para S3R-C02 ejecuta python backend/services/listado-applications-service/tests/run_isolated.py. Usa --schema-only para conservar el ensayo estructural anterior.")
 pgbin=Path(args.pg_bin)
 if not (pgbin/"initdb.exe").is_file(): raise RuntimeError("Falta PostgreSQL local")
 clean={k:v for k,v in os.environ.items() if k.upper() in {"SYSTEMROOT","WINDIR","TEMP","TMP","COMSPEC","PATH","PATHEXT"}}

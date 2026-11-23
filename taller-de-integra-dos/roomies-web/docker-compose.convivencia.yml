@@ -1,7 +1,7 @@
 # Overlay local: docker compose -f docker-compose.local.yml -f docker-compose.convivencia.yml up --build
-# Aplicar primero la migracion de Convivencia con un rol de migracion autorizado.
+# Aplicar primero las migraciones 001-003 de Convivencia y 001-004 de Listado.
 # El bootstrap antiguo no crea este rol/esquema; sin migracion, operaciones fallan cerradas.
-# La aceptacion de Listado conserva incorporacion_pendiente hasta integrar F01.
+# C03 conserva una operación pendiente hasta recibir la pertenencia confirmada.
 services:
   convivencia-mensajeria:
     build:

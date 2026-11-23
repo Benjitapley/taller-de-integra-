@@ -24,6 +24,7 @@ def prepare_reports(owner, port):
         for path in (
             "reportes-service/migrations/001_reportes.up.sql",
             "reportes-service/migrations/002_revision.up.sql",
+            "reportes-service/migrations/003_envio_idempotente.up.sql",
             "match-conexion-service/migrations/001_relacion_aceptada.up.sql",
             "convivencia-mensajeria-service/migrations/001_convivencia_schema.up.sql",
             "convivencia-mensajeria-service/migrations/002_relacion_historica.up.sql",

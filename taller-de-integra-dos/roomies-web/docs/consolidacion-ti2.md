@@ -9,7 +9,7 @@ se ejecutan desde la raíz de Roomies Web.
 Se compararon las dos carpetas de `main` en
 `21cf7c2ec56964aebfcae659baf72e1ee827a512` antes de consolidarlas:
 
-- `taller-de-integra-dos/roomies-web`: 343 archivos.
+- `taller de integra dos/roomies-web`: 343 archivos.
 - `taller-de-integra-dos/roomies-web`: 322 archivos.
 - Compartían 277 archivos idénticos y 33 con diferencias.
 - Se conservaron los 355 archivos distintos por ruta relativa de ambas copias.
@@ -43,3 +43,56 @@ el panel de Vercel: el propietario debe comprobar que su Root Directory coincida
 
 Cada rama conserva sus propios avances. Compartir la ubicación del proyecto no
 fusiona automáticamente los PR pendientes de SCRUM-111, SCRUM-112 o SCRUM-124/125.
+
+## Limpieza sobre dev-web `0bffc08`
+
+Se verificó el árbol de Git antes de retirar la copia con espacios: sus únicos
+368 archivos eran 367 artefactos de `.next-demo` y un `next-env.d.ts` generado.
+No había código de aplicación exclusivo que trasladar. Se ignoran esa raíz
+antigua y `.next-demo` para evitar que vuelvan a incorporarse. Se retiraron la
+ruta ficticia `/recorrido-preview`, su componente y estilos, y el componente
+de imágenes duplicado sin referencias. Se conservan las vistas de producto.
+
+Se corrigieron mezclas de las últimas fusiones: estado y función duplicados en
+Inicio, campos y código sin conectar en formularios, importación duplicada,
+variable inexistente en validación y parámetros repetidos que impedían arrancar
+Listado. La validación región/comuna consulta el catálogo persistido, no una
+lista abreviada con códigos diferentes. Los errores al paginar conservan las
+filas visibles y permiten reintentar el mismo cursor.
+
+El código de aceptación de `225433f` permanece integrado. El ensayo C03 necesitó
+corregir su proxy local para reenviar GET y Authorization y mostrar el log de
+arranque cuando un proceso falla. No se modificaron bases compartidas, rutas
+finales de perfil, main, configuración de Vercel ni Integración 4.
+
+Comprobaciones locales de esta limpieza:
+
+- Web: 128 pruebas aprobadas; la prueba separada de reportes en navegador quedó
+  omitida en ese comando, no aprobada.
+- Navegador con Next/BFF reales y transporte HTTP ficticio: 14 aprobadas,
+  incluyendo formularios/comunas y aceptación recuperable.
+- TypeScript, lint y compilación aislada: aprobados.
+- Listado: 59 pruebas aprobadas con PostgreSQL efímero. La regresión adicional
+  de filtros región/comuna pasó aparte: 1 aprobada, 59 deseleccionadas.
+- C03: ensayo aprobado con cuatro procesos HTTP separados, SQL real temporal e
+  identidad externa simulada. Cubre incorporación, permisos, reintentos,
+  concurrencia por último cupo, pertenencia única, timeout y reinicio. Los
+  cortes de conexión intencionales pueden emitir WinError 10053 en el proxy.
+
+Estas comprobaciones no acreditan producción. Las rutas finales de perfil/foto
+de SCRUM-94/111 y su persistencia remota siguen pendientes de la entrega de
+Auth/Users. No se fusionaron las ramas pendientes 111/112 con esta limpieza.
+
+
+## Reconciliación posterior a 807dd3a (23/11/2026)
+
+El commit 91f84a5 volvió a introducir 14 archivos en la carpeta TI2 con espacios.
+Se compararon sus funciones con los equivalentes canónicos y no había funciones
+exclusivas que trasladar. Se retiró esa copia y se resolvieron los marcadores
+pendientes en Inicio, ubicación, pruebas y S3R-C02. Se conserva el cambio de
+807dd3a: id_propietario solo en el detalle de publicación con sesión autorizada.
+No hay diferencias en Integración 4 respecto de dev-web.
+
+SCRUM-111 se reconcilia con las rutas finales y conserva las rutas transitorias.
+Esta entrega incluye su migración aditiva de Auth, aplicada separadamente con
+autorización; no activa Convivencia/Reportes ni acredita un despliegue final.

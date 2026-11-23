@@ -3,13 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Tabs from "@/components/ui/Tabs";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import Icon from "@/components/ui/Icon";
 import { routes } from "@/config/navigation";
 import { apiRequest, type ApiPath } from "@/lib/api/client";
+import { publicationPage, appendPublications, type Publication } from "../publicaciones/contracts";
 import styles from "./inicio.module.css";
 
 const items = [{ value: "arriendos", label: "ARRIENDOS" }, { value: "personas", label: "PERSONAS" }] as const;
@@ -17,26 +18,12 @@ type SearchFilters = {
   consulta: string;
   precio_min: string;
   precio_max: string;
-  cupos_min: string;
+  cupos_disponibles: string;
   categoria: string;
   tipo_vivienda: string;
   mascota: string;
   presupuesto_max: string;
   ocupacion: string;
-};
-type Publication = {
-  id: number;
-  titulo: string;
-  precio: number;
-  ubicacion: string;
-  cupos_totales: number | null;
-  cupos_disponibles: number | null;
-  tipo: string | null;
-  tipo_vivienda: string | null;
-  imagen: string | null;
-  categoria: string | null;
-  descripcion: string | null;
-  mascota: string | null;
 };
 type Person = {
   id_usuario_PK: number;
@@ -47,7 +34,7 @@ type Person = {
 };
 
 const emptyFilters: SearchFilters = {
-  consulta: "", precio_min: "", precio_max: "", cupos_min: "", categoria: "",
+  consulta: "", precio_min: "", precio_max: "", cupos_disponibles: "", categoria: "",
   tipo_vivienda: "", mascota: "", presupuesto_max: "", ocupacion: "",
 };
 
@@ -56,31 +43,6 @@ function records(value: unknown): Record<string, unknown>[] {
   return value.map((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("La API devolvió un resultado no válido.");
     return item as Record<string, unknown>;
-  });
-}
-
-function publications(value: unknown): Publication[] {
-  const page = value && typeof value === "object" && "items" in value
-    ? (value as { items: unknown }).items
-    : value;
-  return records(page).map((item) => {
-    if (!Number.isSafeInteger(item.id) || Number(item.id) < 1 ||
-        (item.titulo !== null && typeof item.titulo !== "string") ||
-        typeof item.precio !== "number" || !Number.isFinite(item.precio) ||
-        (item.ubicacion !== null && typeof item.ubicacion !== "string")) {
-      throw new Error("La API devolvió una publicación no válida.");
-    }
-    return {
-      id: item.id as number, titulo: item.titulo || "Publicación sin título", precio: item.precio, ubicacion: item.ubicacion || "Ubicación por confirmar",
-      cupos_totales: typeof item.cupos_totales === "number" ? item.cupos_totales : null,
-      cupos_disponibles: typeof item.cupos_disponibles === "number" ? item.cupos_disponibles : null,
-      tipo: typeof item.tipo === "string" ? item.tipo : null,
-      tipo_vivienda: typeof item.tipo_vivienda === "string" ? item.tipo_vivienda : null,
-      imagen: typeof item.imagen === "string" && /^\/imagenes\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(item.imagen) ? item.imagen : null,
-      categoria: typeof item.categoria === "string" ? item.categoria : null,
-      descripcion: typeof item.descripcion === "string" ? item.descripcion : null,
-      mascota: typeof item.mascota === "string" ? item.mascota : null,
-    };
   });
 }
 
@@ -98,8 +60,8 @@ function people(value: unknown): Person[] {
   });
 }
 
-function price(value: number) {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
+function price(value: number | string) {
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 2 }).format(Number(value));
 }
 
 export default function HomeContent({ canReport = false }: { canReport?: boolean }) {
@@ -107,6 +69,9 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
   const router = useRouter();
   const value = params.get("vista") === "personas" ? "personas" : "arriendos";
   const isPeople = value === "personas";
+  const loadingMoreRef = useRef(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [filters, setFilters] = useState(emptyFilters);
   const [applied, setApplied] = useState(emptyFilters);
   const [sending, setSending] = useState<number | null>(null);
@@ -116,8 +81,10 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
     listings: Publication[];
     profiles: Person[];
     error: string;
+    moreError: string;
+    cursor: string | null;
   } | null>(null);
-  const requestKey = JSON.stringify([isPeople, applied]);
+  const requestKey = JSON.stringify([isPeople, applied, retry]);
   const currentResults = results?.key === requestKey ? results : null;
   const loading = currentResults === null;
   const error = currentResults?.error ?? "";
@@ -133,7 +100,7 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
       if (applied.presupuesto_max) query.set("presupuesto_max", applied.presupuesto_max);
       if (applied.ocupacion) query.set("ocupacion", applied.ocupacion);
     } else {
-      for (const key of ["consulta", "precio_min", "precio_max", "cupos_min", "categoria", "tipo_vivienda", "mascota"] as const) {
+      for (const key of ["consulta", "precio_min", "precio_max", "cupos_disponibles", "categoria", "tipo_vivienda", "mascota"] as const) {
         const field = key === "consulta" ? applied.consulta : applied[key];
         if (field) query.set(key, field);
       }
@@ -147,21 +114,42 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
         if (controller.signal.aborted) return;
         setResults({
           key: requestKey,
-          listings: isPeople ? [] : publications(result),
+          listings: isPeople ? [] : publicationPage(result).items,
+          cursor: isPeople ? null : publicationPage(result).siguiente_cursor,
           profiles: isPeople ? people(result) : [],
           error: "",
+          moreError: "",
         });
       })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) setResults({
           key: requestKey,
           listings: [],
+          cursor: null,
           profiles: [],
           error: reason instanceof Error ? reason.message : "No se pudo cargar el listado.",
+          moreError: "",
         });
       });
     return () => controller.abort();
   }, [applied, isPeople, requestKey, results?.key]);
+
+  async function loadMore() {
+    if (loadingMoreRef.current || !currentResults?.cursor) return;
+    const key = requestKey;
+    const cursor = currentResults.cursor;
+    loadingMoreRef.current = true; setLoadingMore(true);
+    const query = new URLSearchParams({ cursor });
+    for (const field of ["consulta", "precio_min", "precio_max", "cupos_disponibles", "categoria", "tipo_vivienda", "mascota"] as const) {
+      if (applied[field]) query.set(field, applied[field]);
+    }
+    try {
+      const page = publicationPage(await apiRequest(`/api/publicaciones?${query}`));
+      setResults(current => current?.key === key ? { ...current, listings: appendPublications(current.listings, page.items), cursor: page.siguiente_cursor, moreError: "" } : current);
+    } catch {
+      setResults(current => current?.key === key ? { ...current, moreError: "No se pudo cargar la siguiente página. Puedes reintentar." } : current);
+    } finally { loadingMoreRef.current = false; setLoadingMore(false); }
+  }
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -208,8 +196,8 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
             onChange={(event) => setFilters({ ...filters, precio_min: event.target.value })} /></label>
           <label>Precio máximo (CLP)<input type="number" min="0" step="1" value={filters.precio_max}
             onChange={(event) => setFilters({ ...filters, precio_max: event.target.value })} /></label>
-          <label>Cupos<select value={filters.cupos_min} onChange={(event) => setFilters({ ...filters, cupos_min: event.target.value })}>
-            <option value="">Cualquier cantidad</option><option value="1">1 o más</option><option value="2">2 o más</option><option value="3">3 o más</option><option value="4">4 o más</option>
+          <label>Cupos<select value={filters.cupos_disponibles} onChange={(event) => setFilters({ ...filters, cupos_disponibles: event.target.value })}>
+            <option value="">Cualquier cantidad</option><option value="1">Exactamente 1</option><option value="2">Exactamente 2</option><option value="3">Exactamente 3</option><option value="4">Exactamente 4</option>
           </select></label>
           <label>Publicación<select value={filters.categoria} onChange={(event) => setFilters({ ...filters, categoria: event.target.value })}>
             <option value="">Todas</option><option value="busco">Busca arriendo</option><option value="ofrezco">Ofrece arriendo</option>
@@ -229,7 +217,7 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
     <div className={styles.sectionHeading}><h2>{isPeople ? "Encuentra roomies" : "Publicaciones recientes"}</h2>
       {!loading && !error && <small>{isPeople ? profiles.length : listings.length} resultados</small>}</div>
     {loading && <p role="status">Cargando resultados…</p>}
-    {error && <p className={styles.error} role="alert">{error}</p>}
+    {error && <p className={styles.error} role="alert">{error} <Button onClick={() => currentResults?.cursor ? void loadMore() : setRetry(value => value + 1)}>Reintentar</Button></p>}
     {connectionMessage && <p role="status">{connectionMessage} <Link href="/mis-conexiones">Ver conexiones</Link></p>}
     {!loading && !error && isPeople && (profiles.length
       ? <div className={styles.results}>{profiles.map((person) => <article className={styles.resultCard} key={person.id_usuario_PK}>
@@ -242,14 +230,17 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
         </div>
       </article>)}</div>
       : <EmptyState icon="user" title="No hay personas para estos filtros" description="Prueba con otra comuna, presupuesto u ocupación." />)}
-    {!loading && !error && !isPeople && (listings.length
-      ? <div className={styles.results}>{listings.map((publication) => <article className={styles.resultCard} key={publication.id}>
-        {publication.imagen && <Image className={styles.publicationImage} src={publication.imagen} alt="" width={180} height={140} unoptimized />}
+    {!loading && !isPeople && (listings.length
+      ? <div className={styles.results}>{listings.map((publication) => <article className={styles.resultCard} key={publication.id_publicacion}>
+        {publication.imagenes[0]?.url && <Image className={styles.publicationImage} src={publication.imagenes[0].url} alt="" width={180} height={140} unoptimized />}
         <div className={styles.publicationDetails}><p className={styles.badge}>{publication.categoria === "busco" ? "Busca arriendo" : "Ofrece arriendo"}</p>
-          <h3><Link href={`/publicaciones/${publication.id}`}>{publication.titulo}</Link></h3><p>{publication.ubicacion}</p><strong>{price(publication.precio)}</strong>
+          <h3><Link href={`/publicaciones/${publication.id_publicacion}`}>{publication.titulo}</Link></h3><p>{publication.ubicacion}</p><strong>{price(publication.precio)}</strong>
           <small>{publication.tipo ?? "Publicación"} · {publication.tipo_vivienda || "Vivienda sin especificar"} · {publication.cupos_disponibles ?? "Por confirmar"} cupos disponibles · Mascotas: {publication.mascota === "si" ? "sí" : "no"}</small>
           {publication.descripcion && <p className={styles.description}>{publication.descripcion}</p>}</div>
       </article>)}</div>
-      : <EmptyState icon="home" title="No hay publicaciones para estos filtros" description="Prueba con otros términos o amplía los filtros de precio y vivienda." />)}
+      : !error && <EmptyState icon="home" title="No hay publicaciones para estos filtros" description="Prueba con otros términos o amplía los filtros de precio y vivienda." />)}
+    {!isPeople && currentResults?.moreError && <p role="alert">{currentResults.moreError}</p>}
+    {!isPeople && currentResults?.cursor && <Button disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "Cargando..." : "Cargar más"}</Button>}
+    {!isPeople && !loading && !currentResults?.cursor && listings.length > 0 && <p role="status">No hay más publicaciones.</p>}
   </Tabs>;
 }

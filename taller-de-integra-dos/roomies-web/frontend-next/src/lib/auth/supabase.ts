@@ -264,7 +264,7 @@ export async function handleSupabaseAuth(request: Request, action: string, confi
     }
     if (action === "logout") {
       if (!token) return clear(bridge.error(401), config, bridge);
-      const revoked = config.profileContract === "v1" || (await transport(`${config.backend}/local/v1/sesion/revocar`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: "{}", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) })).ok;
+      const revoked = (await transport(`${config.backend}/local/v1/sesion/revocar`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: "{}", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) })).ok;
       const signedOut = await provider(config, "/logout?scope=local", transport, {}, token);
       rotations.delete(config.supabase.origin + ":" + readRefresh(request, config));
       return clear(revoked && signedOut.ok ? bridge.reply(200, { success: true, message: "Sesión cerrada." }) : bridge.error(503), config, bridge);
