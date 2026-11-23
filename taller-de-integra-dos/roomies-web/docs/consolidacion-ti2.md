@@ -9,7 +9,7 @@ se ejecutan desde la raíz de Roomies Web.
 Se compararon las dos carpetas de `main` en
 `21cf7c2ec56964aebfcae659baf72e1ee827a512` antes de consolidarlas:
 
-- `taller de integra dos/roomies-web`: 343 archivos.
+- `taller-de-integra-dos/roomies-web`: 343 archivos.
 - `taller-de-integra-dos/roomies-web`: 322 archivos.
 - Compartían 277 archivos idénticos y 33 con diferencias.
 - Se conservaron los 355 archivos distintos por ruta relativa de ambas copias.

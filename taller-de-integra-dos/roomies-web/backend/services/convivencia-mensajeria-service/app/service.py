@@ -11,6 +11,17 @@ class Convivencia:
         self.repository, self.identity, self.publications = repository, identity, publications
 
     def incorporate(self, key: UUID, payload: dict):
+        result = self._incorporate(key, payload)
+        if result[0] >= 400:
+            # Un rechazo no queda visible como final mientras retenga el cupo remoto.
+            self.dispatch(key)
+            with self.repository.transaction() as c:
+                pending = c.execute("SELECT 1 FROM convivencia_mensajeria.outbox WHERE id_operacion=%s AND accion='Liberar' AND NOT enviado", (key,)).fetchone()
+            if pending:
+                raise unavailable()
+        return result
+
+    def _incorporate(self, key: UUID, payload: dict):
         payload = Incorporation.model_validate(payload).model_dump()
         self.repository.begin(key, payload)
         # La intención de reservar se confirma antes del HTTP: una respuesta perdida
@@ -65,8 +76,9 @@ class Convivencia:
                     raise ServiceError("NO_CAPACITY", "No quedan cupos disponibles.")
                 c.execute("""INSERT INTO convivencia_mensajeria.pertenencia(id_arriendo,id_usuario,id_postulacion,id_operacion)
                   VALUES(%s,%s,%s,%s)""", (rental["id_arriendo"], payload["id_usuario"], payload["id_postulacion"], key))
+                version = c.execute("UPDATE convivencia_mensajeria.arriendo SET version_ocupacion=version_ocupacion+1 WHERE id_arriendo=%s RETURNING version_ocupacion", (rental["id_arriendo"],)).fetchone()["version_ocupacion"]
                 body = {"id_incorporacion": str(key), "id_arriendo": rental["id_arriendo"], "id_publicacion": payload["id_publicacion"], "id_usuario": payload["id_usuario"], "estado": "Activa", "confirmacion_publicacion": "Pendiente"}
-                self._outbox(c, key, "Confirmar", reservation)
+                self._outbox(c, key, "Confirmar", {**reservation, "confirmacion": {"id_arriendo": rental["id_arriendo"], "ocupacion": occupied + 1, "version_ocupacion": version}})
                 c.execute("UPDATE convivencia_mensajeria.incorporacion SET estado='Terminada',http_status=201,respuesta=%s WHERE id_operacion=%s", (Jsonb(body), key))
                 return 201, body, False
             except ServiceError as error:
@@ -86,15 +98,32 @@ class Convivencia:
         c.execute("""INSERT INTO convivencia_mensajeria.outbox(id_operacion,accion,reserva) VALUES(%s,%s,%s)
           ON CONFLICT(id_operacion,accion) DO NOTHING""", (key, action, Jsonb(reservation)))
 
-    def dispatch(self):
+    @staticmethod
+    def _legacy_confirmation(c, event):
+        row = c.execute("""SELECT a.id_arriendo,a.version_ocupacion,
+            (SELECT count(*) FROM convivencia_mensajeria.pertenencia p WHERE p.id_arriendo=a.id_arriendo AND p.estado='Activa') AS ocupacion
+            FROM convivencia_mensajeria.pertenencia p JOIN convivencia_mensajeria.arriendo a USING(id_arriendo)
+            WHERE p.id_operacion=%s AND p.id_usuario=%s AND a.id_publicacion=%s AND p.estado='Activa'
+            FOR UPDATE OF a""", (event["id_operacion"], event["reserva"]["id_usuario"], event["reserva"]["id_publicacion"])).fetchone()
+        if row is None or row["version_ocupacion"] < 1:
+            raise unavailable()
+        reservation = {**event["reserva"], "confirmacion": dict(row)}
+        c.execute("UPDATE convivencia_mensajeria.outbox SET reserva=%s WHERE id_outbox=%s", (Jsonb(reservation), event["id_outbox"]))
+        return reservation
+
+    def dispatch(self, key=None):
         delivered = 0
         with self.repository.transaction() as c:
-            events = c.execute("SELECT * FROM convivencia_mensajeria.outbox WHERE NOT enviado ORDER BY ultimo_intento NULLS FIRST,id_outbox LIMIT 20 FOR UPDATE SKIP LOCKED").fetchall()
+            condition = " AND id_operacion=%s" if key is not None else ""
+            events = c.execute("SELECT * FROM convivencia_mensajeria.outbox WHERE NOT enviado" + condition + " ORDER BY ultimo_intento NULLS FIRST,id_outbox LIMIT 20 FOR UPDATE SKIP LOCKED", (key,) if key is not None else ()).fetchall()
             for event in events:
                 c.execute("UPDATE convivencia_mensajeria.outbox SET ultimo_intento=clock_timestamp() WHERE id_outbox=%s", (event["id_outbox"],))
                 try:
+                    reservation = event["reserva"]
+                    if event["accion"] == "Confirmar" and "confirmacion" not in reservation:
+                        reservation = self._legacy_confirmation(c, event)
                     method = self.publications.confirm if event["accion"] == "Confirmar" else self.publications.release
-                    method(event["id_operacion"], event["reserva"])
+                    method(event["id_operacion"], reservation)
                 except Exception:
                     continue  # La reserva firme persiste hasta confirmar o liberar con la misma clave.
                 c.execute("UPDATE convivencia_mensajeria.outbox SET enviado=true WHERE id_outbox=%s", (event["id_outbox"],))
@@ -104,7 +133,7 @@ class Convivencia:
     def recover(self):
         for operation in self.repository.pending():
             try:
-                self.incorporate(operation["id_operacion"], operation["payload"])
+                self._incorporate(operation["id_operacion"], operation["payload"])
             except Exception:
                 continue
         return self.dispatch()

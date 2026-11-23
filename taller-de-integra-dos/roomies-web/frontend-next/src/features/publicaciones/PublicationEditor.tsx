@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageHeader from "@/components/layout/PageHeader";
 import Button from "@/components/ui/Button";
@@ -8,13 +8,16 @@ import Card from "@/components/ui/Card";
 import PublicationImages, { type ExistingPublicationImage } from "./PublicationImages";
 import { validatePublicationForm } from "./validation";
 
+import LocationFields from "./LocationFields";
+import ImageFields, { type PublicationImage } from "./ImageFields";
+import { validatePublicationForm } from "./validation";
+
 type Publication = {
-  id: number;
-  id_publicacion?: number;
-  id_region?: number | null;
-  id_comuna?: number | null;
-  imagenes?: ExistingPublicationImage[];
-  imagen?: string | null;
+  id_publicacion: number;
+  id_region?: number;
+  id_comuna?: number;
+  imagenes?: PublicationImage[];
+  reglas?: string[];
   titulo: string;
   categoria?: string;
   tipo_vivienda?: string;
@@ -35,6 +38,7 @@ export default function EditPublication() {
 
 function PublicationEditor({ id }: { id: string }) {
   const router = useRouter();
+  const operation = useRef<string | null>(null);
   const [publication, setPublication] = useState<Publication | null>(null);
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
@@ -75,12 +79,11 @@ function PublicationEditor({ id }: { id: string }) {
     const form = new FormData(event.currentTarget);
     if (!publication?.tipo) { setMessage("No se pudo determinar el tipo original. Recarga la publicación."); return; }
     form.set("tipo", publication.tipo);
-    form.set("permitir_comentarios", form.has("permitir_comentarios") ? "true" : "false");
-    for (const imageId of keptImageIds) form.append("imagenes_conservar", String(imageId));
-    for (const image of newImages) form.append("imagenes", image);
-    const validationError = validatePublicationForm(form);
-    if (validationError) { setMessage(validationError); return; }
+    form.set("permitir_comentarios", publication.permitir_comentarios ? "true" : "false");
+    form.set("reglas", JSON.stringify(publication.reglas ?? []));
 
+    const invalid = validatePublicationForm(form);
+    if (invalid) { setMessage(invalid); return; }
     setPending(true);
     setMessage("");
 
@@ -89,7 +92,7 @@ function PublicationEditor({ id }: { id: string }) {
         method: "PUT",
         body: form,
         credentials: "same-origin",
-        headers: { "X-Haycupo-CSRF": "1" },
+        headers: { "X-Haycupo-CSRF": "1", "Idempotency-Key": operation.current ??= crypto.randomUUID() },
       });
 
       const payload = await response.json().catch(() => null);
@@ -117,7 +120,7 @@ function PublicationEditor({ id }: { id: string }) {
     <Card>
       {loading ? <p>Cargando publicación…</p> : null}
       {!loading && !publication ? <p role="alert">{message || "No se pudo cargar esta publicación."}</p> : null}
-      {!loading && publication ? <form onSubmit={onSubmit} style={{ display: "grid", gap: 16 }}>
+      {!loading && publication ? <form onSubmit={onSubmit} onChange={() => { operation.current = null; }} aria-busy={pending} style={{ display: "grid", gap: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           <label style={{ display: "grid", gap: 8 }}>
             <span>Título</span>
@@ -125,9 +128,8 @@ function PublicationEditor({ id }: { id: string }) {
           </label>
           <label style={{ display: "grid", gap: 8 }}>
             <span>Categoría</span>
-            <select name="categoria" required defaultValue={publication.categoria || "ofrezco"} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}>
+            <select name="categoria" required defaultValue="ofrezco" style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}>
               <option value="ofrezco">Ofrezco</option>
-              <option value="busco">Busco</option>
             </select>
           </label>
           <label style={{ display: "grid", gap: 8 }}>
@@ -138,14 +140,11 @@ function PublicationEditor({ id }: { id: string }) {
               <option value="habitacion">Habitación</option>
             </select>
           </label>
-          {publication.id_comuna && publication.id_region === 9 ? <>
-            <label style={{ display: "grid", gap: 8 }}><span>Región</span><input type="hidden" name="id_region" value="9" /><span>La Araucanía</span></label>
-            <label style={{ display: "grid", gap: 8 }}><span>Comuna</span>
-              <select name="id_comuna" required defaultValue={String(publication.id_comuna)} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}>
-                {communes.map((commune) => <option key={commune.id_comuna} value={commune.id_comuna}>{commune.nombre}</option>)}
-              </select>
-            </label>
-          </> : <label style={{ display: "grid", gap: 8 }}><span>Ubicación (se conserva sin cambios)</span><input type="hidden" name="ubicacion" value={publication.ubicacion || ""} /><span>{publication.ubicacion}</span></label>}
+          <LocationFields initialRegion={publication.id_region} initialCommune={publication.id_comuna} />
+          <label style={{ display: "grid", gap: 8 }}>
+            <span>Dirección o sector</span>
+            <input name="ubicacion" required maxLength={250} defaultValue={publication.ubicacion || ""} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }} />
+          </label>
           <label style={{ display: "grid", gap: 8 }}>
             <span>Precio</span>
             <input name="precio" type="number" min="0" max="999999999999" step="1" required defaultValue={publication.precio ?? 0} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }} />
@@ -161,6 +160,7 @@ function PublicationEditor({ id }: { id: string }) {
               <option value="no">No</option>
             </select>
           </label>
+          <ImageFields images={publication.imagenes} />
         </div>
 
         <label style={{ display: "grid", gap: 8 }}>
@@ -168,9 +168,6 @@ function PublicationEditor({ id }: { id: string }) {
           <textarea name="descripcion" rows={6} required maxLength={5000} defaultValue={publication.descripcion || ""} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db", resize: "vertical" }} />
         </label>
 
-        <PublicationImages existing={publication.imagenes ?? []} keptIds={keptImageIds} onKeptIdsChange={setKeptImageIds} files={newImages} onFilesChange={setNewImages} />
-
-        <label><input type="checkbox" name="permitir_comentarios" defaultChecked={publication.permitir_comentarios} /> Permitir comentarios</label>
         {message ? <p role="alert" style={{ color: "#b91c1c", margin: 0 }}>{message}</p> : null}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>

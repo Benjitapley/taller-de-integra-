@@ -58,7 +58,10 @@ No usar ese ejemplo contra servicios reales en esta fase.
 
 Timeouts finitos en `(0, 120]`. Configuración inválida impide el arranque con
 mensaje genérico. HTTP permite simulación local; TLS de despliegue queda pendiente.
-Límite de solicitudes: enteros en `(0, 32000000]` (máximo configurable 32 MB). Límite de respuestas: enteros en `(0, 16777216]` (máximo configurable 16 MiB). En modo local/Supabase el cuerpo entrante permite hasta 27 MB para formularios multipart con cinco imágenes de hasta 5 MiB cada una.
+Límites de bytes: solicitudes hasta 32 000 000; respuestas hasta 16 777 216.
+En modo local/Supabase la solicitud predeterminada admite 26 000 000 bytes,
+incluido el multipart de cinco fotos de 5 000 000 bytes; fuera de ese modo
+conserva 1 MiB. El límite de respuesta no aumenta por la carga de fotografías.
 FastAPI 0.162.0 y Starlette 1.10.0 están fijados y verificados en el entorno local;
 el par anterior no admitía la versión corregida de Starlette.
 
@@ -77,10 +80,10 @@ el par anterior no admitía la versión corregida de Starlette.
 - Solicitudes: Content-Encoding ausente o una sola cabecera `identity` (sin distinguir
   mayúsculas). Otras codificaciones, listas o duplicados se rechazan con 415 antes
   de leer/retransmitir el cuerpo. `identity` se puede reenviar.
-- Allowlist de solicitud: Authorization, Content-Type, Content-Encoding, Accept, Accept-Language.
+- Allowlist de solicitud: Authorization, Content-Type, Content-Encoding, Accept, Accept-Language, Idempotency-Key.
   HTTPX genera Host y framing. No transmite cookies ni X-Forwarded-* del cliente.
 - Allowlist de respuesta: Content-Type, Content-Encoding, Content-Language,
-  WWW-Authenticate, Retry-After. Excluye Set-Cookie, Server, Location, Refresh y
+  WWW-Authenticate, Retry-After, Idempotency-Replayed. Excluye Set-Cookie, Server, Location, Refresh y
   cabeceras arbitrarias. Filtra hop-by-hop y las nombradas por Connection.
   No conserva casing, orden de cabeceras ni framing HTTP.
   Recalcula Content-Length con los bytes raw efectivos, excepto 204/304 donde no

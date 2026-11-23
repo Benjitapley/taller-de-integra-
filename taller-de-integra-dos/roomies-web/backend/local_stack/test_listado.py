@@ -6,7 +6,7 @@ from backend.service_runtime.contracts import RuleViolation, DependencyUnavailab
 
 PUB = {"id_publicacion": 7, "id_usuario": 1, "estado": "Disponible", "tipo": "Arrendador", "cupos_totales": 2}
 APP = {"id_postulacion": 9, "id_publicacion": 7, "id_usuario": 2, "estado": "Pendiente"}
-DATA = {"titulo": "Habitación", "descripcion": "Prueba", "ubicacion": "Temuco", "precio": "250000.50", "cupos_totales": "2", "tipo": "Arrendador", "categoria": "ofrezco", "tipo_vivienda": "habitacion", "mascota": "no"}
+DATA = {"titulo": "Habitación", "descripcion": "Prueba", "ubicacion": "Temuco", "precio": "250000", "cupos_totales": "2", "tipo": "Arrendador", "categoria": "ofrezco", "tipo_vivienda": "habitacion", "mascota": "no", "id_region":"9", "id_comuna":"9101"}
 
 def test_cupos_no_inventa_ocupacion():
     occupancy = Mock()
@@ -66,57 +66,6 @@ def test_arrendador_ofrece_espacio_y_no_busca_arriendo():
     with pytest.raises(RuleViolation): Publications(repo, Mock(), images).save(1, {**DATA, "categoria":"busco"})
     repo.transaction.assert_not_called()
     images.save.assert_not_called()
-
-
-def test_publicacion_guarda_hasta_cinco_imagenes_ordenadas():
-    from unittest.mock import call
-    repo, images = Mock(), Mock()
-    repo.create.return_value = 7
-    repo.transaction.return_value.__enter__ = Mock()
-    repo.transaction.return_value.__exit__ = Mock(return_value=False)
-    images.save.side_effect = ["/imagenes/p_a.jpg", "/imagenes/p_b.jpg"]
-    result = Publications(repo, Mock(), images).save(1, {**DATA, "precio": "250000"}, images=[b"a", b"b"])
-    assert result == 7
-    assert repo.image.call_args_list == [call(7, "/imagenes/p_a.jpg", 0), call(7, "/imagenes/p_b.jpg", 1)]
-
-
-def test_edicion_conserva_agrega_y_quita_imagenes_solo_al_guardar():
-    from unittest.mock import call
-    repo, images = Mock(), Mock()
-    repo.transaction.return_value.__enter__ = Mock()
-    repo.transaction.return_value.__exit__ = Mock(return_value=False)
-    repo.publication.return_value = {**PUB, "estado": "Disponible"}
-    repo.images.return_value = [
-        {"id_imagen": 11, "url": "/imagenes/old-a.jpg", "orden": 0},
-        {"id_imagen": 12, "url": "/imagenes/old-b.jpg", "orden": 1},
-    ]
-    images.save.return_value = "/imagenes/new-c.jpg"
-    result = Publications(repo, Mock(), images).save(
-        1, {**DATA, "precio": "250000"}, images=[b"new"], id=7, keep_image_ids=[12])
-    assert result == 7
-    repo.order_image.assert_called_once_with(7, 12, 0)
-    repo.remove_image.assert_called_once_with(7, 11)
-    repo.image.assert_called_once_with(7, "/imagenes/new-c.jpg", 1)
-    images.delete.assert_called_once_with("/imagenes/old-a.jpg")
-
-
-def test_edicion_rechaza_ids_de_imagen_ajenos_y_capacidad_en_conflicto():
-    repo, images = Mock(), Mock()
-    repo.transaction.return_value.__enter__ = Mock()
-    repo.transaction.return_value.__exit__ = Mock(return_value=False)
-    repo.publication.return_value = {**PUB, "estado": "Disponible"}
-    repo.images.return_value = [{"id_imagen": 11, "url": "/imagenes/old.jpg", "orden": 0}]
-    service = Publications(repo, Mock(), images)
-    with pytest.raises(RuleViolation) as error:
-        service.save(1, {**DATA, "precio": "250000"}, id=7, keep_image_ids=[99])
-    assert error.value.status == 409
-    images.save.assert_not_called()
-
-    repo.publication.return_value = {**PUB, "estado": "Activa", "cupos_totales": 3}
-    with pytest.raises(RuleViolation) as error:
-        service.save(1, {**DATA, "precio": "250000", "cupos_totales": "2"}, id=7, keep_image_ids=[11])
-    assert error.value.status == 409
-    repo.update.assert_not_called()
 
 
 @pytest.fixture

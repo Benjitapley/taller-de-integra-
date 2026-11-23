@@ -3,6 +3,7 @@ import os
 from uuid import UUID
 import httpx
 from backend.service_runtime.contracts import DependencyUnavailable, RuleViolation
+from backend.service_runtime.notifications import send_notification
 from backend.service_runtime.settings import service_url
 
 
@@ -28,7 +29,7 @@ class IncorporationRejected(RuleViolation):
 
 
 class HttpIncorporations:
-    """Puerto preparado para F01; decidir Aceptada todavia no lo invoca."""
+    """Contrato de incorporación: solo el recibo validado permite confirmar Aceptada."""
 
     def incorporate(self, payload, idempotency_key):
         fields = {"id_postulacion", "id_publicacion", "id_usuario", "version_capacidad"}
@@ -89,6 +90,9 @@ class HttpOwners:
 
 class HttpNotifications:
     def send(self,event):
+        if os.environ.get("LISTADO_AUTH_JWT_KEY"):
+            send_notification({**event, "tipo": "postulacion_resultado"})
+            return
         key=os.environ.get("ROOMIES_INTERNAL_TOKEN", "")
         if len(key)<32:
             raise DependencyUnavailable()
@@ -96,3 +100,5 @@ class HttpNotifications:
         with httpx.Client(timeout=3,trust_env=False,follow_redirects=False) as client:
             response=client.post(url+"/internal/v1/notificaciones",json=event,headers={"X-Roomies-Service":key})
             response.raise_for_status()
+            if response.json() != {"success": True}:
+                raise DependencyUnavailable()

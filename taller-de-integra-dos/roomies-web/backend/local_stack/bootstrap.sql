@@ -49,14 +49,27 @@ CREATE TABLE listado_applications.publicacion (
  tipo_vivienda VARCHAR(20) NOT NULL CHECK (tipo_vivienda IN ('casa','departamento','habitacion')),
  mascota VARCHAR(2) NOT NULL CHECK (mascota IN ('si','no')),
  permitir_comentarios BOOLEAN NOT NULL DEFAULT FALSE,
- fecha_publicacion TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+ fecha_publicacion TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+ version_imagenes BIGINT NOT NULL DEFAULT 0
 );
 CREATE INDEX publicacion_feed ON listado_applications.publicacion(fecha_publicacion DESC,id_publicacion DESC);
 CREATE INDEX publicacion_owner ON listado_applications.publicacion(id_usuario);
 CREATE TABLE listado_applications.imagen_publicacion (
  id_imagen BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  id_publicacion BIGINT NOT NULL REFERENCES listado_applications.publicacion(id_publicacion),
- url TEXT NOT NULL, orden INTEGER NOT NULL DEFAULT 0 CHECK (orden >= 0)
+ url TEXT NOT NULL, orden INTEGER NOT NULL DEFAULT 0 CHECK (orden >= 0),
+ id_usuario BIGINT, bucket TEXT, object_path TEXT, mime TEXT, size_bytes BIGINT
+);
+CREATE UNIQUE INDEX imagen_publicacion_object_path ON listado_applications.imagen_publicacion(bucket,object_path) WHERE object_path IS NOT NULL;
+CREATE TABLE listado_applications.publication_image_operation (
+ id_usuario BIGINT NOT NULL, operation_key UUID NOT NULL, fingerprint CHAR(64) NOT NULL,
+ id_publicacion BIGINT, base_version BIGINT NOT NULL, plan JSONB NOT NULL,
+ estado TEXT NOT NULL DEFAULT 'Prepared' CHECK(estado IN ('Prepared','Complete','Cleaned')),
+ touched_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(), PRIMARY KEY(id_usuario,operation_key)
+);
+CREATE INDEX publication_image_operation_recovery ON listado_applications.publication_image_operation(touched_at) WHERE estado='Prepared';
+CREATE TABLE listado_applications.publication_image_cleanup (
+ object_path TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
 CREATE TABLE listado_applications.postulacion (
  id_postulacion BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

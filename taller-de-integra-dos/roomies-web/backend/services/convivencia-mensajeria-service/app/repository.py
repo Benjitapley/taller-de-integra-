@@ -52,3 +52,15 @@ class PostgresRepository:
             if row is None:
                 raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
         return self.get(row["id_arriendo"], user_id)
+
+    def overlapped(self, a, b):
+        with self.transaction() as c:
+            return c.execute("""SELECT EXISTS (
+                SELECT FROM convivencia_mensajeria.pertenencia a
+                JOIN convivencia_mensajeria.pertenencia b USING(id_arriendo)
+                WHERE a.id_usuario=%s AND b.id_usuario=%s AND a.id_usuario<>b.id_usuario
+                  AND (a.estado='Activa' OR a.terminada_en>a.creada_en)
+                  AND (b.estado='Activa' OR b.terminada_en>b.creada_en)
+                  AND a.creada_en<COALESCE(b.terminada_en,'infinity'::timestamptz)
+                  AND b.creada_en<COALESCE(a.terminada_en,'infinity'::timestamptz)
+            ) AS coincidio""", (a, b)).fetchone()["coincidio"]

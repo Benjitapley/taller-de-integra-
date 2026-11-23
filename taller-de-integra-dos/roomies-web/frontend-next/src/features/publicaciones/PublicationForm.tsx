@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { validatePublicationForm } from "./validation";
-import PublicationImages from "./PublicationImages";
+import LocationFields from "./LocationFields";
+import ImageFields from "./ImageFields";
 import styles from "./publicaciones.module.css";
 
-type PublicationKind = "Arrendador";
-type Commune = { id_comuna: number; nombre: string };
-
+type PublicationKind = "Compartida" | "Arrendador";
 export default function PublicationForm({ kind, onBack }: { kind: PublicationKind; onBack: () => void }) {
   const router = useRouter();
+  const operation = useRef<string | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [communes, setCommunes] = useState<Commune[]>([]);
@@ -50,7 +50,7 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
         method: "POST",
         body: form,
         credentials: "same-origin",
-        headers: { "X-Haycupo-CSRF": "1" },
+        headers: { "X-Haycupo-CSRF": "1", "Idempotency-Key": operation.current ??= crypto.randomUUID() },
         signal: AbortSignal.timeout(25_000),
       });
       if (response.status === 401) {
@@ -75,9 +75,9 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
 
   return <section className={styles.formSection}>
     <button className={styles.backButton} type="button" onClick={onBack}>← Cambiar tipo de publicación</button>
-    <h2>Publicar un arriendo</h2>
-    <p>Ofrece un espacio que arriendas y recibe postulaciones individuales. Tú podrás revisar y decidir sobre cada solicitud.</p>
-    <form className={styles.publicationForm} onSubmit={submit} aria-busy={pending}>
+    <h2>{kind === "Compartida" ? "Compartir una oportunidad" : "Publicar un arriendo"}</h2>
+    <p>{shared ? "Registra la información de un aviso que encontraste fuera de Roomies para buscar con quién compartir ese lugar. No te registras como arrendador." : "Ofrece un espacio que arriendas y recibe postulaciones individuales. Tú podrás revisar y decidir sobre cada solicitud."}</p>
+    <form className={styles.publicationForm} onSubmit={submit} onChange={() => { operation.current = null; }} aria-busy={pending}>
       <fieldset disabled={pending}>
         <legend>Detalles de la publicación</legend>
         <label className={styles.fullField}>Título
@@ -90,15 +90,12 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
             <option value="departamento">Departamento</option><option value="habitacion">Habitación</option>
           </select>
         </label>
-        <label>Región
-          <input type="hidden" name="id_region" value="9" />
-          <span>La Araucanía</span>
+        <LocationFields />
+        <label>Dirección o sector
+          <input name="ubicacion" required maxLength={250} placeholder="Región y comuna del lugar" />
         </label>
-        <label>Comuna
-          <select name="id_comuna" required disabled={communes.length === 0}>
-            <option value="" disabled>Selecciona una comuna</option>
-            {communes.map((commune) => <option key={commune.id_comuna} value={commune.id_comuna}>{commune.nombre}</option>)}
-          </select>
+        <label>{shared ? "Precio indicado en el aviso externo (CLP)" : "Precio del arriendo (CLP)"}
+          <input name="precio" type="number" min="0" max="999999999999" step="1" required />
         </label>
         <label>Precio del arriendo (CLP)
           <input name="precio" type="number" min="0" max="999999999999" step="1" required />
@@ -110,13 +107,12 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
           <select name="mascota" defaultValue="no"><option value="si">Sí</option><option value="no">No</option></select>
         </label>
         <label className={styles.fullField}>Descripción
-          <textarea name="descripcion" rows={5} maxLength={5000} required placeholder="Describe el espacio, sus características y las reglas que deben conocer los postulantes." />
+          <textarea name="descripcion" rows={5} maxLength={5000} required placeholder={shared ? "Transcribe la información externa: características, condiciones y dónde encontraste el aviso." : "Describe el espacio, sus características y las reglas que deben conocer los postulantes."} />
         </label>
-        <div className={styles.fullField}><PublicationImages keptIds={[]} onKeptIdsChange={() => {}} files={images} onFilesChange={setImages} /></div>
-        <label className={`${styles.fullField} ${styles.checkboxField}`}>
-          <input name="permitir_comentarios" type="checkbox" value="true" />
-          Permitir comentarios en esta publicación
-        </label>
+        <div className={styles.fullField}><ImageFields /></div>
+        {shared && <label className={`${styles.fullField} ${styles.checkboxField}`}>
+          <input name="confirmo_origen" type="checkbox" required />Confirmo que comparto información obtenida externamente y revisaré su disponibilidad. Esta publicación no recibe postulaciones de arrendador.
+        </label>}
         <div className={styles.formActions}>
           <Button type="submit">{pending ? "Publicando…" : "Publicar ahora"}</Button>
           <Button type="button" variant="secondary" onClick={onBack}>Cancelar</Button>

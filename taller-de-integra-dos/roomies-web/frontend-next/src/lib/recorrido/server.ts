@@ -28,4 +28,3 @@ export async function handleMyArriendo(
     return authReply(503, { detail: "No se pudo cargar tu arriendo." });
   }
 }
-

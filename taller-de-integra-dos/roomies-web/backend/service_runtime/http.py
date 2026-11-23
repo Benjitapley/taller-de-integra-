@@ -1,4 +1,5 @@
 """Políticas HTTP sin consultas ni reglas de negocio."""
+import re
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -13,6 +14,9 @@ class RequestLimits:
         if scope["type"]!="http" or scope["method"] not in {"POST","PUT","PATCH","DELETE"}:
             return await self.app(scope,receive,send)
         import asyncio
+        limit = (26_000_000 if scope["method"] in {"POST", "PUT"}
+                 and re.fullmatch(r"/api/publicaciones(?:/[1-9][0-9]*)?", scope["path"])
+                 else 6 * 1024 * 1024)
         body=bytearray()
         try:
             async with asyncio.timeout(15):
@@ -20,7 +24,7 @@ class RequestLimits:
                     message=await receive()
                     if message["type"]=="http.disconnect": return
                     chunk=message.get("body",b"")
-                    if len(body)+len(chunk)>6*1024*1024:
+                    if len(body)+len(chunk)>limit:
                         return await JSONResponse({"detail":"Solicitud demasiado grande."},status_code=413)(scope,receive,send)
                     body.extend(chunk)
                     if not message.get("more_body"): break
@@ -45,7 +49,10 @@ def configure(app):
 
     @app.exception_handler(RuleViolation)
     async def rule_error(request, error):
-        return JSONResponse({"detail": error.message}, status_code=error.status)
+        body = {"detail": error.message}
+        if getattr(error, "code", None):
+            body["code"] = error.code
+        return JSONResponse(body, status_code=error.status)
 
     @app.exception_handler(DependencyUnavailable)
     async def dependency_error(request, error):

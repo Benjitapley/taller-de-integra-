@@ -20,6 +20,11 @@ services:
     environment:
       <<: *runtime
       AUTH_USERS_DATABASE_URL: ${AUTH_USERS_DATABASE_URL:?DSN sql_auth_users con verify-full y sslrootcert}
+      ROOMIES_SUPABASE_AUTH_ADMIN_KEY: ${ROOMIES_SUPABASE_AUTH_ADMIN_KEY:-}
+      AUTH_NOTIFICATIONS_CURSOR_SECRET: ${AUTH_NOTIFICATIONS_CURSOR_SECRET:-}
+      LISTADO_AUTH_JWT_KEY: ${LISTADO_AUTH_JWT_KEY:-}
+      CONVIVENCIA_AUTH_JWT_KEY: ${CONVIVENCIA_AUTH_JWT_KEY:-}
+      REPORTES_AUTH_JWT_KEY: ${REPORTES_AUTH_JWT_KEY:-}
       SUPABASE_URL: https://${ROOMIES_SUPABASE_PROJECT_REF}.supabase.co
       SUPABASE_JWT_AUDIENCE: authenticated
       SUPABASE_JWT_ALGORITHMS: ES256,RS256
@@ -32,6 +37,9 @@ services:
     environment:
       <<: *runtime
       LISTADO_DATABASE_URL: ${LISTADO_DATABASE_URL:?DSN sql_listado_applications con verify-full y sslrootcert}
+      LISTADO_AUTH_JWT_KEY: ${LISTADO_AUTH_JWT_KEY:-}
+      ROOMIES_CURSOR_SECRET: ${ROOMIES_CURSOR_SECRET:?Firma estable de cursores de al menos 32 caracteres}
+      ROOMIES_SUPABASE_STORAGE_KEY: ${ROOMIES_SUPABASE_STORAGE_KEY:?Clave Storage exclusiva del backend}
       ROOMIES_IMAGE_DIR: /images
     volumes: [publication-images:/images]
   match-conexion:

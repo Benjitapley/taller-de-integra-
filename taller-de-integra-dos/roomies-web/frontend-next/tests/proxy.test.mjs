@@ -28,11 +28,14 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
   let profileMode = "ok";
   let verificationMode = "ok";
   let profileCookie = "";
+  const applicationsFixture = process.env.APPLICATIONS_BROWSER_TESTS === "1"
+    ? (await import("./applications-browser.mjs")).createApplicationsFixture() : null;
   const upstream = createServer(async (request, response) => {
     const url = new URL(request.url, "http://fixture.invalid");
     const path = decodeURIComponent(url.pathname);
     received.push(path + url.search);
     response.setHeader("X-Proxy-Fixture", "transport-only");
+    if (applicationsFixture && await applicationsFixture.handle(request, response, url)) return;
     // Double of FastAPI, available only in this isolated test process.
     if (["/auth/verificar", "/auth/reenviar-codigo"].includes(path)) {
       response.setHeader("Content-Type", "application/json");
@@ -188,6 +191,18 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
     await t.test("perfil en navegador: carga, identidad, errores, teclado y resoluciones", async () => {
       const { profileBrowser } = await import("./profile-browser.mjs");
       await profileBrowser({base,cookie:profileCookie,setProfileMode:(mode)=>{profileMode=mode;},setVerificationMode:(mode)=>{verificationMode=mode;},playwrightPath:process.env.PROFILE_PLAYWRIGHT_PATH,browserPath:process.env.PROFILE_BROWSER_PATH});
+    });
+  }
+  if (process.env.PUBLICATIONS_BROWSER_TESTS === "1") {
+    await t.test("ubicación en navegador: región, 32 comunas, errores y reintento", async () => {
+      const { publicationsBrowser } = await import("./publications-browser.mjs");
+      await publicationsBrowser({ base, cookie: profileCookie, playwrightPath: process.env.PROFILE_PLAYWRIGHT_PATH, browserPath: process.env.PROFILE_BROWSER_PATH });
+    });
+  }
+  if (applicationsFixture) {
+    await t.test("aceptación en navegador: respuesta perdida, recuperación y permisos", async () => {
+      const { applicationsBrowser } = await import("./applications-browser.mjs");
+      await applicationsBrowser({ base, cookie: profileCookie, fixture: applicationsFixture, playwrightPath: process.env.PROFILE_PLAYWRIGHT_PATH, browserPath: process.env.PROFILE_BROWSER_PATH });
     });
   }
 
