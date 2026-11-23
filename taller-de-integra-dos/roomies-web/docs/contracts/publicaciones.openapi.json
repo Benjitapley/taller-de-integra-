@@ -997,7 +997,6 @@
         }
       }
     },
-<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/docs/contracts/publicaciones.openapi.json
     "/api/v1/publicaciones/resumen": {
       "get": {
         "summary": "My Count",
@@ -1019,8 +1018,6 @@
         ]
       }
     },
-=======
->>>>>>> Stashed changes:taller de integra dos/roomies-web/docs/contracts/publicaciones.openapi.json
     "/local/v1/publicaciones/resumen": {
       "get": {
         "summary": "My Count",
@@ -1246,6 +1243,12 @@
         "summary": "Detail",
         "operationId": "detail_api_publicaciones__id__detalle_get",
         "deprecated": true,
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {}
+        ],
         "parameters": [
           {
             "name": "id",
@@ -1263,7 +1266,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Publication"
+                  "$ref": "#/components/schemas/PublicationDetail"
                 }
               }
             }
@@ -1281,7 +1284,6 @@
         }
       }
     },
-<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/docs/contracts/publicaciones.openapi.json
     "/internal/publicaciones/{id}": {
       "get": {
         "summary": "Publication For Report",
@@ -1337,8 +1339,6 @@
         }
       }
     },
-=======
->>>>>>> Stashed changes:taller de integra dos/roomies-web/docs/contracts/publicaciones.openapi.json
     "/api/publicaciones/{id}/cupos": {
       "get": {
         "summary": "Slots",
@@ -2004,6 +2004,195 @@
           "reglas"
         ],
         "title": "Publication"
+      },
+      "PublicationDetail": {
+        "properties": {
+          "id_publicacion": {
+            "type": "integer",
+            "title": "Id Publicacion"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Alias temporal de id_publicacion.",
+            "deprecated": true
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "Arrendador",
+              "Compartida"
+            ],
+            "title": "Tipo"
+          },
+          "tipo_vivienda": {
+            "type": "string",
+            "enum": [
+              "casa",
+              "departamento",
+              "habitacion"
+            ],
+            "title": "Tipo Vivienda"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "precio": {
+            "type": "integer",
+            "maximum": 999999999999.0,
+            "minimum": 0.0,
+            "title": "Precio"
+          },
+          "ubicacion": {
+            "type": "string",
+            "title": "Ubicacion"
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "Disponible",
+              "Activa",
+              "Cerrada"
+            ],
+            "title": "Estado"
+          },
+          "cupos_totales": {
+            "type": "integer",
+            "title": "Cupos Totales"
+          },
+          "cupos": {
+            "type": "integer",
+            "title": "Cupos",
+            "description": "Alias de capacidad total; no es disponibilidad.",
+            "deprecated": true
+          },
+          "cupos_disponibles": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cupos Disponibles"
+          },
+          "categoria": {
+            "type": "string",
+            "enum": [
+              "busco",
+              "ofrezco"
+            ],
+            "title": "Categoria"
+          },
+          "mascota": {
+            "type": "string",
+            "enum": [
+              "si",
+              "no"
+            ],
+            "title": "Mascota"
+          },
+          "permitir_comentarios": {
+            "type": "boolean",
+            "title": "Permitir Comentarios"
+          },
+          "imagen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen"
+          },
+          "imagenes": {
+            "items": {
+              "$ref": "#/components/schemas/PublicationImage"
+            },
+            "type": "array",
+            "title": "Imagenes"
+          },
+          "fecha_publicacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Publicacion"
+          },
+          "id_region": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Region",
+            "description": "CUT de región; null solo en datos heredados pendientes de conciliación."
+          },
+          "id_comuna": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Comuna"
+          },
+          "reglas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reglas"
+          },
+          "id_propietario": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Propietario",
+            "description": "ID del propietario, presente con una sesión activa y correo confirmado."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_publicacion",
+          "id",
+          "titulo",
+          "tipo",
+          "tipo_vivienda",
+          "descripcion",
+          "precio",
+          "ubicacion",
+          "estado",
+          "cupos_totales",
+          "cupos",
+          "cupos_disponibles",
+          "categoria",
+          "mascota",
+          "permitir_comentarios",
+          "imagen",
+          "imagenes",
+          "fecha_publicacion",
+          "id_region",
+          "id_comuna",
+          "reglas"
+        ],
+        "title": "PublicationDetail"
       },
       "PublicationImage": {
         "properties": {

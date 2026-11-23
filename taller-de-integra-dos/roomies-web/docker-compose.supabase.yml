@@ -37,10 +37,7 @@ services:
     environment:
       <<: *runtime
       LISTADO_DATABASE_URL: ${LISTADO_DATABASE_URL:?DSN sql_listado_applications con verify-full y sslrootcert}
-<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/docker-compose.supabase.yml
       LISTADO_AUTH_JWT_KEY: ${LISTADO_AUTH_JWT_KEY:-}
-=======
->>>>>>> Stashed changes:taller de integra dos/roomies-web/docker-compose.supabase.yml
       ROOMIES_CURSOR_SECRET: ${ROOMIES_CURSOR_SECRET:?Firma estable de cursores de al menos 32 caracteres}
       ROOMIES_SUPABASE_STORAGE_KEY: ${ROOMIES_SUPABASE_STORAGE_KEY:?Clave Storage exclusiva del backend}
       ROOMIES_IMAGE_DIR: /images

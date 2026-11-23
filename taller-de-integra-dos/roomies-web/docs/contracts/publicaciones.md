@@ -11,6 +11,7 @@ El OpenAPI del proceso se publica en `/openapi.json`.
 | --- | --- |
 | GET `/api/publicaciones` | Catálogo público, solo Arrendador disponible con ocupación confirmada. |
 | GET `/api/publicaciones/{id}` | Detalle público, también después del cierre. |
+| GET `/api/publicaciones/{id}/detalle` | Detalle público. Incluye `id_propietario` como entero cuando el Bearer corresponde a una sesión activa con correo confirmado. |
 | GET `/api/publicaciones/mias` | JWT confirmado; solo publicaciones del actor, incluidas cerradas. |
 | POST `/api/publicaciones` | JWT confirmado; multipart; propietario derivado del JWT. |
 | PUT `/api/publicaciones/{id}` | Multipart; solo propietario. Conserva fecha de publicación. |

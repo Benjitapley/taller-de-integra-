@@ -10,6 +10,7 @@ from fastapi import APIRouter,Depends,Request,HTTPException,Query,Header,Path
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from backend.service_runtime.reporting_security import verify_report_service
 from pydantic import BaseModel,ConfigDict,Field
 from app.application.service import Publications
@@ -17,9 +18,9 @@ from app.application.admissions import Admissions
 from app.domain.publications import available
 from app.infrastructure.repository import PostgresPublications
 from app.infrastructure.clients import UnavailableOccupancy, HttpOwners
-from backend.service_runtime.security import confirmed_actor,admin_actor
+from backend.service_runtime.security import access_token, actor, admin_actor, bearer, confirmed_actor
 from app.infrastructure.storage import SupabasePublicationImages, MAX_IMAGE_BYTES
-from app.api.schemas import Publication, PublicationSaved, PublicationPage, Region, Commune, MULTIPART
+from app.api.schemas import Publication, PublicationDetail, PublicationSaved, PublicationPage, Region, Commune, MULTIPART
 from backend.service_runtime.contracts import DependencyUnavailable
 
 router=APIRouter()
@@ -91,10 +92,34 @@ def my_count(identity=Depends(confirmed_actor),app=Depends(service)):
     return {"total_publicaciones":app.repository.count(identity.user_id)}
 
 
-@router.get("/api/publicaciones/{id}/detalle",response_model=Publication,deprecated=True)
 @router.get("/api/publicaciones/{id}",response_model=Publication)
 def detail(id:int,app=Depends(service)):
     return dto(app.get(id),app.occupancy)
+
+
+@router.get(
+    "/api/publicaciones/{id}/detalle",
+    response_model=PublicationDetail,
+    response_model_exclude_unset=True,
+    deprecated=True,
+    summary="Detail",
+    operation_id="detail_api_publicaciones__id__detalle_get",
+    openapi_extra={"security": [{}]},
+)
+def detail_alias(
+    id: int,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+    app=Depends(service),
+):
+    row = app.get(id)
+    publication = dto(row, app.occupancy)
+    if credentials is not None:
+        try:
+            confirmed_actor(actor(access_token(credentials)))
+        except HTTPException:
+            return publication
+        publication["id_propietario"] = row["id_usuario"]
+    return publication
 
 
 @router.get("/internal/publicaciones/{id}")

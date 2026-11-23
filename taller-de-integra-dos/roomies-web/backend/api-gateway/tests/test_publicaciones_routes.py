@@ -73,7 +73,22 @@ def test_occupancy_confirmation_remains_internal():
                         json={"ocupacion": 1, "version_ocupacion": 1},
                         headers={"X-Roomies-Service": "untrusted"})
     assert response.status_code == 404
-<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/backend/api-gateway/tests/test_publicaciones_routes.py
+
+
+def test_publication_detail_forwards_authorization_without_caching():
+    path = "/api/publicaciones/7/detalle"
+    headers = {"Authorization": "Bearer test-session"}
+
+    def handler(request):
+        assert request.url.host == "listado.test"
+        assert request.url.path == path
+        assert request.headers["authorization"] == headers["Authorization"]
+        return httpx.Response(200, stream=httpx.ByteStream(b'{"id_propietario":22}'))
+
+    response = exercise(handler, path, headers=headers)
+    assert response.status_code == 200
+    assert response.json() == {"id_propietario": 22}
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_upload_preflight_allows_retry_key():
@@ -87,5 +102,3 @@ def test_upload_preflight_allows_retry_key():
     assert response.status_code == 204
     assert response.headers["access-control-allow-origin"] == "https://web.example.test"
     assert "idempotency-key" in response.headers["access-control-allow-headers"].lower()
-=======
->>>>>>> Stashed changes:taller de integra dos/roomies-web/backend/api-gateway/tests/test_publicaciones_routes.py

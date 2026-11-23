@@ -34,6 +34,12 @@ class Publication(BaseModel):
     reglas:list[str]
 
 
+class PublicationDetail(Publication):
+    id_propietario: int | None = Field(
+        default=None, description="ID del propietario, presente con una sesión activa y correo confirmado."
+    )
+
+
 class PublicationSaved(Publication):
     mensaje:str
 

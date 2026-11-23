@@ -1,13 +1,16 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import Mock
+from uuid import UUID
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
+from app.api import routes
 from app.api.routes import router, service
 from app.application.service import Publications
 from app.domain.publications import validate_publication, available
-from backend.service_runtime.contracts import RuleViolation, DependencyUnavailable
+from backend.service_runtime import security
+from backend.service_runtime.contracts import Actor, RuleViolation, DependencyUnavailable
 from backend.service_runtime.http import configure
 from backend.service_runtime.security import confirmed_actor
 
@@ -36,6 +39,46 @@ def test_catalogo_valida_comuna_con_catalogo_persistido(repository):
     # Código nacional fuera de la lista abreviada que entró por la fusión.
     assert web.get("/api/publicaciones?id_region=9&id_comuna=9112").status_code == 200
     assert web.get("/api/publicaciones?id_region=8&id_comuna=9112").status_code == 422
+
+
+def test_detalle_incluye_propietario_solo_con_sesion_autorizada(monkeypatch):
+    repository = Mock()
+    repository.publication.return_value = {
+        **validate_publication(DATA),
+        "id_publicacion": 42,
+        "id_usuario": 22,
+        "estado": "Disponible",
+        "fecha_publicacion": datetime.now(timezone.utc),
+    }
+    subject = UUID(int=1)
+    verify = Mock(return_value=subject)
+    identity = Mock(return_value=Actor(subject, 1, True, False))
+    monkeypatch.setattr(security, "verified_subject", verify)
+    monkeypatch.setattr(routes, "actor", identity)
+    web, _ = client(repository)
+    path = "/api/publicaciones/42/detalle"
+    headers = {"Authorization": "Bearer test-session"}
+
+    anonimo = web.get(path)
+    assert anonimo.status_code == 200
+    assert "id_propietario" not in anonimo.json()
+    verify.assert_not_called()
+
+    autorizado = web.get(path, headers=headers)
+    assert autorizado.status_code == 200
+    assert autorizado.json() == {**anonimo.json(), "id_propietario": 22}
+    assert autorizado.headers["cache-control"] == "no-store"
+    identity.assert_called_once_with("test-session")
+    assert web.get("/api/publicaciones/42", headers=headers).json() == anonimo.json()
+
+    identity.return_value = Actor(subject, 1, False, False)
+    assert web.get(path, headers=headers).json() == anonimo.json()
+    identity.side_effect = HTTPException(401, "Sesión revocada.")
+    assert web.get(path, headers=headers).json() == anonimo.json()
+    verify.side_effect = HTTPException(401, "Token inválido.")
+    identity.reset_mock()
+    assert web.get(path, headers=headers).json() == anonimo.json()
+    identity.assert_not_called()
 
 
 @pytest.mark.parametrize("price",["0","999999999999"])
