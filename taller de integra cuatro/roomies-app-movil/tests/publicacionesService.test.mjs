@@ -42,11 +42,10 @@ const servicio = cargar("../src/services/publicacionesService.ts");
 const adapter = cargar("../src/adapters/publicacionAdapter.ts");
 const { publicacionesMock } = cargar(rutas["@/mocks/publicaciones"]);
 
-test("listado y detalle comparten IDs, datos y tipos de las publicaciones demostrativas", async () => {
+test("el listado demostrativo conserva IDs numéricos y tipos de las publicaciones de ejemplo", async () => {
   const listado = await servicio.obtenerPublicaciones();
   assert.equal(listado.length, publicacionesMock.length);
   for (const publicacion of listado) {
-    assert.equal(await servicio.obtenerPublicacionPorId(String(publicacion.idPublicacion)), publicacion);
     assert.equal(typeof publicacion.idPublicacion, "number");
   }
 });
@@ -61,8 +60,8 @@ test("los filtros de precio y zona se combinan sin modificar la fuente de Inicio
   assert.equal(JSON.stringify(publicacionesMock), antes);
 });
 
-test("el detalle devuelve null para IDs ausentes o inválidos", async () => {
-  for (const id of ["", "invalido", 0, -1, 1.5, 999999]) {
+test("el detalle devuelve null para IDs inválidos sin consultar al servidor", async () => {
+  for (const id of ["", "invalido", 0, -1, 1.5]) {
     assert.equal(await servicio.obtenerPublicacionPorId(id), null);
   }
 });
@@ -164,4 +163,28 @@ test("listarPublicaciones avisa si ninguna publicación tiene el formato esperad
   respuestaListado = { exito: true, estadoHttp: 200, datos: [{ id_publicacion: 7, titulo: "X" }] };
   const resultado = await servicio.listarPublicaciones();
   assert.equal(resultado.exito, false);
+});
+
+test("obtenerPublicacionPorId pide el detalle real y adapta la respuesta", async () => {
+  process.env.EXPO_PUBLIC_IMAGENES_URL = "https://imagenes.ejemplo.test";
+  respuestaListado = { exito: true, estadoHttp: 200, datos: publicacionApi(33) };
+
+  const publicacion = await servicio.obtenerPublicacionPorId("33");
+
+  assert.equal(ultimaRuta, "/api/publicaciones/33/detalle");
+  assert.equal(ultimasOpciones.autenticada, false);
+  assert.equal(publicacion.idPublicacion, 33);
+  assert.equal(publicacion.cuposDisponibles, 1);
+  assert.equal(publicacion.imagenPrincipalUrl, "https://imagenes.ejemplo.test/imagenes/p_ejemplo.png");
+});
+
+test("obtenerPublicacionPorId devuelve null en 404 y falla con otros errores o formatos", async () => {
+  respuestaListado = { exito: false, codigo: "http", error: "No existe", estadoHttp: 404 };
+  assert.equal(await servicio.obtenerPublicacionPorId(999999), null);
+
+  respuestaListado = { exito: false, codigo: "red", error: "Sin conexión" };
+  await assert.rejects(() => servicio.obtenerPublicacionPorId(33), /Sin conexión/);
+
+  respuestaListado = { exito: true, estadoHttp: 200, datos: { id: 33 } };
+  await assert.rejects(() => servicio.obtenerPublicacionPorId(33), /formato/);
 });

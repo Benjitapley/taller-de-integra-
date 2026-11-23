@@ -305,12 +305,73 @@ export async function obtenerPublicaciones(filtros: FiltrosArriendo = {}): Promi
   );
 }
 
-/** Detalle demostrativo de B10; comparte los IDs y la fuente del listado. */
+/**
+ * Detalle real: GET /api/publicaciones/{id}/detalle (público, vía Gateway).
+ * Devuelve null si la publicación no existe (404) y lanza un Error si falla la
+ * conexión o la respuesta no tiene el formato esperado (la pantalla ofrece Reintentar).
+ */
 export async function obtenerPublicacionPorId(id: string | number): Promise<Publicacion | null> {
   const numero = Number(id);
   if (!Number.isSafeInteger(numero) || numero < 1) return null;
-  return publicacionesMock.find((publicacion) => publicacion.idPublicacion === numero) ?? null;
+
+  const resultado = await solicitarJson(`/api/publicaciones/${numero}/detalle`, { autenticada: false });
+  if (!resultado.exito) {
+    if (resultado.estadoHttp === 404) return null;
+    throw new Error(resultado.error);
+  }
+
+  // Las imágenes pueden estar en otro servidor que el Gateway.
+  // (Referencias estáticas: así Expo incluye los valores del entorno.)
+  const urlBase =
+    process.env.EXPO_PUBLIC_IMAGENES_URL?.trim() || process.env.EXPO_PUBLIC_API_URL?.trim() || "";
+  const publicacion = adaptarPublicacionListado(resultado.datos, urlBase);
+  if (!publicacion) {
+    throw new Error("El servicio devolvió la publicación en un formato que la app no reconoce.");
+  }
+  return publicacion;
 }
+
+export interface CuposPublicacion {
+  estado: string;
+  cuposTotales: number;
+  cuposDisponibles: number;
+}
+
+export async function obtenerCuposPublicacion(
+  id: string | number,
+): Promise<CuposPublicacion> {
+  const numero = Number(id);
+
+  if (!Number.isSafeInteger(numero) || numero < 1) {
+    throw new Error("El ID de la publicación no es válido.");
+  }
+
+  const resultado = await solicitarJson(
+    `/api/publicaciones/${numero}/cupos`,
+    { autenticada: false },
+  );
+
+  if (!resultado.exito) {
+    throw new Error(resultado.error);
+  }
+
+  const datos = resultado.datos as Record<string, unknown>;
+
+  if (
+    typeof datos.estado !== "string" ||
+    typeof datos.cupos_totales !== "number" ||
+    typeof datos.cupos_disponibles !== "number"
+  ) {
+    throw new Error("El servicio devolvió los cupos en un formato inesperado.");
+  }
+
+  return {
+    estado: datos.estado,
+    cuposTotales: datos.cupos_totales,
+    cuposDisponibles: datos.cupos_disponibles,
+  };
+}
+
 
 export const TAMANO_PAGINA = 10;
 

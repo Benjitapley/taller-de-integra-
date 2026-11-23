@@ -4,11 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { colors } from '@/theme/colors';
 import { CustomButton } from '@/components/CustomButton';
-import { usuariosMock } from '@/mocks';
-import { obtenerPublicacionPorId } from '@/services/publicacionesService';
+import { obtenerPublicacionPorId, obtenerCuposPublicacion } from '@/services/publicacionesService';
 import type { Publicacion } from '@/types/Publicacion';
 import { useAuth } from '@/hooks/useAuth';
-import { postularAPublicacion } from '@/services/postulacionesService';
+import { obtenerMisPostulaciones, postularAPublicacion } from '@/services/postulacionesService';
+import type { EstadoPostulacion } from '@/types/Postulacion';
 import { TITULO_PUBLICACION, configPorEstado, configPorOrigen, ctaPorOrigen, estiloPorTipo, paletaPublicacion } from '@/constants/origenPublicacion';
 
 const MI_POSTULACION_LISTA = true;
@@ -27,20 +27,59 @@ function DetallePublicacion({ id }: { id: string }) {
     const { estaAutenticado, cerrarSesion } = useAuth();
     const [postulando, setPostulando] = useState(false);
     const [postulada, setPostulada] = useState(false);
+    const [estadoPostulacion, setEstadoPostulacion] = useState<EstadoPostulacion | null>(null);
     const postulandoRef = useRef(false); // evita el doble toque antes del re-render
     const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
     const [cargando, setCargando] = useState(true);
     const [errorCarga, setErrorCarga] = useState(false);
     const [intento, setIntento] = useState(0);
+    const [cupos, setCupos] = useState<{
+        estado: string;
+        cuposTotales: number;
+        cuposDisponibles: number;
+    } | null>(null);
 
     useEffect(() => {
         let activo = true;
-        obtenerPublicacionPorId(id)
-            .then((datos) => { if (activo) setPublicacion(datos); })
-            .catch(() => { if (activo) setErrorCarga(true); })
-            .finally(() => { if (activo) setCargando(false); });
+
+        Promise.all([
+            obtenerPublicacionPorId(id),
+            obtenerCuposPublicacion(id),
+        ])
+          .then(([datosPublicacion, datosCupos]) => {
+            if (!activo) return;
+
+            setPublicacion(datosPublicacion);
+            setCupos(datosCupos);
+          })
+          .catch(() => {
+            if (activo) setErrorCarga(true);
+          })
+          .finally(() => {
+            if (activo) setCargando(false);
+          });
         return () => { activo = false; };
     }, [id, intento]);
+
+    // La API ya ofrece las postulaciones del usuario autenticado; permite reflejar
+    // si ya postuló sin esperar el nuevo dato de propietario del endpoint de detalle.
+    useEffect(() => {
+        let activo = true;
+        if (!estaAutenticado) return () => { activo = false; };
+
+        void obtenerMisPostulaciones().then((resultado) => {
+            if (!activo || !resultado.exito) return;
+            const propia = resultado.datos.find(
+                (postulacion) => postulacion.idPublicacion === Number(id),
+            );
+            if (propia) setEstadoPostulacion(propia.estado);
+        }).catch(() => {
+            // Si falla esta consulta, el detalle sigue disponible y el backend
+            // validará la postulación al intentar enviarla.
+        });
+
+        return () => { activo = false; };
+    }, [id, intento, estaAutenticado]);
 
     const opcionesHeader = {
         headerShown: true,
@@ -99,6 +138,8 @@ function DetallePublicacion({ id }: { id: string }) {
     const estado = configPorEstado[publicacion.estado];
     const cta = ctaPorOrigen[publicacion.tipo];
     const cerrada = publicacion.estado === 'Cerrada';
+    const tienePostulacionVigente = estaAutenticado && estadoPostulacion !== null &&
+        estadoPostulacion !== 'Rechazada' && estadoPostulacion !== 'Cancelada';
 
     // M4-C10: postular a una publicación de Arrendador. Las reglas (cupos, postulación
     // repetida, publicación propia, correo confirmado) las valida el backend; aquí solo
@@ -115,6 +156,7 @@ function DetallePublicacion({ id }: { id: string }) {
 
         if (resultado.exito) {
             setPostulada(true);
+            setEstadoPostulacion(resultado.datos.estado);
             const mensaje = `Tu postulación quedó en estado ${resultado.datos.estado}.`;
             Alert.alert(
                 'Postulación enviada',
@@ -197,11 +239,11 @@ function DetallePublicacion({ id }: { id: string }) {
         }
         void postular();
     };
-    const autor = usuariosMock.find((u) => u.idUsuario === publicacion.idUsuario);
+    // El endpoint actual no entrega propietario/autor; no completar con mocks.
     const cuposTexto =
-        publicacion.cuposDisponibles > 0
-            ? `${publicacion.cuposDisponibles} de ${publicacion.cuposTotales} cupos disponibles`
-            : 'Sin cupos disponibles';
+     cupos && cupos.cuposDisponibles > 0
+       ? `${cupos.cuposDisponibles} de ${cupos.cuposTotales} cupos disponibles`
+       : 'Sin cupos disponibles';
 
     return (
         <>
@@ -257,52 +299,23 @@ function DetallePublicacion({ id }: { id: string }) {
                     <Text style={styles.seccionTitulo}>Descripción</Text>
                     <Text style={styles.descripcion}>{publicacion.descripcion}</Text>
 
-                    {autor ? (
-                        <>
-                            <Text style={styles.seccionTitulo}>Publicado por</Text>
-                            <View style={styles.autor}>
-                                {autor.fotoPerfilUrl ? (
-                                    <Image source={{ uri: autor.fotoPerfilUrl }} style={styles.avatar} />
-                                ) : (
-                                    <Ionicons name="person-circle" size={48} color={colors.primary} />
-                                )}
-                                <View style={styles.autorTexto}>
-                                    <View style={styles.autorNombreFila}>
-                                        <Text style={styles.autorNombre}>{autor.nombre}</Text>
-                                        {autor.estadoVerificacion === 'Verificada' ? (
-                                            <Ionicons
-                                                name="checkmark-circle"
-                                                size={16}
-                                                color={colors.primary}
-                                                style={styles.autorVerificado}
-                                            />
-                                        ) : null}
-                                    </View>
-                                    <Text style={styles.autorRol}>{config.rolPublicador}</Text>
-                                </View>
-                                {autor.calificacionPromedio !== undefined ? (
-                                    <View style={styles.calificacion}>
-                                        <Ionicons name="star" size={16} color={colors.primary} />
-                                        <Text style={styles.calificacionTexto}>
-                                            {autor.calificacionPromedio.toFixed(1)}
-                                        </Text>
-                                    </View>
-                                ) : null}
-                            </View>
-                        </>
-                    ) : null}
-
                 </View>
             </ScrollView>
 
             <View style={styles.pie}>
                 <CustomButton
                     titulo={
-                        cerrada ? 'Publicación cerrada' : postulada ? 'Postulación enviada' : cta.etiqueta
+                        cerrada
+                            ? 'Publicación cerrada'
+                            : tienePostulacionVigente
+                              ? `Postulación: ${estadoPostulacion}`
+                              : postulada
+                                ? 'Postulación enviada'
+                                : cta.etiqueta
                     }
                     onPress={accionPrincipal}
                     cargando={postulando}
-                    deshabilitado={cerrada || postulada}
+                    deshabilitado={cerrada || postulada || tienePostulacionVigente}
                 />
                 {!cerrada ? <Text style={styles.pieNota}>{cta.nota}</Text> : null}
             </View>
