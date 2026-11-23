@@ -56,8 +56,25 @@ class Convivencia:
                     raise ServiceError("APPLICATION_ALREADY_PROCESSED", "La postulación ya fue incorporada.")
                 rental = c.execute("SELECT * FROM convivencia_mensajeria.arriendo WHERE id_publicacion=%s FOR UPDATE", (payload["id_publicacion"],)).fetchone()
                 if rental is None:
-                    rental = c.execute("""INSERT INTO convivencia_mensajeria.arriendo(id_publicacion,cupos_totales,version_capacidad)
-                      VALUES(%s,%s,%s) RETURNING *""", (payload["id_publicacion"], reservation["cupos_totales"], payload["version_capacidad"])).fetchone()
+                    rental = c.execute("""INSERT INTO convivencia_mensajeria.arriendo
+                      (id_publicacion,cupos_totales,version_capacidad,id_arrendador)
+                      VALUES(%s,%s,%s,%s) RETURNING *""",
+                      (payload["id_publicacion"], reservation["cupos_totales"],
+                       payload["version_capacidad"], reservation.get("id_arrendador"))).fetchone()
+                elif reservation.get("id_arrendador") is not None:
+                    if (rental["id_arrendador"] is not None
+                            and rental["id_arrendador"] != reservation["id_arrendador"]):
+                        raise ServiceError(
+                            "PUBLICATION_OWNER_CONFLICT",
+                            "El dueño de la publicación no coincide con el arriendo.",
+                        )
+                    if rental["id_arrendador"] is None:
+                        c.execute(
+                            "UPDATE convivencia_mensajeria.arriendo "
+                            "SET id_arrendador=%s WHERE id_arriendo=%s",
+                            (reservation["id_arrendador"], rental["id_arriendo"]),
+                        )
+                        rental["id_arrendador"] = reservation["id_arrendador"]
                 if rental["version_capacidad"] != payload["version_capacidad"] or rental["cupos_totales"] != reservation["cupos_totales"]:
                     raise ServiceError("CAPACITY_VERSION_CONFLICT", "La versión de capacidad no coincide.")
                 occupied = c.execute("SELECT count(*) AS total FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND estado='Activa'", (rental["id_arriendo"],)).fetchone()["total"]
@@ -65,6 +82,9 @@ class Convivencia:
                     raise ServiceError("NO_CAPACITY", "No quedan cupos disponibles.")
                 c.execute("""INSERT INTO convivencia_mensajeria.pertenencia(id_arriendo,id_usuario,id_postulacion,id_operacion)
                   VALUES(%s,%s,%s,%s)""", (rental["id_arriendo"], payload["id_usuario"], payload["id_postulacion"], key))
+                if occupied == 0:
+                    c.execute("UPDATE convivencia_mensajeria.arriendo SET id_responsable=%s WHERE id_arriendo=%s",
+                              (payload["id_usuario"], rental["id_arriendo"]))
                 body = {"id_incorporacion": str(key), "id_arriendo": rental["id_arriendo"], "id_publicacion": payload["id_publicacion"], "id_usuario": payload["id_usuario"], "estado": "Activa", "confirmacion_publicacion": "Pendiente"}
                 self._outbox(c, key, "Confirmar", reservation)
                 c.execute("UPDATE convivencia_mensajeria.incorporacion SET estado='Terminada',http_status=201,respuesta=%s WHERE id_operacion=%s", (Jsonb(body), key))
@@ -93,13 +113,25 @@ class Convivencia:
             for event in events:
                 c.execute("UPDATE convivencia_mensajeria.outbox SET ultimo_intento=clock_timestamp() WHERE id_outbox=%s", (event["id_outbox"],))
                 try:
-                    method = self.publications.confirm if event["accion"] == "Confirmar" else self.publications.release
-                    method(event["id_operacion"], event["reserva"])
+                    if event["accion"] == "Confirmar":
+                        self.publications.confirm(event["id_operacion"], event["reserva"])
+                    elif event["accion"] == "Liberar":
+                        self.publications.release(event["id_operacion"], event["reserva"])
+                    elif event["accion"] == "Retiro":
+                        self.publications.release_slot(event["id_operacion"], event["reserva"])
+                    elif event["accion"] == "Cierre":
+                        self.publications.close(event["id_operacion"], event["reserva"])
                 except Exception:
                     continue  # La reserva firme persiste hasta confirmar o liberar con la misma clave.
                 c.execute("UPDATE convivencia_mensajeria.outbox SET enviado=true WHERE id_outbox=%s", (event["id_outbox"],))
                 delivered += 1
         return delivered
+
+    def expel(self, rental_id, actor_id, target_id, reason, key):
+        reason = reason.strip()
+        if not reason:
+            raise ServiceError("INVALID_REMOVAL", "El motivo del retiro es obligatorio.")
+        return self.repository.expel(rental_id, actor_id, target_id, reason, key, self.publications)
 
     def recover(self):
         for operation in self.repository.pending():

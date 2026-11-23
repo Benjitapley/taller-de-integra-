@@ -43,6 +43,12 @@ arrancar, no usa SQL de otros dominios y no modifica datos existentes.
 - La respuesta 201 se persiste y se repite exactamente, con
   `Idempotency-Replayed: true`. `confirmacion_publicacion: Pendiente` describe el
   recibo original; no es una consulta del estado actual de la outbox.
+- `POST /api/arriendos/{id}/expulsiones`: requiere identidad confirmada,
+  cabecera `Idempotency-Key` UUID y payload con `id_usuario`, `motivo` y
+  `confirmar=true`. Solo el arrendador dueño persiste la pertenencia retirada,
+  desasigna tareas pendientes y deja al responsable vacante si corresponde.
+- El último integrante finaliza el arriendo y encola el cierre de la publicación.
+  El outbox libera el cupo o pide el cierre con la misma clave para recuperarse.
 
 El health solo acredita proceso HTTP. El acta de contrato, pruebas y estado de
 firma están en `docs/contracts/incorporacion.*`.

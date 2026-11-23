@@ -13,9 +13,10 @@ def migrated_database():
     dsn = os.environ.get("CONVIVENCIA_TEST_ADMIN_DSN")
     if not dsn:
         pytest.skip("Ejecutar tests/run_isolated.py: nunca se usa una DB existente.")
-    migration = Path(__file__).resolve().parents[1] / "migrations/001_convivencia_schema.up.sql"
+    migrations_dir = Path(__file__).resolve().parents[1] / "migrations"
     with psycopg.connect(dsn) as connection:
-        connection.execute(migration.read_text(encoding="utf-8"))
+        for migration in sorted(migrations_dir.glob("*.up.sql")):
+            connection.execute(migration.read_text(encoding="utf-8"))
         connection.execute("CREATE SCHEMA forbidden_test")
         connection.execute("REVOKE ALL ON SCHEMA forbidden_test FROM PUBLIC")
         connection.execute("CREATE TABLE forbidden_test.secret(id int)")
@@ -43,6 +44,7 @@ class Publications:
     """Thread-safe firm reservation fake; local invariants still run in real SQL."""
     def __init__(self):
         self.capacity = 2
+        self.owner_id = 10
         self.reservations = {}
         self.confirmed = set()
         self.released = set()
@@ -57,6 +59,7 @@ class Publications:
             reservation = self.reservations.setdefault(str(key), {
                 **payload, "id_reserva": str(uuid5(NAMESPACE_URL, str(key))),
                 "cupos_totales": self.capacity,
+                "id_arrendador": self.owner_id,
             })
             if self.lost_response:
                 self.lost_response = False
@@ -71,6 +74,12 @@ class Publications:
 
     def release(self, key, reservation):
         self.released.add((str(reservation["id_reserva"]), str(key)))
+
+    def release_slot(self, key, payload):
+        self.released.add((str(key), "slot"))
+
+    def close(self, key, payload):
+        self.released.add((str(key), "close"))
 
 
 @pytest.fixture
