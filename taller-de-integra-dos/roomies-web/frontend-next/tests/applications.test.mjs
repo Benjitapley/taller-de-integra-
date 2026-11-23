@@ -49,7 +49,7 @@ test("solo una incorporación confirmada conserva el estado Aceptada", async () 
   const accepted = { ...row, estado: "Aceptada", id_arriendo: 12, incorporacion_pendiente: false };
   const response = await handleApplications(req("GET"), config, async () => Response.json([accepted]));
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), [accepted]);
+  assert.deepEqual(await response.json(), {items:[accepted],siguiente_cursor:null});
   for (const invalid of [{ ...accepted, incorporacion_pendiente: true }, { ...accepted, incorporacion_pendiente: "false" }, { ...accepted, id_arriendo: null }, { ...row, estado: "Aceptada" }]) {
     assert.equal((await handleApplications(req("GET"), config, async () => Response.json([invalid]))).status, 503);
   }
@@ -61,6 +61,45 @@ test("solo una incorporación confirmada conserva el estado Aceptada", async () 
 
 const operationKey = "aafab040-efdf-4bd0-a7ed-4dfb5e35b3bb";
 const waiting = { ...row, estado: "Preseleccionada", id_arriendo: null, incorporacion_pendiente: true, operacion: { id_operacion: operationKey, estado: "Pendiente" } };
+
+test("listas privadas conservan páginas, filtros y contexto de publicación",async()=>{
+  const request=new Request(config.origin+"/web-api/postulaciones?publicacion=7&cursor=cursor_2&limite=10&estado=Pendiente",{headers});
+  const response=await handleApplications(request,config,async(url)=>{
+    const target=new URL(url);
+    assert.equal(target.pathname,"/api/publicaciones/7/postulantes");
+    assert.equal(target.searchParams.get("cursor"),"cursor_2");
+    assert.equal(target.searchParams.get("limite"),"10");
+    return Response.json({items:[{...row,private:"secret"}],siguiente_cursor:"cursor_3"});
+  });
+  assert.deepEqual(await response.json(),{items:[row],siguiente_cursor:"cursor_3"});
+  assert.equal((await handleApplications(request,config,async()=>Response.json({items:[{...row,id_publicacion:9}],siguiente_cursor:null}))).status,503);
+  for(const query of ["cursor=","cursor=a&cursor=b","limite=0","limite=101","estado=Admin","owner=1"]){
+    assert.equal((await handleApplications(new Request(config.origin+"/?"+query,{headers}),config,()=>assert.fail())).status,422);
+  }
+});
+
+test("retiro usa POST propio y Cancelada no se puede enviar como decisión del dueño",async()=>{
+  const cancelled={...row,estado:"Cancelada",motivo:"Retiro voluntario"};
+  const response=await handleApplications(req("POST",{retiro:8}),config,async(url,options)=>{
+    assert.equal(url,config.backend+"/api/postulaciones/8/retiro");
+    assert.equal(options.body,undefined);
+    return Response.json(cancelled);
+  });
+  assert.equal(response.status,200);
+  assert.deepEqual(await response.json(),cancelled);
+  assert.equal((await handleApplications(req("PATCH",{id:8,estado:"Cancelada"}),config,()=>assert.fail())).status,422);
+});
+
+const rentalSource=(await readFile(new URL("../src/lib/recorrido/server.ts",import.meta.url),"utf8")).replace('"../auth/gateway"',JSON.stringify(gateway));
+const {handleMyArriendo}=await import(compile(rentalSource));
+test("Mi arriendo adapta el DTO real de la 124 y filtra datos privados",async()=>{
+  const native={id_arriendo:12,id_publicacion:7,cupos_totales:3,version_capacidad:1,ocupacion:1,private:"secret"};
+  const response=await handleMyArriendo(req("GET"),config,async()=>Response.json(native));
+  assert.deepEqual(await response.json(),{id_arriendo:12,id_publicacion:7,estado:"Activo",cupos_totales:3,integrantes_activos:1,cupos_disponibles:2,id_responsable:null});
+  for(const ocupacion of [-1,4,"1"]){
+    assert.equal((await handleMyArriendo(req("GET"),config,async()=>Response.json({...native,ocupacion}))).status,503);
+  }
+});
 
 test("aceptar exige UUID y reenvía la misma clave con Bearer al reintentar", async () => {
   const transport = () => { throw Error("no-network"); };

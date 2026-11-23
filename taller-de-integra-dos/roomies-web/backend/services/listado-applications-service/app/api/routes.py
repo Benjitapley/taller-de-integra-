@@ -224,13 +224,22 @@ def postulate(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
 
 
 @router.get("/api/postulaciones/mias")
-def my_applications(identity=Depends(confirmed_actor),app=Depends(service)):
+def my_applications(limite:int|None=Query(None,ge=1,le=100),cursor:str|None=Query(None,min_length=1,max_length=1024),estado:Literal["Pendiente","Preseleccionada","Aceptada","Rechazada","Cancelada"]|None=None,identity=Depends(confirmed_actor),app=Depends(service)):
+    if limite is not None or cursor is not None or estado is not None:
+        return app.application_page(identity.user_id,limit=limite or 20,cursor=cursor,state=estado)
     return app.repository.applications(owner=identity.user_id)
 
 
 @router.get("/api/publicaciones/{id}/postulantes")
-def applicants(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
+def applicants(id:int,limite:int|None=Query(None,ge=1,le=100),cursor:str|None=Query(None,min_length=1,max_length=1024),estado:Literal["Pendiente","Preseleccionada","Aceptada","Rechazada","Cancelada"]|None=None,identity=Depends(confirmed_actor),app=Depends(service)):
+    if limite is not None or cursor is not None or estado is not None:
+        return app.application_page(identity.user_id,publication=id,limit=limite or 20,cursor=cursor,state=estado)
     return app.applicants(identity.user_id,id)
+
+
+@router.post("/api/postulaciones/{id}/retiro")
+def withdraw(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
+    return app.withdraw(identity.user_id,id)
 
 
 class Decision(BaseModel):

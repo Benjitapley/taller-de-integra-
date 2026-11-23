@@ -111,6 +111,36 @@ class Publications:
         self.get(id,actor_id)
         return self.repository.applications(publication=id)
 
+    def application_page(self,actor_id,publication=None,limit=20,cursor=None,state=None):
+        # Ownership is checked before interpreting a cursor from the caller.
+        if publication is not None:
+            self.get(publication,actor_id)
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise RuleViolation("Límite inválido.")
+        scope=pagination.context({"lista_privada":"postulaciones","publicacion":publication,"estado":state},actor_id)
+        after=pagination.decode(cursor,scope) if cursor is not None else None
+        rows=self.repository.applications(owner=actor_id if publication is None else None,publication=publication,limit=limit+1,after=after,state=state)
+        items=rows[:limit]
+        last={"fecha_publicacion":items[-1]["fecha_postulacion"],"id_publicacion":items[-1]["id_postulacion"]} if items else None
+        return {"items":items,"siguiente_cursor":pagination.encode(last,scope) if len(rows)>limit else None}
+
+    def withdraw(self,actor_id,id):
+        with self.repository.transaction():
+            row=self.repository.application(id)
+            if row is None:
+                raise RuleViolation("Postulación no encontrada.",404)
+            publication=self.repository.publication(row["id_publicacion"],lock=True)
+            row=self.repository.application(id,lock=True)
+            if row["id_usuario"]!=actor_id:
+                raise RuleViolation("Solo el postulante puede retirar.",403)
+            operation=Admissions(self).operations.latest(id)
+            if operation and operation["estado"]=="Pendiente":
+                raise RuleViolation("La incorporación sigue en curso; consulta su resultado.",409)
+            if transition(row,publication,actor_id,"Cancelada","Retiro voluntario"):
+                row=self.repository.change(id,"Cancelada","Retiro voluntario")
+                self.repository.event(row)
+            return Admissions(self).view(row,operation)
+
     def decide(self,actor_id,id,state,reason=None,key=None):
         if state=="Aceptada":
             return Admissions(self).accept(actor_id,id,reason,key)

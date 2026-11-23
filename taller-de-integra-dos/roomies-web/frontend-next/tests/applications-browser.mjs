@@ -7,17 +7,28 @@ const initial = { id_postulacion: 8, id_publicacion: 7, id_usuario: 2, titulo: "
 export function createApplicationsFixture() {
   let current = { ...initial };
   let behavior = "lost";
+  let pageFailed = false;
   const keys = [];
   return {
     keys,
     setBehavior(value) { behavior = value; },
-    reset(value) { behavior = value; current = { ...initial }; keys.length = 0; },
+    reset(value) { behavior = value; current = { ...initial }; keys.length = 0; pageFailed = false; },
     async handle(request, response, url) {
       if (!["/api/publicaciones/7/postulantes", "/api/postulaciones/mias", "/api/postulaciones/8", "/api/postulaciones/8/estado"].includes(url.pathname)) return false;
       assert.match(request.headers.authorization ?? "", /^Bearer fixture\./);
       assert.equal(request.headers.cookie, undefined);
       response.setHeader("Content-Type", "application/json");
       if (request.method === "GET") {
+        if (behavior === "pages" && url.pathname.endsWith("/postulantes")) {
+          const start = url.searchParams.get("cursor") === "page_20" ? 20 : url.searchParams.get("cursor") === "page_40" ? 40 : 0;
+          if (start === 20 && !pageFailed) {
+            pageFailed = true; response.statusCode = 503;
+            response.end(JSON.stringify({detail:"private-service-error"})); return true;
+          }
+          const rows = Array.from({length:41},(_,index)=>({...initial,id_postulacion:index+100,estado:"Pendiente"}));
+          response.end(JSON.stringify({items:rows.slice(start,start+20),siguiente_cursor:start+20<41?`page_${start+20}`:null}));
+          return true;
+        }
         if (url.pathname === "/api/postulaciones/8" && behavior === "forbidden") {
           response.statusCode = 403;
           response.end(JSON.stringify({ detail: "private-service-error" }));
@@ -107,6 +118,19 @@ export async function applicationsBrowser({ base, cookie, fixture, playwrightPat
     assert.equal(await retry.count(), 0);
     assert.doesNotMatch(await page.locator("main").innerText(), /private-service-error/);
     assert.deepEqual(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } })), { local: {}, session: {} });
+    fixture.reset("pages");
+    await page.goto(`${base}/postulantes/7`);
+    await page.getByRole("heading",{name:"Postulación 119",exact:true}).waitFor();
+    const more=page.getByRole("button",{name:"Cargar más postulaciones",exact:true});
+    await more.click();
+    await page.getByRole("button",{name:"Reintentar carga",exact:true}).waitFor();
+    assert.equal(await page.getByRole("heading",{name:/^Postulación \d+$/}).count(),20);
+    await page.getByRole("button",{name:"Reintentar carga",exact:true}).click();
+    await page.getByRole("heading",{name:"Postulación 139",exact:true}).waitFor();
+    await more.click();
+    await page.getByRole("heading",{name:"Postulación 140",exact:true}).waitFor();
+    assert.equal(await page.getByRole("heading",{name:/^Postulación \d+$/}).count(),41);
+    assert.equal(await more.count(),0);
     assert.deepEqual(errors, []);
   } finally {
     await context.close();

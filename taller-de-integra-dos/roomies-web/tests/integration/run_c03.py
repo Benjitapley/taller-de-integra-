@@ -220,6 +220,7 @@ def scenarios(client, gateway, people, database, admission_proxy, callbacks, res
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pg-bin", type=Path)
+    parser.add_argument("--web", action="store_true", help="Comprobar SCRUM-112 también con Next y BFF reales aislados")
     args = parser.parse_args()
     candidates = [args.pg_bin] if args.pg_bin else []
     found = shutil.which("initdb")
@@ -292,7 +293,7 @@ def main():
 
             for name in ("auth", "listado", "convivencia", "gateway"): start(name)
             people = []
-            for index in range(11):
+            for index in range(14 if args.web else 11):
                 email = f"c03-{index}@example.com"
                 response = client.post(identity.origin + "/auth/v1/signup", headers={"apikey": identity.publishable_key}, json={"email": email, "password": "Synthetic-password-123", "data": {"nombre": f"Prueba {index}", "fecha_nacimiento": "2000-01-01"}})
                 assert response.status_code == 200
@@ -303,6 +304,10 @@ def main():
                 people.append(person)
             with psycopg.connect(admin, autocommit=True) as database:
                 scenarios(client, origins["gateway"], people, database, admission_proxy, callbacks, lambda: (stop("listado"), start("listado")))
+                if args.web:
+                    sys.path.insert(0,str(Path(__file__).resolve().parent))
+                    from web112 import exercise
+                    exercise(ROOT,clean,identity,origins["gateway"],database,people,port())
             print("PASS C03: cuatro procesos separados y SQL real; Auth externo simulado explícitamente", flush=True)
     finally:
         for name in reversed(list(processes)): stop(name)

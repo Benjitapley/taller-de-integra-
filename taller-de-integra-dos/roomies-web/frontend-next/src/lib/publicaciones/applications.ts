@@ -12,6 +12,7 @@ export async function handleApplications(request: Request, config: WebAuthConfig
   let body: unknown;
   let target: number | undefined;
   let key: string | null = null;
+  let expectedPublication: number | undefined;
   if (request.method === "GET") {
     const query = new URL(request.url).searchParams;
     if (applicationId !== undefined) {
@@ -20,8 +21,15 @@ export async function handleApplications(request: Request, config: WebAuthConfig
       path = `/api/postulaciones/${applicationId}`;
     } else {
       const id = query.get("publicacion");
-      if ([...query.keys()].some(key => key !== "publicacion") || query.getAll("publicacion").length > 1 || (id !== null && !/^[1-9]\d{0,9}$/.test(id))) return authReply(422, { detail: "Consulta inválida." });
-      path = id ? `/api/publicaciones/${id}/postulantes` : "/api/postulaciones/mias";
+      if ([...query.keys()].some(key => !["publicacion","cursor","limite","estado"].includes(key)) || query.getAll("publicacion").length > 1 || (id !== null && !/^[1-9]\d{0,9}$/.test(id))) return authReply(422, { detail: "Consulta inválida." });
+      const pagination = new URLSearchParams({limite: query.get("limite") ?? "20"});
+      for (const field of ["cursor","estado"] as const) if (query.has(field)) pagination.set(field, query.get(field)!);
+      if (["cursor","limite","estado"].some(field => query.getAll(field).length > 1) ||
+          !/^(?:[1-9]\d?|100)$/.test(pagination.get("limite")!) ||
+          (query.has("cursor") && !/^[A-Za-z0-9_-]{1,1024}$/.test(query.get("cursor")!)) ||
+          (query.has("estado") && !["Pendiente","Preseleccionada","Aceptada","Rechazada","Cancelada"].includes(query.get("estado")!))) return authReply(422,{detail:"Paginación inválida."});
+      expectedPublication = id === null ? undefined : Number(id);
+      path = (id ? `/api/publicaciones/${id}/postulantes` : "/api/postulaciones/mias") + `?${pagination}`;
     }
   } else if (["POST", "PATCH"].includes(request.method)) {
     if (request.headers.get("origin") !== config.origin || request.headers.get("x-haycupo-csrf") !== "1" ||
@@ -40,13 +48,17 @@ export async function handleApplications(request: Request, config: WebAuthConfig
         chunks.push(item.value);
       }
       const value = JSON.parse(Buffer.concat(chunks).toString());
-      const allowed = request.method === "POST" ? ["publicacion"] : ["id", "estado", "motivo"];
+      const allowed = request.method === "POST" ? ["publicacion","retiro"] : ["id", "estado", "motivo"];
       if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) throw new Error();
-      const id = request.method === "POST" ? value.publicacion : value.id;
+      const id = request.method === "POST" ? (value.publicacion ?? value.retiro) : value.id;
       if (!Number.isSafeInteger(id) || id < 1) throw new Error();
-      if (request.method === "POST") path = `/api/publicaciones/${id}/postulaciones`;
+      if (request.method === "POST") {
+        if (Object.keys(value).length !== 1) throw new Error();
+        if (value.retiro !== undefined) { path = `/api/postulaciones/${id}/retiro`; target = id; }
+        else path = `/api/publicaciones/${id}/postulaciones`;
+      }
       else {
-        if (!["Preseleccionada", "Aceptada", "Rechazada", "Cancelada"].includes(value.estado) ||
+        if (!["Preseleccionada", "Aceptada", "Rechazada"].includes(value.estado) ||
             (value.motivo !== undefined && (typeof value.motivo !== "string" || value.motivo.length > 1000))) throw new Error();
         path = `/api/postulaciones/${id}/estado`;
         target = id;
@@ -68,6 +80,7 @@ export async function handleApplications(request: Request, config: WebAuthConfig
       const row = item as Record<string, unknown>;
       if (![row.id_postulacion, row.id_publicacion, row.id_usuario].every(id => Number.isSafeInteger(id) && Number(id) > 0) || !["Pendiente", "Preseleccionada", "Aceptada", "Rechazada", "Cancelada"].includes(String(row.estado))) throw new Error();
       if (target !== undefined && row.id_postulacion !== target) throw new Error();
+      if (expectedPublication !== undefined && row.id_publicacion !== expectedPublication) throw new Error();
       if (row.id_arriendo !== undefined && row.id_arriendo !== null && (!Number.isSafeInteger(row.id_arriendo) || Number(row.id_arriendo) < 1)) throw new Error();
       if (row.incorporacion_pendiente !== undefined && typeof row.incorporacion_pendiente !== "boolean") throw new Error();
       if (row.estado === "Aceptada" && (!row.id_arriendo || row.incorporacion_pendiente !== false || response.status === 202)) throw new Error();
@@ -85,7 +98,12 @@ export async function handleApplications(request: Request, config: WebAuthConfig
       }
       return result;
     };
-    if ((request.method === "GET" && applicationId === undefined) !== Array.isArray(value)) throw new Error();
-    return authReply(response.status === 202 ? 202 : request.method === "POST" ? 201 : 200, Array.isArray(value) ? value.map(normalize) : normalize(value));
+    if (request.method === "GET" && applicationId === undefined) {
+      const page = Array.isArray(value) ? {items:value,siguiente_cursor:null} : value as {items:unknown[];siguiente_cursor:unknown};
+      if (!page || !Array.isArray(page.items) || !(page.siguiente_cursor === null || typeof page.siguiente_cursor === "string" && /^[A-Za-z0-9_-]{1,1024}$/.test(page.siguiente_cursor))) throw new Error();
+      return authReply(200,{items:page.items.map(normalize),siguiente_cursor:page.siguiente_cursor});
+    }
+    if (Array.isArray(value)) throw new Error();
+    return authReply(response.status === 202 ? 202 : request.method === "POST" && target === undefined ? 201 : 200, normalize(value));
   } catch { return authReply(503, { detail: "No se confirmó la operación. Actualiza tus postulaciones antes de repetirla." }); }
 }

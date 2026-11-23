@@ -69,8 +69,7 @@ async def forward_to(request: Request, upstream_url, path):
         if len(operation) > 1 or (operation and not re.fullmatch(r"[A-Za-z0-9:_-]{1,80}", operation[0])):
             return JSONResponse({"codigo":"SOLICITUD_INVALIDA","mensaje":"Clave de envío inválida."}, status_code=422,
                                 headers={"Cache-Control":"no-store"})
-        if operation:
-            headers.append((b"idempotency-key", operation[0].encode("ascii")))
+        # REQUEST_HEADERS already preserves this key; appending duplicates it.
     # Solicitar identidad evita descompresión implícita; a la vuelta se leen bytes raw.
     headers.append((b"accept-encoding", b"identity"))
     receiving = True

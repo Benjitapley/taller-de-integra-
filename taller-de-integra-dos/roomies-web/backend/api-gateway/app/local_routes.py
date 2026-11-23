@@ -30,6 +30,7 @@ ROUTES=[
  (r"/api/postulaciones/mias",{"GET"},"listado_upstream"),
  (r"/api/postulaciones/[1-9][0-9]*",{"GET"},"listado_upstream"),
  (r"/api/postulaciones/[1-9][0-9]*/estado",{"PATCH"},"listado_upstream"),
+ (r"/api/postulaciones/[1-9][0-9]*/retiro",{"POST"},"listado_upstream"),
  (r"/api/arriendos/mio",{"GET"},"convivencia_upstream"),
  (r"/api/arriendos/[1-9][0-9]*",{"GET"},"convivencia_upstream"),
  (r"/api/admin/publicaciones",{"GET"},"listado_upstream"),

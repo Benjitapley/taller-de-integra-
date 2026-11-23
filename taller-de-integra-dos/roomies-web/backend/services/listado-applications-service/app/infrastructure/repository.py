@@ -147,10 +147,21 @@ class PostgresPublications:
     def application(self,id,lock=False):
         return self.query("SELECT * FROM listado_applications.postulacion WHERE id_postulacion=%s"+(" FOR UPDATE" if lock else ""),(id,))
 
-    def applications(self,owner=None,publication=None):
+    def applications(self,owner=None,publication=None,limit=100,after=None,state=None):
+        conditions = ["a.id_usuario=%s" if owner is not None else "a.id_publicacion=%s"]
+        params = [owner if owner is not None else publication]
+        if state is not None:
+            conditions.append("a.estado=%s")
+            params.append(state)
+        if after is not None:
+            conditions.append("(a.fecha_postulacion,a.id_postulacion)<(%s,%s)")
+            params.extend(after)
+        params.append(limit)
+        fields = "a.*,op.operacion,COALESCE(op.estado='Pendiente',false) AS incorporacion_pendiente"
         if owner is not None:
-            return self.query("SELECT a.*,p.titulo,p.estado AS estado_publicacion,op.operacion,COALESCE(op.estado='Pendiente',false) AS incorporacion_pendiente FROM listado_applications.postulacion a JOIN listado_applications.publicacion p USING (id_publicacion)"+APPLICATION_OPERATION+" WHERE a.id_usuario=%s ORDER BY a.fecha_postulacion DESC,a.id_postulacion DESC LIMIT 100",(owner,),True)
-        return self.query("SELECT a.*,op.operacion,COALESCE(op.estado='Pendiente',false) AS incorporacion_pendiente FROM listado_applications.postulacion a"+APPLICATION_OPERATION+" WHERE a.id_publicacion=%s ORDER BY a.fecha_postulacion DESC,a.id_postulacion DESC LIMIT 100",(publication,),True)
+            fields += ",p.titulo,p.estado AS estado_publicacion"
+        join = " JOIN listado_applications.publicacion p USING (id_publicacion)" if owner is not None else ""
+        return self.query("SELECT "+fields+" FROM listado_applications.postulacion a"+join+APPLICATION_OPERATION+" WHERE "+" AND ".join(conditions)+" ORDER BY a.fecha_postulacion DESC,a.id_postulacion DESC LIMIT %s",tuple(params),True)
 
     def change(self,id,state,reason):
         return self.query("UPDATE listado_applications.postulacion SET estado=%s,motivo=%s,actualizada_en=clock_timestamp() WHERE id_postulacion=%s RETURNING *",(state,reason,id))
