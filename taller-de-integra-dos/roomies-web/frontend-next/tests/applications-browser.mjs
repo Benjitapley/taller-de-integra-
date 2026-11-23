@@ -32,7 +32,7 @@ export function createApplicationsFixture() {
         if (url.pathname === "/api/postulaciones/8" && behavior === "forbidden") {
           response.statusCode = 403;
           response.end(JSON.stringify({ detail: "private-service-error" }));
-        } else response.end(JSON.stringify(url.pathname === "/api/postulaciones/8" ? current : [current]));
+        } else response.end(JSON.stringify(url.pathname === "/api/postulaciones/8" ? current : {items:[current],siguiente_cursor:null}));
         return true;
       }
       assert.equal(request.method, "PATCH");
@@ -72,12 +72,13 @@ export async function applicationsBrowser({ base, cookie, fixture, playwrightPat
     page.on("pageerror", error => errors.push(error.message));
     await page.goto(`${base}/postulantes/7`);
     const accept = page.getByRole("button", { name: "Aceptar postulación", exact: true });
+    const accepted = page.locator(".journey-status").filter({ hasText: /^Aceptada$/ });
     await accept.waitFor();
     await accept.evaluate(button => { button.click(); button.click(); });
     await page.getByRole("status").filter({ hasText: "La incorporación al arriendo aún no está confirmada" }).waitFor();
     await page.getByRole("button", { name: "Reintentar aceptación", exact: true }).waitFor({ state: "visible" });
     assert.equal(fixture.keys.length, 1, "rapid clicks send a single admission command");
-    assert.equal(await page.getByText("Aceptada", { exact: true }).count(), 0);
+    assert.equal(await accepted.count(), 0);
     assert.equal(await page.getByRole("link", { name: "Abrir Mi arriendo", exact: true }).count(), 0);
     assert.equal(await page.getByRole("button", { name: "Rechazar postulación", exact: true }).isDisabled(), true);
     const originalKey = fixture.keys[0];
@@ -88,7 +89,7 @@ export async function applicationsBrowser({ base, cookie, fixture, playwrightPat
     await retry.waitFor();
     fixture.setBehavior("confirm");
     await retry.click();
-    await page.getByText("Aceptada", { exact: true }).waitFor();
+    await accepted.waitFor();
     assert.deepEqual(fixture.keys, [originalKey, originalKey]);
     assert.equal(await page.getByRole("button", { name: "Aceptar postulación", exact: true }).count(), 0);
     assert.equal(await page.getByRole("button", { name: "Rechazar postulación", exact: true }).count(), 0);
@@ -99,11 +100,11 @@ export async function applicationsBrowser({ base, cookie, fixture, playwrightPat
     await page.goto(`${base}/postulantes/7`);
     await accept.click();
     await page.getByText("La incorporación no se completó. La postulación sigue preseleccionada.", { exact: true }).waitFor();
-    assert.equal(await page.getByText("Aceptada", { exact: true }).count(), 0);
+    assert.equal(await accepted.count(), 0);
     assert.equal(await page.getByRole("button", { name: "Rechazar postulación", exact: true }).isEnabled(), true);
     fixture.setBehavior("confirm");
     await retry.click();
-    await page.getByText("Aceptada", { exact: true }).waitFor();
+    await accepted.waitFor();
     assert.equal(fixture.keys.length, 2);
     assert.notEqual(fixture.keys[0], fixture.keys[1], "a terminal conflict requires an explicit new attempt");
 
@@ -113,7 +114,7 @@ export async function applicationsBrowser({ base, cookie, fixture, playwrightPat
     await page.getByRole("button", { name: "Consultar estado", exact: true }).waitFor();
     fixture.setBehavior("forbidden");
     await page.getByRole("button", { name: "Consultar estado", exact: true }).click();
-    await page.getByText("No hay postulaciones para mostrar.", { exact: true }).waitFor();
+    await page.getByText("No hay postulaciones para estos filtros.", { exact: true }).waitFor();
     assert.equal(await page.getByRole("heading", { name: "Postulación 8", exact: true }).count(), 0);
     assert.equal(await retry.count(), 0);
     assert.doesNotMatch(await page.locator("main").innerText(), /private-service-error/);
@@ -121,7 +122,7 @@ export async function applicationsBrowser({ base, cookie, fixture, playwrightPat
     fixture.reset("pages");
     await page.goto(`${base}/postulantes/7`);
     await page.getByRole("heading",{name:"Postulación 119",exact:true}).waitFor();
-    const more=page.getByRole("button",{name:"Cargar más postulaciones",exact:true});
+    const more=page.getByRole("button",{name:"Cargar más",exact:true});
     await more.click();
     await page.getByRole("button",{name:"Reintentar carga",exact:true}).waitFor();
     assert.equal(await page.getByRole("heading",{name:/^Postulación \d+$/}).count(),20);

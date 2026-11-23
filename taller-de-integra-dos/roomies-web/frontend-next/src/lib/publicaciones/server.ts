@@ -132,6 +132,9 @@ export async function handlePublicationRequest(
   const query = new URLSearchParams();
   if (operation === "mine") {
     const supplied = new URL(request.url).searchParams;
+    if (["limite", "cursor"].some(key => supplied.getAll(key).length > 1) ||
+        (supplied.has("limite") && !/^(?:[1-9]\d?|100)$/.test(supplied.get("limite")!)) ||
+        (supplied.has("cursor") && !/^[A-Za-z0-9_+./=-]{1,1024}$/.test(supplied.get("cursor")!))) return authReply(422, { detail: "Paginación inválida." });
     for (const key of ["limite", "cursor"]) if (supplied.has(key)) query.set(key, supplied.get(key)!);
   }
   const path = operation === "mine" ? `/api/publicaciones/mias${query.size ? `?${query}` : ""}` : `/api/publicaciones/${id}${operation === "close" ? "/cerrar" : ""}`;
@@ -144,8 +147,11 @@ export async function handlePublicationRequest(
     const body: unknown = await response.json();
     if (operation === "mine") {
       if (!body || typeof body !== "object" || !("items" in body) || !Array.isArray(body.items) || !("siguiente_cursor" in body) ||
-          (body.siguiente_cursor !== null && typeof body.siguiente_cursor !== "string")) throw new Error("Invalid list");
-      return authReply(200, { items: body.items.map(publication), siguiente_cursor: body.siguiente_cursor });
+          (body.siguiente_cursor !== null && (typeof body.siguiente_cursor !== "string" || !/^[A-Za-z0-9_+./=-]{1,1024}$/.test(body.siguiente_cursor))) ||
+          body.items.length > Number(query.get("limite") ?? 20)) throw new Error("Invalid list");
+      const items = body.items.map(publication);
+      if (new Set(items.map(item => item.id_publicacion)).size !== items.length) throw new Error("Invalid list");
+      return authReply(200, { items, siguiente_cursor: body.siguiente_cursor });
     }
     return authReply(200, publication(body));
   } catch { return unavailable(); }

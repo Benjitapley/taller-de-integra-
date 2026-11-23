@@ -13,6 +13,7 @@ export async function handleApplications(request: Request, config: WebAuthConfig
   let target: number | undefined;
   let key: string | null = null;
   let expectedPublication: number | undefined;
+  let expectedLimit = 20;
   if (request.method === "GET") {
     const query = new URL(request.url).searchParams;
     if (applicationId !== undefined) {
@@ -29,6 +30,7 @@ export async function handleApplications(request: Request, config: WebAuthConfig
           (query.has("cursor") && !/^[A-Za-z0-9_-]{1,1024}$/.test(query.get("cursor")!)) ||
           (query.has("estado") && !["Pendiente","Preseleccionada","Aceptada","Rechazada","Cancelada"].includes(query.get("estado")!))) return authReply(422,{detail:"Paginación inválida."});
       expectedPublication = id === null ? undefined : Number(id);
+      expectedLimit = Number(pagination.get("limite"));
       path = (id ? `/api/publicaciones/${id}/postulantes` : "/api/postulaciones/mias") + `?${pagination}`;
     }
   } else if (["POST", "PATCH"].includes(request.method)) {
@@ -99,9 +101,11 @@ export async function handleApplications(request: Request, config: WebAuthConfig
       return result;
     };
     if (request.method === "GET" && applicationId === undefined) {
-      const page = Array.isArray(value) ? {items:value,siguiente_cursor:null} : value as {items:unknown[];siguiente_cursor:unknown};
-      if (!page || !Array.isArray(page.items) || !(page.siguiente_cursor === null || typeof page.siguiente_cursor === "string" && /^[A-Za-z0-9_-]{1,1024}$/.test(page.siguiente_cursor))) throw new Error();
-      return authReply(200,{items:page.items.map(normalize),siguiente_cursor:page.siguiente_cursor});
+      const page = value as {items:unknown[];siguiente_cursor:unknown};
+      if (!page || !Array.isArray(page.items) || page.items.length > expectedLimit || !(page.siguiente_cursor === null || typeof page.siguiente_cursor === "string" && /^[A-Za-z0-9_-]{1,1024}$/.test(page.siguiente_cursor))) throw new Error();
+      const items = page.items.map(normalize);
+      if (new Set(items.map(item => item.id_postulacion)).size !== items.length) throw new Error();
+      return authReply(200,{items,siguiente_cursor:page.siguiente_cursor});
     }
     if (Array.isArray(value)) throw new Error();
     return authReply(response.status === 202 ? 202 : request.method === "POST" && target === undefined ? 201 : 200, normalize(value));

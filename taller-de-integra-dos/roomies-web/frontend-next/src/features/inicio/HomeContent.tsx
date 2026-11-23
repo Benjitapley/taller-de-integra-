@@ -13,7 +13,7 @@ import { apiRequest, type ApiPath } from "@/lib/api/client";
 import { publicationPage, appendPublications, type Publication } from "../publicaciones/contracts";
 import styles from "./inicio.module.css";
 
-const items = [{ value: "arriendos", label: "ARRIENDOS" }, { value: "personas", label: "PERSONAS" }] as const;
+const items = [{ value: "arriendos", label: "ARRIENDOS" }] as const;
 type SearchFilters = {
   consulta: string;
   precio_min: string;
@@ -67,7 +67,7 @@ function price(value: number | string) {
 export default function HomeContent({ canReport = false }: { canReport?: boolean }) {
   const params = useSearchParams();
   const router = useRouter();
-  const value = params.get("vista") === "personas" ? "personas" : "arriendos";
+  const value = items.some(item => item.value === params.get("vista")) ? params.get("vista")! : "arriendos";
   const isPeople = value === "personas";
   const loadingMoreRef = useRef(false);
   const [loadingMore, setLoadingMore] = useState(false);

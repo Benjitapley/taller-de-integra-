@@ -7,6 +7,7 @@ import { PostulationStatus } from "@/features/recorrido/JourneyStatus";
 
 import type { Application } from "./application-contract";
 import { useCursorList, applicationId } from "./ApplicationList";
+import ListProgress from "../lists/ListProgress";
 const confirmed = (item: Application) => item.estado === "Aceptada" && item.incorporacion_pendiente === false && Number.isSafeInteger(item.id_arriendo) && Number(item.id_arriendo) > 0;
 
 export default function Applications({ publication }: { publication?: number }) {
@@ -14,9 +15,10 @@ export default function Applications({ publication }: { publication?: number }) 
 }
 
 function ApplicationList({ publication }: { publication?: number }) {
-  const list = useCursorList<Application>(`/web-api/postulaciones${publication ? `?publicacion=${publication}` : ""}`, applicationId);
+  const [filter, setFilter] = useState("");
+  const query = new URLSearchParams({ limite: "20", ...(publication ? { publicacion: String(publication) } : {}), ...(filter ? { estado: filter } : {}) });
+  const list = useCursorList<Application>(`/web-api/postulaciones?${query}`, applicationId);
   const { items, setItems } = list;
-  const loading = !list.loaded && !list.error;
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [reasons, setReasons] = useState<Record<number, string>>({});
@@ -94,11 +96,12 @@ function ApplicationList({ publication }: { publication?: number }) {
     } finally { inFlight.current = false; setPending(false); }
   }
   return <div style={{ display: "grid", gap: 16 }} aria-busy={pending}>
-    {list.error && <Card><p role="alert">{list.error}</p><Button disabled={pending || list.loading} onClick={() => void list.retryLoad()}>Reintentar carga</Button></Card>}
-    {loading && <p role="status">Cargando postulaciones…</p>}
+    <label>Filtrar por estado<select aria-label="Filtrar por estado" value={filter} disabled={pending} onChange={event => setFilter(event.target.value)}>
+      <option value="">Todos</option>{["Pendiente", "Preseleccionada", "Aceptada", "Rechazada", "Cancelada"].map(value => <option key={value}>{value}</option>)}
+    </select></label>
     {error && <Card><p role="alert">{error}</p><Button disabled={pending} onClick={() => { setError(""); void list.load(); }}>Actualizar</Button></Card>}
-    {list.loaded && !items.length && <Card><p>No hay postulaciones para mostrar.</p></Card>}
-    {!loading && items.map(item => {
+    {list.loaded && !list.loading && !list.error && !items.length && <Card><p>No hay postulaciones para estos filtros.</p></Card>}
+    {items.map(item => {
       const waiting = item.operacion?.estado === "Pendiente" || Boolean(recovery[item.id_postulacion]);
       const accepted = confirmed(item);
       return <Card key={item.id_postulacion}>
@@ -123,6 +126,6 @@ function ApplicationList({ publication }: { publication?: number }) {
         </>}
       </Card>;
     })}
-    {list.cursor && !list.error && <Button disabled={pending || list.loading} onClick={() => void list.load(list.cursor)}>Cargar más postulaciones</Button>}
+    <ListProgress {...list} disabled={pending} count={items.length} retry={() => void list.retryLoad()} more={() => void list.load(list.cursor)} />
   </div>;
 }

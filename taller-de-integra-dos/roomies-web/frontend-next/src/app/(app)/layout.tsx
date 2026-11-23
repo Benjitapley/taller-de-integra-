@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { currentSession, canRenewSession } from "@/lib/auth/server";
+import { currentSession, canRenewSession, privateScope } from "@/lib/auth/server";
+import { reportsEnabled } from "@/lib/reportes";
 import AppShell from "@/components/layout/AppShell";
 
 // Must remain runtime-dependent even when auth is disabled during next build.
@@ -13,5 +14,5 @@ export default async function ApplicationLayout({ children }: { children: ReactN
   if (session.status === 401 && await canRenewSession()) redirect("/renovar-sesion");
   if ([401, 403].includes(session.status)) redirect("/");
   if (!session.ok) return <main><h1>Sesión no disponible</h1><p>No se pudo comprobar tu sesión. Intenta nuevamente en unos minutos.</p><Link href="/">Volver al acceso</Link></main>;
-  return <AppShell>{children}</AppShell>;
+  return <AppShell key={await privateScope()} showReports={reportsEnabled()}>{children}</AppShell>;
 }
