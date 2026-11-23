@@ -8,6 +8,6 @@ export type Profile = {
   breve_descripcion: string | null;
   sobre_mi: string | null;
   foto_perfil: string | null;
-  total_publicaciones: number;
+  total_publicaciones: number | null;
   verificado: boolean | null;
 };

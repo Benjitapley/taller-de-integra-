@@ -15,7 +15,7 @@ function optionalText(value: unknown): string | null {
 export function normalizeProfile(value: unknown): Profile {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid profile");
   const data = value as Record<string, unknown>;
-  if (typeof data.nombre !== "string" || !Number.isSafeInteger(data.total_publicaciones) || (data.total_publicaciones as number) < 0) throw new Error("Invalid profile");
+  if (typeof data.nombre !== "string" || (data.total_publicaciones !== null && (!Number.isSafeInteger(data.total_publicaciones) || (data.total_publicaciones as number) < 0))) throw new Error("Invalid profile");
   let age: number | null = null;
   if (data.edad !== "" && data.edad !== null && data.edad !== undefined) {
     // The existing API can return a DB number or numeric text, and '' when empty.
@@ -27,7 +27,7 @@ export function normalizeProfile(value: unknown): Profile {
     nombre: data.nombre.trim(), edad: age,
     ocupacion: optionalText(data.ocupacion), ciudad: optionalText(data.ciudad),
     breve_descripcion: optionalText(data.breve_descripcion), sobre_mi: optionalText(data.sobre_mi),
-    foto_perfil: profilePhoto(data.foto_perfil), total_publicaciones: data.total_publicaciones as number,
+    foto_perfil: profilePhoto(data.foto_perfil), total_publicaciones: data.total_publicaciones as number | null,
     verificado: typeof data.verificado === "boolean" ? data.verificado : null,
   };
 }
@@ -78,10 +78,10 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
     let data = await response.json();
     if (config.provider === "supabase") {
       if (typeof data?.edad_calculada !== "boolean" || typeof data?.verificado !== "boolean") return unavailable();
-      const count = await upstream(config, "/local/v1/publicaciones/resumen", token, undefined, transport);
-      if (!count.ok) return unavailable();
-      const totals = await count.json();
-      data = { ...data, total_publicaciones: totals.total_publicaciones };
+      // Listado is optional for viewing a valid authenticated profile.
+      const count = await upstream(config, "/local/v1/publicaciones/resumen", token, undefined, transport).catch(() => null);
+      const totals = count?.ok ? await count.json().catch(() => null) : null;
+      data = { ...data, total_publicaciones: Number.isSafeInteger(totals?.total_publicaciones) && totals.total_publicaciones >= 0 ? totals.total_publicaciones : null };
     }
     return authReply(200, { ...normalizeProfile(data), ...(config.provider === "supabase" ? { edad_calculada: data.edad_calculada } : {}) });
   } catch {

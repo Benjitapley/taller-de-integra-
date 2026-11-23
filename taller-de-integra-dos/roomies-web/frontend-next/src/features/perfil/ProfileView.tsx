@@ -56,7 +56,7 @@ export default function ProfileView() {
       <p className={styles.description}>{profile.breve_descripcion || "Aún no hay una descripción breve."}</p>
       <Button id="edit-profile" onClick={() => { setNotice(""); setEditing(true); }}>Editar perfil</Button>
       {notice && <p role="status">{notice}</p>}
-      <div className={styles.stat}><strong>{profile.total_publicaciones}</strong><span>Publicaciones</span></div>
+      <div className={styles.stat}><strong>{profile.total_publicaciones ?? "No disponible"}</strong><span>Publicaciones</span></div>
     </Card>
     <div className={styles.details}>
       <Card><h2>Información personal</h2><dl className={styles.facts}>
