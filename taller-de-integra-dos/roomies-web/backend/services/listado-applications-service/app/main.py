@@ -25,8 +25,11 @@ async def lifespan(app):
             except Exception: pass  # La outbox persiste hasta poder entregar.
             try: await asyncio.to_thread(cleanup_images,ImageOperations(PostgresPublications()),SupabasePublicationImages())
             except Exception: pass  # El journal conserva las limpiezas para el siguiente intento.
+<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/backend/services/listado-applications-service/app/main.py
             try: await asyncio.to_thread(Admissions(Publications(PostgresPublications(),UnavailableOccupancy(),SupabasePublicationImages())).recover)
             except Exception: pass  # Cada admisión conserva su clave y etapa hasta completar el recibo.
+=======
+>>>>>>> Stashed changes:taller de integra dos/roomies-web/backend/services/listado-applications-service/app/main.py
             try: await asyncio.wait_for(stopped.wait(),timeout=1)
             except TimeoutError: pass
     task=asyncio.create_task(deliver())
@@ -37,7 +40,11 @@ async def lifespan(app):
         await task
 
 
+<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/backend/services/listado-applications-service/app/main.py
 app=FastAPI(title="Roomies Listado/Applications",version="S3R-C03-v1",lifespan=lifespan)
+=======
+app=FastAPI(title="Roomies Listado/Applications",version="S3R-C02-v1",lifespan=lifespan)
+>>>>>>> Stashed changes:taller de integra dos/roomies-web/backend/services/listado-applications-service/app/main.py
 configure(app)
 app.include_router(router)
 @app.get("/health")

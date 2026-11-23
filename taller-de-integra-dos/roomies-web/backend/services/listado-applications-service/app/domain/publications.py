@@ -16,7 +16,11 @@ def available(publication, occupancy: OccupancyPort):
         count = publication["ocupacion_confirmada"]
         if type(count) is not int or not 0 <= count <= publication["cupos_totales"]:
             raise DependencyUnavailable("La ocupación de la publicación aún no está confirmada.")
+<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/backend/services/listado-applications-service/app/domain/publications.py
         return max(0,publication["cupos_totales"] - count - publication.get("cupos_reservados",0))
+=======
+        return publication["cupos_totales"] - count
+>>>>>>> Stashed changes:taller de integra dos/roomies-web/backend/services/listado-applications-service/app/domain/publications.py
     if publication["estado"] == "Disponible":
         return publication["cupos_totales"]
     count=occupancy.active_members(publication["id_publicacion"])

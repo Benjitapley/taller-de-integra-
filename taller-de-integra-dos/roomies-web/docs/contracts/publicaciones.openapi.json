@@ -997,6 +997,7 @@
         }
       }
     },
+<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/docs/contracts/publicaciones.openapi.json
     "/api/v1/publicaciones/resumen": {
       "get": {
         "summary": "My Count",
@@ -1018,6 +1019,8 @@
         ]
       }
     },
+=======
+>>>>>>> Stashed changes:taller de integra dos/roomies-web/docs/contracts/publicaciones.openapi.json
     "/local/v1/publicaciones/resumen": {
       "get": {
         "summary": "My Count",
@@ -1278,6 +1281,7 @@
         }
       }
     },
+<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/docs/contracts/publicaciones.openapi.json
     "/internal/publicaciones/{id}": {
       "get": {
         "summary": "Publication For Report",
@@ -1333,6 +1337,8 @@
         }
       }
     },
+=======
+>>>>>>> Stashed changes:taller de integra dos/roomies-web/docs/contracts/publicaciones.openapi.json
     "/api/publicaciones/{id}/cupos": {
       "get": {
         "summary": "Slots",

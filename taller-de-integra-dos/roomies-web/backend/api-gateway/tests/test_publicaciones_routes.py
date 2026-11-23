@@ -73,6 +73,7 @@ def test_occupancy_confirmation_remains_internal():
                         json={"ocupacion": 1, "version_ocupacion": 1},
                         headers={"X-Roomies-Service": "untrusted"})
     assert response.status_code == 404
+<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/backend/api-gateway/tests/test_publicaciones_routes.py
 
 
 def test_upload_preflight_allows_retry_key():
@@ -86,3 +87,5 @@ def test_upload_preflight_allows_retry_key():
     assert response.status_code == 204
     assert response.headers["access-control-allow-origin"] == "https://web.example.test"
     assert "idempotency-key" in response.headers["access-control-allow-headers"].lower()
+=======
+>>>>>>> Stashed changes:taller de integra dos/roomies-web/backend/api-gateway/tests/test_publicaciones_routes.py

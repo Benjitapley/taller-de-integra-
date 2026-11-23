@@ -26,7 +26,10 @@ services:
       - ./backend/services/listado-applications-service/migrations/001_publicaciones_contract.up.sql:/docker-entrypoint-initdb.d/02-publicaciones-contract.sql:ro
       - ./backend/services/listado-applications-service/migrations/002_publication_images.sql:/docker-entrypoint-initdb.d/03-publication-images.sql:ro
       - ./backend/services/listado-applications-service/migrations/003_catalogo_cut.up.sql:/docker-entrypoint-initdb.d/04-catalogo-cut.sql:ro
+<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/docker-compose.local.yml
       - ./backend/services/listado-applications-service/migrations/004_acceptance_operations.sql:/docker-entrypoint-initdb.d/05-acceptance.sql:ro
+=======
+>>>>>>> Stashed changes:taller de integra dos/roomies-web/docker-compose.local.yml
     healthcheck:
       test: [CMD-SHELL, "pg_isready -U roomies_local_owner -d roomies_sprint2_disposable"]
       interval: 5s
@@ -58,7 +61,10 @@ services:
     environment:
       <<: *business
       LISTADO_DATABASE_URL: postgresql://sql_listado_applications:${ROOMIES_LISTADO_SQL_PASSWORD}@roomies-db:5432/roomies_sprint2_disposable
+<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/docker-compose.local.yml
       LISTADO_AUTH_JWT_KEY: ${LISTADO_AUTH_JWT_KEY:-}
+=======
+>>>>>>> Stashed changes:taller de integra dos/roomies-web/docker-compose.local.yml
       ROOMIES_CURSOR_SECRET: ${ROOMIES_CURSOR_SECRET:?Firma estable de cursores de al menos 32 caracteres}
       ROOMIES_SUPABASE_PROJECT_REF: ${ROOMIES_SUPABASE_PROJECT_REF:-}
       ROOMIES_SUPABASE_STORAGE_KEY: ${ROOMIES_SUPABASE_STORAGE_KEY:-}

@@ -23,7 +23,11 @@ function validForm() {
     titulo: "Habitación disponible", categoria: "ofrezco", ubicacion: "Temuco centro",
     precio: "150000", tipo: "Arrendador", cupos_totales: "2",
     tipo_vivienda: "habitacion", descripcion: "Descripción de prueba",
+<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/frontend-next/tests/publications.test.mjs
     mascota: "no", permitir_comentarios: "false", id_region: "9", id_comuna: "91101",
+=======
+    mascota: "no", permitir_comentarios: "false", id_region: "9", id_comuna: "91",
+>>>>>>> Stashed changes:taller de integra dos/roomies-web/frontend-next/tests/publications.test.mjs
   })) form.set(key, value);
   return form;
 }
