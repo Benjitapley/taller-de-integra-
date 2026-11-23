@@ -7,7 +7,6 @@ x-business: &business
   AUTH_USERS_UPSTREAM_URL: http://auth-users:8000
   LISTADO_UPSTREAM_URL: http://listado-applications:8000
   ROOMIES_INTERNAL_TOKEN: ${ROOMIES_LOCAL_SERVICE_TOKEN:?Token interno local de al menos 32 caracteres}
-  ROOMIES_ADMIN_SUBJECTS: ${ROOMIES_LOCAL_ADMIN_UUIDS:-}
 services:
   roomies-db:
     image: postgres:18-bookworm

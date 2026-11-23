@@ -11,7 +11,6 @@ x-runtime: &runtime
   AUTH_USERS_UPSTREAM_URL: http://auth-users:8000
   LISTADO_UPSTREAM_URL: http://listado-applications:8000
   ROOMIES_INTERNAL_TOKEN: ${ROOMIES_INTERNAL_TOKEN:?Secreto interno exclusivo requerido}
-  ROOMIES_ADMIN_SUBJECTS: ${ROOMIES_ADMIN_SUBJECTS:-}
 services:
   auth-users:
     build:
