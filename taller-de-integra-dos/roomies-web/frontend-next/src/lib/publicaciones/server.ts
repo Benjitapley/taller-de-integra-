@@ -99,8 +99,8 @@ export async function handleSavePublication(
 
 export const handleCreatePublication = handleSavePublication;
 
-type Operation = "mine" | "edit" | "close";
-const fields = ["id", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos", "cupos_totales", "cupos_disponibles", "imagen", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios"];
+type Operation = "mine" | "edit" | "detail" | "close";
+const fields = ["id", "id_arriendo", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos", "cupos_totales", "cupos_disponibles", "imagen", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios"];
 function publication(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || !("id" in value) || !Number.isSafeInteger(value.id) || Number(value.id) < 1) throw new Error("Invalid response");
   const source = value as Record<string, unknown>;
@@ -120,7 +120,7 @@ export async function handlePublicationRequest(
   if (request.method !== method) return authReply(405, { detail: "Método no permitido." }, { Allow: method });
   if (method !== "GET" && (request.headers.get("origin") !== config.origin || request.headers.get("x-haycupo-csrf") !== "1" ||
       (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin"))) return authReply(403, { detail: "Origen de solicitud no permitido." });
-  const path = operation === "mine" ? "/api/mis-publicaciones" : `/api/publicaciones/${id}${operation === "close" ? "/cerrar" : ""}`;
+  const path = operation === "mine" ? "/api/mis-publicaciones" : `/api/publicaciones/${id}${operation === "close" ? "/cerrar" : operation === "detail" ? "/detalle" : ""}`;
   try {
     const response = await transport(`${config.backend}${path}`, { method, cache: "no-store", redirect: "error",
       signal: AbortSignal.timeout(10_000), headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });

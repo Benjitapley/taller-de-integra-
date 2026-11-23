@@ -35,13 +35,13 @@ class PostgresRepository:
                 UPDATE convivencia_mensajeria.incorporacion i SET ultimo_intento=clock_timestamp()
                 FROM picked p WHERE i.id_operacion=p.id_operacion RETURNING i.id_operacion,i.payload""").fetchall()
 
-    def get(self, rental_id, user_id):
+    def get(self, rental_id, user_id, access_checked=False):
         with self.transaction() as c:
-            row = c.execute("""SELECT a.id_arriendo,a.id_publicacion,a.cupos_totales,a.version_capacidad,
+            row = c.execute("""SELECT a.id_arriendo,a.id_publicacion,a.cupos_totales,a.version_capacidad,%s AS es_dueno,
                 (SELECT count(*) FROM convivencia_mensajeria.pertenencia p WHERE p.id_arriendo=a.id_arriendo AND p.estado='Activa') AS ocupacion
                 FROM convivencia_mensajeria.arriendo a
-                WHERE a.id_arriendo=%s AND EXISTS (SELECT 1 FROM convivencia_mensajeria.pertenencia p
-                  WHERE p.id_arriendo=a.id_arriendo AND p.id_usuario=%s AND p.estado='Activa')""", (rental_id, user_id)).fetchone()
+                WHERE a.id_arriendo=%s AND (%s OR EXISTS (SELECT 1 FROM convivencia_mensajeria.pertenencia p
+                  WHERE p.id_arriendo=a.id_arriendo AND p.id_usuario=%s AND p.estado='Activa'))""", (access_checked, rental_id, access_checked, user_id)).fetchone()
             if row is None:
                 raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
             return row
@@ -60,7 +60,14 @@ class PostgresRepository:
                 raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
             return row["id_publicacion"]
 
-    def members(self, rental_id, user_id, active_only=True, access_checked=False):
+    def rental_for_publication(self, publication_id):
+        with self.transaction() as c:
+            row = c.execute("SELECT id_arriendo FROM convivencia_mensajeria.arriendo WHERE id_publicacion=%s", (publication_id,)).fetchone()
+            if row is None:
+                raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+            return row["id_arriendo"]
+
+    def members(self, rental_id, user_id, active_only=True, access_checked=False, limit=20, before=None):
         with self.transaction() as c:
             rental = c.execute("SELECT id_arriendo FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
             if rental is None:
@@ -71,17 +78,18 @@ class PostgresRepository:
                 if allowed is None:
                     raise ServiceError("FORBIDDEN", "No tienes acceso a los integrantes.", 403)
             where = "AND p.estado='Activa'" if active_only else ""
-            rows = c.execute(f"""SELECT p.id_usuario,p.creada_en,
+            boundary = "AND (p.creada_en,p.id_pertenencia)>(%s,%s)" if before else ""
+            rows = c.execute(f"""SELECT p.id_usuario,p.creada_en,p.id_pertenencia,
                 CASE WHEN p.id_pertenencia=(SELECT min(p2.id_pertenencia) FROM convivencia_mensajeria.pertenencia p2
                   WHERE p2.id_arriendo=p.id_arriendo AND p2.estado='Activa') THEN true ELSE false END AS es_responsable
                 FROM convivencia_mensajeria.pertenencia p
-                WHERE p.id_arriendo=%s {where}
-                ORDER BY p.creada_en ASC,p.id_pertenencia ASC""", (rental_id,)).fetchall()
+                WHERE p.id_arriendo=%s {where} {boundary}
+                ORDER BY p.creada_en ASC,p.id_pertenencia ASC LIMIT %s""", (rental_id, *(before or ()), limit)).fetchall()
             items = [{"id_usuario": row["id_usuario"],
                       "fecha_ingreso": row["creada_en"].isoformat().replace("+00:00", "Z"),
                       "fecha_salida": None,
                       "es_responsable": row["es_responsable"]} for row in rows]
-            return {"items": items, "siguiente_cursor": None}
+            return {"items": items, "rows": rows}
 
     def expel(self, rental_id, actor_id, payload):
         with self.transaction() as c:

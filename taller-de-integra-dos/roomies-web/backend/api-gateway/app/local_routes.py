@@ -10,7 +10,7 @@ ROUTES=[
  (r"/api/reportes/mios",{"GET"},"reportes_upstream"),
  (r"/api/admin/reportes",{"GET"},"reportes_upstream"),
  (r"/api/admin/reportes/[1-9][0-9]{0,18}",{"GET","PATCH"},"reportes_upstream"),
- (r"/api/arriendos/(?:mio|[1-9][0-9]*)",{"GET"},"convivencia_upstream"),
+ (r"/api/arriendos/(?:mio|[1-9][0-9]*|por-publicacion/[1-9][0-9]*)",{"GET"},"convivencia_upstream"),
  (r"/usuarios/me",{"GET","PATCH"},"upstream"),
  (r"/(?:local|api)/v1/sesion/revocar",{"POST"},"upstream"),
  (r"/(?:local|api)/v1/perfil/inicializacion",{"POST"},"upstream"),

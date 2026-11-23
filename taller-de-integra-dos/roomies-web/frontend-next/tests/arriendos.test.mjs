@@ -8,7 +8,7 @@ const gateway = (await readFile(new URL("../src/lib/auth/gateway.ts", import.met
 const source = (await readFile(new URL("../src/lib/arriendos/server.ts", import.meta.url), "utf8"))
   .replace('import "server-only";', "")
   .replace('"../auth/gateway"', JSON.stringify(moduleURL(gateway)));
-const { handleMyRental, handleMembers, handleExpulsion } = await import(moduleURL(source));
+const { handleMyRental, handleMembers, handleRentalById, handleOwnerRental, handleExpulsion } = await import(moduleURL(source));
 
 const config = { origin: "https://web.test", backend: "https://gateway.test", secure: true };
 const cookie = "__Host-haycupo_session=header.payload.signature";
@@ -23,10 +23,27 @@ test("Mi arriendo y integrantes usan rutas privadas fijas y no filtran campos", 
   assert.deepEqual(await rental.json(), { id_arriendo: 12, id_publicacion: 7, cupos_totales: 3, ocupacion: 2, access_token: "private" });
 
   const members = await handleMembers(new Request(config.origin + "/web-api/arriendos/12/integrantes", { headers: { cookie } }), "12", config, async url => {
-    assert.equal(url, config.backend + "/api/arriendos/12/integrantes?activos=true");
+    assert.equal(url, config.backend + "/api/arriendos/12/integrantes?activos=true&limite=20");
     return Response.json({ items: [{ id_usuario: 2, fecha_ingreso: "2026-11-20T00:00:00Z", es_responsable: true }], siguiente_cursor: null });
   });
   assert.equal(members.status, 200);
+});
+
+test("integrantes 503 y páginas inválidas nunca se convierten en listas vacías", async () => {
+  const request = new Request(config.origin + "/web-api/arriendos/12/integrantes?limite=20", { headers: { cookie } });
+  assert.equal((await handleMembers(request, "12", config, async () => Response.json({ detail: "down" }, { status: 503 }))).status, 503);
+  assert.equal((await handleMembers(request, "12", config, async () => Response.json({ items: [] }))).status, 503);
+});
+
+test("el BFF deniega URL de arriendo ajeno y conserva indisponibilidad", async () => {
+  const request = new Request(config.origin + "/web-api/arriendos/12", { headers: { cookie } });
+  assert.equal((await handleRentalById(request, "12", config, async url => {
+    assert.equal(url, config.backend + "/api/arriendos/12");
+    return Response.json({ detail: "denied" }, { status: 403 });
+  })).status, 403);
+  assert.equal((await handleRentalById(request, "12", config, async () => Response.json({ detail: "down" }, { status: 503 }))).status, 503);
+  assert.equal((await handleOwnerRental(new Request(config.origin + "/web-api/arriendos/por-publicacion/7", { headers: { cookie } }), "7", config,
+    async () => Response.json({ id_arriendo: 12, id_publicacion: 7, cupos_totales: 3, version_capacidad: 1, ocupacion: 2, es_dueno: true }))).status, 200);
 });
 
 test("retiro exige sesión, CSRF, motivo, confirmación e identificador válido", async () => {
