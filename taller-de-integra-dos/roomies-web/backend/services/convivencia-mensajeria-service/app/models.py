@@ -17,6 +17,7 @@ class Incorporation(BaseModel):
 class Reservation(Incorporation):
     id_reserva: UUID
     cupos_totales: PositiveId
+    id_arrendador: PositiveId | None = None
 
 
 class Receipt(BaseModel):
@@ -36,6 +37,13 @@ class Rental(BaseModel):
     cupos_totales: PositiveId
     version_capacidad: PositiveId
     ocupacion: Annotated[int, Field(strict=True, ge=0)]
+
+
+class Removal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_usuario: PositiveId
+    motivo: Annotated[str, Field(min_length=1, max_length=1000)]
+    confirmar: Literal[True]
 
 
 class ErrorResponse(BaseModel):

@@ -225,6 +225,78 @@ def test_indice_parcial_impide_segunda_pertenencia_del_usuario(service, reposito
                 (id_arriendo,id_usuario,id_postulacion,id_operacion) VALUES(%s,2,10,%s)""", (body["id_arriendo"], other))
 
 
+def test_retiro_solo_dueno_es_idempotente_y_libera_cupo(service):
+    _, rental, _ = service.incorporate(uuid4(), payload())
+    key = uuid4()
+    status, body, replay = service.expel(
+        rental["id_arriendo"], 10, 2, "Incumplimiento confirmado", key
+    )
+    assert status == 201
+    assert replay is False
+    assert body["estado_pertenencia"] == "Inactiva"
+    assert body["cupos_ocupados"] == 0
+
+    status, replay_body, replay = service.expel(
+        rental["id_arriendo"], 10, 2, "Incumplimiento confirmado", key
+    )
+    assert status == 201
+    assert replay is True
+    assert replay_body == body
+
+
+def test_retiro_rechaza_actor_no_dueno_admin_no_otorga_permiso(service):
+    _, rental, _ = service.incorporate(uuid4(), payload())
+    from app.models import ServiceError
+    with pytest.raises(ServiceError) as error:
+        service.expel(
+            rental["id_arriendo"], 999, 2, "Motivo válido", uuid4()
+        )
+    assert error.value.status == 403
+    assert error.value.body["code"] == "FORBIDDEN_OWNER"
+
+
+def test_retiro_desasigna_tarea_pendiente_y_vacia_responsable(service):
+    _, rental, _ = service.incorporate(uuid4(), payload())
+    with psycopg.connect(os.environ["CONVIVENCIA_DATABASE_URL"]) as connection:
+        connection.execute(
+            "INSERT INTO convivencia_mensajeria.tarea "
+            "(id_arriendo,id_asignado,estado) VALUES(%s,2,'Pendiente')",
+            (rental["id_arriendo"],),
+        )
+        connection.execute(
+            "UPDATE convivencia_mensajeria.arriendo "
+            "SET id_responsable=2 WHERE id_arriendo=%s",
+            (rental["id_arriendo"],),
+        )
+    service.expel(rental["id_arriendo"], 10, 2, "Salida aprobada", uuid4())
+    with psycopg.connect(os.environ["CONVIVENCIA_DATABASE_URL"]) as connection:
+        tarea = connection.execute(
+            "SELECT id_asignado FROM convivencia_mensajeria.tarea "
+            "WHERE id_arriendo=%s",
+            (rental["id_arriendo"],),
+        ).fetchone()
+        rental_row = connection.execute(
+            "SELECT estado,id_responsable FROM convivencia_mensajeria.arriendo "
+            "WHERE id_arriendo=%s",
+            (rental["id_arriendo"],),
+        ).fetchone()
+    assert tarea[0] is None
+    assert rental_row["estado"] == "Finalizado"
+    assert rental_row["id_responsable"] is None
+
+
+def test_clave_retiro_no_se_reutiliza_para_otro_usuario(service):
+    _, rental, _ = service.incorporate(uuid4(), payload())
+    service.incorporate(uuid4(), payload(user=3, application=10))
+    key = uuid4()
+    service.expel(rental["id_arriendo"], 10, 2, "Motivo", key)
+    from app.models import ServiceError
+    with pytest.raises(ServiceError) as error:
+        service.expel(rental["id_arriendo"], 10, 3, "Motivo", key)
+    assert error.value.status == 409
+    assert error.value.body["code"] == "IDEMPOTENCY_CONFLICT"
+
+
 def test_runtime_no_puede_mutar_snapshot_ni_pertenencia(service):
     service.incorporate(uuid4(), payload())
     for statement in ["UPDATE convivencia_mensajeria.arriendo SET cupos_totales=99",

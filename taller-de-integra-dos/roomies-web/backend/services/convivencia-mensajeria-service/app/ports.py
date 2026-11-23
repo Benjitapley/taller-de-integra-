@@ -18,6 +18,8 @@ class PublicationPort(Protocol):
     def reserve(self, key: UUID, payload: dict) -> dict: ...
     def confirm(self, key: UUID, reservation: dict) -> None: ...
     def release(self, key: UUID, reservation: dict) -> None: ...
+    def release_slot(self, key: UUID, payload: dict) -> None: ...
+    def close(self, key: UUID, payload: dict) -> None: ...
 
 
 def headers(key=None):
@@ -85,3 +87,21 @@ class HttpPublications:
     def release(self, key, reservation):
         path = f"/internal/publicaciones/{reservation['id_publicacion']}/reservas/{reservation['id_reserva']}"
         self.request("DELETE", path, key)
+
+    def release_slot(self, key, payload):
+        self.request(
+            "PUT",
+            f"/internal/publicaciones/{payload['id_publicacion']}/ocupacion",
+            key,
+            {
+                "cupos_ocupados": payload["cupos_ocupados"],
+                "version_ocupacion": payload["version_ocupacion"],
+            },
+        )
+
+    def close(self, key, payload):
+        self.request(
+            "PATCH",
+            f"/internal/publicaciones/{payload['id_publicacion']}/cerrar",
+            key,
+        )

@@ -13,7 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.http import configure
 from backend.service_runtime.security import confirmed_actor
-from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, unavailable
+from app.models import ErrorResponse, Incorporation, Receipt, Removal, Rental, ServiceError, unavailable
 from app.ports import HttpIdentity, HttpPublications
 from app.repository import PostgresRepository
 from app.service import Convivencia
@@ -96,6 +96,27 @@ def create_app(instance=None, run_recovery=True):
     @application.get("/api/arriendos/{id}", response_model=Rental, responses=errors)
     def detail(id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
         return application_service.repository.get(id, identity.user_id)
+
+    @application.post("/api/arriendos/{id}/expulsiones", status_code=201, responses=errors)
+    def expel(
+        id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+        data: Removal,
+        idempotency_key: Annotated[UUID, Header()],
+        identity=Depends(confirmed_actor),
+        application_service=Depends(service),
+    ):
+        status, body, replay = application_service.expel(
+            id,
+            identity.user_id,
+            data.id_usuario,
+            data.motivo,
+            idempotency_key,
+        )
+        return JSONResponse(
+            body,
+            status_code=status,
+            headers={"Idempotency-Replayed": str(replay).lower()},
+        )
 
     return application
 
