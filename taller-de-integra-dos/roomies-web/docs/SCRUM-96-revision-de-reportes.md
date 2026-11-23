@@ -1,6 +1,6 @@
 # SCRUM-96 · Revisión administrativa de reportes
 
-En **Panel administrativo → Revisar reportes** se puede filtrar la bandeja por estado y tipo. El detalle muestra el objetivo, el denunciante, el texto y la bitácora. Una revisión pide un nuevo estado y admite una nota interna de hasta 1.000 caracteres. El permiso se verifica en Reportes con la dependencia administrativa de Auth/Users, que exige correo confirmado y presencia en `ROOMIES_ADMIN_SUBJECTS`.
+En **Panel administrativo → Revisar reportes** se puede filtrar la bandeja por estado y tipo. El detalle muestra el objetivo, el denunciante, el texto y la bitácora. Una revisión pide un nuevo estado y admite una nota interna de hasta 1.000 caracteres. Desde SCRUM-114, Reportes verifica el permiso con Auth/Users: exige correo confirmado y `app_metadata.rol=admin` obtenido de Supabase Auth con la identidad validada. La lista `ROOMIES_ADMIN_SUBJECTS` y `user_metadata` no conceden este permiso. Véase [la implementación web y su validación](SCRUM-114-panel-reportes.md).
 
 ## API administrativa
 

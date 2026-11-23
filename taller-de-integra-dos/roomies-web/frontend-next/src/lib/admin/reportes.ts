@@ -1,7 +1,7 @@
 import "server-only";
 import { authConfig, authReply, limitedJson, readToken, sessionCookie, type Transport, type WebAuthConfig } from "../auth/gateway";
 import { publicReport, reportsEnabled } from "../reportes";
-import { type AdminReport, type ReviewEntry, statusLabels, typeLabels } from "../../features/admin/reportes";
+import { type AdminReport, type ReviewEntry, statusLabels, typeLabels, transitions } from "../../features/admin/reportes";
 
 const validId = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 const validCursor = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9_.-]{1,512}$/.test(value);
@@ -21,7 +21,7 @@ function reviewEntry(value: unknown): ReviewEntry {
   if (!value || typeof value !== "object") throw new Error();
   const { id_actuacion, id_administrador, estado_anterior, estado_nuevo, fecha, nota_interna } = value as Record<string, unknown>;
   if (!validId(id_actuacion) || !validId(id_administrador) || !validStatus(estado_anterior) || !validStatus(estado_nuevo) ||
-      typeof fecha !== "string" || !Number.isFinite(Date.parse(fecha)) || (nota_interna !== null && !validNote(nota_interna))) throw new Error();
+      typeof fecha !== "string" || !Number.isFinite(Date.parse(fecha)) || !transitions[estado_anterior].includes(estado_nuevo) || (nota_interna !== null && (!validNote(nota_interna) || !nota_interna.trim()))) throw new Error();
   return { id_actuacion, id_administrador, estado_anterior, estado_nuevo, fecha, nota_interna };
 }
 
@@ -34,12 +34,13 @@ export async function handleAdminReports(
   if (!token) return expired();
 
   const change = request.method === "PATCH";
-  if (request.method !== "GET" && (!change || id === undefined)) return authReply(405, { detail: "Método no permitido." });
+  if (request.method !== "GET" && (!change || id === undefined)) return authReply(405, { detail: "Método no permitido." }, { Allow: id === undefined ? "GET" : "GET, PATCH" });
   const query = new URL(request.url).searchParams;
   if (id !== undefined && (!/^[1-9][0-9]*$/.test(id) || !validId(Number(id)))) return invalid();
   if (id !== undefined && query.size) return invalid();
   const path = id === undefined ? "/api/admin/reportes" : `/api/admin/reportes/${id}`;
   let body: string | undefined;
+  let requestedStatus: string | undefined;
   if (change) {
     if (request.headers.get("origin") !== config.origin || request.headers.get("x-haycupo-csrf") !== "1" ||
         (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) {
@@ -51,6 +52,7 @@ export async function handleAdminReports(
       const { estado, nota_interna } = data;
       if (Object.keys(data).some(key => key !== "estado" && key !== "nota_interna") ||
           !validStatus(estado) || (nota_interna != null && !validNote(nota_interna))) return invalid();
+      requestedStatus = estado;
       body = JSON.stringify({ estado, nota_interna: nota_interna?.trim() || null });
     } catch { return invalid(); }
   } else if (id === undefined) {
@@ -76,10 +78,15 @@ export async function handleAdminReports(
     if (id !== undefined) {
       const report = adminReport(data);
       if (report.id_reporte !== Number(id) || !Array.isArray(data.historial)) return unavailable();
-      return authReply(200, { ...report, historial: data.historial.map(reviewEntry) });
+      const historial = data.historial.map(reviewEntry);
+      if (new Set(historial.map((entry: ReviewEntry) => entry.id_actuacion)).size !== historial.length ||
+          (change && (report.estado !== requestedStatus || !historial.length || historial.at(-1)?.estado_nuevo !== requestedStatus))) return unavailable();
+      return authReply(200, { ...report, historial });
     }
     if (!Array.isArray(data?.items) || data.items.length > 20 ||
         (data.siguiente_cursor !== null && !validCursor(data.siguiente_cursor))) return unavailable();
-    return authReply(200, { items: data.items.map(adminReport), siguiente_cursor: data.siguiente_cursor });
+    const items = data.items.map(adminReport);
+    if (new Set(items.map((item: AdminReport) => item.id_reporte)).size !== items.length) return unavailable();
+    return authReply(200, { items, siguiente_cursor: data.siguiente_cursor });
   } catch { return unavailable(); }
 }

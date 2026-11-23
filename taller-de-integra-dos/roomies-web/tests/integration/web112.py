@@ -10,7 +10,7 @@ from uuid import uuid4
 import httpx
 
 
-def exercise(root, clean, identity, gateway, database, people, port):
+def exercise(root, clean, identity, gateway, database, people, port, reports=False):
     project = root / "frontend-next"
     isolated = Path(tempfile.mkdtemp(prefix=".proxy-test-112-", dir=project))
     node = shutil.which("node")
@@ -27,7 +27,7 @@ def exercise(root, clean, identity, gateway, database, people, port):
         linked = True
         base = f"http://127.0.0.1:{port}"
         env = {**clean, "NODE_ENV":"development", "NEXT_TELEMETRY_DISABLED":"1", "ROOMIES_LOCAL_MODE":"1",
-               "ROOMIES_RUNTIME_MODE":"disposable", "WEB_AUTH_ENABLED":"true", "WEB_AUTH_PROVIDER":"supabase", "WEB_PROFILE_CONTRACT":"v1",
+               "ROOMIES_RUNTIME_MODE":"disposable", "WEB_AUTH_ENABLED":"true", "WEB_AUTH_PROVIDER":"supabase", "WEB_PROFILE_CONTRACT":"v1", "WEB_REPORTES_ENABLED":"true" if reports else "false",
                "WEB_AUTH_ORIGIN":base, "WEB_AUTH_FASTAPI_ORIGIN":gateway, "FASTAPI_ORIGIN":gateway,
                "WEB_SUPABASE_ORIGIN":identity.origin, "WEB_SUPABASE_PUBLISHABLE_KEY":identity.publishable_key}
         with (isolated / "next.log").open("wb") as log, ExitStack() as clients:
@@ -108,6 +108,9 @@ def exercise(root, clean, identity, gateway, database, people, port):
             assert own[0]["estado"]=="Aceptada" and own[0]["id_arriendo"]==rental["id_arriendo"]
             request(stranger,"GET",f"/web-api/postulaciones/{application}",(404,))
             request(stranger,"POST","/web-api/postulaciones",(409,),json={"publicacion":publication})
+            if reports:
+                from web114 import exercise as exercise_reports
+                exercise_reports(base,gateway,identity,people,database)
             print("PASS D02 web: tres sesiones; Next/BFF/Gateway/Auth/Listado/Convivencia reales; SQL temporal; proveedor de identidad simulado",flush=True)
     finally:
         if process is not None and process.poll() is None:
