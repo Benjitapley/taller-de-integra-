@@ -33,8 +33,4 @@
 .formFooter small, .formFooter span { color: var(--muted); font-size: 12px; }
 .taskList li { align-items: flex-start; }
 .taskList li p { margin: 4px 0; color: var(--muted); }
-.previewBanner { padding: 16px; }
-.previewBanner p { margin: 5px 0 12px; color: var(--muted); }
-.previewBanner label { display: block; margin-bottom: 5px; font-weight: 700; }
-.previewBanner select { min-height: 44px; width: min(100%, 360px); padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: white; color: var(--foreground); }
 @media (max-width: 640px) { .facts, .overviewGrid { grid-template-columns: 1fr; } }

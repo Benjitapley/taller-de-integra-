@@ -15,21 +15,7 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
   const operation = useRef<string | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
-  const [communes, setCommunes] = useState<Commune[]>([]);
-  const [images, setImages] = useState<File[]>([]);
-  const regionId = "9";
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch(`/api/regiones/${regionId}/comunas`, { credentials: "same-origin", cache: "no-store", signal: controller.signal })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("catalog")))
-      .then((value: unknown) => {
-        if (Array.isArray(value)) setCommunes(value.filter((item): item is Commune =>
-          !!item && typeof item === "object" && typeof item.id_comuna === "number" && typeof item.nombre === "string"));
-      })
-      .catch(() => { if (!controller.signal.aborted) { setCommunes([]); setMessage("No se pudo cargar el catálogo de comunas."); } });
-    return () => controller.abort();
-  }, [regionId]);
+  const shared = kind === "Compartida";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,7 +25,6 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
     form.delete("confirmo_origen");
     form.set("categoria", "ofrezco");
     form.set("permitir_comentarios", form.has("permitir_comentarios") ? "true" : "false");
-    for (const image of images) form.append("imagenes", image);
     const validationError = validatePublicationForm(form);
     if (validationError) { setMessage(validationError); return; }
 
@@ -95,9 +80,6 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
           <input name="ubicacion" required maxLength={250} placeholder="Región y comuna del lugar" />
         </label>
         <label>{shared ? "Precio indicado en el aviso externo (CLP)" : "Precio del arriendo (CLP)"}
-          <input name="precio" type="number" min="0" max="999999999999" step="1" required />
-        </label>
-        <label>Precio del arriendo (CLP)
           <input name="precio" type="number" min="0" max="999999999999" step="1" required />
         </label>
         <label>Capacidad total del espacio

@@ -39,6 +39,7 @@ class FaultProxy:
 
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *_): pass
+            def do_GET(self): self.forward()
             def do_POST(self): self.forward()
             def do_PUT(self): self.forward()
             def do_DELETE(self): self.forward()
@@ -55,7 +56,7 @@ class FaultProxy:
                         return self.reply(503, b'{}')
                     if mode == "unavailable":
                         return self.reply(503, b'{}')
-                    headers = {name: self.headers[name] for name in ("Content-Type", "X-Roomies-Service", "Idempotency-Key") if name in self.headers}
+                    headers = {name: self.headers[name] for name in ("Content-Type", "Authorization", "X-Roomies-Service", "Idempotency-Key") if name in self.headers}
                     with httpx.Client(timeout=15, trust_env=False, follow_redirects=False) as client:
                         response = client.request(self.command, proxy.target + self.path, content=body, headers=headers)
                     if mode == "drop" and response.status_code == 201:
@@ -282,7 +283,9 @@ def main():
                 process = subprocess.Popen([sys.executable, "-I", "-B", str(ROOT / "backend/local_stack/serve.py"), name], env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=log, creationflags=flags)
                 processes[name] = process
                 def ready():
-                    if process.poll() is not None: raise AssertionError(f"No inició {name}: {log.name}")
+                    if process.poll() is not None:
+                        details = Path(log.name).read_text(encoding="utf-8", errors="replace")
+                        raise AssertionError(f"No inició {name}:\n{details[-4000:]}")
                     try: return client.get(origins[name] + "/health").status_code == 200
                     except httpx.HTTPError: return False
                 eventually(ready, 20)

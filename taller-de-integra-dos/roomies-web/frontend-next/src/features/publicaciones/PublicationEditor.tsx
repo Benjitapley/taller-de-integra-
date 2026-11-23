@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import PageHeader from "@/components/layout/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import PublicationImages, { type ExistingPublicationImage } from "./PublicationImages";
-import { validatePublicationForm } from "./validation";
 
 import LocationFields from "./LocationFields";
 import ImageFields, { type PublicationImage } from "./ImageFields";
@@ -43,9 +41,6 @@ function PublicationEditor({ id }: { id: string }) {
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const [loading, setLoading] = useState(Boolean(id));
-  const [communes, setCommunes] = useState<{ id_comuna: number; nombre: string }[]>([]);
-  const [keptImageIds, setKeptImageIds] = useState<number[]>([]);
-  const [newImages, setNewImages] = useState<File[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,22 +50,12 @@ function PublicationEditor({ id }: { id: string }) {
         const data = await response.json();
         if (!controller.signal.aborted) {
           setPublication(data);
-          setKeptImageIds(Array.isArray(data.imagenes) ? data.imagenes.map((image: ExistingPublicationImage) => image.id_imagen) : []);
         }
       }).catch(() => {
         if (!controller.signal.aborted) setMessage("No se pudo cargar la publicación para editar.");
       }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/regiones/9/comunas", { credentials: "same-origin", cache: "no-store", signal: controller.signal })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("catalog")))
-      .then((value: unknown) => { if (!controller.signal.aborted && Array.isArray(value)) setCommunes(value); })
-      .catch(() => { if (!controller.signal.aborted) setMessage("No se pudo cargar el catálogo de comunas."); });
-    return () => controller.abort();
-  }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

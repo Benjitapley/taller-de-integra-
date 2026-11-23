@@ -31,6 +31,5 @@ export function validatePublicationForm(form: FormData): string | null {
     if (image.size > publicationImageLimit) return "Cada imagen debe pesar como máximo 5 MB (5000000 bytes).";
     if (!["image/jpeg", "image/png", "image/webp"].includes(image.type)) return "Usa imágenes JPG, PNG o WEBP.";
   }
-  if (kept.some((id) => typeof id !== "string" || !/^[1-9]\d{0,9}$/.test(id))) return "La selección de imágenes guardadas no es válida.";
   return null;
 }
