@@ -24,4 +24,3 @@ export function mutateApplication<T>(method: "POST" | "PATCH", body: Record<stri
     headers: { "Content-Type": "application/json", "X-Haycupo-CSRF": "1", "Idempotency-Key": key },
   });
 }
-
