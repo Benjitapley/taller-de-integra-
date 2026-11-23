@@ -20,13 +20,25 @@ export interface TareaConvivencia {
   responsable: IntegranteConvivencia;
 }
 
+// M4S3-D02: estado de envio de un mensaje propio en el chat real.
+// "pendiente": enviado a la API, sin respuesta todavia.
+// "error": la API no confirmo; se puede reintentar con el mismo idCliente.
+// "confirmado": la API devolvio el mensaje persistido.
+export type EstadoEnvioMensaje = "confirmado" | "pendiente" | "error";
+
 export interface MensajeConvivencia {
-  id: string;
+  id: string; // clave estable dentro de la lista (no es el id del servidor)
   autorNombre: string;
-  autorFotoUrl: string;
+  autorFotoUrl?: string | null;
   texto: string;
   hora: string;
   esPropio: boolean;
+  // M4S3-D02: campos opcionales; el chat demo (chats/[id]) no los usa.
+  idServidor?: string | null; // id_mensaje de la API; null mientras no hay confirmacion
+  idCliente?: string | null; // UUID generado por el movil, estable entre reintentos
+  idEmisor?: string | null; // id_usuario del autor segun la API (sirve para buscar su nombre despues)
+  fechaIso?: string; // fecha_envio de la API (o la local mientras esta pendiente)
+  estado?: EstadoEnvioMensaje; // sin valor equivale a "confirmado"
 }
 
 // M4-D05 — dashboard "Mi arriendo".

@@ -50,6 +50,7 @@
     "test:publicaciones": "node --test tests/publicacionesService.test.mjs",
     "test:convivencia": "node --test tests/convivencia.test.mjs",
     "test:arriendos": "node --test tests/arriendosService.test.mjs tests/miArriendo.test.mjs",
+    "test:chat": "node --test tests/conversacionesService.test.mjs tests/chatArriendo.test.mjs",
     "mock:arriendos": "node scripts/mock-arriendos.mjs"
   },
   "private": true

@@ -291,10 +291,15 @@ test("sin título de publicación se usa un rótulo genérico y, si el servidor 
   assert.doesNotMatch(pantalla(datos({ arriendo: arriendo({ soyResponsable: null }) })), /Eres el responsable/);
 });
 
-test("chat y tareas aparecen deshabilitados «próximamente» hasta que D02/D03 los habiliten", () => {
-  const html = pantalla(datos());
-  assert.equal((html.match(/Disponible próximamente/g) ?? []).length, 2);
-  assert.equal((html.match(/<button disabled=""/g) ?? []).length, 2);
+test("las entradas de chat y tareas se deshabilitan («próximamente») o se habilitan según las banderas de D02/D03", () => {
+  const apagadas = pantalla(datos(), { funciones: { chat: false, tareas: false } });
+  assert.equal((apagadas.match(/Disponible próximamente/g) ?? []).length, 2);
+  assert.equal((apagadas.match(/<button disabled=""/g) ?? []).length, 2);
+
+  const soloChat = pantalla(datos(), { funciones: { chat: true, tareas: false } });
+  assert.equal((soloChat.match(/Disponible próximamente/g) ?? []).length, 1);
+  assert.equal((soloChat.match(/<button disabled=""/g) ?? []).length, 1);
+  assert.match(soloChat, /Conversa con quienes viven contigo/);
 
   const habilitadas = pantalla(datos(), { funciones: { chat: true, tareas: true } });
   assert.doesNotMatch(habilitadas, /próximamente/);

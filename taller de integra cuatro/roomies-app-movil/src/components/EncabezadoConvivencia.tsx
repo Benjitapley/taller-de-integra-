@@ -1,11 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { IntegranteConvivencia } from "@/types/Convivencia";
 
+
 type Props = {
-  integrantes: IntegranteConvivencia[];
+  integrantes?: IntegranteConvivencia[];
+  titulo?: string;
+  subtitulo?: string | null;
+  onActualizar?: () => void;
+  actualizando?: boolean;
 };
 
 function volver() {
@@ -16,8 +21,20 @@ function volver() {
   }
 }
 
-export default function EncabezadoConvivencia({ integrantes }: Props) {
+export default function EncabezadoConvivencia({
+  integrantes = [],
+  titulo = "Roomies",
+  subtitulo,
+  onActualizar,
+  actualizando = false,
+}: Props) {
   const insets = useSafeAreaInsets();
+  const textoSubtitulo =
+    subtitulo !== undefined
+      ? subtitulo
+      : integrantes.length > 0
+        ? `${integrantes.length} miembros • viviendo juntos`
+        : null;
 
   return (
     <View style={[styles.encabezado, { paddingTop: insets.top + 12 }]}>
@@ -29,26 +46,46 @@ export default function EncabezadoConvivencia({ integrantes }: Props) {
       >
         <Ionicons name="chevron-back" size={26} color="#4F46E5" />
       </Pressable>
-      <View style={styles.avataresGrupo}>
-        {integrantes.map((integrante, indice) => (
-          <Image
-            key={integrante.id}
-            source={{ uri: integrante.fotoUrl }}
-            style={[styles.avatarGrupo, { marginLeft: indice === 0 ? 0 : -10 }]}
-          />
-        ))}
-      </View>
+      {integrantes.length > 0 && (
+        <View style={styles.avataresGrupo}>
+          {integrantes.map((integrante, indice) => (
+            <Image
+              key={integrante.id}
+              source={{ uri: integrante.fotoUrl }}
+              style={[styles.avatarGrupo, { marginLeft: indice === 0 ? 0 : -10 }]}
+            />
+          ))}
+        </View>
+      )}
       <View style={styles.encabezadoTextos}>
         <View style={styles.filaNombreGrupo}>
-          <Text style={styles.nombreGrupo}>Roomies</Text>
+          <Text style={styles.nombreGrupo} numberOfLines={1}>
+            {titulo}
+          </Text>
           <Ionicons name="home" size={16} color="#4F46E5" />
         </View>
-        <Text style={styles.subtituloGrupo}>{integrantes.length} miembros • viviendo juntos</Text>
+        {textoSubtitulo ? <Text style={styles.subtituloGrupo}>{textoSubtitulo}</Text> : null}
       </View>
-      <View style={styles.encabezadoAcciones}>
-        <Ionicons name="call-outline" size={20} color="#4F46E5" />
-        <Ionicons name="ellipsis-vertical" size={20} color="#4F46E5" />
-      </View>
+      {onActualizar ? (
+        <Pressable
+          onPress={onActualizar}
+          disabled={actualizando}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Actualizar mensajes"
+        >
+          {actualizando ? (
+            <ActivityIndicator size="small" color="#4F46E5" />
+          ) : (
+            <Ionicons name="refresh" size={22} color="#4F46E5" />
+          )}
+        </Pressable>
+      ) : (
+        <View style={styles.encabezadoAcciones}>
+          <Ionicons name="call-outline" size={20} color="#4F46E5" />
+          <Ionicons name="ellipsis-vertical" size={20} color="#4F46E5" />
+        </View>
+      )}
     </View>
   );
 }
@@ -69,7 +106,7 @@ const styles = StyleSheet.create({
   avatarGrupo: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: "#fff" },
   encabezadoTextos: { flex: 1 },
   filaNombreGrupo: { flexDirection: "row", alignItems: "center", gap: 4 },
-  nombreGrupo: { fontSize: 16, fontWeight: "700", color: "#111827" },
+  nombreGrupo: { fontSize: 16, fontWeight: "700", color: "#111827", flexShrink: 1 },
   subtituloGrupo: { fontSize: 12, color: "#059669" },
   encabezadoAcciones: { flexDirection: "row", gap: 14 },
 });
