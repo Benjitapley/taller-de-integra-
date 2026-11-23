@@ -25,25 +25,6 @@ from backend.service_runtime.contracts import DependencyUnavailable
 router=APIRouter()
 
 
-REGIONES=[
-    {"id_region":9,"nombre":"La Araucanía"},
-]
-COMUNAS={
-    9:[
-        {"id_comuna":9101,"nombre":"Temuco"},
-        {"id_comuna":9102,"nombre":"Padre Las Casas"},
-        {"id_comuna":9103,"nombre":"Angol"},
-        {"id_comuna":9104,"nombre":"Villarrica"},
-        {"id_comuna":9105,"nombre":"Pucón"},
-        {"id_comuna":9106,"nombre":"Lautaro"},
-        {"id_comuna":9107,"nombre":"Nueva Imperial"},
-        {"id_comuna":9108,"nombre":"Carahue"},
-        {"id_comuna":9109,"nombre":"Gorbea"},
-        {"id_comuna":9110,"nombre":"Lonquimay"},
-    ],
-}
-
-
 def service():
     return Publications(PostgresPublications(),UnavailableOccupancy(),SupabasePublicationImages(),HttpOwners())
 
@@ -64,8 +45,6 @@ def dto(row,occupancy):
 def catalog(consulta: str|None=Query(None,max_length=250),precio_min:Decimal|None=Query(None,ge=0),precio_max:Decimal|None=Query(None,ge=0),
             cupos_min:int|None=Query(None,ge=1,le=2147483647),cupos_disponibles:int|None=Query(None,ge=0,le=2147483647),tipo_vivienda:Literal["casa","departamento","habitacion"]|None=None,
             mascota:Literal["si","no"]|None=None,categoria:Literal["busco","ofrezco"]|None=None,
-            id_region:int|None=Query(None,ge=1),id_comuna:int|None=Query(None,ge=1),
-            limite:int=Query(20,ge=1,le=100),cursor:str|None=None,
             tipo:Literal["casa","departamento","habitacion"]|None=None,mascotas:Literal["si","no"]|None=None,
             personas:Literal["1","2","3"]|None=None,id_region:int|None=Query(None,ge=1),id_comuna:int|None=Query(None,ge=1),
             limite:int=Query(20,ge=1,le=100),cursor:str|None=Query(None,max_length=1024),offset:int|None=Query(None,ge=0),app=Depends(service)):
@@ -75,11 +54,8 @@ def catalog(consulta: str|None=Query(None,max_length=250),precio_min:Decimal|Non
         raise HTTPException(422,"No combines cupos_disponibles con cupos_min o personas.")
     if precio_min is not None and precio_max is not None and precio_min>precio_max:
         raise HTTPException(422,"Rango de precios inválido.")
-    if cupos_disponibles is not None and cupos_min is not None:
-        raise HTTPException(422,"No combines cupos_disponibles con cupos_min.")
     if id_comuna is not None and id_region is not None:
-        if id_comuna not in {commune["id_comuna"] for commune in COMUNAS.get(id_region,[])}:
-            raise HTTPException(422,"La comuna no pertenece a la región.")
+        app.repository.validate_location(id_region,id_comuna)
     if (tipo and tipo_vivienda and tipo!=tipo_vivienda) or (mascotas and mascota and mascotas!=mascota):
         raise HTTPException(422,"Filtros incompatibles.")
     if consulta and "\x00" in consulta:

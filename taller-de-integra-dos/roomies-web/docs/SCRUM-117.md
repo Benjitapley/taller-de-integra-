@@ -140,13 +140,10 @@ del arriendo e integrantes residentes. El formulario de tarea permite dejar
 y revocación de chat/tareas según contrato. Errores ofrecen Reintentar y carga,
 ausencia de datos y contenido usan estados textuales accesibles.
 
-`/recorrido-preview` es una ruta de revisión excluida del menú y devuelve 404
-fuera de desarrollo. Su banner identifica los datos como ficticios y en memoria;
-permite revisar mensajes, crear una tarea sin asignado, carga, error, ausencia de
-datos y pertenencia retirada. Las rutas de producto no consumen esos fixtures:
-indican explícitamente que las APIs de convivencia no están conectadas. En
-producción los controles de escritura quedan deshabilitados hasta conectar el
-servicio.
+La vista ficticia `/recorrido-preview` se retiró en la limpieza de `dev-web`.
+Se conservan las pantallas de integrantes, chat y tareas. Estas indican
+explícitamente que las APIs de convivencia no están conectadas y mantienen los
+controles de escritura deshabilitados hasta conectar el servicio.
 
 ### Evidencia y límites
 

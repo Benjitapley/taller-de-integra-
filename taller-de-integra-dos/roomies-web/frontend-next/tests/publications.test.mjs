@@ -20,7 +20,7 @@ const cookie = "__Host-haycupo_session=header.payload.signature";
 function validForm() {
   const form = new FormData();
   for (const [key, value] of Object.entries({
-    titulo: "Habitación disponible", categoria: "ofrezco", id_region: "9", id_comuna: "9101",
+    titulo: "Habitación disponible", categoria: "ofrezco", ubicacion: "Temuco centro",
     precio: "150000", tipo: "Arrendador", cupos_totales: "2",
     tipo_vivienda: "habitacion", descripcion: "Descripción de prueba",
     mascota: "no", permitir_comentarios: "false", id_region: "9", id_comuna: "91101",

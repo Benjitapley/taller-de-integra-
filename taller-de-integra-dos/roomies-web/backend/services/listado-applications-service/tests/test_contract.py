@@ -31,6 +31,13 @@ def client(repository):
     return TestClient(app),publications
 
 
+def test_catalogo_valida_comuna_con_catalogo_persistido(repository):
+    web, _ = client(repository)
+    # Código nacional fuera de la lista abreviada que entró por la fusión.
+    assert web.get("/api/publicaciones?id_region=9&id_comuna=9112").status_code == 200
+    assert web.get("/api/publicaciones?id_region=8&id_comuna=9112").status_code == 422
+
+
 @pytest.mark.parametrize("price",["0","999999999999"])
 def test_precio_clp_ida_vuelta_exacta(repository,price):
     id=add(repository,precio=price)

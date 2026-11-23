@@ -64,15 +64,6 @@ function price(value: number | string) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 2 }).format(Number(value));
 }
 
-function publicationImage(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  if (/^\/imagenes\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(value)) return value;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" ? url.toString() : null;
-  } catch { return null; }
-}
-
 export default function HomeContent({ canReport = false }: { canReport?: boolean }) {
   const params = useSearchParams();
   const router = useRouter();
@@ -84,13 +75,13 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
   const [filters, setFilters] = useState(emptyFilters);
   const [applied, setApplied] = useState(emptyFilters);
   const [sending, setSending] = useState<number | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [connectionMessage, setConnectionMessage] = useState("");
   const [results, setResults] = useState<{
     key: string;
     listings: Publication[];
     profiles: Person[];
     error: string;
+    moreError: string;
     cursor: string | null;
   } | null>(null);
   const requestKey = JSON.stringify([isPeople, applied, retry]);
@@ -128,8 +119,6 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
           profiles: isPeople ? people(result) : [],
           error: "",
           moreError: "",
-          cursor: !isPeople && result && typeof result === "object" && typeof (result as Record<string, unknown>).siguiente_cursor === "string"
-            ? (result as Record<string, string>).siguiente_cursor : null,
         });
       })
       .catch((reason: unknown) => {
@@ -140,7 +129,6 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
           profiles: [],
           error: reason instanceof Error ? reason.message : "No se pudo cargar el listado.",
           moreError: "",
-          cursor: null,
         });
       });
     return () => controller.abort();
@@ -157,9 +145,9 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
     }
     try {
       const page = publicationPage(await apiRequest(`/api/publicaciones?${query}`));
-      setResults(current => current?.key === key ? { ...current, listings: appendPublications(current.listings, page.items), cursor: page.siguiente_cursor, error: "" } : current);
+      setResults(current => current?.key === key ? { ...current, listings: appendPublications(current.listings, page.items), cursor: page.siguiente_cursor, moreError: "" } : current);
     } catch {
-      setResults(current => current?.key === key ? { ...current, error: "No se pudo cargar la siguiente página. Puedes reintentar." } : current);
+      setResults(current => current?.key === key ? { ...current, moreError: "No se pudo cargar la siguiente página. Puedes reintentar." } : current);
     } finally { loadingMoreRef.current = false; setLoadingMore(false); }
   }
 
@@ -171,29 +159,6 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
   function clearFilters() {
     setFilters(emptyFilters);
     setApplied(emptyFilters);
-  }
-
-  async function loadMore() {
-    if (!currentResults?.cursor || loadingMore || isPeople) return;
-    setLoadingMore(true);
-    try {
-      const query = new URLSearchParams();
-      for (const key of ["consulta", "precio_min", "precio_max", "cupos_disponibles", "categoria", "tipo_vivienda", "mascota"] as const) {
-        const field = key === "consulta" ? applied.consulta : applied[key];
-        if (field) query.set(key, field);
-      }
-      query.set("cursor", currentResults.cursor);
-      const page = await apiRequest<unknown>(`/api/publicaciones?${query}`, { signal: AbortSignal.timeout(15_000) });
-      if (!page || typeof page !== "object" || !("siguiente_cursor" in page)) throw new Error("Respuesta de paginación inválida.");
-      const next = publications(page);
-      setResults((previous) => previous?.key !== requestKey ? previous : {
-        ...previous, listings: [...previous.listings, ...next],
-        moreError: "",
-        cursor: typeof (page as Record<string, unknown>).siguiente_cursor === "string" ? (page as Record<string, string>).siguiente_cursor : null,
-      });
-    } catch (reason) {
-      setResults((previous) => previous?.key !== requestKey ? previous : { ...previous, moreError: reason instanceof Error ? reason.message : "No se pudo cargar más publicaciones." });
-    } finally { setLoadingMore(false); }
   }
 
   async function connect(id: number) {
@@ -274,6 +239,7 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
           {publication.descripcion && <p className={styles.description}>{publication.descripcion}</p>}</div>
       </article>)}</div>
       : !error && <EmptyState icon="home" title="No hay publicaciones para estos filtros" description="Prueba con otros términos o amplía los filtros de precio y vivienda." />)}
+    {!isPeople && currentResults?.moreError && <p role="alert">{currentResults.moreError}</p>}
     {!isPeople && currentResults?.cursor && <Button disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "Cargando..." : "Cargar más"}</Button>}
     {!isPeople && !loading && !currentResults?.cursor && listings.length > 0 && <p role="status">No hay más publicaciones.</p>}
   </Tabs>;
