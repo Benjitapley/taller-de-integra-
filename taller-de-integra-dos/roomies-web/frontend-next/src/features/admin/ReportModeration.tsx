@@ -83,7 +83,7 @@ export function ReportQueue({ initialPage, initialError }: { initialPage?: Admin
     {loading && <p role="status">Cargando reportes…</p>}
     {error && <Card><p role="alert">{error.message}{page ? " Se conserva la página anterior." : ""}</p>
       <Button variant="secondary" onClick={() => load(target.cursor, target.index)}>Reintentar</Button></Card>}
-    {page && (page.items.length === 0 ? <p role="status">No hay reportes para estos filtros.</p> : <div className={styles.table}>
+    {page && (page.items.length === 0 ? <p role="status">{result.index === 0 ? "No hay reportes para estos filtros." : "Llegaste al final de la lista."}</p> : <div className={styles.table}>
       <table><caption>Bandeja de reportes · página {result.index + 1}</caption>
         <thead><tr><th scope="col">Reporte</th><th scope="col">Objetivo</th><th scope="col">Categoría</th><th scope="col">Estado</th><th scope="col">Fecha</th></tr></thead>
         <tbody>{page.items.map(report => <tr key={report.id_reporte}><th scope="row"><Link href={`/admin/reportes/${report.id_reporte}`}>#{report.id_reporte}</Link></th>

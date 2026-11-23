@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/layout/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 
-import { appendPublications, publicationPage, type Publication } from "./contracts";
+import { type Publication } from "./contracts";
+import { useCursorList } from "../lists/useCursorList";
+import ListProgress from "../lists/ListProgress";
+const publicationId = (item: Publication) => item.id_publicacion;
 
 const formatPrice = (value: number | string | undefined) => new Intl.NumberFormat("es-CL", {
   style: "currency",
@@ -15,30 +18,9 @@ const formatPrice = (value: number | string | undefined) => new Intl.NumberForma
 }).format(Number(value ?? 0));
 
 export default function MyPublications() {
-  const inFlight = useRef(false);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [items, setItems] = useState<Publication[]>([]);
-  const [loading, setLoading] = useState(true);
+  const list = useCursorList<Publication>("/web-api/mis-publicaciones?limite=20", publicationId);
+  const { items, setItems, loading } = list;
   const [error, setError] = useState("");
-
-  function load(signal?: AbortSignal, next?: string | null) {
-    if (inFlight.current && !signal) return;
-    inFlight.current = true;
-    const query = next ? `?cursor=${encodeURIComponent(next)}` : "";
-    return fetch(`/web-api/mis-publicaciones${query}`, { credentials: "same-origin", cache: "no-store", signal }).then(async response => {
-      if (response.status === 401) { setItems([]); setCursor(null); throw new Error(); }
-      if (!response.ok) throw new Error();
-      const page = publicationPage(await response.json());
-      if (!signal?.aborted) { setItems(current => next ? appendPublications(current, page.items) : page.items); setCursor(page.siguiente_cursor); setError(""); }
-    }).catch(() => { if (!signal?.aborted) setError("No se pudieron cargar tus publicaciones. Intenta nuevamente."); })
-      .finally(() => { if (!signal?.aborted) { inFlight.current = false; setLoading(false); } });
-  }
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
-  }, []);
 
   async function close(id: number) {
     setError("");
@@ -66,9 +48,8 @@ export default function MyPublications() {
       <Link href="/publicar" style={{ textDecoration: "none", display: "inline-block", background: "#382384", color: "#fff", padding: "12px 16px", borderRadius: 8, fontWeight: 700 }}>Crear publicación</Link>
     </div>
 
-    {loading ? <Card><p>Cargando tus publicaciones…</p></Card> : null}
-    {!loading && error ? <Card><p role="alert">{error}</p><Button onClick={() => { setLoading(true); void load(undefined, cursor); }}>Reintentar</Button></Card> : null}
-    {!loading && !error && items.length === 0 ? <Card><p>Aún no tienes publicaciones creadas.</p><Link href="/publicar">Crear la primera</Link></Card> : null}
+    {error && <Card><p role="alert">{error}</p><Button disabled={loading} onClick={() => { setError(""); void list.load(); }}>Actualizar listado</Button></Card>}
+    {list.loaded && !loading && !list.error && items.length === 0 ? <Card><p>Aún no tienes publicaciones creadas.</p><Link href="/publicar">Crear la primera</Link></Card> : null}
 
     {items.length > 0 ? <div style={{ display: "grid", gap: 16 }}>
       {items.map((item) => <Card key={item.id_publicacion}>
@@ -94,7 +75,6 @@ export default function MyPublications() {
         </div>
       </Card>)}
     </div> : null}
-    {cursor && <Button disabled={loading} onClick={() => { setLoading(true); void load(undefined, cursor); }}>{loading ? "Cargando..." : "Cargar más"}</Button>}
-    {!loading && !cursor && items.length > 0 && <p role="status">No hay más publicaciones.</p>}
+    <ListProgress {...list} count={items.length} retry={() => void list.retryLoad()} more={() => void list.load(list.cursor)} />
   </main>;
 }

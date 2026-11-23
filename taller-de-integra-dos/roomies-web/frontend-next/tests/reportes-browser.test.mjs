@@ -103,13 +103,13 @@ test("SCRUM-113 en navegador: error, reintento estable, historial y contexto de 
     await mkdir(process.env.REPORTS_QA_DIR, { recursive: true });
     await page.screenshot({ path: join(process.env.REPORTS_QA_DIR, "reportes-mobile.png"), fullPage: true });
   }
-  await page.getByRole("button", { name: "Ver más", exact: true }).click();
+  await page.getByRole("button", { name: "Cargar más", exact: true }).click();
   await page.getByRole("button", { name: "Reintentar carga", exact: true }).waitFor();
   assert.equal(await page.getByText("Reporte #143 · Otro", { exact: true }).isVisible(), true);
   await page.getByRole("button", { name: "Reintentar carga", exact: true }).click();
   await page.getByText("Reporte #104 · Otro", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Ver más", exact: true }).click();
-  await page.getByText("Llegaste al final de tus reportes.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Cargar más", exact: true }).click();
+  await page.getByText("Llegaste al final de la lista.", { exact: true }).waitFor();
   assert.equal(await page.locator("strong").filter({ hasText: /^Reporte #/ }).count(), 43);
   await page.getByLabel("Categoría", { exact: true }).selectOption("Otro");
   await page.getByLabel("Descripción", { exact: true }).fill("Reporte de prueba recuperable");
