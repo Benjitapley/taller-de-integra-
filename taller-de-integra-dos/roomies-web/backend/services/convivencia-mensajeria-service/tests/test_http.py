@@ -8,6 +8,7 @@ import pytest
 
 from app.main import create_app, confirmed_actor
 from app.models import ServiceError
+from app.service import Convivencia
 
 KEY = "c9c989c1-7f6a-48c0-8bab-000000000001"
 PAYLOAD = {"id_usuario": 2, "id_publicacion": 7, "id_postulacion": 9, "version_capacidad": 1}
@@ -100,23 +101,64 @@ def test_get_requiere_sesion(http):
 def test_get_pasa_usuario_autenticado_y_oculta_arriendo_ajeno(http):
     client, service, application = http
     application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2)
-    rental = {"id_arriendo": 1, "id_publicacion": 7, "cupos_totales": 2, "version_capacidad": 1, "ocupacion": 1}
+    rental = {"id_arriendo": 1, "id_publicacion": 7, "cupos_totales": 2, "version_capacidad": 1, "ocupacion": 1, "es_dueno": False}
     service.repository.mine.return_value = rental
-    service.repository.get.return_value = rental
+    service.rental.return_value = rental
     assert client.get("/api/arriendos/mio").json() == rental
     result = client.get("/api/arriendos/1")
     assert result.status_code == 200
     assert result.json() == rental
     service.repository.mine.assert_called_once_with(2)
-    service.repository.get.assert_called_once_with(1, 2)
-    service.repository.get.side_effect = ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+    service.rental.assert_called_once_with(1, 2)
+    service.rental.side_effect = ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
     assert client.get("/api/arriendos/999").status_code == 404
+    service.rental.side_effect = ServiceError("FORBIDDEN", "No tienes acceso a este arriendo.", 403)
+    assert client.get("/api/arriendos/7").status_code == 403
+
+
+def test_acceso_detalle_e_integrantes_solo_por_membresia_o_dueno_verificado():
+    rental = {"id_arriendo": 1, "id_publicacion": 7, "cupos_totales": 3, "version_capacidad": 1, "ocupacion": 2}
+
+    class Repository:
+        def publication(self, rental_id):
+            assert rental_id == 1
+            return 7
+
+        def rental_for_publication(self, publication_id):
+            assert publication_id == 7
+            return 1
+
+        def get(self, rental_id, user_id, access_checked=False):
+            if access_checked or user_id == 2:
+                return {**rental, "es_dueno": access_checked}
+            raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+
+        def members(self, rental_id, user_id, active_only, access_checked=False, limit=20, before=None):
+            if not (access_checked or user_id == 2):
+                raise ServiceError("FORBIDDEN", "No tienes acceso a los integrantes.", 403)
+            return {"items": [], "rows": []}
+
+    class Publications:
+        def owner(self, publication_id):
+            assert publication_id == 7
+            return 10
+
+    service = Convivencia(Repository(), object(), Publications())
+    assert service.rental(1, 2)["es_dueno"] is False  # integrante
+    assert service.rental(1, 10)["es_dueno"] is True  # dueño verificado
+    with pytest.raises(ServiceError) as outside:
+        service.rental(1, 99)  # rol admin no altera este control
+    assert outside.value.status == 404
+    assert service.member_page(1, 10, True, 20, None)["items"] == []
+    with pytest.raises(ServiceError) as forbidden:
+        service.member_page(1, 99, True, 20, None)
+    assert forbidden.value.status == 403
 
 
 def test_integrantes_y_retiro_pasan_usuario_autenticado(http):
     client, service, application = http
     application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2)
-    service.members.return_value = {
+    service.member_page.return_value = {
         "items": [{"id_usuario": 2, "fecha_ingreso": "2026-11-20T00:00:00Z", "fecha_salida": None, "es_responsable": True}],
         "siguiente_cursor": None,
     }
@@ -125,7 +167,7 @@ def test_integrantes_y_retiro_pasan_usuario_autenticado(http):
     result = client.get("/api/arriendos/1/integrantes?activos=true")
     assert result.status_code == 200
     assert result.json()["items"][0]["id_usuario"] == 2
-    service.members.assert_called_once_with(1, 2, True)
+    service.member_page.assert_called_once_with(1, 2, True, 20, None)
 
     result = client.post("/api/arriendos/1/expulsiones", json={"id_usuario": 3, "motivo": "Incumplimiento de reglas", "confirmo": True})
     assert result.status_code == 200

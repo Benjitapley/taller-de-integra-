@@ -43,6 +43,7 @@ class Rental(BaseModel):
     cupos_totales: PositiveId
     version_capacidad: PositiveId
     ocupacion: Annotated[int, Field(strict=True, ge=0)]
+    es_dueno: bool = False
 
 
 class Member(BaseModel):

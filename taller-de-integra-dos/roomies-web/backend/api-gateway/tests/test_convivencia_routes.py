@@ -23,7 +23,7 @@ def exercise(handler, method="GET", path="/", settings=None, **kwargs):
     return asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("path", ["/api/arriendos/mio", "/api/arriendos/7"])
+@pytest.mark.parametrize("path", ["/api/arriendos/mio", "/api/arriendos/7", "/api/arriendos/por-publicacion/7"])
 def test_arriendos_use_dedicated_upstream_and_forward_only_public_auth(path):
     def handler(request):
         assert request.url.host == "convivencia.test"
@@ -37,7 +37,7 @@ def test_arriendos_use_dedicated_upstream_and_forward_only_public_auth(path):
     assert result.headers["cache-control"] == "no-store"
 
 
-@pytest.mark.parametrize("path", ["/internal/incorporaciones", "/api/arriendos/0", "/api/arriendos/-1", "/api/arriendos/otro", "/api/arriendos/7/", "/api/arriendos/%37"])
+@pytest.mark.parametrize("path", ["/internal/incorporaciones", "/api/arriendos/0", "/api/arriendos/-1", "/api/arriendos/otro", "/api/arriendos/7/", "/api/arriendos/%37", "/api/arriendos/por-publicacion/0"])
 def test_internal_and_noncanonical_arriendos_paths_are_not_routed(path):
     result = exercise(unexpected, path=path, settings=Settings(local_mode=True, convivencia_upstream="http://convivencia.test"))
     assert result.status_code == 404

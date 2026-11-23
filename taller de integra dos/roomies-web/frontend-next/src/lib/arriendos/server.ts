@@ -39,6 +39,7 @@ export async function handleMembers(
   rentalId: string,
   config: WebAuthConfig | null = authConfig(),
   transport: Transport = fetch,
+  query = new URL(request.url).searchParams,
 ): Promise<Response> {
   if (request.method !== "GET") return authReply(405, { detail: "Método no permitido." }, { Allow: "GET" });
   if (!/^[1-9]\d{0,9}$/.test(rentalId)) return authReply(400, { detail: "Arriendo inválido." });
@@ -46,18 +47,62 @@ export async function handleMembers(
   const token = readToken(request.headers.get("cookie"), config);
   if (!token) return authReply(401, { detail: "Inicia sesión nuevamente." }, { "Set-Cookie": sessionCookie(config) });
   try {
-    const response = await transport(`${config.backend}/api/arriendos/${rentalId}/integrantes?activos=true`, {
+    const limit = query.get("limite") ?? "20";
+    const cursor = query.get("cursor");
+    if (!/^(?:[1-9]|[1-9]\d|100)$/.test(limit) || (cursor !== null && (!cursor || cursor.length > 2048))) return authReply(400, { detail: "Paginación inválida." });
+    const params = new URLSearchParams({ activos: "true", limite: limit });
+    if (cursor) params.set("cursor", cursor);
+    const response = await transport(`${config.backend}/api/arriendos/${rentalId}/integrantes?${params}`, {
       method: "GET", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
       headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
     });
     if ([401, 403, 404].includes(response.status)) return authReply(response.status, { detail: response.status === 404 ? "Arriendo no encontrado." : "No tienes acceso a los integrantes." });
     if (!response.ok) return authReply(503, { detail: "No se pudieron cargar los integrantes." });
     const value: unknown = await response.json();
-    if (!value || typeof value !== "object" || !("items" in value) || !Array.isArray(value.items)) throw new Error();
+    if (!value || typeof value !== "object" || !("items" in value) || !Array.isArray(value.items) || !("siguiente_cursor" in value) ||
+        (value.siguiente_cursor !== null && (typeof value.siguiente_cursor !== "string" || value.siguiente_cursor.length > 2048))) throw new Error();
     return authReply(200, value);
   } catch {
     return authReply(503, { detail: "No se pudieron cargar los integrantes." });
   }
+}
+
+export async function handleRentalById(request: Request, rentalId: string, config: WebAuthConfig | null = authConfig(), transport: Transport = fetch) {
+  if (request.method !== "GET") return authReply(405, { detail: "Método no permitido." }, { Allow: "GET" });
+  if (!/^[1-9]\d{0,9}$/.test(rentalId)) return authReply(400, { detail: "Arriendo inválido." });
+  if (!config) return authReply(503, { detail: "El arriendo no está disponible." });
+  const token = readToken(request.headers.get("cookie"), config);
+  if (!token) return authReply(401, { detail: "Inicia sesión nuevamente." }, { "Set-Cookie": sessionCookie(config) });
+  try {
+    const response = await transport(`${config.backend}/api/arriendos/${rentalId}`, { method: "GET", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000), headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });
+    if ([401, 403, 404].includes(response.status)) return authReply(response.status, { detail: response.status === 404 ? "Arriendo no encontrado." : "No tienes acceso a este arriendo." });
+    if (!response.ok) return authReply(503, { detail: "No se pudo cargar el arriendo." });
+    const value: unknown = await response.json();
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
+    const row = value as Record<string, unknown>;
+    if (!["id_arriendo", "id_publicacion"].every(key => Number.isSafeInteger(row[key]) && Number(row[key]) > 0) ||
+        !["cupos_totales", "version_capacidad", "ocupacion"].every(key => Number.isSafeInteger(row[key]) && Number(row[key]) >= 0) || typeof row.es_dueno !== "boolean") throw new Error();
+    return authReply(200, row);
+  } catch { return authReply(503, { detail: "No se pudo cargar el arriendo." }); }
+}
+
+export async function handleOwnerRental(request: Request, publicationId: string, config: WebAuthConfig | null = authConfig(), transport: Transport = fetch) {
+  if (request.method !== "GET") return authReply(405, { detail: "Método no permitido." }, { Allow: "GET" });
+  if (!/^[1-9]\d{0,9}$/.test(publicationId)) return authReply(400, { detail: "Publicación inválida." });
+  if (!config) return authReply(503, { detail: "El arriendo no está disponible." });
+  const token = readToken(request.headers.get("cookie"), config);
+  if (!token) return authReply(401, { detail: "Inicia sesión nuevamente." }, { "Set-Cookie": sessionCookie(config) });
+  try {
+    const response = await transport(`${config.backend}/api/arriendos/por-publicacion/${publicationId}`, { method: "GET", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000), headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });
+    if ([401, 403, 404].includes(response.status)) return authReply(response.status, { detail: response.status === 404 ? "La publicación no tiene un arriendo activo." : "No tienes acceso a este arriendo." });
+    if (!response.ok) return authReply(503, { detail: "No se pudo cargar el arriendo." });
+    const value: unknown = await response.json();
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
+    const row = value as Record<string, unknown>;
+    if (row.id_publicacion !== Number(publicationId) || !["id_arriendo", "id_publicacion"].every(key => Number.isSafeInteger(row[key]) && Number(row[key]) > 0) ||
+        !["cupos_totales", "version_capacidad", "ocupacion"].every(key => Number.isSafeInteger(row[key]) && Number(row[key]) >= 0) || row.es_dueno !== true) throw new Error();
+    return authReply(200, row);
+  } catch { return authReply(503, { detail: "No se pudo cargar el arriendo." }); }
 }
 
 export async function handleExpulsion(

@@ -1,8 +1,12 @@
 """Incorporación con reserva firme, respuesta durable y compensación por outbox."""
+from datetime import datetime
 from uuid import UUID
+
+import jwt
 
 from psycopg.types.json import Jsonb
 
+from backend.service_runtime.reporting_security import service_key
 from app.models import Incorporation, Reservation, ServiceError, unavailable
 
 
@@ -11,11 +15,48 @@ class Convivencia:
         self.repository, self.identity, self.publications = repository, identity, publications
 
     def members(self, rental_id, user_id, active_only=True):
+        return self.member_page(rental_id, user_id, active_only, 20, None)
+
+    def rental(self, rental_id, user_id):
         publication_id = self.repository.publication(rental_id)
         owner = getattr(self.publications, "owner", None)
-        if callable(owner) and owner(publication_id) == user_id:
-            return self.repository.members(rental_id, user_id, active_only, access_checked=True)
-        return self.repository.members(rental_id, user_id, active_only)
+        is_owner = callable(owner) and owner(publication_id) == user_id
+        return self.repository.get(rental_id, user_id, access_checked=is_owner)
+
+    def rental_for_publication(self, publication_id, user_id):
+        owner = getattr(self.publications, "owner", None)
+        if not callable(owner) or owner(publication_id) != user_id:
+            raise ServiceError("FORBIDDEN", "No tienes acceso a este arriendo.", 403)
+        rental_id = self.repository.rental_for_publication(publication_id)
+        return self.repository.get(rental_id, user_id, access_checked=True)
+
+    def member_page(self, rental_id, user_id, active_only, limit, cursor):
+        publication_id = self.repository.publication(rental_id)
+        owner = getattr(self.publications, "owner", None)
+        is_owner = callable(owner) and owner(publication_id) == user_id
+        before = None
+        key = service_key("ROOMIES_INTERNAL_TOKEN")
+        if cursor is not None:
+            try:
+                data = jwt.decode(cursor, key, algorithms=["HS256"], audience="arriendo-integrantes")
+                if data.get("sub") != str(user_id) or data.get("arriendo") != rental_id or data.get("activos") is not active_only or type(data.get("id")) is not int:
+                    raise ValueError()
+                fecha = datetime.fromisoformat(data["fecha"])
+                if fecha.tzinfo is None or data["id"] <= 0:
+                    raise ValueError()
+                before = (fecha, data["id"])
+            except (jwt.PyJWTError, ValueError, TypeError, KeyError):
+                raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422) from None
+        result = self.repository.members(rental_id, user_id, active_only, access_checked=is_owner, limit=limit + 1, before=before)
+        rows = result.pop("rows")
+        has_more = len(rows) > limit
+        result["items"] = result["items"][:limit]
+        result["siguiente_cursor"] = None
+        if has_more:
+            last = rows[limit - 1]
+            result["siguiente_cursor"] = jwt.encode({"sub": str(user_id), "arriendo": rental_id, "activos": active_only,
+                "fecha": last["creada_en"].isoformat(), "id": last["id_pertenencia"], "aud": "arriendo-integrantes"}, key, algorithm="HS256")
+        return result
 
     def expel(self, rental_id, actor_id, payload):
         publication_id = self.repository.publication(rental_id)

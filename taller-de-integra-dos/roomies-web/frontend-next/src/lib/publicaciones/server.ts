@@ -106,8 +106,13 @@ export async function handleSavePublication(
 
 export const handleCreatePublication = handleSavePublication;
 
-type Operation = "mine" | "edit" | "close";
+<<<<<<< HEAD
+type Operation = "mine" | "edit" | "close" | "detail";
 const fields = ["id_publicacion", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos_totales", "cupos_disponibles", "imagenes", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios", "id_region", "id_comuna", "reglas"];
+=======
+type Operation = "mine" | "edit" | "detail" | "close";
+const fields = ["id", "id_arriendo", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos", "cupos_totales", "cupos_disponibles", "imagen", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios"];
+>>>>>>> 7f53eaa (SCRUM-119: conectar Mi arriendo e integrantes)
 function publication(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || !("id_publicacion" in value) || !Number.isSafeInteger(value.id_publicacion) || Number(value.id_publicacion) < 1) throw new Error("Invalid response");
   const source = value as Record<string, unknown>;
@@ -129,12 +134,16 @@ export async function handlePublicationRequest(
   if (request.method !== method) return authReply(405, { detail: "Método no permitido." }, { Allow: method });
   if (method !== "GET" && (request.headers.get("origin") !== config.origin || request.headers.get("x-haycupo-csrf") !== "1" ||
       (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin"))) return authReply(403, { detail: "Origen de solicitud no permitido." });
+<<<<<<< HEAD
   const query = new URLSearchParams();
   if (operation === "mine") {
     const supplied = new URL(request.url).searchParams;
     for (const key of ["limite", "cursor"]) if (supplied.has(key)) query.set(key, supplied.get(key)!);
   }
-  const path = operation === "mine" ? `/api/publicaciones/mias${query.size ? `?${query}` : ""}` : `/api/publicaciones/${id}${operation === "close" ? "/cerrar" : ""}`;
+  const path = operation === "mine" ? `/api/publicaciones/mias${query.size ? `?${query}` : ""}` : `/api/publicaciones/${id}${operation === "close" ? "/cerrar" : operation === "detail" ? "/detalle" : ""}`;
+=======
+  const path = operation === "mine" ? "/api/mis-publicaciones" : `/api/publicaciones/${id}${operation === "close" ? "/cerrar" : operation === "detail" ? "/detalle" : ""}`;
+>>>>>>> 7f53eaa (SCRUM-119: conectar Mi arriendo e integrantes)
   try {
     const response = await transport(`${config.backend}${path}`, { method, cache: "no-store", redirect: "error",
       signal: AbortSignal.timeout(10_000), headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });

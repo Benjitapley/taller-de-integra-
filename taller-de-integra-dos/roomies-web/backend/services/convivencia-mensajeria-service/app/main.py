@@ -104,18 +104,24 @@ def create_app(instance=None, run_recovery=True):
     def mine(identity=Depends(confirmed_actor), application_service=Depends(service)):
         return application_service.repository.mine(identity.user_id)
 
+    @application.get("/api/arriendos/por-publicacion/{publication_id}", response_model=Rental, responses=errors)
+    def owner_rental(publication_id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.rental_for_publication(publication_id, identity.user_id)
+
     @application.get("/api/arriendos/{id}", response_model=Rental, responses=errors)
     def detail(id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
-        return application_service.repository.get(id, identity.user_id)
+        return application_service.rental(id, identity.user_id)
 
     @application.get("/api/arriendos/{id}/integrantes", response_model=MemberPage, responses=errors)
     def members(
         id: Annotated[int, Path(gt=0, le=9223372036854775807)],
         activos: Annotated[bool | None, Query()] = None,
+        limite: Annotated[int, Query(ge=1, le=100)] = 20,
+        cursor: Annotated[str | None, Query(min_length=1, max_length=2048)] = None,
         identity=Depends(confirmed_actor),
         application_service=Depends(service),
     ):
-        return application_service.members(id, identity.user_id, activos is True)
+        return application_service.member_page(id, identity.user_id, activos is True, limite, cursor)
 
     @application.post("/api/arriendos/{id}/expulsiones", responses=errors)
     def expel(

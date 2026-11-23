@@ -1,8 +1,7 @@
-import { handleReportMembers } from "@/lib/reportes";
-
+import { handleMembers } from "@/lib/arriendos/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  return handleReportMembers(request, (await params).id);
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  return handleMembers(request, id, undefined, undefined, new URL(request.url).searchParams);
 }

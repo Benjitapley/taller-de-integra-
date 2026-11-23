@@ -6,6 +6,7 @@ from starlette.responses import JSONResponse, Response
 from app.proxy import forward_to,bounded_body,BodyTooLarge
 
 ROUTES=[
+ (r"/api/arriendos/por-publicacion/[1-9][0-9]*",{"GET"},"convivencia_upstream"),
  (r"/api/arriendos/(?:mio|[1-9][0-9]*)",{"GET"},"convivencia_upstream"),
  (r"/api/reportes",{"POST"},"reportes_upstream"),
  (r"/api/reportes/mios",{"GET"},"reportes_upstream"),
