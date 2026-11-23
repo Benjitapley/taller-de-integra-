@@ -12,6 +12,8 @@ DSN = f"postgresql://sql_auth_users:fictional@{HOST}:5432/postgres?sslmode=verif
 
 @pytest.fixture
 def real(monkeypatch):
+    for name in ("DB_SSLMODE", "ROOMIES_DEPLOYMENT_ENV", "ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB"):
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "supabase")
     monkeypatch.delenv("ROOMIES_LOCAL_MODE", raising=False)
     monkeypatch.setenv("ROOMIES_SUPABASE_PROJECT_REF", REF)
@@ -167,7 +169,132 @@ def test_kubero_rejects_other_identity_or_local_mode(kubero, monkeypatch, name, 
         auth_provider_url()
 
 
-def test_disposable_keeps_its_local_destination(kubero, monkeypatch):
+INSECURE_TEST_DSN = (
+    "postgresql://sql_auth_users:fixture%40only@roomies-db-test2-postgres:5432/roomies-db-test2"
+    "?sslmode=disable&gssencmode=disable"
+)
+
+
+@pytest.fixture
+def insecure_test(kubero, monkeypatch):
+    for name, value in {
+        "DB_SSLMODE": "disable",
+        "ROOMIES_DEPLOYMENT_ENV": "test",
+        "ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB": "true",
+        "ROOMIES_KUBERO_DB_HOST": "roomies-db-test2-postgres",
+        "ROOMIES_KUBERO_DB_NAME": "roomies-db-test2",
+        "AUTH_USERS_DATABASE_URL": INSECURE_TEST_DSN,
+    }.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.delenv("ROOMIES_KUBERO_DB_SSLROOTCERT")
+
+
+@pytest.mark.parametrize(("variable", "role"), [
+    ("AUTH_USERS_DATABASE_URL", "sql_auth_users"),
+    ("LISTADO_DATABASE_URL", "sql_listado_applications"),
+    ("MATCH_DATABASE_URL", "sql_match_conexion"),
+    ("CONVIVENCIA_DATABASE_URL", "sql_convivencia_mensajeria"),
+])
+def test_insecure_test_preserves_exact_dsn_and_service_role(insecure_test, monkeypatch, variable, role):
+    from psycopg.conninfo import conninfo_to_dict
+
+    dsn = INSECURE_TEST_DSN.replace("sql_auth_users:", role + ":")
+    monkeypatch.setenv(variable, dsn)
+    assert database_url(variable, role) == dsn
+    assert conninfo_to_dict(dsn) == {
+        "host": "roomies-db-test2-postgres", "port": "5432", "dbname": "roomies-db-test2",
+        "user": role, "password": "fixture@only", "sslmode": "disable", "gssencmode": "disable",
+    }
+
+
+@pytest.mark.parametrize(("name", "value"), [
+    ("DB_SSLMODE", None), ("DB_SSLMODE", "verify-full"), ("DB_SSLMODE", ""),
+    ("DB_SSLMODE", "require"), ("DB_SSLMODE", "prefer"), ("DB_SSLMODE", "DISABLE"),
+    ("ROOMIES_DEPLOYMENT_ENV", None), ("ROOMIES_DEPLOYMENT_ENV", "production"),
+    ("ROOMIES_DEPLOYMENT_ENV", "staging"), ("ROOMIES_DEPLOYMENT_ENV", "TEST"),
+    ("ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB", None),
+    ("ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB", "false"),
+    ("ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB", "1"),
+    ("ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB", "True"),
+    ("ROOMIES_RUNTIME_MODE", "supabase"), ("ROOMIES_RUNTIME_MODE", "disposable"),
+    ("ROOMIES_RUNTIME_MODE", None), ("ROOMIES_LOCAL_MODE", "1"),
+    ("ROOMIES_SUPABASE_PROJECT_REF", None),
+    ("ROOMIES_KUBERO_DB_HOST", None), ("ROOMIES_KUBERO_DB_PORT", None),
+    ("ROOMIES_KUBERO_DB_NAME", None),
+    ("PGHOSTADDR", "127.0.0.1"), ("PGSERVICE", "override"),
+])
+def test_insecure_test_requires_complete_authorization(insecure_test, monkeypatch, name, value):
+    if value is None:
+        monkeypatch.delenv(name, raising=False)
+    else:
+        monkeypatch.setenv(name, value)
+    with pytest.raises(DependencyUnavailable):
+        database_url("AUTH_USERS_DATABASE_URL", "sql_auth_users")
+
+
+@pytest.mark.parametrize(("name", "old", "new"), [
+    ("ROOMIES_KUBERO_DB_HOST", "roomies-db-test2-postgres", "other.internal"),
+    ("ROOMIES_KUBERO_DB_HOST", "roomies-db-test2-postgres", "roomies-db-test2-postgres.test.svc.cluster.local"),
+    ("ROOMIES_KUBERO_DB_PORT", "5432", "5433"),
+    ("ROOMIES_KUBERO_DB_NAME", "roomies-db-test2", "roomies_test"),
+    ("ROOMIES_KUBERO_DB_NAME", "roomies-db-test2", "roomies-other-test"),
+])
+def test_insecure_test_rejects_other_target_even_when_dsn_matches(insecure_test, monkeypatch, name, old, new):
+    monkeypatch.setenv(name, new)
+    monkeypatch.setenv("AUTH_USERS_DATABASE_URL", INSECURE_TEST_DSN.replace(old, new))
+    with pytest.raises(DependencyUnavailable):
+        database_url("AUTH_USERS_DATABASE_URL", "sql_auth_users")
+
+
+@pytest.mark.parametrize(("old", "new"), [
+    ("roomies-db-test2-postgres", "other.internal"), (":5432/", ":5433/"),
+    ("/roomies-db-test2?", "/other?"), ("sql_auth_users:", "postgres:"),
+    ("fixture%40only", ""), ("fixture%40only", "fixture%00only"),
+    ("sslmode=disable", "sslmode=verify-full"),
+    ("sslmode=disable", "sslmode=disable&sslmode=disable"),
+    ("gssencmode=disable", "gssencmode=disable&gssencmode=disable"),
+    ("gssencmode=disable", "gssencmode=prefer"), ("&gssencmode=disable", ""),
+    ("gssencmode=disable", "gssencmode=disable&sslrootcert=system"),
+    ("gssencmode=disable", "gssencmode=disable&hostaddr=127.0.0.1"),
+    ("gssencmode=disable", "gssencmode=disable&service=override"),
+    ("gssencmode=disable", "gssencmode=disable#"),
+])
+def test_insecure_test_rejects_invalid_dsn(insecure_test, monkeypatch, old, new):
+    monkeypatch.setenv("AUTH_USERS_DATABASE_URL", INSECURE_TEST_DSN.replace(old, new))
+    with pytest.raises(DependencyUnavailable):
+        database_url("AUTH_USERS_DATABASE_URL", "sql_auth_users")
+
+
+@pytest.mark.parametrize("sslmode", [None, "verify-full", "disable", "require", ""])
+def test_kubero_policy_must_match_dsn_without_fallback(kubero, monkeypatch, sslmode):
+    if sslmode is not None:
+        monkeypatch.setenv("DB_SSLMODE", sslmode)
+    if sslmode in {None, "verify-full"}:
+        assert database_url("AUTH_USERS_DATABASE_URL", "sql_auth_users") == KUBERO_DSN
+    else:
+        with pytest.raises(DependencyUnavailable):
+            database_url("AUTH_USERS_DATABASE_URL", "sql_auth_users")
+
+
+def test_test_database_name_stays_restricted_under_tls(kubero, monkeypatch):
+    monkeypatch.setenv("ROOMIES_KUBERO_DB_NAME", "roomies-db-test2")
+    monkeypatch.setenv("AUTH_USERS_DATABASE_URL", KUBERO_DSN.replace("roomies_test?", "roomies-db-test2?"))
+    monkeypatch.setenv("ROOMIES_DEPLOYMENT_ENV", "test")
+    monkeypatch.setenv("ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB", "true")
+    with pytest.raises(DependencyUnavailable):
+        database_url("AUTH_USERS_DATABASE_URL", "sql_auth_users")
+
+
+def test_supabase_policy_is_not_relaxed_by_test_flags(insecure_test, monkeypatch):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "supabase")
+    monkeypatch.setenv("AUTH_USERS_DATABASE_URL", DSN)
+    assert database_url("AUTH_USERS_DATABASE_URL", "sql_auth_users") == DSN
+    monkeypatch.setenv("AUTH_USERS_DATABASE_URL", DSN.replace("verify-full", "disable"))
+    with pytest.raises(DependencyUnavailable):
+        database_url("AUTH_USERS_DATABASE_URL", "sql_auth_users")
+
+
+def test_disposable_keeps_its_local_destination(insecure_test, monkeypatch):
     monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "disposable")
     monkeypatch.setenv("ROOMIES_LOCAL_MODE", "1")
     with pytest.raises(DependencyUnavailable):

@@ -55,6 +55,23 @@ def _kubero_database_matches(value, parsed, role):
     userinfo, _, endpoint = parsed.netloc.rpartition("@")
     username, _, password = userinfo.partition(":")
     pairs = parse_qsl(parsed.query, keep_blank_values=True, strict_parsing=True, errors="strict")
+    sslmode = os.environ.get("DB_SSLMODE", "verify-full")
+    insecure_test = (
+        sslmode == "disable"
+        and os.environ.get("ROOMIES_RUNTIME_MODE") == "kubero"
+        and os.environ.get("ROOMIES_DEPLOYMENT_ENV") == "test"
+        and os.environ.get("ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB") == "true"
+        and (host, port, database) == ("roomies-db-test2-postgres", "5432", "roomies-db-test2")
+    )
+    if insecure_test:
+        expected_query = {"sslmode": "disable", "gssencmode": "disable"}
+    elif sslmode == "verify-full":
+        if not (os.path.isabs(ca) and os.path.isfile(ca)
+                and not any(ord(char) < 32 or ord(char) == 127 for char in ca)):
+            return False
+        expected_query = {"sslmode": "verify-full", "sslrootcert": ca, "gssencmode": "disable"}
+    else:
+        return False
     return (
         parsed.scheme in {"postgresql", "postgres"}
         and bool(re.fullmatch(r"[!-~]+", value))
@@ -69,13 +86,10 @@ def _kubero_database_matches(value, parsed, role):
         and username == role
         and bool(re.fullmatch(r"(?:[A-Za-z0-9._~-]|%[0-9A-Fa-f]{2})+", password))
         and not any(ord(char) < 32 or ord(char) == 127 for char in unquote(password, errors="strict"))
-        and bool(re.fullmatch(r"[a-z_][a-z0-9_]{0,62}", database))
+        and (insecure_test or bool(re.fullmatch(r"[a-z_][a-z0-9_]{0,62}", database)))
         and parsed.path == f"/{database}"
-        and os.path.isabs(ca)
-        and not any(ord(char) < 32 or ord(char) == 127 for char in ca)
-        and os.path.isfile(ca)
-        and len(pairs) == 3
-        and dict(pairs) == {"sslmode": "verify-full", "sslrootcert": ca, "gssencmode": "disable"}
+        and len(pairs) == len(expected_query)
+        and dict(pairs) == expected_query
         and not (os.environ.get("PGHOSTADDR") or os.environ.get("PGSERVICE"))
     )
 

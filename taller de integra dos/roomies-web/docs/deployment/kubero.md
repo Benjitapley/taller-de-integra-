@@ -62,7 +62,27 @@ Los Dockerfiles de dominio copian `backend/service_runtime` desde el contexto co
 
 El DSN usa un único nombre DNS, puerto explícito, base y contraseña codificada para URI. `ROOMIES_KUBERO_DB_HOST` y el host del DSN deben coincidir exactamente. La política admite el formato de un Service de Kubernetes, por ejemplo `roomies-db.roomies-test.svc.cluster.local`, con el dominio real del clúster. También admite el formato corto `roomies-db` cuando el DNS del proceso cliente lo resuelve. Usar el nombre autorizado para la etapa y comprobar desde el host real de FastAPI que resuelve al servicio de PostgreSQL previsto. Los nombres de ejemplo solo ilustran el formato. [DNS de Services en Kubernetes](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/).
 
-La consulta del DSN admite exactamente `sslmode=verify-full`, `sslrootcert` y `gssencmode=disable`. La política rechaza parámetros adicionales, repetidos, `PGHOSTADDR` y `PGSERVICE`. El validador comprueba la sintaxis del destino y que el archivo indicado existe. Al conectar, libpq exige TLS y verifica la cadena de confianza y el nombre exacto que usa el cliente. La instancia de ensayo tiene `ssl=off`. La activación SQL del runtime en modo `kubero` queda bloqueada hasta que la administración de Kubero habilite TLS, provea un certificado que cubra el nombre usado por el cliente y distribuya la CA. La conexión debe comprobarse con `verify-full` desde la red de cada proceso. [Verificación TLS en libpq](https://www.postgresql.org/docs/17/libpq-ssl.html).
+La política predeterminada de Kubero usa `DB_SSLMODE=verify-full` cuando la variable está ausente. En ese caso, la consulta del DSN admite exactamente `sslmode=verify-full`, `sslrootcert` y `gssencmode=disable`. La política rechaza parámetros adicionales, repetidos, `PGHOSTADDR` y `PGSERVICE`. El validador comprueba la sintaxis del destino y que el archivo indicado existe. Al conectar, libpq exige TLS y verifica la cadena de confianza y el nombre exacto que usa el cliente. La instancia de ensayo tiene `ssl=off`: la conexión con TLS sigue bloqueada hasta que la administración de Kubero habilite TLS, provea un certificado que cubra el nombre usado por el cliente y distribuya la CA. La conexión debe comprobarse con `verify-full` desde la red de cada proceso. [Verificación TLS en libpq](https://www.postgresql.org/docs/17/libpq-ssl.html).
+
+**Excepción explícita para ensayos SQL sin TLS en Kubero TEST.** El validador compartido permite `DB_SSLMODE=disable` únicamente con todas estas variables y valores exactos:
+
+| Variable | Valor requerido para la excepción |
+|---|---|
+| `ROOMIES_RUNTIME_MODE` | `kubero` |
+| `ROOMIES_DEPLOYMENT_ENV` | `test` |
+| `ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB` | `true` |
+| `DB_SSLMODE` | `disable` |
+| `ROOMIES_KUBERO_DB_HOST` | `roomies-db-test2-postgres` |
+| `ROOMIES_KUBERO_DB_PORT` | `5432` |
+| `ROOMIES_KUBERO_DB_NAME` | `roomies-db-test2` |
+
+El DSN propio de cada servicio debe coincidir con ese destino, mantener su rol y credencial válidos y contener exactamente `sslmode=disable` y `gssencmode=disable`, sin `sslrootcert`. En esta excepción no se requiere `ROOMIES_KUBERO_DB_SSLROOTCERT`. El nombre de base con guiones `roomies-db-test2` solo se admite dentro de la excepción; fuera de ella se mantiene la regla general `[a-z_][a-z0-9_]{0,62}`. No se admiten otros destinos, ni siquiera el FQDN equivalente al host corto. Se conservan los controles de parámetros duplicados, roles, credenciales y overrides peligrosos. Siguen siendo necesarios el proyecto Supabase y la configuración de identidad existente, sin `ROOMIES_LOCAL_MODE=1`.
+
+El validador devuelve el DSN original: no lo reconstruye, no corrige discrepancias con `DB_SSLMODE` y no implementa fallback si falla TLS. En modo Kubero, un valor de `DB_SSLMODE` vacío o distinto de `verify-full` y `disable` se rechaza; `disable` se rechaza si falta cualquier condición de la excepción. Los modos `supabase` y `disposable` mantienen sus políticas previas y no utilizan este selector.
+
+Esta excepción permite preparar ensayos SQL **sin cifrado ni verificación criptográfica del servidor**; no acredita TLS ni completa SCRUM-100. No se ha desplegado ni probado remotamente como parte de este cambio. La etapa se declara mediante variables: en producción deben excluirse la autorización de la excepción y el acceso de red a la base TEST para evitar que una copia accidental de toda la configuración la habilite. La resolución del nombre corto depende del namespace del consumidor y sigue pendiente de comprobar desde cada proceso.
+
+Listado, Match y Convivencia usan `database_url()` en sus repositorios. Auth/Users también lo usa en `PostgresUsers`, pero su selección actual de perfiles en modo `kubero` sigue pasando por `PostgresDatabaseSettings` y `PostgresProfileRepository`, que tienen configuración propia y rechazan `sslmode=disable` en staging. Este cambio no modifica esos adaptadores ni habilita las rutas extendidas de Auth/Users. Por tanto, aceptar el DSN compartido no demuestra integración funcional de todos los microservicios.
 
 **Identidad.** Configurar `ROOMIES_SUPABASE_PROJECT_REF` y `ROOMIES_AUTH_PROVIDER_URL` para el mismo proyecto. Si se fija `ROOMIES_JWT_ISSUER`, debe ser el origen seleccionado seguido de `/auth/v1`. Auth/Users también tiene configuración propia de Supabase (`SUPABASE_URL`, `SUPABASE_JWT_ISSUER`, audiencia `authenticated`, algoritmos `ES256,RS256`) y usa `ROOMIES_AUTH_PUBLISHABLE_KEY` en el flujo compartido. El PostgreSQL de negocio queda en Kubero.
 
@@ -98,5 +118,5 @@ Usar este procedimiento para repetir las comprobaciones y completar los puntos p
    ROLLBACK;
    ```
 
-   Confirmar rol y base esperados y `ssl = true`. Si la conexión falla, registrar si falló DNS, TCP, TLS o autenticación usando salidas sanitizadas. La sonda no requiere aplicar migraciones ni arrancar Convivencia. Pasar a las pruebas por dominio únicamente después de verificar TLS y disponer de esquemas de ensayo provisionados.
+   Confirmar rol y base esperados y `ssl = true`. Si la conexión falla, registrar si falló DNS, TCP, TLS o autenticación usando salidas sanitizadas. La sonda no requiere aplicar migraciones ni arrancar Convivencia. Pasar a las pruebas por dominio con TLS únicamente después de verificarlo y disponer de esquemas de ensayo provisionados. Si se autoriza por separado el ensayo sin TLS, usar exclusivamente la excepción TEST documentada arriba y registrar `ssl = false` como conexión sin cifrado, nunca como validación TLS. No reintentar automáticamente con `disable` tras un fallo de TLS.
 3. Registrar resultados y pendientes en SCRUM-100 con etapa, SHA, verificación ejecutada y evidencia sanitizada. Programar los ensayos de reinicio, reemplazo y restauración por separado en recursos desechables.
