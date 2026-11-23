@@ -126,12 +126,17 @@ class PostgresPublications:
     def update_occupancy(self,id,count,version):
         return self.query("UPDATE listado_applications.publicacion SET ocupacion_confirmada=%s,version_ocupacion=%s,estado=CASE WHEN estado='Cerrada' THEN estado WHEN %s>0 THEN 'Activa' ELSE 'Disponible' END WHERE id_publicacion=%s RETURNING id_publicacion",(count,version,count,id))
 
-    def image(self,id,reference):
-        old=self.query("SELECT id_imagen FROM listado_applications.imagen_publicacion WHERE id_publicacion=%s ORDER BY orden,id_imagen LIMIT 1",(id,))
-        if old:
-            self.query("UPDATE listado_applications.imagen_publicacion SET url=%s WHERE id_imagen=%s RETURNING id_imagen",(reference,old["id_imagen"]))
-        else:
-            self.query("INSERT INTO listado_applications.imagen_publicacion (id_publicacion,url,orden) VALUES (%s,%s,0) RETURNING id_imagen",(id,reference))
+    def images(self,id):
+        return self.query("SELECT id_imagen,url,orden FROM listado_applications.imagen_publicacion WHERE id_publicacion=%s ORDER BY orden,id_imagen",(id,),True)
+
+    def image(self,id,reference,orden):
+        return self.query("INSERT INTO listado_applications.imagen_publicacion (id_publicacion,url,orden) VALUES (%s,%s,%s) RETURNING id_imagen,url,orden",(id,reference,orden))
+
+    def order_image(self,id,image_id,orden):
+        self.query("UPDATE listado_applications.imagen_publicacion SET orden=%s WHERE id_publicacion=%s AND id_imagen=%s RETURNING id_imagen",(orden,id,image_id))
+
+    def remove_image(self,id,image_id):
+        return self.query("DELETE FROM listado_applications.imagen_publicacion WHERE id_publicacion=%s AND id_imagen=%s RETURNING url",(id,image_id))
 
     def postulate(self,id,user_id):
         try:

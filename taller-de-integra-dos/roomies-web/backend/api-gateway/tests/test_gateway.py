@@ -372,7 +372,7 @@ def test_continuous_upstream_fragments_total_timeout():
 @pytest.mark.parametrize("value", [0, -1, 32_000_001, 1.5, True])
 def test_invalid_size_settings(field, value):
     with pytest.raises(ValueError):
-        Settings(**{field: value})
+        Settings(**{field: invalid_value})
 
 
 def test_new_environment_settings(monkeypatch):

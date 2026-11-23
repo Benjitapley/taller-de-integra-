@@ -15,7 +15,21 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
   const operation = useRef<string | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
-  const shared = kind === "Compartida";
+  const [communes, setCommunes] = useState<Commune[]>([]);
+  const [images, setImages] = useState<File[]>([]);
+  const regionId = "9";
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/api/regiones/${regionId}/comunas`, { credentials: "same-origin", cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("catalog")))
+      .then((value: unknown) => {
+        if (Array.isArray(value)) setCommunes(value.filter((item): item is Commune =>
+          !!item && typeof item === "object" && typeof item.id_comuna === "number" && typeof item.nombre === "string"));
+      })
+      .catch(() => { if (!controller.signal.aborted) { setCommunes([]); setMessage("No se pudo cargar el catálogo de comunas."); } });
+    return () => controller.abort();
+  }, [regionId]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,8 +37,9 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
     const form = new FormData(event.currentTarget);
     form.set("tipo", kind);
     form.delete("confirmo_origen");
-    if (!shared) form.set("categoria", "ofrezco");
+    form.set("categoria", "ofrezco");
     form.set("permitir_comentarios", form.has("permitir_comentarios") ? "true" : "false");
+    for (const image of images) form.append("imagenes", image);
     const validationError = validatePublicationForm(form);
     if (validationError) { setMessage(validationError); return; }
 
@@ -68,11 +83,7 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
         <label className={styles.fullField}>Título
           <input name="titulo" required maxLength={200} placeholder="Ej.: Habitación cerca del centro" />
         </label>
-        {shared ? <label>Objetivo del aviso
-          <select name="categoria" defaultValue="busco" required>
-            <option value="busco">Busco con quién compartir este lugar</option><option value="ofrezco">Comparto una oportunidad encontrada</option>
-          </select>
-        </label> : <input type="hidden" name="categoria" value="ofrezco" />}
+        <input type="hidden" name="categoria" value="ofrezco" />
         <label>Tipo de vivienda
           <select name="tipo_vivienda" defaultValue="" required>
             <option value="" disabled>Selecciona una opción</option><option value="casa">Casa</option>
@@ -86,7 +97,10 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
         <label>{shared ? "Precio indicado en el aviso externo (CLP)" : "Precio del arriendo (CLP)"}
           <input name="precio" type="number" min="0" max="999999999999" step="1" required />
         </label>
-        <label>{shared ? "Capacidad total indicada en el aviso" : "Capacidad total del espacio"}
+        <label>Precio del arriendo (CLP)
+          <input name="precio" type="number" min="0" max="999999999999" step="1" required />
+        </label>
+        <label>Capacidad total del espacio
           <input name="cupos_totales" type="number" min="1" max="2147483647" step="1" required />
         </label>
         <label>¿Acepta mascotas?

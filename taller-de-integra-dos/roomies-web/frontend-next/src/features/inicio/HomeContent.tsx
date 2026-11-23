@@ -60,8 +60,17 @@ function people(value: unknown): Person[] {
   });
 }
 
-function price(value: number) {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
+function price(value: number | string) {
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 2 }).format(Number(value));
+}
+
+function publicationImage(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  if (/^\/imagenes\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(value)) return value;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch { return null; }
 }
 
 export default function HomeContent({ canReport = false }: { canReport?: boolean }) {
@@ -75,6 +84,7 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
   const [filters, setFilters] = useState(emptyFilters);
   const [applied, setApplied] = useState(emptyFilters);
   const [sending, setSending] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [connectionMessage, setConnectionMessage] = useState("");
   const [results, setResults] = useState<{
     key: string;
@@ -117,6 +127,9 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
           cursor: isPeople ? null : publicationPage(result).siguiente_cursor,
           profiles: isPeople ? people(result) : [],
           error: "",
+          moreError: "",
+          cursor: !isPeople && result && typeof result === "object" && typeof (result as Record<string, unknown>).siguiente_cursor === "string"
+            ? (result as Record<string, string>).siguiente_cursor : null,
         });
       })
       .catch((reason: unknown) => {
@@ -126,6 +139,8 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
           cursor: null,
           profiles: [],
           error: reason instanceof Error ? reason.message : "No se pudo cargar el listado.",
+          moreError: "",
+          cursor: null,
         });
       });
     return () => controller.abort();
@@ -156,6 +171,29 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
   function clearFilters() {
     setFilters(emptyFilters);
     setApplied(emptyFilters);
+  }
+
+  async function loadMore() {
+    if (!currentResults?.cursor || loadingMore || isPeople) return;
+    setLoadingMore(true);
+    try {
+      const query = new URLSearchParams();
+      for (const key of ["consulta", "precio_min", "precio_max", "cupos_disponibles", "categoria", "tipo_vivienda", "mascota"] as const) {
+        const field = key === "consulta" ? applied.consulta : applied[key];
+        if (field) query.set(key, field);
+      }
+      query.set("cursor", currentResults.cursor);
+      const page = await apiRequest<unknown>(`/api/publicaciones?${query}`, { signal: AbortSignal.timeout(15_000) });
+      if (!page || typeof page !== "object" || !("siguiente_cursor" in page)) throw new Error("Respuesta de paginación inválida.");
+      const next = publications(page);
+      setResults((previous) => previous?.key !== requestKey ? previous : {
+        ...previous, listings: [...previous.listings, ...next],
+        moreError: "",
+        cursor: typeof (page as Record<string, unknown>).siguiente_cursor === "string" ? (page as Record<string, string>).siguiente_cursor : null,
+      });
+    } catch (reason) {
+      setResults((previous) => previous?.key !== requestKey ? previous : { ...previous, moreError: reason instanceof Error ? reason.message : "No se pudo cargar más publicaciones." });
+    } finally { setLoadingMore(false); }
   }
 
   async function connect(id: number) {
