@@ -1,6 +1,6 @@
-import RentalWithReports from "@/features/reportes/RentalWithReports";
+import MyRental from "@/features/arriendos/MyRental";
 import { reportsEnabled } from "@/lib/reportes";
 
 export default function RentalPage() {
-  return <RentalWithReports canReport={reportsEnabled()} />;
+  return <MyRental canReport={reportsEnabled()} />;
 }

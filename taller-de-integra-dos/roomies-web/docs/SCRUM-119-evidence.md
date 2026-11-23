@@ -15,15 +15,14 @@
 
 ## Preparación para integrar en `dev-web`
 
-- Rama fuente: `SCRUM-119-Conectar-Mi-arriendo-e-integrantes` (`HEAD` base `80ac55303c390415aa9c948b8c09b387b4b52769`).
-- Destino remoto observado: `origin/dev-web` (`0bffc08e81d8e036a2dec23e92f29b54f9ff068f`).
-- La previsualización de `git merge-tree --write-tree origin/dev-web HEAD` encontró conflictos. Hay conflictos de contenido en `backend/api-gateway/app/local_routes.py`, `frontend-next/src/app/(app)/mi-arriendo/page.tsx`, `frontend-next/src/app/web-api/arriendos/[id]/integrantes/route.ts` y `frontend-next/src/features/publicaciones/MyPublications.tsx`; también en `ReportsPanel.tsx` y `tests/reportes.test.mjs` por renombre/borrado.
-- El preview además detecta muchos conflictos de ubicación en `.next-demo` y `next-env.d.ts`, asociados a la diferencia de ruta antigua `taller de integra dos/...` frente a `taller-de-integra-dos/...`.
-- Los 19 cambios locales sin commit no aparecen en esa previsualización. La integración queda pendiente de resolver estos conflictos con el dev web; no se modificó `dev-web`.
+- Rama fuente limpia: `SCRUM-119-dev-web`, basada directamente en `origin/dev-web` SHA `0bffc08e81d8e036a2dec23e92f29b54f9ff068f`.
+- La tarea E02 se reaplicó desde sus dos commits funcionales y se resolvieron los conflictos conservando los contratos actuales de `dev-web`.
+- Las nuevas rutas y componentes quedaron bajo `taller-de-integra-dos/...`; se eliminó la copia accidental bajo `taller de integra dos/...`.
+- La rama local tiene una sola base común con `origin/dev-web`, evitando el error de GitHub `multiple merge bases found`. Aún no está publicada y no se ha creado un PR.
 
 ## Evidencia local sanitizada
 
-Entorno: Windows, PowerShell, Node `v24.20.0`, Python `3.14.7` usando `venv` del repositorio. Rama `SCRUM-119-Conectar-Mi-arriendo-e-integrantes`. SHA base del checkout antes de estos cambios: `80ac55303c390415aa9c948b8c09b387b4b52769`. El checkout está modificado; ese SHA no identifica los cambios sin commit.
+Entorno: Windows, PowerShell, Node `v24.20.0`, Python `3.14.7` usando `venv` del repositorio. Los resultados previos corresponden a la rama original `SCRUM-119-Conectar-Mi-arriendo-e-integrantes`; se repetirá la validación focalizada en `SCRUM-119-dev-web` antes de publicarla.
 
 ```text
 frontend-next> node --test tests/arriendos.test.mjs
@@ -54,4 +53,4 @@ La suite Convivencia usa su runner offline y no acredita PostgreSQL. La prueba d
 
 - Jira: `SCRUM-119` (la URL del proyecto Jira no está configurada en el repositorio).
 - Pull request: no creado.
-- Referencia de rama remota: [SCRUM-119-Conectar-Mi-arriendo-e-integrantes](https://github.com/Benjitapley/taller-de-integra-/tree/SCRUM-119-Conectar-Mi-arriendo-e-integrantes). El enlace apunta a la rama remota; no incluye cambios locales sin commit.
+- Rama original: [SCRUM-119-Conectar-Mi-arriendo-e-integrantes](https://github.com/Benjitapley/taller-de-integra-/tree/SCRUM-119-Conectar-Mi-arriendo-e-integrantes). La rama preparada para el PR es `SCRUM-119-dev-web`.

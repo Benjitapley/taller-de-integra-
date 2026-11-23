@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import PageHeader from "@/components/layout/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import ReportMembers from "@/features/reportes/ReportMembers";
 
 type Rental = { id_arriendo: number; id_publicacion: number; cupos_totales: number; ocupacion: number; es_dueno?: boolean };
 type Member = { id_usuario: number; nombre?: string; fecha_ingreso: string; fecha_salida?: string | null; es_responsable?: boolean };
-type Publication = { id?: number; titulo?: string; ubicacion?: string; precio?: number; cupos_totales?: number; cupos_disponibles?: number | null };
+type Publication = { id_publicacion?: number; titulo?: string; ubicacion?: string; precio?: number; cupos_totales?: number; cupos_disponibles?: number | null };
 
-export default function MyRental({ rentalId, publicationId }: { rentalId?: string; publicationId?: string }) {
+export default function MyRental({ rentalId, publicationId, canReport = false }: { rentalId?: string; publicationId?: string; canReport?: boolean }) {
   const [rental, setRental] = useState<Rental | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,7 @@ export default function MyRental({ rentalId, publicationId }: { rentalId?: strin
       setNextCursor(value.siguiente_cursor);
       if (!publicationResponse.ok) throw new Error();
       const publicationValue = await publicationResponse.json();
-      if (!publicationValue || publicationValue.id !== rentalValue.id_publicacion || typeof publicationValue.titulo !== "string") throw new Error();
+      if (!publicationValue || publicationValue.id_publicacion !== rentalValue.id_publicacion || typeof publicationValue.titulo !== "string") throw new Error();
       setPublication(publicationValue);
     } catch {
       if (!signal?.aborted) setError("No se pudo cargar Mi arriendo.");
@@ -133,6 +134,7 @@ export default function MyRental({ rentalId, publicationId }: { rentalId?: strin
         )}
       </div>
       {nextCursor ? <div style={{ marginTop: 16 }}><Button variant="secondary" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "Cargando…" : "Cargar más integrantes"}</Button></div> : null}
+      {canReport && !rental.es_dueno ? <Card><ReportMembers rentalId={rental.id_arriendo} /></Card> : null}
       {selected ? <Card>
         <h2>Retirar a {selected.nombre || `Usuario ${selected.id_usuario}`}</h2>
         <p>El integrante perderá de inmediato el acceso al chat y a las tareas.</p>
