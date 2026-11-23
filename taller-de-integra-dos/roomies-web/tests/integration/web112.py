@@ -27,7 +27,7 @@ def exercise(root, clean, identity, gateway, database, people, port):
         linked = True
         base = f"http://127.0.0.1:{port}"
         env = {**clean, "NODE_ENV":"development", "NEXT_TELEMETRY_DISABLED":"1", "ROOMIES_LOCAL_MODE":"1",
-               "ROOMIES_RUNTIME_MODE":"disposable", "WEB_AUTH_ENABLED":"true", "WEB_AUTH_PROVIDER":"supabase",
+               "ROOMIES_RUNTIME_MODE":"disposable", "WEB_AUTH_ENABLED":"true", "WEB_AUTH_PROVIDER":"supabase", "WEB_PROFILE_CONTRACT":"v1",
                "WEB_AUTH_ORIGIN":base, "WEB_AUTH_FASTAPI_ORIGIN":gateway, "FASTAPI_ORIGIN":gateway,
                "WEB_SUPABASE_ORIGIN":identity.origin, "WEB_SUPABASE_PUBLISHABLE_KEY":identity.publishable_key}
         with (isolated / "next.log").open("wb") as log, ExitStack() as clients:
@@ -49,6 +49,34 @@ def exercise(root, clean, identity, gateway, database, people, port):
             for client,index in zip((owner,applicant,stranger),(11,12,13)):
                 request(client,"POST","/web-api/auth/login",json={"correo":f"c03-{index}@example.com","contrasena":"Synthetic-password-123"})
                 assert request(client,"GET","/web-api/auth/sesion").json()["authenticated"] is True
+            # SCRUM-111: Next/BFF/Gateway/Auth/SQL reales, identidad y Storage HTTP ficticios.
+            from io import BytesIO
+            from PIL import Image
+            content=BytesIO();Image.new("RGB",(2,2)).save(content,format="PNG")
+            initial=request(owner,"GET","/web-api/perfil").json()
+            assert initial["contrato_perfil"]=="v1"
+            request(owner,"PATCH","/web-api/perfil",json={"ocupacion":"Trabajador","genero":"Otro","id_region_interes":9,"id_comuna_interes":9101})
+            uploaded=request(owner,"PUT","/web-api/perfil/foto",files={"foto":("photo.png",content.getvalue(),"image/png")}).json()["foto_perfil"]
+            previous=uploaded
+            uploaded=request(owner,"PUT","/web-api/perfil/foto",files={"foto":("photo.png",content.getvalue(),"image/png")}).json()["foto_perfil"]
+            assert uploaded != previous
+            for _ in range(40):
+                client_get=owner.get(previous)
+                if client_get.status_code==404:break
+                time.sleep(.2)
+            else:raise AssertionError("La foto anterior no fue retirada")
+            stale_access=owner.cookies.get("roomies_sb_dev_access")
+            request(owner,"POST","/web-api/auth/logout",json={})
+            with httpx.Client(base_url=base,timeout=30,trust_env=False,cookies={"roomies_sb_dev_access":stale_access}) as revoked:
+                request(revoked,"GET","/web-api/perfil",(401,))
+            request(owner,"POST","/web-api/auth/login",json={"correo":"c03-11@example.com","contrasena":"Synthetic-password-123"})
+            assert request(owner,"GET","/web-api/perfil").json()["foto_perfil"]==uploaded
+            request(owner,"PATCH","/web-api/perfil",(422,),json={"nombre":"Ajeno"})
+            request(owner,"PATCH","/web-api/perfil",(422,),json={"id_comuna_interes":13101})
+            request(stranger,"GET","/web-api/perfil")
+            assert request(stranger,"GET","/web-api/perfil").json()["foto_perfil"]!=uploaded
+            request(owner,"PATCH","/web-api/perfil",json={"genero":None,"sobre_mi":None})
+            print("PASS SCRUM-111: rutas finales; PATCH; foto/logout/login; aislamiento; SQL real; identidad y Storage ficticios",flush=True)
             form={"titulo":"Arriendo D02 integrado","descripcion":"Prueba local con SQL efímero","ubicacion":"Temuco","precio":"150000","cupos_totales":"1","tipo":"Arrendador","categoria":"ofrezco","tipo_vivienda":"habitacion","mascota":"no","id_region":"9","id_comuna":"9101"}
             publication=request(owner,"POST","/web-api/publicaciones",(201,),files=[(k,(None,v)) for k,v in form.items()],headers={"Idempotency-Key":str(uuid4())}).json()["id_publicacion"]
             withdrawn=request(applicant,"POST","/web-api/postulaciones",(201,),json={"publicacion":publication}).json()["id_postulacion"]

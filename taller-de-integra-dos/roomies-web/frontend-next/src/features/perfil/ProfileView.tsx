@@ -56,7 +56,7 @@ export default function ProfileView() {
       <p className={styles.description}>{profile.breve_descripcion || "Aún no hay una descripción breve."}</p>
       <Button id="edit-profile" onClick={() => { setNotice(""); setEditing(true); }}>Editar perfil</Button>
       {notice && <p role="status">{notice}</p>}
-      <div className={styles.stat}><strong>{profile.total_publicaciones ?? "No disponible"}</strong><span>Publicaciones</span></div>
+      {profile.total_publicaciones !== null && <div className={styles.stat}><strong>{profile.total_publicaciones}</strong><span>Publicaciones</span></div>}
     </Card>
     <div className={styles.details}>
       <Card><h2>Información personal</h2><dl className={styles.facts}>
@@ -65,8 +65,14 @@ export default function ProfileView() {
         <div><dt>Ciudad</dt><dd>{profile.ciudad || "Sin indicar"}</dd></div>
       </dl></Card>
       <Card><h2>Sobre mí</h2><p className={styles.about}>{profile.sobre_mi || "Aún no hay información sobre ti."}</p></Card>
-      <AccountVerification verified={profile.verificado} onRefresh={retry} />
+      {profile.contrato_perfil === "v1" && profile.verificado !== true
+        ? <Card><h2>Verificación de correo</h2><p>{profile.verificado === false ? "Correo pendiente de verificación." : "Estado de verificación no disponible."}</p><Link href={routes.verify}>Verificar mi correo</Link></Card>
+        : <AccountVerification verified={profile.verificado} onRefresh={retry} />}
     </div>
-    {editing && <ProfileEditor profile={profile} onClose={() => setEditing(false)} onExpired={() => { setEditing(false); setState({ kind: "expired" }); }} onSaved={() => { setEditing(false); setNotice("Perfil guardado correctamente."); retry(); }} />}
+    {editing && <ProfileEditor profile={profile} onClose={() => setEditing(false)} onExpired={() => { setEditing(false); setState({ kind: "expired" }); }}
+      onSaved={() => { setEditing(false); setNotice("Perfil guardado correctamente."); retry(); }}
+      onPhotoSaved={(url) => setState((previous) => previous.kind === "ready"
+        ? { kind: "ready", profile: { ...previous.profile, foto_perfil: url } }
+        : previous)} />}
   </div>;
 }

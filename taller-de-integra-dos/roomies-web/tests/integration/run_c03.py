@@ -261,6 +261,7 @@ def main():
             database.execute((ROOT / "backend/local_stack/bootstrap.sql").read_text(encoding="utf-8"))
             database.execute("CREATE ROLE sql_convivencia_mensajeria LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS")
             database.execute("GRANT CONNECT ON DATABASE roomies_sprint2_disposable TO sql_convivencia_mensajeria")
+            database.execute((ROOT / "supabase/migrations/20261123213932_scrum111_perfil_comun.sql").read_text(encoding="utf-8").replace(",anon,authenticated", ""))
             for service in ("listado-applications-service", "convivencia-mensajeria-service"):
                 for migration in sorted((ROOT / "backend/services" / service / "migrations").glob("*.sql")):
                     if ".down." not in migration.name:
@@ -276,7 +277,9 @@ def main():
 
             def start(name):
                 env = {**common, "ROOMIES_PORT": origins[name].rsplit(":", 1)[1]}
-                if name == "auth": env["ROOMIES_SUPABASE_AUTH_ADMIN_KEY"] = admin_key
+                if name == "auth":
+                    env["ROOMIES_SUPABASE_AUTH_ADMIN_KEY"] = admin_key
+                    env["ROOMIES_SUPABASE_STORAGE_KEY"] = admin_key
                 if name in roles: env[variables[name]] = f"postgresql://{roles[name]}@127.0.0.1:{pg_port}/roomies_sprint2_disposable"
                 if name == "convivencia": env["LISTADO_UPSTREAM_URL"] = callbacks.origin
                 log = (temporary / f"{name}.log").open("ab")
@@ -298,7 +301,7 @@ def main():
                 response = client.post(identity.origin + "/auth/v1/signup", headers={"apikey": identity.publishable_key}, json={"email": email, "password": "Synthetic-password-123", "data": {"nombre": f"Prueba {index}", "fecha_nacimiento": "2000-01-01"}})
                 assert response.status_code == 200
                 person = client.post(identity.origin + "/auth/v1/verify", headers={"apikey": identity.publishable_key}, json={"email": email, "token": identity.users[email]["otp"]}).json()
-                response = client.post(origins["gateway"] + "/local/v1/perfil/inicializacion", headers={"Authorization": "Bearer " + person["access_token"]}, json={"nombre": f"Prueba {index}", "fecha_nacimiento": "2000-01-01"})
+                response = client.post(origins["gateway"] + "/api/usuarios/me", headers={"Authorization": "Bearer " + person["access_token"]}, json={"nombre": f"Prueba {index}", "fecha_nacimiento": "2000-01-01"})
                 assert response.status_code == 200, response.text[:200]
                 person["business_id"] = response.json()["id_usuario"]
                 people.append(person)

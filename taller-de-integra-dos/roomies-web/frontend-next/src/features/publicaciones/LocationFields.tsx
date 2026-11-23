@@ -17,7 +17,6 @@ export default function LocationFields({ initialRegion, initialCommune }: { init
       try {
         const response = await fetch("/api/regiones", { signal: controller.signal, cache: "no-store" });
         if (!response.ok) throw new Error();
-<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/frontend-next/src/features/publicaciones/LocationFields.tsx
         const regions: unknown = await response.json();
         if (!Array.isArray(regions)) throw new Error();
         const araucania: Region | undefined = regions.find(item => item && Number.isSafeInteger(item.id_region) && typeof item.nombre === "string" && /araucan[ií]a/i.test(item.nombre));
@@ -26,15 +25,6 @@ export default function LocationFields({ initialRegion, initialCommune }: { init
         if (!result.ok) throw new Error();
         const values: unknown = await result.json();
         if (!Array.isArray(values) || !values.length || values.some(item => !item || !Number.isSafeInteger(item.id_comuna) || item.id_comuna < 1 || item.id_region !== araucania.id_region || typeof item.nombre !== "string")) throw new Error();
-=======
-        const regions: Region[] = await response.json();
-        const araucania = regions.find(item => /araucan[ií]a/i.test(item.nombre));
-        if (!araucania) throw new Error();
-        const result = await fetch(`/api/regiones/${araucania.id_region}/comunas`, { signal: controller.signal, cache: "no-store" });
-        if (!result.ok) throw new Error();
-        const values: Commune[] = await result.json();
-        if (!Array.isArray(values)) throw new Error();
->>>>>>> Stashed changes:taller de integra dos/roomies-web/frontend-next/src/features/publicaciones/LocationFields.tsx
         if (!controller.signal.aborted) { setRegion(araucania); setCommunes(values); setError(""); }
       } catch { if (!controller.signal.aborted) setError("No se pudieron cargar las comunas. Intenta nuevamente."); }
     }
@@ -44,12 +34,9 @@ export default function LocationFields({ initialRegion, initialCommune }: { init
   return <>
     <input name="id_region" type="hidden" value={selected ? region?.id_region ?? "" : initialRegion ?? region?.id_region ?? ""} />
     <input name="id_comuna" type="hidden" value={selected || initialCommune || ""} />
-<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/frontend-next/src/features/publicaciones/LocationFields.tsx
     <label>Región
       <input value={region?.nombre ?? "La Araucanía"} readOnly />
     </label>
-=======
->>>>>>> Stashed changes:taller de integra dos/roomies-web/frontend-next/src/features/publicaciones/LocationFields.tsx
     <label>Comuna de La Araucanía
       <select required={!initialCommune} disabled={!region} value={selected || (initialRegion === region?.id_region ? initialCommune ?? "" : "")} onChange={event => setSelected(event.target.value)}>
         <option value="">{initialCommune ? "Conservar comuna actual" : "Selecciona una comuna"}</option>
@@ -57,11 +44,7 @@ export default function LocationFields({ initialRegion, initialCommune }: { init
       </select>
     </label>
     {initialRegion && region && initialRegion !== region.id_region && <p>El aviso conserva su ubicación nacional hasta que selecciones una comuna para actualizarlo.</p>}
-<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/frontend-next/src/features/publicaciones/LocationFields.tsx
     {!region && !error && <p role="status">Cargando comunas…</p>}
     {error && <p role="alert">{error} <button type="button" onClick={() => { setError(""); setRetry(value => value + 1); }}>Reintentar</button></p>}
-=======
-    {error && <p role="alert">{error} <button type="button" onClick={() => setRetry(value => value + 1)}>Reintentar</button></p>}
->>>>>>> Stashed changes:taller de integra dos/roomies-web/frontend-next/src/features/publicaciones/LocationFields.tsx
   </>;
 }

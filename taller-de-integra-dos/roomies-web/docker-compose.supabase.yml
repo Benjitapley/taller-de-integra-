@@ -19,6 +19,7 @@ services:
       dockerfile: backend/services/auth-users-service/Dockerfile
     environment:
       <<: *runtime
+      ROOMIES_SUPABASE_STORAGE_KEY: ${ROOMIES_SUPABASE_STORAGE_KEY:?Clave Storage exclusiva del backend}
       AUTH_USERS_DATABASE_URL: ${AUTH_USERS_DATABASE_URL:?DSN sql_auth_users con verify-full y sslrootcert}
       ROOMIES_SUPABASE_AUTH_ADMIN_KEY: ${ROOMIES_SUPABASE_AUTH_ADMIN_KEY:-}
       AUTH_NOTIFICATIONS_CURSOR_SECRET: ${AUTH_NOTIFICATIONS_CURSOR_SECRET:-}
@@ -67,6 +68,7 @@ services:
       ROOMIES_SUPABASE_PROJECT_REF: ${ROOMIES_SUPABASE_PROJECT_REF}
       WEB_AUTH_ENABLED: "true"
       WEB_AUTH_PROVIDER: supabase
+      WEB_PROFILE_CONTRACT: v1
       WEB_AUTH_ORIGIN: http://localhost:3000
       WEB_AUTH_FASTAPI_ORIGIN: http://api-gateway:8000
       FASTAPI_ORIGIN: http://api-gateway:8000

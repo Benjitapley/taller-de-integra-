@@ -81,10 +81,7 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
     listings: Publication[];
     profiles: Person[];
     error: string;
-<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/frontend-next/src/features/inicio/HomeContent.tsx
     moreError: string;
-=======
->>>>>>> Stashed changes:taller de integra dos/roomies-web/frontend-next/src/features/inicio/HomeContent.tsx
     cursor: string | null;
   } | null>(null);
   const requestKey = JSON.stringify([isPeople, applied, retry]);
@@ -148,15 +145,9 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
     }
     try {
       const page = publicationPage(await apiRequest(`/api/publicaciones?${query}`));
-<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/frontend-next/src/features/inicio/HomeContent.tsx
       setResults(current => current?.key === key ? { ...current, listings: appendPublications(current.listings, page.items), cursor: page.siguiente_cursor, moreError: "" } : current);
     } catch {
       setResults(current => current?.key === key ? { ...current, moreError: "No se pudo cargar la siguiente página. Puedes reintentar." } : current);
-=======
-      setResults(current => current?.key === key ? { ...current, listings: appendPublications(current.listings, page.items), cursor: page.siguiente_cursor, error: "" } : current);
-    } catch {
-      setResults(current => current?.key === key ? { ...current, error: "No se pudo cargar la siguiente página. Puedes reintentar." } : current);
->>>>>>> Stashed changes:taller de integra dos/roomies-web/frontend-next/src/features/inicio/HomeContent.tsx
     } finally { loadingMoreRef.current = false; setLoadingMore(false); }
   }
 
@@ -248,10 +239,7 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
           {publication.descripcion && <p className={styles.description}>{publication.descripcion}</p>}</div>
       </article>)}</div>
       : !error && <EmptyState icon="home" title="No hay publicaciones para estos filtros" description="Prueba con otros términos o amplía los filtros de precio y vivienda." />)}
-<<<<<<< Updated upstream:taller-de-integra-dos/roomies-web/frontend-next/src/features/inicio/HomeContent.tsx
     {!isPeople && currentResults?.moreError && <p role="alert">{currentResults.moreError}</p>}
-=======
->>>>>>> Stashed changes:taller de integra dos/roomies-web/frontend-next/src/features/inicio/HomeContent.tsx
     {!isPeople && currentResults?.cursor && <Button disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "Cargando..." : "Cargar más"}</Button>}
     {!isPeople && !loading && !currentResults?.cursor && listings.length > 0 && <p role="status">No hay más publicaciones.</p>}
   </Tabs>;

@@ -18,7 +18,7 @@
 .editFields { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
 .legend { font-weight: 600; margin-bottom: 16px; }
 .editField { display: grid; gap: 8px; margin-bottom: 8px; }
-.editFields input, .editFields textarea { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.editFields input, .editFields textarea, .editFields select { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
 .editFields small { color: var(--muted); }
 .preview { border-radius: 12px; object-fit: cover; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }

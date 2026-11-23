@@ -17,7 +17,7 @@ class RouteGuard:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         path = scope["path"]
-        private = (path.rstrip("/") in {"/usuarios/me", "/api/publicaciones/mias", "/api/mis-publicaciones"}
+        private = (path.startswith("/api/usuarios/me") or path.rstrip("/") in {"/usuarios/me", "/api/publicaciones/mias", "/api/mis-publicaciones"}
                    or path.startswith("/api/arriendos/")
                    or path.startswith("/api/postulaciones/")
                    or (path.startswith("/api/publicaciones/") and path.endswith("/detalle"))

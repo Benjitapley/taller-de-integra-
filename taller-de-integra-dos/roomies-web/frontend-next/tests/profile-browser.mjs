@@ -128,7 +128,8 @@ export async function profileBrowser({base,cookie,setProfileMode,setVerification
       } else if(mode==="pending") {
         const p = view.page;
         const requests = [];
-        p.on("request",request=>{if(request.url().includes("/web-api/auth/"))requests.push(request.url());});
+        // Las consultas de sesión en segundo plano no son envíos de código.
+        p.on("request",request=>{if(request.method()==="POST" && /\/web-api\/auth\/(?:verificar|reenviar-codigo)$/.test(new URL(request.url()).pathname))requests.push(request.url());});
         await p.getByRole("form",{name:"Verificación de correo",exact:true}).waitFor();
         await p.clock.install();
         await p.getByRole("button",{name:"Verificar correo",exact:true}).click();
@@ -142,7 +143,7 @@ export async function profileBrowser({base,cookie,setProfileMode,setVerification
         assert.equal(await p.getByText("Correo verificado",{exact:true}).count(),0);
         setVerificationMode("unavailable");
         await p.getByRole("button",{name:"Reenviar código",exact:true}).click();
-        await p.getByRole("alert").filter({hasText:"Autenticación no disponible"}).waitFor();
+        await p.getByRole("alert").filter({hasText:"No pudimos completar la solicitud"}).waitFor();
         setVerificationMode("limited");
         await p.getByRole("button",{name:"Reenviar código",exact:true}).click();
         await p.getByRole("alert").filter({hasText:"límite de intentos"}).waitFor();

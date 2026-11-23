@@ -82,3 +82,17 @@ Comprobaciones locales de esta limpieza:
 Estas comprobaciones no acreditan producción. Las rutas finales de perfil/foto
 de SCRUM-94/111 y su persistencia remota siguen pendientes de la entrega de
 Auth/Users. No se fusionaron las ramas pendientes 111/112 con esta limpieza.
+
+
+## Reconciliación posterior a 807dd3a (23/11/2026)
+
+El commit 91f84a5 volvió a introducir 14 archivos en la carpeta TI2 con espacios.
+Se compararon sus funciones con los equivalentes canónicos y no había funciones
+exclusivas que trasladar. Se retiró esa copia y se resolvieron los marcadores
+pendientes en Inicio, ubicación, pruebas y S3R-C02. Se conserva el cambio de
+807dd3a: id_propietario solo en el detalle de publicación con sesión autorizada.
+No hay diferencias en Integración 4 respecto de dev-web.
+
+SCRUM-111 se reconcilia con las rutas finales y conserva las rutas transitorias.
+Esta entrega incluye su migración aditiva de Auth, aplicada separadamente con
+autorización; no activa Convivencia/Reportes ni acredita un despliegue final.
