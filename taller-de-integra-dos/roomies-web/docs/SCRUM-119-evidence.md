@@ -18,11 +18,12 @@
 - Rama fuente limpia: `SCRUM-119-dev-web`, basada directamente en `origin/dev-web` SHA `0bffc08e81d8e036a2dec23e92f29b54f9ff068f`.
 - La tarea E02 se reaplicó desde sus dos commits funcionales y se resolvieron los conflictos conservando los contratos actuales de `dev-web`.
 - Las nuevas rutas y componentes quedaron bajo `taller-de-integra-dos/...`; se eliminó la copia accidental bajo `taller de integra dos/...`.
-- La rama local tiene una sola base común con `origin/dev-web`, evitando el error de GitHub `multiple merge bases found`. Aún no está publicada y no se ha creado un PR.
+- La rama publicada `origin/SCRUM-119-dev-web` tiene una sola base común con `origin/dev-web`, evitando el error de GitHub `multiple merge bases found`.
+- En este worktree no hay `node_modules` ni `venv`; por eso las pruebas focalizadas no se repitieron aquí. `git diff --check` pasó antes de publicar.
 
 ## Evidencia local sanitizada
 
-Entorno: Windows, PowerShell, Node `v24.20.0`, Python `3.14.7` usando `venv` del repositorio. Los resultados previos corresponden a la rama original `SCRUM-119-Conectar-Mi-arriendo-e-integrantes`; se repetirá la validación focalizada en `SCRUM-119-dev-web` antes de publicarla.
+Entorno: Windows, PowerShell. Los resultados de Node `v24.20.0` y Python `3.14.7` de abajo corresponden a la rama original `SCRUM-119-Conectar-Mi-arriendo-e-integrantes`; no se repitieron en la rama `SCRUM-119-dev-web` por falta de dependencias en el worktree.
 
 ```text
 frontend-next> node --test tests/arriendos.test.mjs
@@ -53,4 +54,5 @@ La suite Convivencia usa su runner offline y no acredita PostgreSQL. La prueba d
 
 - Jira: `SCRUM-119` (la URL del proyecto Jira no está configurada en el repositorio).
 - Pull request: no creado.
-- Rama original: [SCRUM-119-Conectar-Mi-arriendo-e-integrantes](https://github.com/Benjitapley/taller-de-integra-/tree/SCRUM-119-Conectar-Mi-arriendo-e-integrantes). La rama preparada para el PR es `SCRUM-119-dev-web`.
+- Pull request: no creado. Crear desde [SCRUM-119-dev-web](https://github.com/Benjitapley/taller-de-integra-/tree/SCRUM-119-dev-web) hacia `dev-web`.
+- Rama original: [SCRUM-119-Conectar-Mi-arriendo-e-integrantes](https://github.com/Benjitapley/taller-de-integra-/tree/SCRUM-119-Conectar-Mi-arriendo-e-integrantes).
