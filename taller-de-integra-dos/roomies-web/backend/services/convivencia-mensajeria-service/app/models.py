@@ -1,7 +1,8 @@
+from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 PositiveId = Annotated[int, Field(strict=True, gt=0, le=9223372036854775807)]
 
@@ -43,6 +44,43 @@ class Rental(BaseModel):
     cupos_totales: PositiveId
     version_capacidad: PositiveId
     ocupacion: Annotated[int, Field(strict=True, ge=0)]
+
+
+class MessageCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    contenido: Annotated[str, Field(strict=True, min_length=1, max_length=2000)]
+    id_cliente: UUID
+
+    @field_validator("contenido")
+    @classmethod
+    def non_blank(cls, value: str):
+        if not value.strip():
+            raise ValueError("El mensaje no puede estar vacío.")
+        return value
+
+
+class Conversation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_conversacion: PositiveId
+    id_arriendo: PositiveId
+    fecha_creacion: datetime
+
+
+class Message(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_mensaje: PositiveId
+    id_conversacion: PositiveId
+    id_remitente: PositiveId
+    nombre_remitente: str
+    contenido: Annotated[str, Field(min_length=1, max_length=2000)]
+    fecha_envio: datetime
+    id_cliente: UUID | None = None
+
+
+class MessagePage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    items: list[Message]
+    siguiente_cursor: str | None
 
 
 class ErrorResponse(BaseModel):

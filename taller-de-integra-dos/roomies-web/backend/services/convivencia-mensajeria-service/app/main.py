@@ -1,7 +1,9 @@
 import asyncio
+import base64
 from contextlib import asynccontextmanager
 import hmac
 import os
+import re
 from typing import Annotated
 from uuid import UUID
 
@@ -14,7 +16,7 @@ from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.http import configure
 from backend.service_runtime.security import confirmed_actor
 from backend.service_runtime.reporting_security import verify_report_service
-from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, unavailable
+from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, Conversation, Message, MessageCreate, MessagePage, unavailable
 from app.ports import HttpIdentity, HttpPublications
 from app.repository import PostgresRepository
 from app.service import Convivencia
@@ -81,7 +83,7 @@ def create_app(instance=None, run_recovery=True):
 
     @application.get("/health")
     def health():
-        return {"status": "ok", "scope": "base-incorporacion-v1"}
+        return {"status": "ok", "scope": "incorporacion-mensajeria-v1"}
 
     @application.get("/internal/convivencia/relacion")
     def rental_relationship(
@@ -107,6 +109,62 @@ def create_app(instance=None, run_recovery=True):
     @application.get("/api/arriendos/{id}", response_model=Rental, responses=errors)
     def detail(id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
         return application_service.repository.get(id, identity.user_id)
+
+    @application.get("/api/conversaciones", responses=errors)
+    def conversations(identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return {"items": application_service.repository.conversations(identity.user_id)}
+
+    @application.get("/api/conversaciones/{id}", response_model=Conversation, responses=errors)
+    def conversation(id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.repository.conversation(id, identity.user_id)
+
+    def cursor_for(user_id, conversation_id, message_id):
+        raw = f"{user_id}.{conversation_id}.{message_id}".encode("ascii")
+        return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+    def decode_cursor(value, user_id, conversation_id):
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", value):
+            raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422)
+        try:
+            raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)).decode("ascii")
+            owner, chat, message_id = raw.split(".")
+            if not all(part.isdigit() and int(part) > 0 for part in (owner, chat, message_id)):
+                raise ValueError()
+            if int(owner) != user_id or int(chat) != conversation_id:
+                raise ValueError()
+            return int(message_id)
+        except (ValueError, UnicodeDecodeError):
+            raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422) from None
+
+    @application.get("/api/conversaciones/{id}/mensajes", response_model=MessagePage, response_model_exclude_none=True, responses=errors)
+    def messages(
+        id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+        antes: Annotated[str | None, Query(max_length=512)] = None,
+        limite: Annotated[int, Query(ge=1, le=100)] = 20,
+        identity=Depends(confirmed_actor), application_service=Depends(service),
+    ):
+        # Verify membership before validating actor-bound cursors.
+        application_service.repository.conversation(id, identity.user_id)
+        before_id = decode_cursor(antes, identity.user_id, id) if antes is not None else None
+        page, next_before = application_service.repository.messages(id, identity.user_id, before_id, limite)
+        items = []
+        for row in page:
+            item = dict(row)
+            if item["id_remitente"] != identity.user_id:
+                item.pop("id_cliente", None)
+            items.append(item)
+        next_cursor = cursor_for(identity.user_id, id, next_before) if next_before is not None else None
+        return {"items": items, "siguiente_cursor": next_cursor}
+
+    @application.post("/api/conversaciones/{id}/mensajes", response_model=Message, responses=errors)
+    def send_message(
+        data: MessageCreate,
+        id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+        identity=Depends(confirmed_actor), application_service=Depends(service),
+    ):
+        return application_service.repository.send_message(
+            id, identity.user_id, identity.display_name or f"Integrante #{identity.user_id}", data.contenido, data.id_cliente,
+        )
 
     return application
 

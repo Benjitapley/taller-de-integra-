@@ -79,7 +79,8 @@ def initialize(data: Initialization, who=Depends(identity), service=Depends(user
 def internal_identity(request: Request, who=Depends(identity), service=Depends(users)):
     user=service.own(who[0])
     return {"subject":str(who[0]),"user_id":user.id_usuario,"email_confirmed":who[1],
-            "administrator":who[1] and has_admin_role(getattr(request.state,"verified_provider_user",{}))}
+            "administrator":who[1] and has_admin_role(getattr(request.state,"verified_provider_user",{})),
+            "nombre":user.nombre}
 
 
 def admission_service(x_roomies_service: Annotated[str | None, Header()] = None):
