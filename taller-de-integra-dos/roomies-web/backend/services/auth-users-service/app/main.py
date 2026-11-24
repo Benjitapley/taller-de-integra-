@@ -1,12 +1,18 @@
 """Punto de entrada FastAPI del servicio Auth/Users."""
 
+import asyncio
+from contextlib import asynccontextmanager
+import os
+
 from fastapi import FastAPI
 
 from app.api.routes.health import router as health_router
 from app.api.profile_api import register_profile_routes
 
-import asyncio
-from contextlib import asynccontextmanager
+use_shared_contract = (
+    os.environ.get("ROOMIES_LOCAL_MODE") == "1"
+    or os.environ.get("ROOMIES_RUNTIME_MODE") in {"supabase", "kubero"}
+)
 
 @asynccontextmanager
 async def lifespan(app):
@@ -18,8 +24,7 @@ async def lifespan(app):
             except Exception: pass  # La cola SQL conserva la limpieza para reintento.
             try: await asyncio.wait_for(stop.wait(),timeout=2)
             except TimeoutError: pass
-    import os
-    task=asyncio.create_task(cleanup()) if os.environ.get("ROOMIES_RUNTIME_MODE")=="supabase" or os.environ.get("ROOMIES_LOCAL_MODE")=="1" else None
+    task=asyncio.create_task(cleanup()) if use_shared_contract else None
     try: yield
     finally:
         stop.set()
@@ -28,9 +33,7 @@ async def lifespan(app):
 app = FastAPI(title="Roomies Auth/Users Service",lifespan=lifespan)
 app.include_router(health_router)
 
-# Supabase y la topología desechable comparten el contrato de perfil.
-import os
-if os.environ.get("ROOMIES_LOCAL_MODE") == "1" or os.environ.get("ROOMIES_RUNTIME_MODE") == "supabase":
+if use_shared_contract:
     from app.api.routes.local_users import router as local_router
     from backend.service_runtime.http import configure
     from fastapi.staticfiles import StaticFiles
