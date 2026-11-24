@@ -96,9 +96,9 @@ export async function handleSavePublication(
         !Number.isSafeInteger(result.id_publicacion) || (result.id_publicacion as number) < 1) return unavailable();
     if (method === "PUT") {
       if (result.id_publicacion !== Number(publicationId)) return unavailable();
-      return authReply(200, { id_publicacion: result.id_publicacion, mensaje: "Publicación actualizada" });
+      return authReply(200, publication(result));
     }
-    return authReply(201, { id_publicacion: result.id_publicacion, mensaje: "Publicación creada" });
+    return authReply(201, publication(result));
   } catch {
     return unavailable();
   }
