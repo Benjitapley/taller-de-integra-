@@ -82,7 +82,7 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
       <div className={styles.header}>
         <div>
           <h2 style={{ margin: 0 }}>Arriendo #{visibleArriendo.id_arriendo}</h2>
-          <p style={{ margin: "6px 0 0", color: "var(--muted)" }}>Publicación #{visibleArriendo.id_publicacion}</p>
+          <p style={{ margin: "6px 0 0", color: "var(--muted)" }}><Link href={`/publicaciones/${visibleArriendo.id_publicacion}`}>Ver publicación #{visibleArriendo.id_publicacion}</Link></p>
         </div>
         <ArriendoStatus estado={visibleArriendo.estado} />
       </div>

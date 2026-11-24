@@ -6,6 +6,15 @@ export type EstadoPostulacion =
   | "Cancelada";
 
 export type EstadoArriendo = "Activo" | "Finalizado";
+export type ArriendoDto = {
+  id_arriendo: number;
+  id_publicacion: number;
+  estado: EstadoArriendo;
+  cupos_totales: number;
+  integrantes_activos: number;
+  cupos_disponibles: number;
+  id_responsable: number | null;
+};
 export type EstadoTarea = "Pendiente" | "Completada";
 
 /** DTOs de lectura para las vistas de Convivencia/Mensajería (Contrato S3 §2.4).
@@ -13,7 +22,7 @@ export type EstadoTarea = "Pendiente" | "Completada";
  */
 export type IntegranteArriendoDto = {
   id_usuario: number;
-  nombre: string;
+  nombre: string | null;
   es_responsable: boolean;
   fecha_ingreso: string;
   activo: boolean;

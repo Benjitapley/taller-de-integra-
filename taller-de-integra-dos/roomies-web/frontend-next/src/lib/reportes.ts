@@ -27,7 +27,7 @@ const unavailable = () => authReply(503, { detail: "No pudimos confirmar la oper
 const invalid = () => authReply(422, { detail: "Revisa los datos del reporte." });
 
 export async function handleReports(request: Request, config: WebAuthConfig | null = authConfig(), transport: Transport = fetch) {
-  if (!config || !reportsEnabled(config)) return authReply(404, { detail: "Reportes no está habilitado." });
+  if (!config) return authReply(503, { detail: "La consulta de integrantes no está disponible." });
   const token = readToken(request.headers.get("cookie"), config);
   const expired = () => authReply(401, { detail: "Inicia sesión nuevamente." }, { "Set-Cookie": sessionCookie(config) });
   if (!token) return expired();
@@ -103,11 +103,15 @@ export async function handleReportMembers(request: Request, rental: string, conf
   if (!token) return authReply(401, { detail: "Inicia sesión nuevamente." });
   const query = new URL(request.url).searchParams;
   if (!/^[1-9][0-9]*$/.test(rental) || !Number.isSafeInteger(Number(rental)) ||
-      [...query.keys()].some(key => key !== "cursor" || query.getAll(key).length !== 1)) return invalid();
+      [...query.keys()].some(key => !["cursor", "activos"].includes(key) || query.getAll(key).length !== 1) ||
+      (query.has("activos") && !["true", "false"].includes(query.get("activos")!))) return invalid();
   const cursor = query.get("cursor");
   if (cursor !== null && !/^[A-Za-z0-9_.-]{1,2048}$/.test(cursor)) return invalid();
   try {
-    const response = await upstream(config, `/api/arriendos/${rental}/integrantes${cursor ? "?" + query : ""}`, token, undefined, transport);
+    const canonicalQuery = new URLSearchParams();
+    if (cursor) canonicalQuery.set("cursor", cursor);
+    if (query.has("activos")) canonicalQuery.set("activos", query.get("activos")!);
+    const response = await upstream(config, `/api/arriendos/${rental}/integrantes${canonicalQuery.size ? "?" + canonicalQuery : ""}`, token, undefined, transport);
     if (response.status === 401) return authReply(401, { detail: "Inicia sesión nuevamente." }, { "Set-Cookie": sessionCookie(config) });
     if (response.status === 403) return authReply(403, { detail: "No tienes permiso para consultar este arriendo." });
     if (response.status === 404) return authReply(404, { detail: "La consulta de integrantes no está disponible para este arriendo." });
@@ -117,8 +121,10 @@ export async function handleReportMembers(request: Request, rental: string, conf
     if (!Array.isArray(page?.items) || page.items.length > 20 || (page.siguiente_cursor !== null &&
         (typeof page.siguiente_cursor !== "string" || !/^[A-Za-z0-9_.-]{1,2048}$/.test(page.siguiente_cursor)))) return unavailable();
     const items = page.items.map((member: Record<string, unknown>) => {
-      if (!member || !positiveId(member.id_usuario)) throw new Error();
-      return { id_usuario: member.id_usuario, nombre: typeof member.nombre === "string" && member.nombre.length <= 200 ? member.nombre : null };
+      if (!member || !positiveId(member.id_usuario) || typeof member.activo !== "boolean" || typeof member.es_responsable !== "boolean" ||
+          typeof member.fecha_ingreso !== "string" || !Number.isFinite(Date.parse(member.fecha_ingreso))) throw new Error();
+      return { id_usuario: member.id_usuario, nombre: typeof member.nombre === "string" && member.nombre.length <= 200 ? member.nombre : null,
+        es_responsable: member.es_responsable, fecha_ingreso: member.fecha_ingreso, activo: member.activo };
     });
     return authReply(200, { items, siguiente_cursor: page.siguiente_cursor });
   } catch { return unavailable(); }

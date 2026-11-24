@@ -107,11 +107,12 @@ export async function handleSavePublication(
 export const handleCreatePublication = handleSavePublication;
 
 type Operation = "mine" | "edit" | "close";
-const fields = ["id_publicacion", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos_totales", "cupos_disponibles", "imagenes", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios", "id_region", "id_comuna", "reglas"];
+const fields = ["id_publicacion", "id_arriendo", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos_totales", "cupos_disponibles", "imagenes", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios", "id_region", "id_comuna", "reglas"];
 function publication(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || !("id_publicacion" in value) || !Number.isSafeInteger(value.id_publicacion) || Number(value.id_publicacion) < 1) throw new Error("Invalid response");
   const source = value as Record<string, unknown>;
   const result = Object.fromEntries(fields.filter((key) => key in source).map((key) => [key, source[key]]));
+  if ("id_arriendo" in result && result.id_arriendo !== null && (!Number.isSafeInteger(result.id_arriendo) || Number(result.id_arriendo) < 1)) delete result.id_arriendo;
   if (Array.isArray(source.imagenes)) result.imagenes = source.imagenes.map(image => ({ id_imagen: image.id_imagen, url: image.url, orden: image.orden }));
   return result;
 }
