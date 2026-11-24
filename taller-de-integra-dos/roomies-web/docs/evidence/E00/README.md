@@ -22,6 +22,28 @@ node taller-de-integra-dos/roomies-web/docs/evidence/E00/capture-e00.mjs
 
 El script usa Microsoft Edge instalado en Windows y el puerto local; no despliega servicios ni escribe en Jira. Resultado final: 9 PNG regenerados; código de salida 0. Los estados visibles se comprobaron en el DOM, al igual que el retorno de «Reintentar» en Mi arriendo y chat, el foco inicial, las etiquetas y el valor «Sin asignar» del modal, el cierre con Escape y la ausencia de «Nueva tarea» tras retirar el acceso. La confirmación de etiquetas/errores por TI4 sigue pendiente y no se infiere de estas capturas.
 
+## Rutas integradas actuales
+
+El 24/11/2026 se repitió la revisión sobre las rutas integradas de `SCRUM-117`, después del merge `e55440c7efe885acdf758f3d7407b6498582d786`, con el Gateway sintético local. Se comprobó en el DOM la recuperación al pulsar «Reintentar» en integrantes y chat, la etiqueta y el contorno de foco del compositor, el foco inicial y las etiquetas del diálogo de tarea, «Sin asignar», cierre con Escape y la ausencia de «Nueva tarea» con acceso retirado. Las capturas no representan datos reales ni una prueba manual con lector de pantalla.
+
+| Archivo | Estado visible |
+|---|---|
+| `10-actual-mi-arriendo-activo.png` | Panel activo de Mi arriendo |
+| `11-actual-integrantes.png` | Responsable e integrantes residentes separados de dueño y postulantes |
+| `12-actual-integrantes-error.png` | Error recuperable de integrantes |
+| `13-actual-chat-activo.png` | Chat activo y compositor |
+| `14-actual-chat-error.png` | Error recuperable de mensajes |
+| `15-actual-chat-acceso-retirado.png` | Acceso retirado en chat (403) |
+| `16-actual-tarea-sin-asignar.png` | Diálogo de tarea sin asignado |
+| `17-actual-tareas-sin-acceso.png` | Acceso a tareas denegado (403) |
+| `18-actual-sin-arriendo.png` | Sin arriendo activo (404) |
+
+Para reproducir esta revisión desde la raíz del repositorio:
+
+```powershell
+node taller-de-integra-dos/roomies-web/docs/evidence/E00/capture-e00-current.mjs
+```
+
 Validación ejecutada en `taller-de-integra-dos/roomies-web/frontend-next`:
 
 ```text

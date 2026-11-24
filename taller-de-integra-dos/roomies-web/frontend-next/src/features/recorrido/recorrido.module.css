@@ -10,7 +10,7 @@
 .homeBanner > span:nth-child(2), .journeyLink > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
 .homeBanner strong { color: var(--primary); }
 .homeBanner small, .journeyLink small { color: var(--muted); font-size: 12px; }
-.homeBanner b { color: #159765; font-size: 12px; }
+.homeBanner b { color: #087447; font-size: 12px; }
 .journeyLink strong { font-size: 16px; }
 .cardArrow { margin-left: auto; color: var(--primary); font-size: 34px; font-weight: 300; line-height: 1; }
 .iconBubble { display: inline-grid; place-items: center; flex: none; width: 46px; height: 46px; border-radius: 15px; background: var(--lavender); color: var(--primary); }
@@ -65,7 +65,7 @@
 .composer { display: grid; gap: 10px; padding: 18px 22px 20px; border-top: 1px solid var(--line); }
 .composer label { font-weight: 700; font-size: 13px; }
 .composer textarea { width: 100%; min-height: 64px; padding: 12px 15px; border: 1px solid var(--line); border-radius: 17px; color: var(--foreground); background: white; resize: vertical; }
-.composer textarea::placeholder, .taskForm input::placeholder, .taskForm textarea::placeholder { color: #79748f; }
+.composer textarea::placeholder, .taskForm input::placeholder, .taskForm textarea::placeholder { color: #736e88; }
 .composer textarea:disabled, .taskForm input:disabled, .taskForm textarea:disabled, .taskForm select:disabled { background: var(--soft); }
 .formFooter { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .formFooter small { color: var(--muted); font-size: 12px; }
