@@ -41,6 +41,85 @@ def test_health_and_unconfigured():
     assert result.headers["cache-control"] == "no-store"
 
 
+@pytest.fixture
+def kubero(monkeypatch):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "kubero")
+    for service in ("AUTH_USERS", "LISTADO", "MATCH", "CONVIVENCIA", "REPORTES"):
+        monkeypatch.setenv(f"{service}_UPSTREAM_URL", f"http://{service.lower().replace('_', '-')}.test")
+    return Settings.from_env()
+
+
+@pytest.mark.parametrize("method,path,host,status", [
+    ("GET", "/api/usuarios/me", "auth-users.test", 401),
+    ("GET", "/api/publicaciones", "listado.test", 200),
+    ("GET", "/conexiones/aceptadas", "match.test", 200),
+    ("GET", "/api/arriendos/mio", "convivencia.test", 200),
+    ("GET", "/api/admin/reportes", "reportes.test", 403),
+    ("PATCH", "/usuarios/me", "auth-users.test", 200),
+])
+def test_kubero_routes_and_upstream_authorization(kubero, method, path, host, status):
+    def handler(request):
+        assert request.method == method
+        assert request.url.path == path
+        assert request.url.host == host
+        assert request.headers["authorization"] == "Bearer synthetic-session"
+        assert "x-roomies-service" not in request.headers
+        return reply(status, content=b"{}")
+
+    result = exercise(handler, method, path, settings=kubero,
+                      headers={"Authorization": "Bearer synthetic-session", "X-Roomies-Service": "ignored"})
+    assert result.status_code == status
+
+
+@pytest.mark.parametrize("method,path,status", [
+    ("GET", "/docs", 404),
+    ("GET", "/openapi.json", 404),
+    ("GET", "/internal/v1/identidad", 404),
+    ("PUT", "/internal/publicaciones/7/reservas/abc/confirmacion", 404),
+    ("GET", "/conexiones/internal/v1/resumen", 404),
+    ("GET", "/api/internal/conexiones/relacion", 404),
+    ("GET", "/api/publicaciones/7/%69nternal", 404),
+    ("DELETE", "/api/usuarios/me", 405),
+    ("POST", "/api/arriendos/mio", 405),
+])
+def test_kubero_denies_unlisted_routes_and_methods(kubero, method, path, status):
+    assert exercise(unexpected, method, path, settings=kubero).status_code == status
+
+
+@pytest.mark.parametrize("failure,status", [(httpx.ConnectError, 502), (httpx.ReadTimeout, 504)])
+def test_kubero_upstream_failure(kubero, failure, status):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        raise failure("simulated upstream failure", request=request)
+
+    result = exercise(handler, path="/api/reportes/mios", settings=kubero)
+    assert result.status_code == status
+    assert len(calls) == 1
+
+
+def test_kubero_unconfigured_upstream(monkeypatch):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "kubero")
+    monkeypatch.delenv("REPORTES_UPSTREAM_URL", raising=False)
+    assert exercise(unexpected, path="/api/reportes/mios", settings=Settings.from_env()).status_code == 503
+
+
+@pytest.mark.parametrize("mode,local,docs_status", [
+    ("disposable", "1", 200),
+    ("supabase", "0", 200),
+    ("kubero", "1", 404),
+])
+def test_business_routes_and_docs_by_mode(monkeypatch, mode, local, docs_status):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", mode)
+    monkeypatch.setenv("ROOMIES_LOCAL_MODE", local)
+    monkeypatch.setenv("LISTADO_UPSTREAM_URL", "http://listado.test")
+    settings = Settings.from_env()
+    assert exercise(unexpected, path="/docs", settings=settings).status_code == docs_status
+    assert exercise(unexpected, path="/openapi.json", settings=settings).status_code == docs_status
+    assert exercise(lambda _: reply(200), path="/api/regiones", settings=settings).status_code == 200
+
+
 def test_report_idempotency_key_survives_gateway_without_browser_credentials():
     def handler(request):
         assert request.url.host == "reportes.test"

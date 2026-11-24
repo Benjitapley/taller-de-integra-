@@ -36,7 +36,10 @@ def test_canonical_routes_and_cursor_reach_listado(path):
         assert result.headers["cache-control"] == "no-store"
 
 
-def test_five_maximum_images_preserve_multipart_and_retry_key():
+@pytest.mark.parametrize("mode,local", [("disposable", "1"), ("supabase", "0"), ("kubero", "0")])
+def test_five_maximum_images_preserve_multipart_and_retry_key(monkeypatch, mode, local):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", mode)
+    monkeypatch.setenv("ROOMIES_LOCAL_MODE", local)
     key = "b1b28203-34f8-43cf-9728-dce365ca3eaa"
     boundary = "roomies-publication-test"
     part = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"imagenes\"; filename=\"photo.jpg\"\r\n"
@@ -59,11 +62,19 @@ def test_five_maximum_images_preserve_multipart_and_retry_key():
     assert len(calls) == 1
 
 
-def test_request_and_response_limits_are_independent():
-    assert Settings.from_env().max_request_bytes == 26_000_000
+def test_request_and_response_limits_are_independent(monkeypatch):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "kubero")
+    monkeypatch.setenv("ROOMIES_LOCAL_MODE", "0")
+    settings = Settings.from_env()
+    assert settings.max_request_bytes == 26_000_000
+    assert settings.max_response_bytes == 6_291_456
     assert Settings(max_request_bytes=32_000_000).max_request_bytes == 32_000_000
     with pytest.raises(ValueError):
         Settings(max_response_bytes=16_777_217)
+    monkeypatch.setenv("GATEWAY_MAX_REQUEST_BYTES", "32")
+    response = exercise(lambda _: pytest.fail("La carga debe rechazarse antes del upstream."),
+                        "/api/publicaciones", "POST", content=b"x" * 33)
+    assert response.status_code == 413
 
 
 def test_occupancy_confirmation_remains_internal():

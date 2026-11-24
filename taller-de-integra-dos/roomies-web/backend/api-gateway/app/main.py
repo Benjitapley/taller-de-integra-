@@ -74,7 +74,7 @@ def create_app(settings: Settings | None = None, *, transport=None):
         return {"status": "ok"}
 
     app.add_api_route("/usuarios/me", forward, methods=["GET", "PATCH"])
-    if config.local_mode:
+    if config.business_routes_enabled:
         from .local_routes import dispatch
         app.add_api_route("/{path:path}",dispatch,methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"])
     return app
