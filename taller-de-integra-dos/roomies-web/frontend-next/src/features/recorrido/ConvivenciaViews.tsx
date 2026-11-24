@@ -17,8 +17,8 @@ function ResourceMessage<T>({ state, emptyTitle }: { state: EstadoRecurso<T>; em
   return null;
 }
 
-export function MembersView({ state }: { state: EstadoRecurso<IntegranteArriendoDto[]> }) {
-  if (state.status !== "ready") return <Card><ResourceMessage state={state} emptyTitle="Todavía no hay integrantes registrados." /></Card>;
+export function MembersView({ state, emptyTitle = "Todavía no hay integrantes registrados." }: { state: EstadoRecurso<IntegranteArriendoDto[]>; emptyTitle?: string }) {
+  if (state.status !== "ready") return <Card><ResourceMessage state={state} emptyTitle={emptyTitle} /></Card>;
   const members = state.data.filter((member) => member.activo);
   const owner = members.filter((member) => member.es_responsable);
   const residents = members.filter((member) => !member.es_responsable);
@@ -31,7 +31,7 @@ export function MembersView({ state }: { state: EstadoRecurso<IntegranteArriendo
 
 function MemberList({ members, empty }: { members: IntegranteArriendoDto[]; empty: string }) {
   return <Card>{members.length === 0 ? <p>{empty}</p> : <ul className={styles.list}>{members.map((member) => <li key={member.id_usuario}>
-    <strong>{member.nombre}</strong><span>{member.es_responsable ? "Arrendador" : "Integrante"}</span>
+    <strong>{member.nombre || `Integrante #${member.id_usuario}`}</strong><span>{member.es_responsable ? "Arrendador responsable" : "Integrante residente"}</span>
   </li>)}</ul>}</Card>;
 }
 

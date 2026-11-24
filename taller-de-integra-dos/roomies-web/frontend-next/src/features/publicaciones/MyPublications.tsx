@@ -69,6 +69,7 @@ export default function MyPublications() {
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
           <Link href={`/publicaciones/${item.id_publicacion}`}>Ver detalle</Link>
+          {item.id_arriendo ? <Link href={`/mi-arriendo/${item.id_arriendo}`}>Ver integrantes del arriendo</Link> : null}
           {item.tipo === "Arrendador" && <Link href={`/postulantes/${item.id_publicacion}`}>Ver postulantes</Link>}
           <Link href={`/editar-publicacion?id=${item.id_publicacion}`} style={{ display: "inline-block", textDecoration: "none", padding: "10px 14px", borderRadius: 8, background: "#e5e7eb", color: "#111827", fontWeight: 700 }}>Editar</Link>
           <Button variant="secondary" disabled={item.estado === "Cerrada"} onClick={() => void close(item.id_publicacion)}>Cerrar publicación</Button>
