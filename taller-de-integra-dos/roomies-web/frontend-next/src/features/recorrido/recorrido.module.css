@@ -33,4 +33,7 @@
 .formFooter small, .formFooter span { color: var(--muted); font-size: 12px; }
 .taskList li { align-items: flex-start; }
 .taskList li p { margin: 4px 0; color: var(--muted); }
+.taskControls { display: grid; justify-items: end; gap: 8px; }
+.taskControls label { display: grid; gap: 6px; font-size: 12px; }
+.taskControls select { min-height: 40px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: white; }
 @media (max-width: 640px) { .facts, .overviewGrid { grid-template-columns: 1fr; } }

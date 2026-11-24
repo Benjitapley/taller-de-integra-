@@ -1,91 +1,116 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useConvivenciaDemo } from "@/hooks/useConvivenciaDemo";
-import type { TareaConvivencia } from "@/types/Convivencia";
-
-// Subpantalla de MOB-11: detalle completo de tareas de convivencia,
-// separadas en "esta semana" (las mismas de la tarjeta de Mensajes) y
-// "próximas" (semana siguiente). Se llega acá tocando "Ver todo" en
-// Organización de la casa.
-
-function FilaTarea({ tarea }: { tarea: TareaConvivencia }) {
-  return (
-    <View style={styles.filaTarea}>
-      <View style={styles.iconoCategoria}>
-        <Ionicons name={tarea.icono as never} size={18} color="#4F46E5" />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.categoria}>{tarea.categoria}</Text>
-        {tarea.frecuenciaTexto ? <Text style={styles.frecuencia}>{tarea.frecuenciaTexto}</Text> : null}
-      </View>
-      <View style={styles.badgeDia}>
-        <Text style={styles.badgeDiaTexto}>{tarea.diaTexto}</Text>
-      </View>
-      <Image source={{ uri: tarea.responsable.fotoUrl }} style={styles.avatar} />
-    </View>
-  );
-}
-
-function Seccion({ titulo, tareas }: { titulo: string; tareas: TareaConvivencia[] }) {
-  return (
-    <View style={styles.seccion}>
-      <Text style={styles.tituloSeccion}>{titulo}</Text>
-      <View style={styles.tarjeta}>
-        {tareas.map((tarea, indice) => (
-          <View key={tarea.id}>
-            <FilaTarea tarea={tarea} />
-            {indice < tareas.length - 1 && <View style={styles.separador} />}
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
+import { useFocusEffect } from "expo-router";
+import { useCallback, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { completarTarea, listarTareas, obtenerArriendoActual, type EstadoTarea, type PaginaTareas } from "@/services/tareasService";
 
 export default function TareasConvivencia() {
-  const { tareas, tareasProximas } = useConvivenciaDemo();
+  const [arriendo, setArriendo] = useState<number | null>(null);
+  const [estado, setEstado] = useState<EstadoTarea>("Pendiente");
+  const [pagina, setPagina] = useState<PaginaTareas | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const peticion = useRef(0);
 
-  return (
-    <ScrollView style={styles.pantalla} contentContainerStyle={styles.contenedor}>
-      <Seccion titulo="Tareas de esta semana" tareas={tareas} />
-      <Seccion titulo="Próximas tareas" tareas={tareasProximas} />
-    </ScrollView>
-  );
+  const cargar = useCallback(async (filtro: EstadoTarea, idArriendo?: number, cursor?: string) => {
+    const actual = ++peticion.current;
+    setCargando(true); setError("");
+    const rental = idArriendo;
+    const rentalResult = rental ? { exito: true as const, datos: rental } : await obtenerArriendoActual();
+    if (actual !== peticion.current) return;
+    if (!rentalResult.exito) {
+      setPagina(null); setArriendo(null); setError(rentalResult.error); setCargando(false);
+      return;
+    }
+    const id = rentalResult.datos;
+    setArriendo(id);
+    const resultado = await listarTareas(id, filtro, cursor);
+    if (actual !== peticion.current) return;
+    if (!resultado.exito) {
+      if (resultado.estadoHttp === 403 || resultado.estadoHttp === 404) { setPagina(null); setArriendo(null); }
+      setError(resultado.error); setCargando(false);
+      return;
+    }
+    setPagina(anterior => ({ ...resultado.datos,
+      items: cursor && anterior ? [...anterior.items, ...resultado.datos.items] : resultado.datos.items }));
+    setCargando(false);
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    void cargar(estado);
+    const referencia = peticion;
+    return () => { referencia.current++; };
+  }, [cargar, estado]));
+
+  function filtrar(nuevo: EstadoTarea) {
+    if (nuevo === estado) return;
+    setEstado(nuevo); setPagina(null); setMensaje("");
+  }
+
+  async function completar(id: number) {
+    if (guardando || !arriendo) return;
+    setGuardando(true); setError(""); setMensaje("");
+    const resultado = await completarTarea(id);
+    if (!resultado.exito) {
+      setError(resultado.error);
+    } else {
+      setMensaje("Tarea completada y guardada.");
+      await cargar(estado, arriendo);
+    }
+    setGuardando(false);
+  }
+
+  return <ScrollView style={styles.pantalla} contentContainerStyle={styles.contenedor}>
+    <Text style={styles.subtitulo}>Organiza las tareas con los integrantes de tu arriendo.</Text>
+    <View style={styles.filtros}>
+      {(["Pendiente", "Completada"] as const).map(opcion => <Pressable key={opcion}
+        accessibilityRole="button" accessibilityState={{ selected: estado === opcion }}
+        style={[styles.filtro, estado === opcion && styles.filtroActivo]} onPress={() => filtrar(opcion)}>
+        <Text style={[styles.filtroTexto, estado === opcion && styles.filtroTextoActivo]}>{opcion === "Pendiente" ? "Pendientes" : "Completadas"}</Text>
+      </Pressable>)}
+    </View>
+    {mensaje ? <Text accessibilityRole="summary" style={styles.mensaje}>{mensaje}</Text> : null}
+    {error ? <View style={styles.alerta}><Text style={styles.error}>{error}</Text><Pressable accessibilityRole="button" onPress={() => void cargar(estado)}><Text style={styles.enlace}>Reintentar</Text></Pressable></View> : null}
+    {cargando ? <ActivityIndicator accessibilityLabel="Cargando tareas" color="#4F46E5" /> : null}
+    {!cargando && pagina?.items.length === 0 ? <Text style={styles.vacio}>No hay tareas {estado.toLowerCase()}s.</Text> : null}
+    {pagina?.items.map(tarea => {
+      const propia = tarea.estado === "Pendiente" && tarea.id_asignado === pagina.id_usuario_actual;
+      return <View key={tarea.id_tarea} style={styles.tarjeta}>
+        <View style={styles.fila}><Text style={styles.nombre}>{tarea.titulo}</Text><Text style={styles.estado}>{tarea.estado}</Text></View>
+        {tarea.descripcion ? <Text style={styles.descripcion}>{tarea.descripcion}</Text> : null}
+        <Text style={styles.asignado}>{tarea.id_asignado === null ? "Sin asignar" : propia ? "Asignada a ti" : `Asignada a integrante #${tarea.id_asignado}`}</Text>
+        {propia ? <Pressable accessibilityRole="button" disabled={guardando} style={[styles.boton, guardando && styles.botonInactivo]}
+          onPress={() => void completar(tarea.id_tarea)}><Text style={styles.botonTexto}>{guardando ? "Guardando…" : "Completar tarea"}</Text></Pressable> : null}
+      </View>;
+    })}
+    {pagina?.siguiente_cursor && arriendo ? <Pressable accessibilityRole="button" disabled={cargando} style={styles.mas}
+      onPress={() => void cargar(estado, arriendo, pagina.siguiente_cursor!)}><Text style={styles.enlace}>Más tareas</Text></Pressable> : null}
+  </ScrollView>;
 }
 
 const styles = StyleSheet.create({
-  pantalla: { flex: 1, backgroundColor: "#F9FAFB" },
-  contenedor: { padding: 16, gap: 20 },
-  seccion: { gap: 8 },
-  tituloSeccion: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  tarjeta: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: 14,
-  },
-  filaTarea: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 12,
-  },
-  iconoCategoria: {
-    backgroundColor: "#EEF2FF",
-    borderRadius: 10,
-    padding: 8,
-  },
-  categoria: { fontSize: 14, fontWeight: "700", color: "#111827" },
-  frecuencia: { fontSize: 12, color: "#6B7280", marginTop: 1 },
-  badgeDia: {
-    backgroundColor: "#EEF2FF",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  badgeDiaTexto: { fontSize: 12, color: "#4F46E5", fontWeight: "600" },
-  avatar: { width: 32, height: 32, borderRadius: 16 },
-  separador: { height: 1, backgroundColor: "#F3F4F6" },
+  pantalla: { flex: 1, backgroundColor: "#FAF9FE" },
+  contenedor: { padding: 20, gap: 14 },
+  subtitulo: { color: "#6B7280", fontSize: 13 },
+  filtros: { flexDirection: "row", gap: 8 },
+  filtro: { flex: 1, borderWidth: 1, borderColor: "#DCD6FA", backgroundColor: "#fff", borderRadius: 12, padding: 12, alignItems: "center" },
+  filtroActivo: { backgroundColor: "#4F46E5" },
+  filtroTexto: { color: "#4F46E5", fontWeight: "700" },
+  filtroTextoActivo: { color: "#fff" },
+  tarjeta: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E8E2FA", borderRadius: 18, padding: 16, gap: 8 },
+  fila: { flexDirection: "row", justifyContent: "space-between", gap: 12, alignItems: "center" },
+  nombre: { flex: 1, fontSize: 16, fontWeight: "700", color: "#111827" },
+  estado: { color: "#4F46E5", fontSize: 12 },
+  descripcion: { color: "#4B5563" },
+  asignado: { color: "#6B7280", fontSize: 12 },
+  boton: { backgroundColor: "#4F46E5", borderRadius: 10, padding: 12, alignItems: "center" },
+  botonInactivo: { opacity: 0.5 },
+  botonTexto: { color: "#fff", fontWeight: "700" },
+  alerta: { backgroundColor: "#FEF2F2", padding: 12, borderRadius: 10, gap: 8 },
+  error: { color: "#991B1B" },
+  mensaje: { color: "#047857" },
+  enlace: { color: "#4F46E5", fontWeight: "700" },
+  vacio: { color: "#6B7280", paddingVertical: 20 },
+  mas: { alignItems: "center", padding: 12 },
 });

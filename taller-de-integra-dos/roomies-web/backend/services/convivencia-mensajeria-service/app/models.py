@@ -83,6 +83,49 @@ class MessagePage(BaseModel):
     siguiente_cursor: str | None
 
 
+class TaskCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    titulo: Annotated[str, Field(strict=True, min_length=1, max_length=120)]
+    descripcion: Annotated[str, Field(strict=True, max_length=1000)] = ""
+    id_asignado: PositiveId | None = None
+
+    @field_validator("titulo")
+    @classmethod
+    def title_not_blank(cls, value: str):
+        if not value.strip():
+            raise ValueError("El título es obligatorio.")
+        return value.strip()
+
+
+class TaskAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_asignado: PositiveId
+
+
+class TaskState(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    estado: Literal["Completada"]
+
+
+class Task(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_tarea: PositiveId
+    id_arriendo: PositiveId
+    titulo: str
+    descripcion: str | None
+    estado: Literal["Pendiente", "Completada"]
+    id_creador: PositiveId
+    id_asignado: PositiveId | None
+    fecha_creacion: datetime
+
+
+class TaskPage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    items: list[Task]
+    siguiente_cursor: str | None
+    id_usuario_actual: PositiveId
+
+
 class ErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     detail: str

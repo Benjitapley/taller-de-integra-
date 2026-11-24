@@ -27,6 +27,11 @@ Aplicar `migrations/004_mensajeria.up.sql` después de `001-003`. Crea las
 conversaciones existentes y habilita las tablas privadas de mensajes; los chats
 de arriendos nuevos se crean en la misma transacción que la primera pertenencia.
 
+Aplicar `migrations/005_tareas.up.sql` después de `004` con el rol migrador.
+Crea tareas privadas por arriendo y desasigna automáticamente las pendientes
+cuando una pertenencia pasa de Activa a Inactiva. La migración no se aplica al
+iniciar la API.
+
 ## Contrato y recuperación
 
 - `POST /internal/incorporaciones`: credencial `X-Roomies-Service` e
@@ -43,6 +48,14 @@ de arriendos nuevos se crean en la misma transacción que la primera pertenencia
   UUID `id_cliente`. El mismo UUID con el mismo texto devuelve el mensaje
   existente; el mismo UUID con otro texto responde 409. El UUID solo aparece
   para su remitente.
+- `GET /api/arriendos/{id}/tareas?estado=Pendiente|Completada&limite=20&cursor=...`:
+  solo integrante activo; cursor ligado al usuario, arriendo y estado. Responde
+  `items`, `siguiente_cursor` e `id_usuario_actual`.
+- `POST /api/arriendos/{id}/tareas`: título 1–120, descripción hasta 1000,
+  asignado activo opcional. `PATCH /api/tareas/{id}` reasigna una pendiente a
+  un integrante activo; `PATCH /api/tareas/{id}/estado` con `Completada` solo
+  lo acepta del asignado activo. Un actor no autorizado recibe 403 y un
+  asignado inválido o estado no permitido, 422.
 - La reserva de Listado es firme, no caduca unilateralmente y usa la misma UUID.
   La versión/capacidad queda congelada en el arriendo para este corte.
 - El ledger y la intención de reservar se confirman antes del HTTP externo.

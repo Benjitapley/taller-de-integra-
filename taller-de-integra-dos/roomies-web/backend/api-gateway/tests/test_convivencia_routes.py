@@ -106,3 +106,31 @@ def test_mensajeria_conserva_denegacion_directa_de_convivencia():
     assert result.status_code == 403
     assert result.json() == {"detail": "No tienes acceso."}
     assert result.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("method,path", [
+    ("GET", "/api/arriendos/4/tareas"),
+    ("POST", "/api/arriendos/4/tareas"),
+    ("GET", "/api/arriendos/4/integrantes"),
+    ("PATCH", "/api/tareas/17"),
+    ("PATCH", "/api/tareas/17/estado"),
+])
+def test_tareas_se_enrutan_al_mismo_servicio_y_conservan_403(method, path):
+    payload = b'{"estado":"Completada"}' if method == "PATCH" else b'{"titulo":"Aseo"}' if method == "POST" else b""
+
+    def handler(request):
+        assert request.url.host == "convivencia.test"
+        assert request.url.path == path
+        assert request.headers["authorization"] == "Bearer account-token"
+        assert "x-roomies-service" not in request.headers
+        assert request.content == payload
+        return reply(403, content=b'{"detail":"Sin acceso."}', headers={"Content-Type": "application/json"})
+
+    result = exercise(handler, method=method, path=path,
+                      settings=Settings(local_mode=True, convivencia_upstream="http://convivencia.test"),
+                      headers={"Authorization": "Bearer account-token", "X-Roomies-Service": "must-not-forward",
+                               **({"Content-Type": "application/json"} if payload else {})},
+                      content=payload if payload else None)
+    assert result.status_code == 403
+    assert result.json() == {"detail": "Sin acceso."}
+    assert result.headers["cache-control"] == "no-store"

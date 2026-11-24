@@ -16,7 +16,7 @@ from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.http import configure
 from backend.service_runtime.security import confirmed_actor
 from backend.service_runtime.reporting_security import verify_report_service
-from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, Conversation, Message, MessageCreate, MessagePage, unavailable
+from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, Conversation, Message, MessageCreate, MessagePage, Task, TaskPage, TaskCreate, TaskAssign, TaskState, unavailable
 from app.ports import HttpIdentity, HttpPublications
 from app.repository import PostgresRepository
 from app.service import Convivencia
@@ -32,6 +32,25 @@ def internal_service(x_roomies_service: Annotated[str | None, Header()] = None):
 
 def service(request: Request):
     return request.app.state.convivencia
+
+
+def task_cursor(user_id: int, rental_id: int, state: str, task_id: int) -> str:
+    raw = f"{user_id}.{rental_id}.{state}.{task_id}".encode("ascii")
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def decode_task_cursor(value: str, user_id: int, rental_id: int, state: str) -> int:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", value):
+        raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422)
+    try:
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)).decode("ascii")
+        owner, rental, cursor_state, task_id = raw.split(".")
+        if (owner != str(user_id) or rental != str(rental_id) or cursor_state != state or
+                not task_id.isdigit() or int(task_id) < 1 or int(task_id) > 9223372036854775807):
+            raise ValueError()
+        return int(task_id)
+    except (ValueError, UnicodeDecodeError):
+        raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422) from None
 
 
 def create_app(instance=None, run_recovery=True):
@@ -110,6 +129,19 @@ def create_app(instance=None, run_recovery=True):
     def detail(id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
         return application_service.repository.get(id, identity.user_id)
 
+    @application.get("/api/arriendos/{id}/integrantes", responses=errors)
+    def members(id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+                cursor: Annotated[str | None, Query(max_length=128)] = None,
+                activos: bool = True, identity=Depends(confirmed_actor), application_service=Depends(service)):
+        if not activos:
+            raise ServiceError("INVALID_FILTER", "Solo se consultan integrantes activos.", 422)
+        application_service.repository._active_member_check(id, identity.user_id)
+        after = decode_task_cursor(cursor, identity.user_id, id, "Miembro") if cursor else 0
+        rows, next_id = application_service.repository.active_members(id, identity.user_id, after, 20)
+        return {"items": [{"id_usuario": row["id_usuario"], "nombre": None, "es_responsable": False,
+                            "fecha_ingreso": row["fecha_ingreso"], "activo": True} for row in rows],
+                "siguiente_cursor": task_cursor(identity.user_id, id, "Miembro", next_id) if next_id else None}
+
     @application.get("/api/conversaciones", responses=errors)
     def conversations(identity=Depends(confirmed_actor), application_service=Depends(service)):
         return {"items": application_service.repository.conversations(identity.user_id)}
@@ -165,6 +197,36 @@ def create_app(instance=None, run_recovery=True):
         return application_service.repository.send_message(
             id, identity.user_id, identity.display_name or f"Integrante #{identity.user_id}", data.contenido, data.id_cliente,
         )
+
+    @application.get("/api/arriendos/{id}/tareas", response_model=TaskPage, responses=errors)
+    def tasks(
+        id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+        estado: Annotated[str, Query(pattern="^(Pendiente|Completada)$")] = "Pendiente",
+        cursor: Annotated[str | None, Query(max_length=128)] = None,
+        limite: Annotated[int, Query(ge=1, le=100)] = 20,
+        identity=Depends(confirmed_actor), application_service=Depends(service),
+    ):
+        # Consultar la pertenencia incluso si el cursor es inválido.
+        application_service.repository._active_member_check(id, identity.user_id)
+        before = decode_task_cursor(cursor, identity.user_id, id, estado) if cursor else None
+        items, next_id = application_service.repository.list_tasks(id, identity.user_id, estado, before, limite)
+        return {"items": items, "siguiente_cursor": task_cursor(identity.user_id, id, estado, next_id) if next_id else None,
+                "id_usuario_actual": identity.user_id}
+
+    @application.post("/api/arriendos/{id}/tareas", response_model=Task, status_code=201, responses=errors)
+    def create_task(data: TaskCreate, id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+                    identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.repository.create_task(id, identity.user_id, data.titulo, data.descripcion, data.id_asignado)
+
+    @application.patch("/api/tareas/{id}", response_model=Task, responses=errors)
+    def reassign_task(data: TaskAssign, id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+                      identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.repository.reassign_task(id, identity.user_id, data.id_asignado)
+
+    @application.patch("/api/tareas/{id}/estado", response_model=Task, responses=errors)
+    def complete_task(data: TaskState, id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+                      identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.repository.complete_task(id, identity.user_id)
 
     return application
 

@@ -1,152 +1,54 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { TareaConvivencia } from "@/types/Convivencia";
-
-// Este es el componente que implementa MOB-11:
-// "Visualización inicial de tareas de convivencia utilizando datos simulados".
-// Se muestra en fila horizontal deslizable (en vez de una fila fija de 4
-// columnas como en el mockup) para que las tarjetas no queden apretadas en
-// un celular angosto — mismo contenido, ajuste de responsividad.
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { TareaApi } from "@/services/tareasService";
 
 type Props = {
-  tareas: TareaConvivencia[];
-  onVerTodo?: () => void;
-  onAgregar?: () => void;
+  tareas: TareaApi[];
+  idUsuarioActual: number | null;
+  cargando: boolean;
+  error: string;
+  onVerTodo: () => void;
+  onReintentar: () => void;
 };
 
-export default function OrganizacionCasaCard({ tareas, onVerTodo, onAgregar }: Props) {
-  return (
-    <View style={styles.tarjeta}>
-      <View style={styles.encabezado}>
-        <View style={styles.filaTitulo}>
-          <Ionicons name="clipboard-outline" size={16} color="#4F46E5" />
-          <Text style={styles.titulo}>Organización de la casa</Text>
-        </View>
-        <View style={styles.filaAcciones}>
-          {onVerTodo && (
-            <Pressable onPress={onVerTodo} hitSlop={8}>
-              <Text style={styles.verTodo}>Ver todo ›</Text>
-            </Pressable>
-          )}
-          {onAgregar && (
-            <Pressable style={styles.botonAgregar} onPress={onAgregar} hitSlop={8}>
-              <Ionicons name="add" size={18} color="#4F46E5" />
-            </Pressable>
-          )}
-        </View>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fila}>
-        {tareas.map((tarea) => (
-          <TareaItem key={tarea.id} tarea={tarea} />
-        ))}
-      </ScrollView>
+export default function OrganizacionCasaCard({ tareas, idUsuarioActual, cargando, error, onVerTodo, onReintentar }: Props) {
+  return <View style={styles.tarjeta}>
+    <View style={styles.encabezado}>
+      <Text style={styles.titulo}>Organización de la casa</Text>
+      <Pressable accessibilityRole="button" onPress={onVerTodo} hitSlop={8}>
+        <Text style={styles.verTodo}>Ver todo</Text>
+      </Pressable>
     </View>
-  );
-}
-
-function TareaItem({ tarea }: { tarea: TareaConvivencia }) {
-  return (
-    <View style={styles.item}>
-      <View style={styles.filaCategoria}>
-        <Ionicons name={tarea.icono as never} size={14} color="#4F46E5" />
-        <Text style={styles.categoria} numberOfLines={1}>{tarea.categoria}</Text>
-      </View>
-
-      {tarea.frecuenciaTexto ? <Text style={styles.frecuencia}>{tarea.frecuenciaTexto}</Text> : null}
-
-      <View style={styles.badgeDia}>
-        <Text style={styles.badgeDiaTexto} numberOfLines={2}>{tarea.diaTexto}</Text>
-      </View>
-
-      <Image source={{ uri: tarea.responsable.fotoUrl }} style={styles.avatar} />
-    </View>
-  );
+    {cargando ? <Text style={styles.aviso}>Cargando tareas…</Text> : null}
+    {!cargando && error ? <Pressable accessibilityRole="button" onPress={onReintentar}>
+      <Text style={styles.aviso}>{error} · Reintentar</Text>
+    </Pressable> : null}
+    {!cargando && !error && tareas.length === 0 ? <Text style={styles.aviso}>No hay tareas pendientes.</Text> : null}
+    {!cargando && !error && tareas.length > 0 ? <ScrollView horizontal showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.fila}>
+      {tareas.slice(0, 4).map(tarea => <Pressable key={tarea.id_tarea} accessibilityRole="button"
+        accessibilityLabel={`${tarea.titulo}, ${tarea.id_asignado === idUsuarioActual ? "asignada a ti" : "pendiente"}`}
+        onPress={onVerTodo} style={styles.item}>
+        <Text style={styles.nombre} numberOfLines={2}>{tarea.titulo}</Text>
+        <Text style={styles.estado}>Pendiente</Text>
+        <View style={styles.responsable}><Text style={styles.responsableTexto}>
+          {tarea.id_asignado === idUsuarioActual ? "Tú" : tarea.id_asignado === null ? "—" : `#${tarea.id_asignado}`}
+        </Text></View>
+      </Pressable>)}
+    </ScrollView> : null}
+  </View>;
 }
 
 const styles = StyleSheet.create({
-  tarjeta: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 16,
-    gap: 12,
-  },
-  encabezado: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  filaTitulo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  titulo: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  filaAcciones: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  botonAgregar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#EEF2FF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  verTodo: {
-    fontSize: 12,
-    color: "#4F46E5",
-    fontWeight: "600",
-  },
-  fila: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  item: {
-    width: 110,
-    backgroundColor: "#F5F3FF",
-    borderRadius: 12,
-    padding: 10,
-    alignItems: "flex-start",
-    gap: 6,
-  },
-  filaCategoria: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  categoria: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  frecuencia: {
-    fontSize: 11,
-    color: "#6B7280",
-  },
-  badgeDia: {
-    backgroundColor: "#EEF2FF",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  badgeDiaTexto: {
-    fontSize: 11,
-    color: "#4F46E5",
-    fontWeight: "600",
-  },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    marginTop: 2,
-  },
+  tarjeta: { backgroundColor: "#F7F5FF", borderRadius: 20, borderWidth: 1, borderColor: "#E5DFFF", padding: 10, gap: 9 },
+  encabezado: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 4 },
+  titulo: { fontSize: 16, fontWeight: "700", color: "#5139E8", flexShrink: 1 },
+  verTodo: { fontSize: 12, color: "#5139E8" },
+  fila: { flexDirection: "row", gap: 8 },
+  item: { width: 76, height: 94, backgroundColor: "#fff", borderRadius: 15, borderWidth: 1,
+    borderColor: "#E8E2FA", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, paddingHorizontal: 4 },
+  nombre: { fontSize: 11, fontWeight: "700", color: "#5139E8", textAlign: "center" },
+  estado: { fontSize: 10, color: "#85819B" },
+  responsable: { minWidth: 26, borderRadius: 10, paddingHorizontal: 5, paddingVertical: 2, backgroundColor: "#E9E2FF", alignItems: "center" },
+  responsableTexto: { color: "#5139E8", fontWeight: "700", fontSize: 10 },
+  aviso: { fontSize: 12, color: "#77718D", padding: 8 },
 });
