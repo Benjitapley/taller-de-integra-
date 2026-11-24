@@ -18,3 +18,6 @@
 .reviewForm textarea { resize: vertical; }
 .reportText { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 600px) { .stats { grid-template-columns: 1fr; } }
+
+.reportFilters { border: 0; padding: 0; margin: 0; min-width: 0; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

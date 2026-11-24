@@ -105,6 +105,7 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
               <div><dt>Cupos disponibles</dt><dd>{visibleArriendo.cupos_disponibles}</dd></div>
               <div><dt>Capacidad total</dt><dd>{visibleArriendo.cupos_totales}</dd></div>
             </dl>
+            <Link className={styles.publicationLink} href={`/publicaciones/${visibleArriendo.id_publicacion}`}>Ver publicación #{visibleArriendo.id_publicacion}</Link>
           </Card>
         </aside>
       </div>

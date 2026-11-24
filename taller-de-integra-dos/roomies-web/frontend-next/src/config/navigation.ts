@@ -27,8 +27,8 @@ export const navigationItems: readonly NavigationItem[] = [
   { label: "Chat", icon: "chat", href: "/mi-arriendo/chat" },
   { label: "Publicar", icon: "plus", href: routes.publish },
   { label: "Mis publicaciones", icon: "file", href: "/mis-publicaciones" },
-  { label: "Mis conexiones", icon: "user", href: "/mis-conexiones" },
   { label: "Mis postulaciones", icon: "file", href: "/mis-postulaciones" },
+  { label: "Mis reportes", icon: "file", href: "/mis-reportes" },
   { label: "Mi arriendo", icon: "home", href: "/mi-arriendo" },
   { label: "Perfil", icon: "user", href: routes.profile },
 ];

@@ -6,13 +6,7 @@ export type EstadoPostulacion =
   | "Cancelada";
 
 export type EstadoArriendo = "Activo" | "Finalizado";
-export type EstadoTarea = "Pendiente" | "Completada";
-
-/** Tipos de lectura para las vistas E00. Cotejados con el contrato Sprint 3 v2;
- * la forma final del DTO y las etiquetas de TI4 aún requieren acuerdo.
- * No implican que el servicio esté desplegado ni que estas rutas estén conectadas.
- */
-export type MiArriendoVista = {
+export type ArriendoDto = {
   id_arriendo: number;
   id_publicacion: number;
   estado: EstadoArriendo;
@@ -21,10 +15,17 @@ export type MiArriendoVista = {
   cupos_disponibles: number;
   id_responsable: number | null;
 };
+export type EstadoTarea = "Pendiente" | "Completada";
+
+/** Tipos de lectura para las vistas E00. Cotejados con el contrato Sprint 3 v2;
+ * la forma final del DTO y las etiquetas de TI4 aún requieren acuerdo.
+ * No implican que el servicio esté desplegado ni que estas rutas estén conectadas.
+ */
+export type MiArriendoVista = ArriendoDto;
 
 export type IntegranteArriendoDto = {
   id_usuario: number;
-  nombre: string;
+  nombre: string | null;
   /** Responsable de convivencia: no identifica al dueño de la publicación. */
   es_responsable: boolean;
   fecha_ingreso: string;
@@ -51,6 +52,19 @@ export type MensajeDto = {
 
 /** Nombre resuelto para la vista; no se presume incluido en el DTO de mensajes. */
 export type MensajeVista = MensajeDto & { nombre_emisor: string };
+
+/** Forma que entrega hoy el servicio de chat integrado en dev-web.
+ * Requiere migración coordinada al DTO v2 antes de declarar compatibilidad contractual.
+ */
+export type MensajeServicioDto = {
+  id_mensaje: number;
+  id_conversacion: number;
+  id_remitente: number;
+  nombre_remitente: string;
+  contenido: string;
+  fecha_envio: string;
+  id_cliente?: string;
+};
 
 export type TareaDto = {
   id_tarea: number;

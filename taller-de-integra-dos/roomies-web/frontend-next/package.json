@@ -21,6 +21,8 @@
     "test:admin": "node --test tests/admin.test.mjs",
     "test:reports": "node --test tests/reportes.test.mjs tests/admin-reportes.test.mjs",
     "test:reports-browser": "node --test tests/reportes-browser.test.mjs",
+    "test:admin-reports-browser": "node --test tests/admin-reportes-browser.test.mjs",
+    "test:private-lists-browser": "node --test tests/private-lists-browser.test.mjs",
     "test:supabase-auth": "node --test tests/supabase-auth.test.mjs",
     "test:applications": "node --test tests/applications.test.mjs"
   },

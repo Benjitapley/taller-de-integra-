@@ -9,13 +9,12 @@ import LocationFields from "./LocationFields";
 import ImageFields from "./ImageFields";
 import styles from "./publicaciones.module.css";
 
-type PublicationKind = "Compartida" | "Arrendador";
+type PublicationKind = "Arrendador";
 export default function PublicationForm({ kind, onBack }: { kind: PublicationKind; onBack: () => void }) {
   const router = useRouter();
   const operation = useRef<string | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
-  const shared = kind === "Compartida";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,8 +22,10 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
     const form = new FormData(event.currentTarget);
     form.set("tipo", kind);
     form.delete("confirmo_origen");
+    form.delete("cupos_min");
+    form.delete("cupos_disponibles");
     form.set("categoria", "ofrezco");
-    form.set("permitir_comentarios", form.has("permitir_comentarios") ? "true" : "false");
+    form.set("permitir_comentarios", "false");
     const validationError = validatePublicationForm(form);
     if (validationError) { setMessage(validationError); return; }
 
@@ -60,8 +61,8 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
 
   return <section className={styles.formSection}>
     <button className={styles.backButton} type="button" onClick={onBack}>← Cambiar tipo de publicación</button>
-    <h2>{kind === "Compartida" ? "Compartir una oportunidad" : "Publicar un arriendo"}</h2>
-    <p>{shared ? "Registra la información de un aviso que encontraste fuera de Roomies para buscar con quién compartir ese lugar. No te registras como arrendador." : "Ofrece un espacio que arriendas y recibe postulaciones individuales. Tú podrás revisar y decidir sobre cada solicitud."}</p>
+    <h2>Publicar un arriendo</h2>
+    <p>Ofrece un espacio que arriendas y recibe postulaciones individuales. Tú podrás revisar y decidir sobre cada solicitud.</p>
     <form className={styles.publicationForm} onSubmit={submit} onChange={() => { operation.current = null; }} aria-busy={pending}>
       <fieldset disabled={pending}>
         <legend>Detalles de la publicación</legend>
@@ -79,7 +80,7 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
         <label>Dirección o sector
           <input name="ubicacion" required maxLength={250} placeholder="Región y comuna del lugar" />
         </label>
-        <label>{shared ? "Precio indicado en el aviso externo (CLP)" : "Precio del arriendo (CLP)"}
+          <label>Precio del arriendo (CLP)
           <input name="precio" type="number" min="0" max="999999999999" step="1" required />
         </label>
         <label>Capacidad total del espacio
@@ -89,12 +90,9 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
           <select name="mascota" defaultValue="no"><option value="si">Sí</option><option value="no">No</option></select>
         </label>
         <label className={styles.fullField}>Descripción
-          <textarea name="descripcion" rows={5} maxLength={5000} required placeholder={shared ? "Transcribe la información externa: características, condiciones y dónde encontraste el aviso." : "Describe el espacio, sus características y las reglas que deben conocer los postulantes."} />
+          <textarea name="descripcion" rows={5} maxLength={5000} required placeholder="Describe el espacio, sus características y las reglas que deben conocer los postulantes." />
         </label>
         <div className={styles.fullField}><ImageFields /></div>
-        {shared && <label className={`${styles.fullField} ${styles.checkboxField}`}>
-          <input name="confirmo_origen" type="checkbox" required />Confirmo que comparto información obtenida externamente y revisaré su disponibilidad. Esta publicación no recibe postulaciones de arrendador.
-        </label>}
         <div className={styles.formActions}>
           <Button type="submit">{pending ? "Publicando…" : "Publicar ahora"}</Button>
           <Button type="button" variant="secondary" onClick={onBack}>Cancelar</Button>

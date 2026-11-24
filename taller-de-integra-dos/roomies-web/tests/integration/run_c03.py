@@ -221,7 +221,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pg-bin", type=Path)
     parser.add_argument("--web", action="store_true", help="Comprobar SCRUM-112 también con Next y BFF reales aislados")
+    parser.add_argument("--reports",action="store_true",help="Incluir Reportes y el recorrido SCRUM-114 con SQL real")
     args = parser.parse_args()
+    if args.reports and not args.web: parser.error("--reports requiere --web")
     candidates = [args.pg_bin] if args.pg_bin else []
     found = shutil.which("initdb")
     if found: candidates.append(Path(found).parent)
@@ -267,13 +269,24 @@ def main():
                     if ".down." not in migration.name:
                         database.execute(migration.read_text(encoding="utf-8"))
 
-        origins = {name: f"http://127.0.0.1:{port()}" for name in ("auth", "listado", "convivencia", "gateway")}
+        if args.reports:
+            with psycopg.connect(admin,autocommit=True) as database:
+                database.execute("CREATE ROLE sql_reportes LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS")
+                database.execute("GRANT CONNECT ON DATABASE roomies_sprint2_disposable TO sql_reportes")
+                for migration in sorted((ROOT/"backend/services/reportes-service/migrations").glob("*.up.sql")):
+                    database.execute(migration.read_text(encoding="utf-8"))
+        service_names=("auth","listado","convivencia","gateway",*(["reportes"] if args.reports else []))
+        origins = {name: f"http://127.0.0.1:{port()}" for name in service_names}
         admin_key = "sb_secret_disposable_c03_only_000000000000"
         with IdentityFixture(admin_key=admin_key) as identity, FaultProxy(origins["convivencia"], lambda method, path: path == "/internal/incorporaciones") as admission_proxy, FaultProxy(origins["listado"], lambda method, path: method in {"PUT", "DELETE"} and "/reservas/" in path) as callbacks, httpx.Client(timeout=20, trust_env=False) as client:
             allowed = [pg_port, identity.server.server_port, admission_proxy.server.server_port, callbacks.server.server_port, *[int(value.rsplit(":", 1)[1]) for value in origins.values()]]
             common = {**clean, "ROOMIES_LOCAL_MODE": "1", "ROOMIES_RUNTIME_MODE": "disposable", "ROOMIES_PERSISTENCE_LAYOUT": "private-v1", "ROOMIES_TEST_RUNNER": "disposable-only", "ROOMIES_ALLOWED_PORTS": json.dumps(allowed), "ROOMIES_AUTH_PROVIDER_URL": identity.origin, "ROOMIES_AUTH_PUBLISHABLE_KEY": identity.publishable_key, "ROOMIES_INTERNAL_TOKEN": "synthetic-c03-service-key-000000000000", "ROOMIES_CURSOR_SECRET": "synthetic-c03-cursor-key-000000000000", "AUTH_USERS_UPSTREAM_URL": origins["auth"], "LISTADO_UPSTREAM_URL": origins["listado"], "CONVIVENCIA_UPSTREAM_URL": admission_proxy.origin}
             roles = {"auth": "sql_auth_users", "listado": "sql_listado_applications", "convivencia": "sql_convivencia_mensajeria"}
             variables = {"auth": "AUTH_USERS_DATABASE_URL", "listado": "LISTADO_DATABASE_URL", "convivencia": "CONVIVENCIA_DATABASE_URL"}
+            if args.reports:
+                common.update(REPORTES_UPSTREAM_URL=origins["reportes"],REPORTES_CURSOR_SECRET="synthetic-reportes-cursor-key-000000000000",REPORTES_LISTADO_JWT_KEY="synthetic-reportes-listado-key-000000000000")
+                roles["reportes"]="sql_reportes"
+                variables["reportes"]="REPORTES_DATABASE_URL"
 
             def start(name):
                 env = {**common, "ROOMIES_PORT": origins[name].rsplit(":", 1)[1]}
@@ -294,7 +307,7 @@ def main():
                     except httpx.HTTPError: return False
                 eventually(ready, 20)
 
-            for name in ("auth", "listado", "convivencia", "gateway"): start(name)
+            for name in service_names: start(name)
             people = []
             for index in range(14 if args.web else 11):
                 email = f"c03-{index}@example.com"
@@ -310,8 +323,8 @@ def main():
                 if args.web:
                     sys.path.insert(0,str(Path(__file__).resolve().parent))
                     from web112 import exercise
-                    exercise(ROOT,clean,identity,origins["gateway"],database,people,port())
-            print("PASS C03: cuatro procesos separados y SQL real; Auth externo simulado explícitamente", flush=True)
+                    exercise(ROOT,clean,identity,origins["gateway"],database,people,port(),reports=args.reports)
+            print(f"PASS C03: {len(service_names)} servicios separados y SQL real; Auth externo simulado explícitamente", flush=True)
     finally:
         for name in reversed(list(processes)): stop(name)
         for log in logs: log.close()

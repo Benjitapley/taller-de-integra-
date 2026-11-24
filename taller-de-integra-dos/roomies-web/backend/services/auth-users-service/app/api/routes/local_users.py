@@ -12,7 +12,7 @@ from app.application.local_users import Users, require_confirmed_email
 from app.application.notifications import APPLICATION_TYPE, MAX_ID, notification_page
 from app.domain.local_users import User
 from app.infrastructure.persistence.local_users import PostgresUsers
-from app.infrastructure.security.local_provider import confirmed_email
+from app.infrastructure.security.local_provider import provider_user, email_is_confirmed, has_admin_role
 from app.infrastructure.security.admission_provider import SupabaseAdmissionIdentity
 from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.security import access_token, verified_claims
@@ -27,7 +27,7 @@ def users():
     return Users(PostgresUsers())
 
 
-def identity(token=Depends(access_token)):
+def identity(request: Request, token=Depends(access_token)):
     claims=verified_claims(token)
     subject=UUID(claims["sub"])
     try:
@@ -37,13 +37,14 @@ def identity(token=Depends(access_token)):
         raise HTTPException(401,"Sesión de identidad no válida.") from None
     if PostgresUsers().is_revoked(session_id):
         raise HTTPException(401,"Sesión revocada.")
-    return subject, confirmed_email(token, subject)
+    record=provider_user(token,subject)
+    request.state.verified_provider_user=record
+    return subject, email_is_confirmed(record)
 
 
-def administrator(who=Depends(identity), service=Depends(users)):
+def administrator(request: Request, who=Depends(identity), service=Depends(users)):
     subject, confirmed = who
-    allowed = os.environ.get("ROOMIES_ADMIN_SUBJECTS", "").split(",")
-    if not confirmed or str(subject) not in allowed:
+    if not confirmed or not has_admin_role(getattr(request.state,"verified_provider_user",{})):
         raise HTTPException(403,"Acceso administrativo no permitido.")
     service.own(subject)
     return who
@@ -75,10 +76,11 @@ def initialize(data: Initialization, who=Depends(identity), service=Depends(user
 
 
 @router.get("/internal/v1/identidad")
-def internal_identity(who=Depends(identity), service=Depends(users)):
+def internal_identity(request: Request, who=Depends(identity), service=Depends(users)):
     user=service.own(who[0])
     return {"subject":str(who[0]),"user_id":user.id_usuario,"email_confirmed":who[1],
-            "administrator":str(who[0]) in os.environ.get("ROOMIES_ADMIN_SUBJECTS", "").split(",")}
+            "administrator":who[1] and has_admin_role(getattr(request.state,"verified_provider_user",{})),
+            "nombre":user.nombre}
 
 
 def admission_service(x_roomies_service: Annotated[str | None, Header()] = None):

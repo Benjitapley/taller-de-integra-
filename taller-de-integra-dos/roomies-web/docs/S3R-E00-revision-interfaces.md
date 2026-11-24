@@ -1,6 +1,6 @@
 # S3R-E00 · Matriz de revisión de interfaces
 
-Esta matriz permite revisar estados de convivencia en las rutas existentes. Los nombres y ejemplos de datos de muestra no implican que la API esté conectada. Los selectores solo aparecen cuando `NODE_ENV=development`. Favoritos y Ajustes, fuera del recorrido comprometido, no aparecen en el menú.
+Esta matriz registra la revisión E00 de la rama `SCRUM-117` en el commit `946f9a8`. Tras integrar `dev-web`, las rutas de chat e integrantes usan las vistas conectadas de E02/E03; las capturas E00 muestran el estado anterior a esa integración. Favoritos y Ajustes, fuera del recorrido comprometido, no aparecen en el menú.
 
 **Fuente de tipos:** `frontend-next/src/features/recorrido/types.ts` define la vista de Mi arriendo, integrantes, chat y tareas. Se cotejó con `Contrato_Microservicios_Roomies_Sprint3_v2_editado.pdf` del 18/11/2026, secciones 1.4 y 6.1–6.4 (pp. 3, 18–21). Los tipos de la vista siguen siendo una proyección y no acreditan un DTO acordado con TI4 ni integración con la API.
 
@@ -36,7 +36,9 @@ La UI se coteja con `n_w_chat_convivencia_02.png`, `n_w_chat_convivencia_01.png`
 
 ## Estados revisables
 
-En desarrollo, los selectores de las rutas `/mi-arriendo`, `/mi-arriendo/integrantes`, `/mi-arriendo/chat` y `/mi-arriendo/tareas` permiten revisar carga, error recuperable, ausencia de arriendo/lista vacía y contenido. Chat, integrantes, tareas y el arriendo activo usan fixtures locales; el formulario de tarea permite dejarla sin asignar. El reintento del error simulado vuelve al estado de muestra. Las rutas de chat, integrantes y tareas permiten además revisar el estado visual de acceso retirado (403); tareas no ofrece «Nueva tarea» en ese estado. Esto no acredita la revocación por API: corresponde a E02–E05. Las vistas de chat/integrantes/tareas muestran que los datos no provienen del backend. No usar esos fixtures en producción ni presentarlos como integración terminada.
+En el commit de E00, los selectores de `/mi-arriendo`, `/mi-arriendo/integrantes`, `/mi-arriendo/chat` y `/mi-arriendo/tareas` permitían revisar carga, error recuperable, ausencia de arriendo/lista vacía y contenido con fixtures locales. Tras integrar `dev-web`, `/mi-arriendo` conserva su selector de desarrollo; integrantes y chat usan las rutas conectadas y comprueban pertenencia. Tareas usa una vista local tras comprobar pertenencia. La revocación efectiva por API se verifica en E02–E05, no con las capturas de E00.
+
+**Compatibilidad pendiente tras el merge:** el servicio de chat integrado actualmente devuelve `id_remitente`, `nombre_remitente` y `fecha_envio`; el contrato v2 exige `id_emisor` y `fecha`. Se mantienen tipos separados para la vista contractual y la respuesta actual del servicio. Hay que coordinar la migración del servicio, BFF y cliente antes de afirmar compatibilidad con v2.
 
 ## Evidencia registrada y pendientes
 
@@ -44,4 +46,4 @@ En desarrollo, los selectores de las rutas `/mi-arriendo`, `/mi-arriendo/integra
 - El capturador completó las comprobaciones DOM de estados, retorno de «Reintentar», foco inicial del modal, etiquetas asociadas, valor «Sin asignar», cierre con Escape y ausencia de «Nueva tarea» en estado retirado. Sigue pendiente una evaluación manual de contraste y lectores de pantalla.
 - ESLint de los archivos modificados, `git diff --check` y `tsc --noEmit` con la configuración normal: sin errores. La ejecución de Next.js regeneró los tipos de `.next/dev` que estaban obsoletos.
 - Confirmación de TI4 para las filas de esta matriz: pendiente; registrar fecha y persona/evidencia cuando se reciba.
-- Asociar el SHA final de la revisión a las capturas y el enlace PR/Jira al preparar la entrega. No se inventa una aprobación o enlace.
+- El SHA de la revisión capturada es `946f9a8a9b6159ed8faeb09248ad73a19ad89b0a`. El enlace PR/Jira y el acuerdo TI4 siguen pendientes de adjuntar.

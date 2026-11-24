@@ -1,6 +1,6 @@
 # Evidencia de revisión S3R-E00
 
-Capturas regeneradas el 24/11/2026 desde la app web en `NODE_ENV=development`. El capturador levanta Next.js y un Gateway local de respuesta sintética, usa un token de sesión ficticio y no consulta datos reales. Los selectores E00 indican en pantalla que fixtures y mensajes son locales. No se guardan contraseñas, tokens reales ni datos personales.
+Capturas generadas el 24/11/2026 desde el commit `946f9a8a9b6159ed8faeb09248ad73a19ad89b0a` en `NODE_ENV=development`. El capturador levantó Next.js y un Gateway local de respuesta sintética, usó un token ficticio y no consultó datos reales. Los selectores E00 indican en pantalla que fixtures y mensajes son locales. No se guardan contraseñas, tokens reales ni datos personales. Las rutas de integrantes y chat cambiaron posteriormente al integrar E02/E03 desde `dev-web`; estas capturas documentan la revisión E00 anterior.
 
 | Archivo | Estado visible |
 |---|---|
@@ -14,7 +14,7 @@ Capturas regeneradas el 24/11/2026 desde la app web en `NODE_ENV=development`. E
 | `08-tarea-formulario-sin-asignado.png` | Modal de nueva tarea con «Sin asignar» |
 | `09-mi-arriendo-activo.png` | Dashboard activo con tarjetas de chat, tareas y datos del grupo |
 
-Para regenerarlas, desde la raíz del repositorio:
+El siguiente comando reproduce las capturas en el commit indicado, desde la raíz del repositorio. El script ya no reproduce esos estados sobre las rutas integradas actuales:
 
 ```powershell
 node taller-de-integra-dos/roomies-web/docs/evidence/E00/capture-e00.mjs
@@ -42,4 +42,4 @@ git diff --check
 
 La ejecución de Next.js regeneró `.next/dev/types/validator.ts`, que antes apuntaba a rutas borradas; luego `tsc --noEmit` pasó con la configuración normal.
 
-Base Git de esta revisión: `1661e029d91941feb750a2569c1f1fd7b288738b`; los cambios de E00 aún no tienen SHA propio. Entorno: Windows, Node.js 24.20.0, Next.js 16.4.3, Edge local, `NODE_ENV=development`. Enlace PR/Jira y aprobación de TI4: pendientes.
+SHA de esta revisión: `946f9a8a9b6159ed8faeb09248ad73a19ad89b0a`. Entorno: Windows, Node.js 24.20.0, Next.js 16.4.3, Edge local, `NODE_ENV=development`. Enlace PR/Jira y aprobación de TI4: pendientes.

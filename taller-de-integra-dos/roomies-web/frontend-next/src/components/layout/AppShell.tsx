@@ -8,7 +8,7 @@ import Modal from "@/components/ui/Modal";
 import styles from "./AppShell.module.css";
 import SessionRenewal from "@/features/auth/SessionRenewal";
 
-export default function AppShell({ children }: { children: ReactNode }) {
+export default function AppShell({ children, showReports = false }: { children: ReactNode; showReports?: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   useEffect(() => {
@@ -22,10 +22,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return <div className={styles.shell}>
     <SessionRenewal />
     <a className={styles.skipLink} href="#contenido">Saltar al contenido</a>
-    <div className={styles.desktopSidebar}><Sidebar /></div>
+    <div className={styles.desktopSidebar}><Sidebar showReports={showReports} /></div>
     <Header sidebarOpen={open} onOpenSidebar={() => setOpen(true)} />
     <Modal key={pathname} title="Navegación" drawer open={open} onClose={() => setOpen(false)}>
-      <Sidebar onNavigate={() => setOpen(false)} />
+      <Sidebar showReports={showReports} onNavigate={() => setOpen(false)} />
     </Modal>
     <div id="contenido" tabIndex={-1} className={styles.content}>{children}</div>
   </div>;

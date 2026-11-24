@@ -4,7 +4,7 @@ from backend.service_runtime.settings import auth_provider_url
 from backend.service_runtime.contracts import DependencyUnavailable
 
 
-def confirmed_email(token, subject):
+def provider_user(token, subject):
     try:
         origin = auth_provider_url()
         import os
@@ -18,11 +18,24 @@ def confirmed_email(token, subject):
             raise RuleViolation("Sesión no vigente.", 401)
         response.raise_for_status()
         value = response.json()
-        if value.get("id") != str(subject):
+        if not isinstance(value,dict) or value.get("id") != str(subject):
             raise ValueError()
-        return isinstance(value.get("email_confirmed_at"), str) and bool(value["email_confirmed_at"])
+        return value
     except Exception as error:
         from backend.service_runtime.contracts import RuleViolation
         if isinstance(error, RuleViolation):
             raise
         raise DependencyUnavailable() from None
+
+
+def email_is_confirmed(value):
+    return isinstance(value.get("email_confirmed_at"),str) and bool(value["email_confirmed_at"])
+
+
+def confirmed_email(token, subject):
+    return email_is_confirmed(provider_user(token,subject))
+
+
+def has_admin_role(value):
+    metadata=value.get("app_metadata")
+    return isinstance(metadata,dict) and metadata.get("rol")=="admin" and value.get("is_anonymous") is not True

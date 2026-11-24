@@ -18,8 +18,8 @@ function ResourceMessage<T>({ state, emptyTitle, onRetry }: { state: EstadoRecur
   return null;
 }
 
-export function MembersView({ state, onRetry }: { state: EstadoRecurso<IntegranteArriendoDto[]>; onRetry?: () => void }) {
-  if (state.status !== "ready") return <Card><ResourceMessage state={state} emptyTitle="Todavía no hay integrantes registrados." onRetry={onRetry} /></Card>;
+export function MembersView({ state, onRetry, emptyTitle = "Todavía no hay integrantes registrados." }: { state: EstadoRecurso<IntegranteArriendoDto[]>; onRetry?: () => void; emptyTitle?: string }) {
+  if (state.status !== "ready") return <Card><ResourceMessage state={state} emptyTitle={emptyTitle} onRetry={onRetry} /></Card>;
   const members = state.data.filter((member) => member.activo);
   const responsible = members.filter((member) => member.es_responsable);
   const residents = members.filter((member) => !member.es_responsable);
@@ -32,7 +32,7 @@ export function MembersView({ state, onRetry }: { state: EstadoRecurso<Integrant
 
 function MemberList({ members, empty }: { members: IntegranteArriendoDto[]; empty: string }) {
   return <Card>{members.length === 0 ? <p>{empty}</p> : <ul className={styles.list}>{members.map((member) => <li key={member.id_usuario}>
-    <span className={styles.memberIdentity}><span className={styles.avatar} aria-hidden="true">{member.nombre.charAt(0)}</span><strong>{member.nombre}</strong></span><span className={styles.memberRole}>{member.es_responsable ? "Responsable" : "Integrante"}</span>
+    <span className={styles.memberIdentity}><span className={styles.avatar} aria-hidden="true">{member.nombre?.charAt(0) || "?"}</span><strong>{member.nombre || `Integrante #${member.id_usuario}`}</strong></span><span className={styles.memberRole}>{member.es_responsable ? "Responsable" : "Integrante"}</span>
   </li>)}</ul>}</Card>;
 }
 

@@ -47,15 +47,21 @@ test("errores de autorización se conservan sin detalles internos ni éxito fict
 
 test("solo una incorporación confirmada conserva el estado Aceptada", async () => {
   const accepted = { ...row, estado: "Aceptada", id_arriendo: 12, incorporacion_pendiente: false };
-  const response = await handleApplications(req("GET"), config, async () => Response.json([accepted]));
+  const response = await handleApplications(req("GET"), config, async () => Response.json({items:[accepted],siguiente_cursor:null}));
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {items:[accepted],siguiente_cursor:null});
   for (const invalid of [{ ...accepted, incorporacion_pendiente: true }, { ...accepted, incorporacion_pendiente: "false" }, { ...accepted, id_arriendo: null }, { ...row, estado: "Aceptada" }]) {
-    assert.equal((await handleApplications(req("GET"), config, async () => Response.json([invalid]))).status, 503);
+    assert.equal((await handleApplications(req("GET"), config, async () => Response.json({items:[invalid],siguiente_cursor:null}))).status, 503);
   }
   for (const id of [0, -1, true, "12"]) {
-    const response = await handleApplications(req("GET"), config, async () => Response.json([{ ...row, id_arriendo: id }]));
+    const response = await handleApplications(req("GET"), config, async () => Response.json({items:[{ ...row, id_arriendo: id }],siguiente_cursor:null}));
     assert.equal(response.status, 503);
+  }
+});
+
+test("las listas exigen páginas reales, sin arreglos completos ni IDs repetidos", async () => {
+  for (const payload of [[row], {items:[row,row],siguiente_cursor:null}, {items:Array.from({length:21},(_,i)=>({...row,id_postulacion:i+1})),siguiente_cursor:null}]) {
+    assert.equal((await handleApplications(req("GET"),config,async()=>Response.json(payload))).status,503);
   }
 });
 

@@ -14,6 +14,17 @@ const source = (await readFile(new URL("../src/lib/publicaciones/server.ts", imp
 const { handleCreatePublication, handleSavePublication, handlePublicationRequest } = await import(moduleURL(source));
 const { validatePublicationForm } = await import(validation);
 const { publicationPage, appendPublications, publicImageURL } = await import(moduleURL(await readFile(new URL("../src/features/publicaciones/contracts.ts", import.meta.url), "utf8")));
+
+test("propias valida cursores, límites y páginas antes de devolver resultados", async () => {
+  for (const query of ["cursor=a&cursor=b","limite=0","limite=101","limite=2&limite=3","cursor=%0A"]) {
+    const response=await handlePublicationRequest(new Request(`${config.origin}/web-api/mis-publicaciones?${query}`,{headers:{cookie}}),"mine",undefined,config,async()=>{throw new Error("No debe acceder al backend");});
+    assert.equal(response.status,422);
+  }
+  for (const payload of [{items:[{id_publicacion:1},{id_publicacion:1}],siguiente_cursor:null},{items:Array.from({length:21},(_,i)=>({id_publicacion:i+1})),siguiente_cursor:null},{items:[],siguiente_cursor:""}]) {
+    const response=await handlePublicationRequest(new Request(`${config.origin}/web-api/mis-publicaciones`,{headers:{cookie}}),"mine",undefined,config,async()=>Response.json(payload));
+    assert.equal(response.status,503);
+  }
+});
 const config = { origin: "https://web.example.com", backend: "https://api.example.com", secure: true };
 const cookie = "__Host-haycupo_session=header.payload.signature";
 
@@ -45,10 +56,10 @@ test("crear publicación envía multipart al destino fijo con JWT y devuelve sol
     assert.equal(options.body.get("titulo"), "Habitación disponible");
     assert.equal(options.body.get("tipo"), "Arrendador");
     assert.equal(options.redirect, "error");
-    return Response.json({ id_publicacion: 42, mensaje: "Publicación creada", access_token: "private" }, { status: 201 });
+    return Response.json({ id_publicacion: 42, titulo: "Aviso canónico", precio: 150000, tipo: "Arrendador", cupos_totales: 2, cupos_disponibles: 2, imagenes: [], access_token: "private" }, { status: 201 });
   });
   assert.equal(response.status, 201);
-  assert.deepEqual(await response.json(), { id_publicacion: 42, mensaje: "Publicación creada" });
+  assert.deepEqual(await response.json(), { id_publicacion: 42, titulo: "Aviso canónico", precio: 150000, tipo: "Arrendador", cupos_totales: 2, cupos_disponibles: 2, imagenes: [] });
 });
 
 test("cookie ausente o CSRF inválido bloquean la petición sin contactar FastAPI", async () => {
@@ -88,10 +99,10 @@ test("editar usa identidad HttpOnly, destino fijo y validación completa", async
     assert.equal(url,`${config.backend}/api/publicaciones/42`);
     assert.equal(options.method,"PUT");
     assert.equal(options.body.get("tipo"),"Arrendador");
-    return Response.json({id_publicacion:42,mensaje:"Actualizada",access_token:"private"});
+    return Response.json({id_publicacion:42,titulo:"Aviso canónico",precio:150000,tipo:"Arrendador",cupos_totales:2,cupos_disponibles:2,imagenes:[],access_token:"private"});
   },"42");
   assert.equal(result.status,200);
-  assert.deepEqual(await result.json(),{id_publicacion:42,mensaje:"Publicación actualizada"});
+  assert.deepEqual(await result.json(),{id_publicacion:42,titulo:"Aviso canónico",precio:150000,tipo:"Arrendador",cupos_totales:2,cupos_disponibles:2,imagenes:[]});
 });
 
 test("listado propio ignora propietario suministrado, filtra campos y no se almacena", async () => {

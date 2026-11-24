@@ -1,6 +1,6 @@
 export type PublicationImage = { id_imagen: number; url: string; orden: number };
 export type Publication = {
-  id_publicacion: number; titulo: string; precio: number; ubicacion: string;
+  id_publicacion: number; id_arriendo?: number | null; titulo: string; precio: number; ubicacion: string;
   tipo: string | null; tipo_vivienda: string | null; categoria: string | null;
   cupos_totales: number | null; cupos_disponibles: number | null;
   imagenes: PublicationImage[]; descripcion: string | null; mascota: string | null; estado: string | null;
@@ -22,7 +22,9 @@ export function publicationPage(value: unknown): PublicationPage {
       if (!item || !Number.isSafeInteger(item.id_publicacion) || Number(item.id_publicacion) < 1 || !Number.isSafeInteger(item.precio) || Number(item.precio) < 0 || Number(item.precio) > 999999999999) throw new Error("Publicación inválida.");
       const text = (name: string) => typeof item[name] === "string" ? item[name] as string : null;
       return {
-        id_publicacion: item.id_publicacion as number, titulo: text("titulo") || "Publicación sin título", precio: item.precio as number,
+        id_publicacion: item.id_publicacion as number,
+        id_arriendo: Number.isSafeInteger(item.id_arriendo) && Number(item.id_arriendo) > 0 ? Number(item.id_arriendo) : null,
+        titulo: text("titulo") || "Publicación sin título", precio: item.precio as number,
         ubicacion: text("ubicacion") || "Ubicación por confirmar", tipo: text("tipo"), tipo_vivienda: text("tipo_vivienda"),
         categoria: text("categoria"), estado: text("estado"), descripcion: text("descripcion"), mascota: text("mascota"),
         cupos_totales: typeof item.cupos_totales === "number" ? item.cupos_totales : null,
