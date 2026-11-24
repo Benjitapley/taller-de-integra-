@@ -9,6 +9,7 @@ class Actor:
     user_id: int
     email_confirmed: bool
     administrator: bool = False
+    display_name: str | None = None
 
 
 class RuleViolation(Exception):

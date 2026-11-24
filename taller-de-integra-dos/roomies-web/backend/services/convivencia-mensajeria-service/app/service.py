@@ -71,6 +71,7 @@ class Convivencia:
                       VALUES(%s,%s,%s) RETURNING *""", (payload["id_publicacion"], reservation["cupos_totales"], payload["version_capacidad"])).fetchone()
                 if rental["version_capacidad"] != payload["version_capacidad"] or rental["cupos_totales"] != reservation["cupos_totales"]:
                     raise ServiceError("CAPACITY_VERSION_CONFLICT", "La versión de capacidad no coincide.")
+                c.execute("INSERT INTO convivencia_mensajeria.conversacion(id_arriendo) VALUES(%s) ON CONFLICT(id_arriendo) DO NOTHING", (rental["id_arriendo"],))
                 occupied = c.execute("SELECT count(*) AS total FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND estado='Activa'", (rental["id_arriendo"],)).fetchone()["total"]
                 if occupied >= rental["cupos_totales"]:
                     raise ServiceError("NO_CAPACITY", "No quedan cupos disponibles.")
