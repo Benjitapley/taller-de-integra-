@@ -76,7 +76,7 @@ export default function MemberDirectory({ rentalId }: { rentalId?: string }) {
   }
 
   return <main>
-    <PageHeader title="Integrantes" description="Arrendador responsable e integrantes activos del arriendo." />
+    <PageHeader title="Integrantes" description="Responsable de convivencia e integrantes activos del arriendo." />
     <p><Link href={rentalId ? `/mi-arriendo/${rentalId}` : "/mi-arriendo"}>Volver al arriendo</Link></p>
     <MembersView state={state} emptyTitle={emptyMessage} />
     {state.status === "error" ? <Button variant="secondary" onClick={retry}>Reintentar</Button> : null}

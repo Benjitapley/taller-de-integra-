@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import Icon from "./Icon";
 import styles from "./ui.module.css";
 
-export default function Modal({ open, onClose, title, children, drawer = false }: { open: boolean; onClose: () => void; title: string; children: ReactNode; drawer?: boolean }) {
+export default function Modal({ open, onClose, title, children, drawer = false, surfaceClassName = "" }: { open: boolean; onClose: () => void; title: string; children: ReactNode; drawer?: boolean; surfaceClassName?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -29,7 +29,7 @@ export default function Modal({ open, onClose, title, children, drawer = false }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }}>
     <button type="button" className={styles.scrim} tabIndex={-1} aria-label="Cerrar desde el fondo" onClick={onClose} />
-    <div className={styles.modalSurface}>
+    <div className={`${styles.modalSurface} ${surfaceClassName}`}>
       <div className={styles.modalHeader}><h2 id={titleId}>{title}</h2><button ref={closeButton} type="button" className={styles.close} aria-label="Cerrar diálogo" onClick={onClose}><Icon name="close" /></button></div>
       {children}
     </div>

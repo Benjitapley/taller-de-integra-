@@ -20,9 +20,10 @@
 .failedStatus { color: #a33535; font-weight: 700; }
 .retryButton { min-height: 28px; padding: 4px 10px; border-radius: 10px; font-size: 11px; }
 .composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; margin: auto 20px 20px; padding: 8px 9px 8px 16px; border: 1px solid var(--line); border-radius: 17px; background: white; }
+.composer:focus-within { outline: 3px solid var(--primary-secondary); outline-offset: 2px; }
 .composer textarea { display: block; width: 100%; min-height: 40px; max-height: 120px; resize: vertical; padding: 9px 0; border: 0; outline: 0; color: var(--foreground); background: transparent; font-size: 13px; line-height: 1.45; }
 .composer textarea:focus-visible { outline: none; }
-.composer textarea::placeholder { color: #9992ae; }
+.composer textarea::placeholder { color: var(--muted); }
 .characterCount { color: var(--muted); font-size: 10px; white-space: nowrap; }
 .composer button { min-height: 40px; padding: 8px 14px; border-radius: 13px; }
 .inlineError { margin: 10px 22px 0; color: #a33535; font-size: 12px; }

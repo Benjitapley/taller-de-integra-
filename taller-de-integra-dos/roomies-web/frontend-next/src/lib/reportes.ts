@@ -27,7 +27,7 @@ const unavailable = () => authReply(503, { detail: "No pudimos confirmar la oper
 const invalid = () => authReply(422, { detail: "Revisa los datos del reporte." });
 
 export async function handleReports(request: Request, config: WebAuthConfig | null = authConfig(), transport: Transport = fetch) {
-  if (!config) return authReply(503, { detail: "La consulta de integrantes no está disponible." });
+  if (!config || !reportsEnabled(config)) return authReply(404, { detail: "Reportes no está habilitado." });
   const token = readToken(request.headers.get("cookie"), config);
   const expired = () => authReply(401, { detail: "Inicia sesión nuevamente." }, { "Set-Cookie": sessionCookie(config) });
   if (!token) return expired();
@@ -97,7 +97,7 @@ export async function handleReports(request: Request, config: WebAuthConfig | nu
 
 /** Solo consulta miembros autorizados por Convivencia; no expone datos internos. */
 export async function handleReportMembers(request: Request, rental: string, config: WebAuthConfig | null = authConfig(), transport: Transport = fetch) {
-  if (!config || !reportsEnabled(config)) return authReply(404, { detail: "Reportes no está habilitado." });
+  if (!config) return authReply(503, { detail: "La consulta de integrantes no está disponible." });
   if (request.method !== "GET") return authReply(405, { detail: "Método no permitido." });
   const token = readToken(request.headers.get("cookie"), config);
   if (!token) return authReply(401, { detail: "Inicia sesión nuevamente." });
