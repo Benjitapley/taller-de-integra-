@@ -8,12 +8,24 @@ export type EstadoPostulacion =
 export type EstadoArriendo = "Activo" | "Finalizado";
 export type EstadoTarea = "Pendiente" | "Completada";
 
-/** DTOs de lectura para las vistas de Convivencia/Mensajería (Contrato S3 §2.4).
+/** Tipos de lectura para las vistas E00. Cotejados con el contrato Sprint 3 v2;
+ * la forma final del DTO y las etiquetas de TI4 aún requieren acuerdo.
  * No implican que el servicio esté desplegado ni que estas rutas estén conectadas.
  */
+export type MiArriendoVista = {
+  id_arriendo: number;
+  id_publicacion: number;
+  estado: EstadoArriendo;
+  cupos_totales: number;
+  integrantes_activos: number;
+  cupos_disponibles: number;
+  id_responsable: number | null;
+};
+
 export type IntegranteArriendoDto = {
   id_usuario: number;
   nombre: string;
+  /** Responsable de convivencia: no identifica al dueño de la publicación. */
   es_responsable: boolean;
   fecha_ingreso: string;
   activo: boolean;
@@ -25,15 +37,20 @@ export type ConversacionDto = {
   fecha_creacion: string;
 };
 
+/** Campos del mensaje confirmados en el contrato Sprint 3 v2, sección 6.4.
+ * id_cliente solo se devuelve al emisor.
+ */
 export type MensajeDto = {
   id_mensaje: number;
   id_conversacion: number;
-  id_remitente: number;
-  nombre_remitente: string;
+  id_emisor: number;
   contenido: string;
-  fecha_envio: string;
+  fecha: string;
   id_cliente?: string;
 };
+
+/** Nombre resuelto para la vista; no se presume incluido en el DTO de mensajes. */
+export type MensajeVista = MensajeDto & { nombre_emisor: string };
 
 export type TareaDto = {
   id_tarea: number;

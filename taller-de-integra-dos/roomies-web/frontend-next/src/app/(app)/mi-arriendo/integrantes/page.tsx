@@ -10,7 +10,7 @@ import type { EstadoRecurso, IntegranteArriendoDto } from "@/features/recorrido/
 type ReviewState = "ready" | "empty" | "loading" | "error" | "forbidden";
 const isDevelopment = process.env.NODE_ENV === "development";
 const sample: IntegranteArriendoDto[] = [
-  { id_usuario: 1, nombre: "Pat (arrendador de muestra)", es_responsable: true, fecha_ingreso: "2026-11-20T12:00:00.000Z", activo: true },
+  { id_usuario: 1, nombre: "Pat (responsable residente de muestra)", es_responsable: true, fecha_ingreso: "2026-11-20T12:00:00.000Z", activo: true },
   { id_usuario: 2, nombre: "Alex (integrante de muestra)", es_responsable: false, fecha_ingreso: "2026-11-21T12:00:00.000Z", activo: true },
   { id_usuario: 3, nombre: "Sam (integrante de muestra)", es_responsable: false, fecha_ingreso: "2026-11-22T12:00:00.000Z", activo: true },
 ];
@@ -28,12 +28,12 @@ export default function MembersPage() {
   const [state, setState] = useState<EstadoRecurso<IntegranteArriendoDto[]>>(() => isDevelopment ? stateForPreview("ready") : unavailable);
   function changePreview(next: ReviewState) { setPreview(next); setState(stateForPreview(next)); }
   return <main>
-    <PageHeader title="Integrantes" description="Arrendador responsable e integrantes activos del arriendo." />
+    <PageHeader title="Integrantes" description="Responsable de convivencia e integrantes residentes activos." />
     <p><Link href="/mi-arriendo">Volver a Mi arriendo</Link></p>
     {isDevelopment ? <DevelopmentReviewControl label="Estado de integrantes" value={preview} onChange={changePreview} options={[
-      { value: "ready", label: "Arrendador e integrantes de muestra" }, { value: "empty", label: "Sin integrantes" },
+      { value: "ready", label: "Responsable e integrantes de muestra" }, { value: "empty", label: "Sin integrantes" },
       { value: "loading", label: "Cargando" }, { value: "error", label: "Error recuperable" }, { value: "forbidden", label: "Acceso retirado (403)" },
     ]} /> : null}
-    <MembersView state={state} />
+    <MembersView state={state} onRetry={isDevelopment && state.status === "error" ? () => changePreview("ready") : undefined} />
   </main>;
 }

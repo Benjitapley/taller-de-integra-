@@ -30,7 +30,5 @@ export const navigationItems: readonly NavigationItem[] = [
   { label: "Mis conexiones", icon: "user", href: "/mis-conexiones" },
   { label: "Mis postulaciones", icon: "file", href: "/mis-postulaciones" },
   { label: "Mi arriendo", icon: "home", href: "/mi-arriendo" },
-  { label: "Favoritos", icon: "heart" },
   { label: "Perfil", icon: "user", href: routes.profile },
-  { label: "Ajustes", icon: "settings" },
 ];
