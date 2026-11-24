@@ -10,6 +10,7 @@
 
 - **Prueba local aprobada el 22 de noviembre de 2026.** Desde un segundo computador, con Python 3.13.1 y pytest 9.1.1, la ejecución de `backend/local_stack/test_runtime.py` registró **91 passed in 2.07s**. Esta repetición conserva el alcance local de la suite descrito arriba; no comprueba conexiones SQL ni HTTP.
 - **Prueba HTTP aprobada el 22 de noviembre de 2026.** El Gateway público `https://roomies-gateway-test.inf.uct.cl/health` respondió **HTTP 200**, con `{"status":"ok"}`. Su disponibilidad no demuestra conectividad con los microservicios que todavía no están desplegados.
+- **Prueba HTTPS desde Temuco del 24 de noviembre de 2026.** El equipo accedió al [`/health` público del Gateway](https://roomies-gateway-test.inf.uct.cl/health) desde un PC de Temuco y obtuvo `{"status":"ok"}`. El equipo definitivo de presentación sigue por confirmar.
 - **Observaciones de Kubero del 22 de noviembre de 2026.** Los registros consultados mostraron arranque correcto de Uvicorn, `Application startup complete` y escucha en `0.0.0.0:8000`, sin errores visibles en ese alcance. PostgreSQL 17.6 continúa disponible en `roomies-db-test2-postgres:5432`. El registro de `public.prueba_persistencia_scrum100` sigue existiendo con `id=1` y `mensaje='Roomies SCRUM-100'`.
 - **Configuración y límites de la evidencia de persistencia del 22 de noviembre de 2026.** `SHOW data_directory` confirmó `/var/lib/postgresql/data/pgdata`. La plantilla `KuberoApp` de `roomies-db-test2` declara el complemento `KuberoAddonPostgres`, PostgreSQL 17.6, una réplica y `persistence.enabled: true`, con volumen solicitado de 8 GiB. Son observaciones de configuración, no una prueba de recuperación del dato tras reinicio o reemplazo del Pod. `pg_postmaster_start_time()` devolvió `2026-11-20 23:52:48.641337+00`; este dato no prueba por sí solo que haya existido un reinicio después de insertar el registro.
 - **Limitaciones operativas observadas el 22 de noviembre de 2026.** La sección Eventos de Kubero no mostró eventos disponibles; la interfaz informa una retención predeterminada aproximada de una hora. El contenedor administrativo no dispone de `kubectl`. La opción «Reiniciar» de la aplicación no permite determinar si también reinicia el Pod de PostgreSQL, por lo que no se utilizó. El equipo no realizó un reinicio o reemplazo controlado del Pod PostgreSQL en esa fecha.
@@ -76,6 +77,31 @@ Si el equipo autoriza otro host para los procesos FastAPI, PostgreSQL de negocio
 
 Si Kubero carece de DNS compatible, TLS verificable, almacenamiento persistente o capacidad de recuperación, registrar qué requisito queda bloqueado y la evidencia. El equipo debe decidir con la administración universitaria si se habilita la capacidad faltante o se aplaza el despliegue hasta poder operar PostgreSQL con seguridad en Kubero.
 
+### Topología desplegada y prevista en TEST
+
+El inventario corresponde al pipeline `roomies`, etapa `test`, con evidencia disponible al 24 de noviembre de 2026.
+
+| Componente | Destino o acceso | Estado y evidencia |
+|---|---|---|
+| Gateway | Ingreso HTTPS público de `roomies-gateway-test`. | **Desplegado.** El equipo comprobó `/health`, incluida la respuesta desde un PC de Temuco. La revisión exacta de la imagen y las rutas hacia los servicios privados quedan por documentar. |
+| Match/Conexión | `roomies-match-test` en Kubero. Conexión interna al servicio PostgreSQL por TCP `5432`. | **Desplegado.** Imagen `sha-72e4bd6`. El equipo comprobó la conexión SQL con el rol limitado y la excepción TEST. El ayudante informó que Match seguía funcionando tras el reinicio. El recorrido HTTP de negocio queda pendiente. |
+| PostgreSQL | PostgreSQL 17.6 en `roomies-db-test2`, con DNS interno `roomies-db-test2-postgres`. | **Desplegado.** El equipo comprobó acceso SQL y restauración de un dato de ensayo. El ayudante confirmó el volumen persistente de 8 GiB y la conservación del dato tras reinicio. El complemento carece actualmente de TLS según su informe. |
+| Auth/Users, Listado/Applications y Convivencia/Mensajería | Servicios privados previstos en la topología A. | **Planificados.** Sin despliegue acreditado en TEST. Su puesta en marcha y validación por servicio corresponden a SCRUM-102. |
+| Reputación/Historial/Reportes | Servicio privado previsto por el contrato. | **Planificado.** El inventario local carece de un proceso ejecutable para este dominio. Su despliegue depende de contar con la implementación del servicio. |
+| Supabase Auth, Next.js y Expo | Supabase Auth como proveedor externo de identidad. Next.js y Expo como clientes del Gateway HTTPS. | **Integración prevista.** Sigue pendiente la prueba del recorrido integrado de identidad y negocio en TEST. |
+
+### Responsabilidades operativas por etapa
+
+El ayudante realizó el reinicio puntual y aportó evidencia de infraestructura. Según su reporte, la plataforma administra el aislamiento de red entre proyectos. Las asignaciones operativas quedan por confirmar.
+
+| Etapa | Trabajo operativo | Responsable |
+|---|---|---|
+| TEST | Coordinar la validación de DNS, ingreso HTTPS, certificado y rutas privadas en Kubero. | **Por confirmar** con la administración de Kubero. |
+| TEST | Operar y verificar Gateway y Match. Conservar evidencia de las pruebas desde una red cliente y desde el equipo de presentación. | **Por confirmar** en el equipo. |
+| TEST | Verificar el volumen, autorizar intervenciones sobre PostgreSQL y definir custodia y retención de respaldos. | **Por confirmar** para operación de infraestructura y custodia del respaldo. |
+| TEST | Registrar la aceptación de B02 y dar seguimiento a la limitación TLS. | **Por confirmar** quién registra la decisión y quién da seguimiento. La aceptación corresponde al equipo. |
+| Production | Definir quién opera la aplicación de Roomies y la base de negocio, con TLS verificado, respaldo y recuperación. La aplicación universitaria de demostración queda fuera del alcance. | **Por confirmar** para la etapa Production de Roomies. |
+
 ## Dominios e imágenes
 
 Inventario respecto de la base `7bf5089` y el contrato de microservicios Sprint 3 v2. Las rutas son relativas a `taller de integra dos/roomies-web`. En Kubero, ajustar el contexto si el checkout comienza en la raíz del repositorio. Usar `PORT=8000` para el primer ensayo.
@@ -137,7 +163,7 @@ La preparación SQL no habilita el recorrido integrado. El Gateway y el arranque
 
 | Validación | Evidencia en la etapa `test` | Criterio de aceptación | Estado |
 |---|---|---|---|
-| DNS y HTTPS público | El [`/health` del Gateway](https://roomies-gateway-test.inf.uct.cl/health) devolvió `{"status":"ok"}` por HTTPS; el 22 de noviembre de 2026 se confirmó **HTTP 200** con el mismo JSON. | DNS correcto, certificado y cadena válidos, HTTP 200 con JSON esperado desde fuera y desde el equipo de presentación. | **Parcial.** Respuesta pública comprobada. Falta documentar la validación del certificado y repetir desde el equipo de presentación. La respuesta del Gateway no prueba conectividad con los microservicios aún no desplegados. |
+| DNS y HTTPS público | El [`/health` del Gateway](https://roomies-gateway-test.inf.uct.cl/health) devolvió **HTTP 200** con `{"status":"ok"}` el 22 de noviembre de 2026. El 24 de noviembre devolvió el mismo JSON por HTTPS desde un PC de Temuco. | DNS correcto, certificado y cadena válidos, HTTP 200 con JSON esperado desde fuera y desde el equipo de presentación. | **Parcial.** Respuesta pública comprobada desde Temuco. Falta registrar la validación del certificado y confirmar el equipo definitivo de presentación para repetir la prueba. |
 | Conectividad privada | El equipo comprobó TCP al puerto `5432` y conectividad desde Match al Service `roomies-db-test2-postgres`. El ayudante informó que la base es interna y que la plataforma administra el aislamiento entre proyectos. | DNS y puerto accesibles por los consumidores previstos. Healthchecks accesibles desde el Gateway. Servicios y SQL carecen de entrada pública. | **Parcial.** Quedan por verificar los demás consumidores y las reglas de ingreso y aislamiento que se exijan para el cierre. |
 | Match → PostgreSQL con excepción TEST | El 23 de noviembre de 2026 el equipo comprobó la conexión de `roomies-match-test`, imagen `sha-72e4bd6`, Pod listo `1/1`, mediante `PostgresConnections().connect()`. Obtuvo `sql_match_conexion`, base `roomies-db-test2`, puerto `5432` y `ssl=False`. El 24, el ayudante reportó continuidad de Match tras reiniciar PostgreSQL. | Destino, rol y estado de cifrado esperados desde el contenedor real, con excepción TEST explícitamente autorizada. | **Comprobado por el equipo** para la conexión y las consultas de metadatos de solo lectura sin TLS. La continuidad posterior al reinicio se basa en el reporte del ayudante. El recorrido HTTP de negocio queda pendiente. |
 | Lectura y escritura SQL de ensayo | Lectura y escritura comprobadas con la tabla `prueba_persistencia_scrum100` en la base de ensayo. El 22 de noviembre de 2026 sigue existiendo el registro de `public.prueba_persistencia_scrum100` con `id=1` y `mensaje='Roomies SCRUM-100'`. | Escribir y recuperar un registro en la tabla de ensayo. | **Comprobado** para la sonda SQL. El recorrido de escritura y lectura desde clientes a través de FastAPI queda pendiente. |
@@ -182,9 +208,17 @@ Las fuentes disponibles son el [anexo técnico de SCRUM-99, §15 y §21](../SCRU
 
 **Evidencia de B02.** El equipo comprobó el Gateway público por HTTPS, la conexión privada real de Match a PostgreSQL con un rol limitado, permisos de ese rol sobre recursos de ensayo y la recuperación de un registro desde un respaldo. El ayudante confirmó la persistencia del registro tras el reinicio controlado con el mismo volumen. Esta evidencia sustenta la viabilidad de la topología A en TEST para Gateway, Match y PostgreSQL.
 
-**Límites para cerrar B02.** Queda por fijar explícitamente la topología y los responsables por etapa, registrar la validación del certificado y el acceso HTTPS desde el equipo de presentación y acordar qué consumidores deben comprobarse en B02. También debe quedar acordado si basta el reporte de persistencia tras reinicio o se exige evidencia directa del PVC, su retención y un reemplazo separado. El ensayo de restauración cubre el dato de prueba. La custodia duradera y la operación del respaldo siguen por verificar. Los permisos y la conectividad solo se han probado para el alcance de ensayo descrito en la matriz.
+**Veredicto al 24 de noviembre de 2026.** SCRUM-100 sigue en curso. Es viable proponer un cierre acotado a TEST cuando el equipo registre su aceptación y se cumplan los demás criterios de B02 que se acuerden. D08 y la síntesis local de B02 no explicitan TLS como requisito contractual original. La matriz técnica exige `verify-full` y ese criterio sigue bloqueado por la limitación de la plataforma comunicada por el ayudante. La autorización previa cubre los ensayos TEST sin cifrado. Cerrar con TLS pendiente requiere una decisión explícita del equipo y seguimiento asignado. En producción se conserva `verify-full` obligatorio.
 
-**Veredicto al 24 de noviembre de 2026.** El cierre de B02 es defendible con una aceptación explícita y registrada del alcance TEST, una vez cumplidos los demás criterios que se mantengan para ese alcance. D08 y la síntesis local de B02 no explicitan TLS como requisito contractual original. La matriz técnica exige `verify-full` y ese criterio sigue bloqueado. La autorización previa cubre el ensayo sin cifrado. Para cerrar con TLS pendiente hace falta una decisión de aceptación del equipo que registre la limitación de plataforma, acote la excepción al entorno TEST y asigne responsable y seguimiento. Mientras esa decisión y los criterios restantes sigan abiertos, mantener SCRUM-100 en curso. En producción se conserva `verify-full` obligatorio.
+### Decisiones del equipo para cerrar SCRUM-100
+
+- [ ] Aprobar la topología A para TEST y acordar qué consumidores y comprobaciones de red y permisos se requieren para cerrar B02. Confirmar los responsables operativos por etapa.
+- [ ] Identificar el equipo de presentación y acordar la evidencia HTTPS que se registrará desde él, incluido el certificado. La prueba desde el PC de Temuco ya está registrada por separado.
+- [ ] Acordar si el reporte del reinicio y del mismo volumen basta para B02 o si se requiere inspección del PVC, evidencia de retención y una prueba separada de reemplazo.
+- [ ] Acordar la custodia duradera y retención del respaldo de TEST y confirmar quién verificará la recuperación.
+- [ ] Registrar si se acepta cerrar B02 con TLS pendiente para TEST. Documentar el límite de la excepción, el responsable del seguimiento y cuándo se retomará la verificación de `verify-full`.
+
+### Entregas de SCRUM-101 y SCRUM-102
 
 - **SCRUM-101 · S3R-B03.** Ensayar y ejecutar la migración de los datos de negocio a PostgreSQL de Kubero, preservando datos e identidades. Corresponden aquí el inventario de origen, el respaldo y plan de recuperación de la migración, y la comparación verificable antes y después.
 - **SCRUM-102.** Desplegar el Gateway y los servicios de dominio separados con persistencia duradera, identificar las revisiones desplegadas y verificar la operación de cada servicio, su conectividad y sus permisos efectivos sobre las tablas de dominio. El despliegue completo y sus pruebas quedan para ese alcance.
