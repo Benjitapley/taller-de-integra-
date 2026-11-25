@@ -83,7 +83,7 @@ El inventario corresponde al pipeline `roomies`, etapa `test`, con evidencia dis
 
 | Componente | Destino o acceso | Estado y evidencia |
 |---|---|---|
-| Gateway | Ingreso HTTPS público de `roomies-gateway-test`. | **Desplegado.** El equipo comprobó `/health`, incluida la respuesta desde un PC de Temuco. SCRUM-102 registró la etiqueta configurada `sha-1267d9e` y comprobó el despacho y el bloqueo de rutas descritos abajo. Quedan pendientes el `imageID` efectivo y la conectividad con los servicios privados. |
+| Gateway | Ingreso HTTPS público de `roomies-gateway-test`. | **Desplegado.** El equipo comprobó `/health`, incluida la respuesta desde un PC de Temuco. SCRUM-102 registró la etiqueta configurada `sha-1267d9e` y comprobó el despacho, el bloqueo de rutas y el acceso privado a Match hasta su control de autenticación. Quedan pendientes el `imageID` efectivo y la conectividad con los demás upstreams privados. |
 | Match/Conexión | `roomies-match-test` en Kubero. Conexión interna al servicio PostgreSQL por TCP `5432`. | **Desplegado.** Imagen `sha-72e4bd6`. El equipo comprobó la conexión SQL con el rol limitado y la excepción TEST. El ayudante informó que Match seguía funcionando tras el reinicio. El recorrido HTTP de negocio queda pendiente. |
 | PostgreSQL | PostgreSQL 17.6 en `roomies-db-test2`, con DNS interno `roomies-db-test2-postgres`. | **Desplegado.** El equipo comprobó acceso SQL y restauración de un dato de ensayo. El ayudante confirmó el volumen persistente de 8 GiB y la conservación del dato tras reinicio. El complemento carece actualmente de TLS según su informe. |
 | Auth/Users, Listado/Applications y Convivencia/Mensajería | Servicios privados previstos en la topología A. | **Planificados.** Sin despliegue acreditado en TEST. Su puesta en marcha y validación por servicio corresponden a SCRUM-102. |
@@ -235,4 +235,15 @@ Las fuentes disponibles son el [anexo técnico de SCRUM-99, §15 y §21](../SCRU
 | `GET /docs` y `GET /openapi.json` | `404` en ambas | Los endpoints de documentación quedaron inaccesibles. |
 | `GET /internal/v1/identidad` | `404` | La ruta privada de identidad quedó inaccesible desde el Gateway. |
 
-**Pendiente.** Confirmar el `imageID` efectivo del contenedor y cotejarlo con el digest publicado en GHCR. Verificar los upstreams privados y su conectividad desde el Gateway. Coordinar con SCRUM-101 la provisión y verificación de esquemas y permisos de negocio, y con SCRUM-103 la autenticación y los reintentos entre servicios. El estado de despliegue de los cinco servicios de dominio y los recorridos autenticados completos requieren evidencia independiente.
+#### Integración Gateway → Match · 24 de noviembre de 2026
+
+El equipo observó el Gateway y `roomies-match-test` en el namespace `roomies-test`. Desde la consola del Gateway, `GET http://roomies-match-test-kuberoapp:80/health` devolvió HTTP `200` y `{"status":"ok"}`, lo que confirma el acceso al Service privado de Match por el puerto `80`.
+
+| Configuración | Sonda pública sin sesión | Resultado observado |
+|---|---|---|
+| Antes de configurar el upstream de Match | `GET https://roomies-gateway-test.inf.uct.cl/conexiones/aceptadas` | HTTP `503`, `{"detail":"Servicio no configurado."}`. |
+| Con `MATCH_UPSTREAM_URL=http://roomies-match-test-kuberoapp:80` y `ROOMIES_RUNTIME_MODE=kubero` | La misma petición | HTTP `401`, `{"detail":"Se requiere sesión válida."}`, a las 23:56:22 GMT del 24 de noviembre de 2026. |
+
+El cambio de respuesta acredita el recorrido por HTTPS desde el cliente hasta el Gateway y, a través del Service privado, hasta el control de autenticación de Match. Siguen pendientes el flujo autenticado y las operaciones de negocio con datos de PostgreSQL.
+
+**Pendiente.** Confirmar el `imageID` efectivo del contenedor y cotejarlo con el digest publicado en GHCR. Verificar los demás upstreams privados y su conectividad desde el Gateway. Coordinar con SCRUM-101 la provisión y verificación de esquemas y permisos de negocio, y con SCRUM-103 la autenticación y los reintentos entre servicios. El despliegue de los demás servicios de dominio y los recorridos autenticados completos requieren evidencia independiente.
