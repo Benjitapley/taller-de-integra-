@@ -87,7 +87,6 @@ export default function MyPublications() {
           <span>{item.cupos_disponibles ?? "Por confirmar"} cupos disponibles · {item.cupos_totales ?? "—"} totales</span>
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
-          {item.id_arriendo && <Link href={`/mi-arriendo/${item.id_arriendo}`}>Ver arriendo e integrantes</Link>}
           <Link href={`/publicaciones/${item.id_publicacion}`}>Ver detalle</Link>
           {item.id_arriendo ? <Link href={`/mi-arriendo/${item.id_arriendo}`}>Ver integrantes del arriendo</Link> : null}
           {item.tipo === "Arrendador" && <Link href={`/postulantes/${item.id_publicacion}`}>Ver postulantes</Link>}
