@@ -3,6 +3,7 @@ import logging
 
 import httpx
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
 from .config import Settings
@@ -17,7 +18,12 @@ class RouteGuard:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         path = scope["path"]
-        private = path.rstrip("/") == "/usuarios/me" or path.startswith("/api/arriendos/")
+        private = (path.startswith("/api/usuarios/me") or path.rstrip("/") in {"/usuarios/me", "/api/publicaciones/mias", "/api/mis-publicaciones"}
+                   or path.startswith("/api/arriendos/")
+                   or path.startswith("/api/conversaciones/") or path == "/api/conversaciones"
+                   or path.startswith("/api/postulaciones/")
+                   or (path.startswith("/api/publicaciones/") and path.endswith("/detalle"))
+                   or (path.startswith("/api/publicaciones") and scope["method"] != "GET"))
 
         async def send_private(message):
             if private and message["type"] == "http.response.start":
@@ -72,6 +78,14 @@ def create_app(settings: Settings | None = None, *, transport=None):
     if config.local_mode:
         from .local_routes import dispatch
         app.add_api_route("/{path:path}",dispatch,methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(config.cors_origins),
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+        max_age=600,
+    )
     return app
 
 

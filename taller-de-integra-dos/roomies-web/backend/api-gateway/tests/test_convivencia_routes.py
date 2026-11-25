@@ -23,7 +23,7 @@ def exercise(handler, method="GET", path="/", settings=None, **kwargs):
     return asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("path", ["/api/arriendos/mio", "/api/arriendos/7"])
+@pytest.mark.parametrize("path", ["/api/arriendos/mio", "/api/arriendos/7", "/api/arriendos/7/integrantes"])
 def test_arriendos_use_dedicated_upstream_and_forward_only_public_auth(path):
     def handler(request):
         assert request.url.host == "convivencia.test"
@@ -67,4 +67,42 @@ def test_arriendos_upstream_errors_also_disable_caching(status):
     result = exercise(lambda request: reply(status, content=b'{}', headers={"Cache-Control": "public"}),
                       path="/api/arriendos/mio", settings=Settings(local_mode=True, convivencia_upstream="http://convivencia.test"))
     assert result.status_code == status
+    assert result.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("method,path,query", [
+    ("GET", "/api/conversaciones", b""),
+    ("GET", "/api/conversaciones/12", b""),
+    ("GET", "/api/conversaciones/12/mensajes", b"limite=20&antes=abc"),
+    ("POST", "/api/conversaciones/12/mensajes", b""),
+])
+def test_conversaciones_y_mensajes_se_enrutan_sin_perder_identidad(method, path, query):
+    payload = b'{"contenido":"Hola","id_cliente":"c9c989c1-7f6a-48c0-8bab-000000000001"}' if method == "POST" else b""
+
+    def handler(request):
+        assert request.url.host == "convivencia.test"
+        assert request.url.path == path
+        assert request.url.query == query
+        assert request.method == method
+        assert request.headers["authorization"] == "Bearer account-token"
+        assert "x-roomies-service" not in request.headers
+        assert request.content == payload
+        return reply(200, content=b'{}', headers={"Content-Type": "application/json", "Cache-Control": "public"})
+
+    result = exercise(handler, method=method, path=path + ("?" + query.decode() if query else ""),
+                      settings=Settings(local_mode=True, convivencia_upstream="http://convivencia.test"),
+                      headers={"Authorization": "Bearer account-token", "X-Roomies-Service": "must-not-forward",
+                               **({"Content-Type": "application/json"} if method == "POST" else {})},
+                      content=payload if method == "POST" else None)
+    assert result.status_code == 200
+    assert result.headers["cache-control"] == "no-store"
+
+
+def test_mensajeria_conserva_denegacion_directa_de_convivencia():
+    result = exercise(lambda request: reply(403, content=b'{"detail":"No tienes acceso."}',
+                                           headers={"Content-Type": "application/json", "Cache-Control": "public"}),
+                      path="/api/conversaciones/12/mensajes", settings=Settings(local_mode=True, convivencia_upstream="http://convivencia.test"),
+                      headers={"Authorization": "Bearer account-token"})
+    assert result.status_code == 403
+    assert result.json() == {"detail": "No tienes acceso."}
     assert result.headers["cache-control"] == "no-store"

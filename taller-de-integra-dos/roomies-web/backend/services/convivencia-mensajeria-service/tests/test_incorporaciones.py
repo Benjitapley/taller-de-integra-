@@ -138,10 +138,52 @@ def test_rechazo_local_libera_reserva_por_outbox_y_congela_error(service, ports)
     first = service.incorporate(key, payload(publication=8, application=10))
     assert first[0] == 409
     assert first[1]["code"] == "USER_ALREADY_ACTIVE"
-    assert not ports[1].released
-    assert service.dispatch() == 2
+    assert len(ports[1].released) == 1
+    assert service.dispatch() == 1
     assert len(ports[1].released) == 1
     assert service.incorporate(key, payload(publication=8, application=10))[:2] == first[:2]
+
+
+def test_rechazo_no_es_final_hasta_liberar_reserva(service, ports):
+    from app.models import ServiceError
+    assert service.incorporate(uuid4(), payload())[0] == 201
+    key = uuid4()
+    ports[1].release_down = True
+    for _ in range(2):
+        with pytest.raises(ServiceError) as error:
+            service.incorporate(key, payload(publication=8, application=10))
+        assert error.value.status == 503
+    assert not ports[1].released
+    ports[1].release_down = False
+    status, body, replay = service.incorporate(key, payload(publication=8, application=10))
+    assert status == 409 and body["code"] == "USER_ALREADY_ACTIVE" and replay
+    assert len(ports[1].released) == 1
+
+
+def test_outbox_proyeccion_es_monotona_y_reintento_congela_body(service, ports):
+    service.incorporate(uuid4(), payload())
+    service.incorporate(uuid4(), payload(user=3, application=10))
+    ports[1].confirm_down = True
+    assert service.dispatch() == 0
+    ports[1].confirm_down = False
+    assert service.dispatch() == 2
+    assert [item["ocupacion"] for item in ports[1].confirmations] == [1, 2]
+    assert [item["version_ocupacion"] for item in ports[1].confirmations] == [1, 2]
+
+
+def test_outbox_legado_solo_reconcilia_con_pertenencia_real(service, ports):
+    from psycopg.types.json import Jsonb
+    key = uuid4()
+    service.incorporate(key, payload())
+    with psycopg.connect(os.environ["CONVIVENCIA_TEST_ADMIN_DSN"]) as connection:
+        connection.execute("UPDATE convivencia_mensajeria.outbox SET reserva=reserva-'confirmacion'")
+    assert service.dispatch() == 1
+    assert ports[1].confirmations == [{"id_arriendo": 1, "ocupacion": 1, "version_ocupacion": 1}]
+    with psycopg.connect(os.environ["CONVIVENCIA_TEST_ADMIN_DSN"]) as connection:
+        invalid = {**payload(user=99), "id_reserva": str(uuid4()), "cupos_totales": 2}
+        connection.execute("UPDATE convivencia_mensajeria.outbox SET reserva=%s,enviado=false", (Jsonb(invalid),))
+    assert service.dispatch() == 0
+    assert len(ports[1].confirmations) == 1
 
 
 def test_recuperacion_reanuda_operacion_pendiente_tras_respuesta_perdida(service, ports):

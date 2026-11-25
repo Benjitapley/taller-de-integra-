@@ -1,7 +1,7 @@
 import os
 from types import SimpleNamespace
 from unittest.mock import Mock
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 import pytest
@@ -138,3 +138,104 @@ def test_openapi_tres_rutas_y_modelos(http):
     body = schema["components"]["schemas"]["Incorporation"]
     assert body["additionalProperties"] is False
     assert set(body["required"]) == set(PAYLOAD)
+
+
+def test_historial_chat_usa_cursor_anterior_y_oculta_uuid_de_otros(http):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2, display_name="Integrante dos")
+    conversation = {"id_conversacion": 12, "id_arriendo": 4, "fecha_creacion": "2026-11-20T12:00:00Z"}
+    own = {"id_mensaje": 23, "id_conversacion": 12, "id_remitente": 2, "nombre_remitente": "Integrante dos",
+           "contenido": "Hola", "id_cliente": uuid4(), "fecha_envio": "2026-11-21T12:00:00Z"}
+    other = {"id_mensaje": 24, "id_conversacion": 12, "id_remitente": 3, "nombre_remitente": "Integrante tres",
+             "contenido": "Buenas", "id_cliente": uuid4(), "fecha_envio": "2026-11-21T12:01:00Z"}
+    service.repository.conversation.return_value = conversation
+    service.repository.messages.return_value = ([own, other], 23)
+
+    first = client.get("/api/conversaciones/12/mensajes?limite=2")
+    assert first.status_code == 200
+    assert first.headers["Cache-Control"] == "no-store"
+    assert first.json()["items"][0]["id_cliente"] == str(own["id_cliente"])
+    assert "id_cliente" not in first.json()["items"][1]
+    cursor = first.json()["siguiente_cursor"]
+
+    service.repository.messages.return_value = ([own], None)
+    older = client.get("/api/conversaciones/12/mensajes?limite=1&antes=" + cursor)
+    assert older.status_code == 200
+    assert service.repository.messages.call_args.args == (12, 2, 23, 1)
+
+
+def test_envio_chat_reusa_uuid_y_mapea_error_de_conflicto(http):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2, display_name="Integrante dos")
+    client_id = uuid4()
+    sent = {"id_mensaje": 31, "id_conversacion": 12, "id_remitente": 2, "nombre_remitente": "Integrante dos",
+            "contenido": "Mismo contenido", "id_cliente": client_id, "fecha_envio": "2026-11-21T12:00:00Z"}
+    service.repository.send_message.return_value = sent
+    body = {"contenido": "Mismo contenido", "id_cliente": str(client_id)}
+
+    first = client.post("/api/conversaciones/12/mensajes", json=body)
+    replay = client.post("/api/conversaciones/12/mensajes", json=body)
+    assert first.status_code == replay.status_code == 200
+    assert first.json() == replay.json()
+    assert service.repository.send_message.call_args_list[0].args == (12, 2, "Integrante dos", "Mismo contenido", client_id)
+    assert service.repository.send_message.call_args_list[1] == service.repository.send_message.call_args_list[0]
+
+    service.repository.send_message.side_effect = ServiceError("MESSAGE_IDEMPOTENCY_CONFLICT", "UUID ya usado.", 409)
+    conflict = client.post("/api/conversaciones/12/mensajes", json={**body, "contenido": "Otro contenido"})
+    assert conflict.status_code == 409
+    assert conflict.headers["Cache-Control"] == "no-store"
+
+
+@pytest.mark.parametrize("method", ["get", "post"])
+@pytest.mark.parametrize("user_id", [2, 99])
+def test_http_403_de_convivencia_no_expone_conversacion_por_id_directo(http, method, user_id):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=user_id, display_name="Usuario")
+    denied = ServiceError("CONVERSATION_FORBIDDEN", "No tienes acceso.", 403)
+    service.repository.conversation.side_effect = denied
+    service.repository.send_message.side_effect = denied
+    path = "/api/conversaciones/12/mensajes"
+    if method == "get":
+        result = client.get(path)
+    else:
+        result = client.post(path, json={"contenido": "No autorizado", "id_cliente": str(uuid4())})
+    assert result.status_code == 403
+    assert result.headers["Cache-Control"] == "no-store"
+    if method == "post":
+        service.repository.send_message.assert_called_once()
+
+def test_members_pages_are_bound_to_actor_and_rental(http):
+    from app.main import access_token
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2)
+    application.dependency_overrides[access_token] = lambda: "fixture"
+    service.repository.rental_publication.return_value = 7
+    rows = [{"id_pertenencia": i, "id_usuario": i, "fecha_ingreso": "2026-11-20T12:00:00Z", "activo": True, "es_responsable": i == 1} for i in range(1, 4)]
+    service.repository.members.return_value = rows
+    result = client.get("/api/arriendos/1/integrantes?limite=2")
+    assert result.status_code == 200
+    assert len(result.json()["items"]) == 2
+    cursor = result.json()["siguiente_cursor"]
+    assert cursor
+    assert client.get("/api/arriendos/2/integrantes", params={"cursor": cursor, "limite": 2}).status_code == 422
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=3)
+    assert client.get("/api/arriendos/1/integrantes", params={"cursor": cursor, "limite": 2}).status_code == 422
+    assert client.get("/api/arriendos/1/integrantes?cursor=bad").status_code == 422
+
+
+def test_nonresident_owner_can_read_but_admin_cannot(http):
+    from app.main import access_token
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2, administrator=True)
+    application.dependency_overrides[access_token] = lambda: "fixture"
+    service.repository.rental_publication.return_value = 7
+    service.repository.get.side_effect = ServiceError("NOT_FOUND", "No pertenece", 404)
+    service.publications.owned_by.return_value = False
+    service.repository.members.side_effect = ServiceError("FORBIDDEN", "Sin acceso", 403)
+    assert client.get("/api/arriendos/1/integrantes").status_code == 403
+    service.repository.members.assert_called_with(1, 2, False, 0, 20)
+    service.publications.owned_by.return_value = True
+    service.repository.members.side_effect = None
+    service.repository.members.return_value = []
+    assert client.get("/api/arriendos/1/integrantes").json() == {"items": [], "siguiente_cursor": None}
+    service.repository.members.assert_called_with(1, 2, True, 0, 20)

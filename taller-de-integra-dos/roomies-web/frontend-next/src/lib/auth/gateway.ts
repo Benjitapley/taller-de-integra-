@@ -3,7 +3,16 @@ import "server-only";
 /** Server transport. No credentials from the browser are forwarded as headers.
  * FastAPI remains the authority for signature, expiry and session revocation.
  */
-export type WebAuthConfig = { origin: string; backend: string; secure: boolean; provider?: "supabase"; supabase?: { origin: string; key: string }; localSignupAutoconfirm?: boolean; recoverySecret?: string };
+export type WebAuthConfig = {
+  origin: string;
+  backend: string;
+  secure: boolean;
+  provider?: "supabase";
+  supabase?: { origin: string; key: string };
+  localSignupAutoconfirm?: boolean;
+  recoverySecret?: string;
+  profileContract?: "v1" | "local-v1";
+};
 export type Transport = typeof fetch;
 export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig | null {
   if (env.WEB_AUTH_ENABLED !== "true") return null;
@@ -12,6 +21,8 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
     const backend = new URL(env.WEB_AUTH_FASTAPI_ORIGIN ?? "");
     const provider = env.WEB_AUTH_PROVIDER ?? "legacy";
     if (!["legacy", "supabase"].includes(provider)) return null;
+    const profileContract = env.WEB_PROFILE_CONTRACT ?? (provider === "supabase" ? "local-v1" : "existing");
+    if (!["existing", "local-v1", "v1"].includes(profileContract) || (profileContract !== "existing" && provider !== "supabase")) return null;
     for (const url of [web, backend]) {
       if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) return null;
       const localGateway = url === backend && (env.ROOMIES_LOCAL_MODE === "1" || env.ROOMIES_RUNTIME_MODE === "supabase") && env.NODE_ENV !== "production" && url.hostname === "api-gateway";
@@ -26,14 +37,23 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
       if (!(real || disposable) ||
           !["http:", "https:"].includes(identity.protocol) || identity.username || identity.password || identity.pathname !== "/" || identity.search || identity.hash || !key || key.length > 4096 || key.startsWith("sb_secret_") || /[\r\n]/.test(key)) return null;
       if (key.split(".").length === 3 && JSON.parse(Buffer.from(key.split(".")[1], "base64url").toString()).role !== "anon") return null;
-      return { origin: web.origin, backend: backend.origin, secure: web.protocol === "https:", provider: "supabase", supabase: { origin: identity.origin, key }, localSignupAutoconfirm: disposable && env.NODE_ENV !== "production", ...(env.WEB_AUTH_RECOVERY_SECRET ? { recoverySecret: env.WEB_AUTH_RECOVERY_SECRET } : {}) };
+      return {
+        origin: web.origin, backend: backend.origin, secure: web.protocol === "https:", provider: "supabase",
+        supabase: { origin: identity.origin, key },
+        localSignupAutoconfirm: disposable && env.NODE_ENV !== "production",
+        ...(env.WEB_AUTH_RECOVERY_SECRET ? { recoverySecret: env.WEB_AUTH_RECOVERY_SECRET } : {}),
+        ...(profileContract === "v1" || profileContract === "local-v1" ? { profileContract } : {}),
+      };
     }
     return { origin: web.origin, backend: backend.origin, secure: web.protocol === "https:" };
   } catch { return null; }
 }
 export const cookieName = (config: WebAuthConfig) => config.provider === "supabase" ? (config.secure ? "__Host-roomies_sb_access" : "roomies_sb_dev_access") : (config.secure ? "__Host-haycupo_session" : "haycupo_dev_session");
-// El despliegue de Render expone local/v1; los aliases api/v1 aún no están publicados.
-export const profilePath = (config: WebAuthConfig) => config.provider === "supabase" ? "/local/v1/perfil" : "/api/perfil";
+export const profilePath = (config: WebAuthConfig) => {
+  if (config.profileContract === "v1") return "/api/usuarios/me";
+  if (config.profileContract === "local-v1") return "/local/v1/perfil";
+  return config.provider === "supabase" ? "/api/v1/perfil" : "/api/perfil";
+};
 export function sessionCookie(config: WebAuthConfig, token = "", maxAge = 0) {
   return `${cookieName(config)}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${config.secure ? "; Secure" : ""}`;
 }
@@ -84,7 +104,7 @@ export async function getSession(config: WebAuthConfig | null, token: string, tr
   } catch { return authError(503); }
 }
 const actions = ["registro", "verificar", "reenviar-codigo", "login", "logout", "sesion", "renovar", "confirmar", "recuperar", "recuperacion-callback", "cambiar-contrasena", "recuperacion-estado"];
-async function limitedJson(request: Request): Promise<Record<string, unknown>> {
+export async function limitedJson(request: Request): Promise<Record<string, unknown>> {
   const reader = request.body?.getReader();
   if (!reader) throw new Error();
   const chunks: Uint8Array[] = [];
@@ -105,7 +125,7 @@ export async function handleAuth(request: Request, action: string, config: WebAu
   if (!config) return authError(503);
   if (config.provider === "supabase") {
     const { handleSupabaseAuth } = await import("./supabase");
-    return handleSupabaseAuth(request, action, config, transport, { reply: authReply, error: authError, limitedJson, token: readToken, accessCookie: sessionCookie, session: getSession });
+    return handleSupabaseAuth(request, action, config, transport, { reply: authReply, error: authError, limitedJson, token: readToken, accessCookie: sessionCookie, session: getSession, profilePath });
   }
   if (["renovar", "confirmar", "recuperar", "recuperacion-callback", "cambiar-contrasena", "recuperacion-estado"].includes(action)) return authReply(404, { detail: "Ruta no disponible." });
   const token = readToken(request.headers.get("cookie"), config);

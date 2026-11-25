@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import AuthField from "./AuthField";
 import SubmitButton from "./SubmitButton";
+import VerificationForm from "./VerificationForm";
 import { submitAuth } from "./client";
 import styles from "./auth.module.css";
 
@@ -27,6 +28,10 @@ export default function EmailConfirmation({ error = "", notice = "" }: { error?:
     {error && <p role="alert" className={styles.errorMessage}>{error}</p>}
     <p>Ábrelo en el mismo navegador donde creaste tu cuenta. Si el correo no aparece, revisa también la carpeta de spam.</p>
     <p><Link className={styles.headerLink} href="/">Ya confirmé mi correo, iniciar sesión</Link></p>
+    <details>
+      <summary>Ingresar un código de confirmación</summary>
+      <VerificationForm supabase showFlowLinks={false} />
+    </details>
     <details>
       <summary>¿No recibiste el enlace o necesitas otro?</summary>
       <form onSubmit={resend}>

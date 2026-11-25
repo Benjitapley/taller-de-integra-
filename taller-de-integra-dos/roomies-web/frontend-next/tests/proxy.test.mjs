@@ -28,11 +28,15 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
   let profileMode = "ok";
   let verificationMode = "ok";
   let profileCookie = "";
+  let e01Closed = false;
+  const applicationsFixture = process.env.APPLICATIONS_BROWSER_TESTS === "1"
+    ? (await import("./applications-browser.mjs")).createApplicationsFixture() : null;
   const upstream = createServer(async (request, response) => {
     const url = new URL(request.url, "http://fixture.invalid");
     const path = decodeURIComponent(url.pathname);
     received.push(path + url.search);
     response.setHeader("X-Proxy-Fixture", "transport-only");
+    if (applicationsFixture && await applicationsFixture.handle(request, response, url)) return;
     // Double of FastAPI, available only in this isolated test process.
     if (["/auth/verificar", "/auth/reenviar-codigo"].includes(path)) {
       response.setHeader("Content-Type", "application/json");
@@ -68,6 +72,28 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
     if (path === "/imagenes/fixture-avatar.png") {
       response.setHeader("Content-Type", "image/png");
       response.end(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1ioAAAAASUVORK5CYII=", "base64"));
+      return;
+    }
+    if (process.env.PUBLICATIONS_BROWSER_TESTS === "1" &&
+        ["/api/publicaciones/4242", "/api/publicaciones/4242/cerrar", "/api/publicaciones/mias"].includes(path)) {
+      assert.match(request.headers.authorization ?? "", /^Bearer fixture\./);
+      const closing = request.method === "PATCH" && path.endsWith("/cerrar");
+      if (closing) e01Closed = true;
+      const publication = {
+        id_publicacion: 4242, titulo: "Aviso guardado con formato canónico", ubicacion: "Sector Centro",
+        estado: e01Closed ? "Cerrada" : "Disponible", tipo: "Arrendador", tipo_vivienda: "habitacion", mascota: "no",
+        precio: 999999999999, cupos_totales: 2, cupos_disponibles: e01Closed ? 0 : 2,
+        descripcion: "Descripción guardada", imagenes: [],
+        region: { id: 9, nombre: "La Araucanía" }, comuna: { id: 9112, nombre: "Padre Las Casas" },
+        autor: { id_usuario: 5, nombre: "Arrendadora de prueba", foto: null },
+        reglas_arrendador: ["Sin humo", "Respetar horarios"], fecha_publicacion: "2026-11-24T18:00:00Z",
+      };
+      const requestedState = url.searchParams.get("estado");
+      const payload = path.endsWith("/mias")
+        ? { items: !requestedState || requestedState === publication.estado ? [publication] : [], siguiente_cursor: null }
+        : publication;
+      response.setHeader("Content-Type", "application/json");
+      response.end(JSON.stringify(payload));
       return;
     }
     // Solo respuestas sintéticas de transporte.
@@ -188,6 +214,18 @@ test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos
     await t.test("perfil en navegador: carga, identidad, errores, teclado y resoluciones", async () => {
       const { profileBrowser } = await import("./profile-browser.mjs");
       await profileBrowser({base,cookie:profileCookie,setProfileMode:(mode)=>{profileMode=mode;},setVerificationMode:(mode)=>{verificationMode=mode;},playwrightPath:process.env.PROFILE_PLAYWRIGHT_PATH,browserPath:process.env.PROFILE_BROWSER_PATH});
+    });
+  }
+  if (process.env.PUBLICATIONS_BROWSER_TESTS === "1") {
+    await t.test("E01 en navegador: catálogo, ubicación, fotos y errores de guardado", async () => {
+      const { publicationsBrowser } = await import("./publications-browser.mjs");
+      await publicationsBrowser({ base, cookie: profileCookie, playwrightPath: process.env.PROFILE_PLAYWRIGHT_PATH, browserPath: process.env.PROFILE_BROWSER_PATH });
+    });
+  }
+  if (applicationsFixture) {
+    await t.test("aceptación en navegador: respuesta perdida, recuperación y permisos", async () => {
+      const { applicationsBrowser } = await import("./applications-browser.mjs");
+      await applicationsBrowser({ base, cookie: profileCookie, fixture: applicationsFixture, playwrightPath: process.env.PROFILE_PLAYWRIGHT_PATH, browserPath: process.env.PROFILE_BROWSER_PATH });
     });
   }
 

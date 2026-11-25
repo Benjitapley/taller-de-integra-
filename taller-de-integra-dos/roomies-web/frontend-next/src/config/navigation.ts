@@ -24,13 +24,11 @@ type NavigationItem = { label: string; icon: IconName; href?: string };
 // Contrato compartido de navegación. Las funciones de negocio viven en features/.
 export const navigationItems: readonly NavigationItem[] = [
   { label: "Inicio", icon: "home", href: routes.home },
-  { label: "Chat", icon: "chat" },
+  { label: "Chat", icon: "chat", href: "/mi-arriendo/chat" },
   { label: "Publicar", icon: "plus", href: routes.publish },
   { label: "Mis publicaciones", icon: "file", href: "/mis-publicaciones" },
-  { label: "Mis conexiones", icon: "user", href: "/mis-conexiones" },
   { label: "Mis postulaciones", icon: "file", href: "/mis-postulaciones" },
+  { label: "Mis reportes", icon: "file", href: "/mis-reportes" },
   { label: "Mi arriendo", icon: "home", href: "/mi-arriendo" },
-  { label: "Favoritos", icon: "heart" },
   { label: "Perfil", icon: "user", href: routes.profile },
-  { label: "Ajustes", icon: "settings" },
 ];

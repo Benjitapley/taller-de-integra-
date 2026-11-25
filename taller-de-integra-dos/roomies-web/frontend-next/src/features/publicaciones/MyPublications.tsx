@@ -1,21 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/layout/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 
-type Publication = {
-  id: number;
-  titulo: string;
-  precio?: number | string;
-  tipo?: string;
-  ubicacion?: string;
-  cupos?: number | string;
-  estado?: string;
-  cupos_disponibles?: number | null;
-};
+import { type Publication } from "./contracts";
+import { useCursorList } from "../lists/useCursorList";
+import ListProgress from "../lists/ListProgress";
+const publicationId = (item: Publication) => item.id_publicacion;
 
 const formatPrice = (value: number | string | undefined) => new Intl.NumberFormat("es-CL", {
   style: "currency",
@@ -24,62 +18,60 @@ const formatPrice = (value: number | string | undefined) => new Intl.NumberForma
 }).format(Number(value ?? 0));
 
 export default function MyPublications() {
-  const [items, setItems] = useState<Publication[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState("");
+  const [closing, setClosing] = useState<number | null>(null);
+  const query = new URLSearchParams({ limite: "20", ...(status ? { estado: status } : {}) });
+  const list = useCursorList<Publication>("/web-api/mis-publicaciones?" + query, publicationId);
+  const { items, setItems, loading } = list;
   const [error, setError] = useState("");
 
-  function load(signal?: AbortSignal) {
-    return fetch("/web-api/mis-publicaciones", { credentials: "same-origin", cache: "no-store", signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("No se pudieron cargar tus publicaciones.");
-        const data: unknown = await response.json();
-        if (!Array.isArray(data)) throw new Error("Respuesta de publicaciones inválida.");
-        if (signal?.aborted) return;
-        setItems(data);
-        setError("");
-      }).catch(() => {
-        if (signal?.aborted) return;
-        setError("No se pudieron cargar tus publicaciones. Intenta nuevamente.");
-      }).finally(() => { if (!signal?.aborted) setLoading(false); });
-  }
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
-  }, []);
-
   async function close(id: number) {
+    if (closing !== null) return;
     setError("");
+    setClosing(id);
     try {
-    const response = await fetch(`/web-api/publicaciones/${id}/cerrar`, {
-      method: "PATCH",
-      credentials: "same-origin",
-      headers: { "X-Haycupo-CSRF": "1" },
-    });
+      const response = await fetch(`/web-api/publicaciones/${id}/cerrar`, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "X-Haycupo-CSRF": "1" },
+        signal: AbortSignal.timeout(15_000),
+      });
 
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      setError(payload?.detail || "No se pudo cerrar la publicación.");
-      return;
+      const saved = await response.json().catch(() => null);
+      if (!response.ok || saved?.id_publicacion !== id || saved.estado !== "Cerrada") {
+        setError(saved?.detail || "No se pudo confirmar el cierre. Actualiza el listado.");
+        return;
+      }
+
+      setItems(current => status && status !== saved.estado
+        ? current.filter(item => item.id_publicacion !== id)
+        : current.map(item => item.id_publicacion === id ? { ...item, ...saved } : item));
+    } catch {
+      setError("No se pudo confirmar el cierre. Actualiza el listado.");
+    } finally {
+      setClosing(null);
     }
-
-    await load();
-    } catch { setError("No se pudo confirmar el cierre. Actualiza el listado."); }
   }
 
   return <main>
     <PageHeader title="Mis publicaciones" description="Administra tus publicaciones y edita el contenido cuando lo necesites." />
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, gap: 12, flexWrap: "wrap" }}>
+      <label>Estado
+        <select value={status} disabled={closing !== null} onChange={event => { setError(""); setStatus(event.target.value); }}>
+          <option value="">Todos los estados</option>
+          <option value="Disponible">Disponible</option>
+          <option value="Activa">Activa</option>
+          <option value="Cerrada">Cerrada</option>
+        </select>
+      </label>
       <Link href="/publicar" style={{ textDecoration: "none", display: "inline-block", background: "#382384", color: "#fff", padding: "12px 16px", borderRadius: 8, fontWeight: 700 }}>Crear publicación</Link>
     </div>
 
-    {loading ? <Card><p>Cargando tus publicaciones…</p></Card> : null}
-    {!loading && error ? <Card><p role="alert">{error}</p><Button onClick={() => void load()}>Reintentar</Button></Card> : null}
-    {!loading && !error && items.length === 0 ? <Card><p>Aún no tienes publicaciones creadas.</p><Link href="/publicar">Crear la primera</Link></Card> : null}
+    {error && <Card><p role="alert">{error}</p><Button disabled={loading} onClick={() => { setError(""); void list.load(); }}>Actualizar listado</Button></Card>}
+    {list.loaded && !loading && !list.error && items.length === 0 ? <Card><p>{status ? "No tienes publicaciones en este estado." : "Aún no tienes publicaciones creadas."}</p>{!status && <Link href="/publicar">Crear la primera</Link>}</Card> : null}
 
-    {!loading && !error && items.length > 0 ? <div style={{ display: "grid", gap: 16 }}>
-      {items.map((item) => <Card key={item.id}>
+    {items.length > 0 ? <div style={{ display: "grid", gap: 16 }}>
+      {items.map((item) => <Card key={item.id_publicacion}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
             <h2 style={{ margin: "0 0 8px" }}>{item.titulo}</h2>
@@ -92,15 +84,17 @@ export default function MyPublications() {
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 12, color: "#111827" }}>
           <strong>{formatPrice(item.precio)}</strong>
           <span>{item.tipo || "Sin tipo"}</span>
-          <span>{item.cupos_disponibles ?? "Por confirmar"} cupos disponibles · {item.cupos ?? "—"} totales</span>
+          <span>{item.cupos_disponibles ?? "Por confirmar"} cupos disponibles · {item.cupos_totales ?? "—"} totales</span>
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
-          <Link href={`/publicaciones/${item.id}`}>Ver detalle</Link>
-          {item.tipo === "Arrendador" && <Link href={`/postulantes/${item.id}`}>Ver postulantes</Link>}
-          <Link href={`/editar-publicacion?id=${item.id}`} style={{ display: "inline-block", textDecoration: "none", padding: "10px 14px", borderRadius: 8, background: "#e5e7eb", color: "#111827", fontWeight: 700 }}>Editar</Link>
-          <Button variant="secondary" disabled={item.estado === "Cerrada"} onClick={() => void close(item.id)}>Cerrar publicación</Button>
+          <Link href={`/publicaciones/${item.id_publicacion}`}>Ver detalle</Link>
+          {item.id_arriendo ? <Link href={`/mi-arriendo/${item.id_arriendo}`}>Ver integrantes del arriendo</Link> : null}
+          {item.tipo === "Arrendador" && <Link href={`/postulantes/${item.id_publicacion}`}>Ver postulantes</Link>}
+          <Link href={`/editar-publicacion?id=${item.id_publicacion}`} style={{ display: "inline-block", textDecoration: "none", padding: "10px 14px", borderRadius: 8, background: "#e5e7eb", color: "#111827", fontWeight: 700 }}>Editar</Link>
+          <Button variant="secondary" disabled={item.estado === "Cerrada" || closing !== null} onClick={() => void close(item.id_publicacion)}>{closing === item.id_publicacion ? "Cerrando…" : "Cerrar publicación"}</Button>
         </div>
       </Card>)}
     </div> : null}
+    <ListProgress {...list} count={items.length} retry={() => void list.retryLoad()} more={() => void list.load(list.cursor)} />
   </main>;
 }

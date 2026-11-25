@@ -47,6 +47,7 @@ No usar ese ejemplo contra servicios reales en esta fase.
 | Variable | Predeterminado | Uso |
 | --- | --- | --- |
 | `AUTH_USERS_UPSTREAM_URL` | Ausente | Origen HTTP/HTTPS fijo, sin credenciales, prefijo, query ni fragmento. |
+| `GATEWAY_CORS_ORIGINS` | Vacío | Orígenes del navegador separados por comas. Se validan como orígenes HTTP/HTTPS exactos; no admite `*`, rutas ni credenciales. Ejemplo para Expo Web: `http://localhost:8081`. |
 | `GATEWAY_CONNECT_TIMEOUT` | 3 | Segundos para conexión. |
 | `GATEWAY_READ_TIMEOUT` | 10 | Segundos de espera por lectura. |
 | `GATEWAY_WRITE_TIMEOUT` | 10 | Segundos de espera por escritura. |
@@ -58,7 +59,10 @@ No usar ese ejemplo contra servicios reales en esta fase.
 
 Timeouts finitos en `(0, 120]`. Configuración inválida impide el arranque con
 mensaje genérico. HTTP permite simulación local; TLS de despliegue queda pendiente.
-Límites de bytes: enteros en `(0, 16777216]` (máximo configurable 16 MiB).
+Límites de bytes: solicitudes hasta 32 000 000; respuestas hasta 16 777 216.
+En modo local/Supabase la solicitud predeterminada admite 26 000 000 bytes,
+incluido el multipart de cinco fotos de 5 000 000 bytes; fuera de ese modo
+conserva 1 MiB. El límite de respuesta no aumenta por la carga de fotografías.
 FastAPI 0.162.0 y Starlette 1.10.0 están fijados y verificados en el entorno local;
 el par anterior no admitía la versión corregida de Starlette.
 
@@ -77,10 +81,10 @@ el par anterior no admitía la versión corregida de Starlette.
 - Solicitudes: Content-Encoding ausente o una sola cabecera `identity` (sin distinguir
   mayúsculas). Otras codificaciones, listas o duplicados se rechazan con 415 antes
   de leer/retransmitir el cuerpo. `identity` se puede reenviar.
-- Allowlist de solicitud: Authorization, Content-Type, Content-Encoding, Accept, Accept-Language.
+- Allowlist de solicitud: Authorization, Content-Type, Content-Encoding, Accept, Accept-Language, Idempotency-Key.
   HTTPX genera Host y framing. No transmite cookies ni X-Forwarded-* del cliente.
 - Allowlist de respuesta: Content-Type, Content-Encoding, Content-Language,
-  WWW-Authenticate, Retry-After. Excluye Set-Cookie, Server, Location, Refresh y
+  WWW-Authenticate, Retry-After, Idempotency-Replayed. Excluye Set-Cookie, Server, Location, Refresh y
   cabeceras arbitrarias. Filtra hop-by-hop y las nombradas por Connection.
   No conserva casing, orden de cabeceras ni framing HTTP.
   Recalcula Content-Length con los bytes raw efectivos, excepto 204/304 donde no

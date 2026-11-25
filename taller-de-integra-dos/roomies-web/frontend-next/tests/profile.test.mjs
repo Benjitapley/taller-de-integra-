@@ -8,7 +8,7 @@ const moduleURL=(source)=>`data:text/javascript;base64,${Buffer.from(transpile(s
 const gateway=(await readFile(new URL("../src/lib/auth/gateway.ts",import.meta.url),"utf8")).replace('import "server-only";','');
 const validation=moduleURL(await readFile(new URL("../src/features/perfil/validation.ts",import.meta.url),"utf8"));
 const source=(await readFile(new URL("../src/lib/perfil/server.ts",import.meta.url),"utf8")).replace('import "server-only";','').replace('"../auth/gateway"',JSON.stringify(moduleURL(gateway))).replace('"../../features/perfil/validation"',JSON.stringify(validation));
-const {handleProfile,normalizeProfile,profilePhoto}=await import(moduleURL(source));
+const {handleProfile,handleProfilePhoto,normalizeProfile,profilePhoto}=await import(moduleURL(source));
 const config={origin:"https://web.example.com",backend:"https://api.example.com",secure:true};
 const profile={nombre:"Perfil A",edad:25,ocupacion:"Estudiante",ciudad:"Ciudad A",breve_descripcion:"Descripción A",sobre_mi:"Información A",foto_perfil:"/imagenes/a.png",total_publicaciones:2,verificado:true};
 const req=(token="header.payload.signature",query="")=>new Request(`${config.origin}/web-api/perfil${query}`,{headers:{cookie:`__Host-haycupo_session=${token}`,Authorization:"Bearer ignored-client-token"}});
@@ -17,6 +17,22 @@ test("el estado de correo solo acepta booleanos del perfil autenticado",()=>{
   assert.equal(normalizeProfile({...profile,verificado:true}).verificado,true);
   assert.equal(normalizeProfile({...profile,verificado:false}).verificado,false);
   for(const value of [undefined,null,"true","false",1,0,{}]) assert.equal(normalizeProfile({...profile,verificado:value}).verificado,null);
+});
+
+test("perfil Supabase sigue disponible si falla Listado sin inventar un contador",async()=>{
+  const sb={...config,provider:"supabase",profileContract:"local-v1"};
+  const request=new Request(config.origin+"/web-api/perfil",{headers:{cookie:"__Host-roomies_sb_access=header.payload.signature"}});
+  const publicProfile={...profile,edad_calculada:true};
+  for(const failure of [async()=>{throw new Error("private-network-error");},async()=>Response.json({}, {status:503}),async()=>new Response("invalid-json"),async()=>Response.json({total_publicaciones:-1}),async()=>Response.json({})]){
+    const response=await handleProfile(request,sb,async(url)=>url.endsWith("/local/v1/perfil")?Response.json(publicProfile):failure());
+    assert.equal(response.status,200);
+    assert.deepEqual(await response.json(),{...publicProfile,total_publicaciones:null});
+    assert.equal(response.headers.get("Set-Cookie"),null);
+  }
+  for(const total of [0,7]){
+    const response=await handleProfile(request,sb,async(url)=>Response.json(url.endsWith("/local/v1/perfil")?publicProfile:{total_publicaciones:total}));
+    assert.equal((await response.json()).total_publicaciones,total);
+  }
 });
 
 test("perfil autoriza desde cookie, consulta destino fijo y permite solo campos públicos",async()=>{
@@ -146,4 +162,97 @@ test("PUT distingue permiso denegado de sesión inválida sin exponer el error d
   assert.equal(expired.status,401);
   assert.match(expired.headers.get("Set-Cookie"),/Max-Age=0/);
   assert.match((await expired.json()).detail,/sesión ha expirado/);
+});
+
+const canonical = { ...config, provider: "supabase", profileContract: "v1", supabase: { origin: "https://proyecto.supabase.co" } };
+const storagePhoto = canonical.supabase.origin + "/storage/v1/object/public/perfiles/17/new.webp";
+const canonicalHeaders = { cookie: "__Host-roomies_sb_access=fixture.token.signature", Origin: canonical.origin, "X-Haycupo-CSRF": "1" };
+
+test("SCRUM-94 mantiene perfil y edad desconocida aunque Listado no responda", async () => {
+  const transition = { ...config, provider: "supabase" };
+  const response = await handleProfile(new Request(config.origin, { headers: canonicalHeaders }), transition, async url => {
+    if (url.endsWith("/api/v1/perfil")) return Response.json({ ...profile, edad: null, edad_calculada: false });
+    assert.equal(url, config.backend + "/api/v1/publicaciones/resumen");
+    return Response.json({}, { status: 503 });
+  });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.nombre, profile.nombre);
+  assert.equal(result.edad, null);
+  assert.equal(result.edad_calculada, false);
+  assert.equal(result.total_publicaciones, null);
+});
+
+test("el despliegue local-v1 usa solo las rutas configuradas sin fallback de identidad", async () => {
+  const transition = { ...config, provider: "supabase", profileContract: "local-v1" };
+  const visited = [];
+  const response = await handleProfile(new Request(config.origin, { headers: canonicalHeaders }), transition, async url => {
+    visited.push(url);
+    return url.endsWith("/perfil") ? Response.json({ ...profile, edad_calculada: true })
+      : Response.json({ total_publicaciones: 2 });
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(visited, [config.backend + "/local/v1/perfil", config.backend + "/local/v1/publicaciones/resumen"]);
+});
+
+test("el perfil común consulta un solo endpoint y adapta el correo y la foto de Storage", async () => {
+  const response = await handleProfile(new Request(canonical.origin, { headers: canonicalHeaders }), canonical, async (url, options) => {
+    assert.equal(url, canonical.backend + "/api/usuarios/me");
+    assert.equal(options.headers.Authorization, "Bearer fixture.token.signature");
+    return Response.json({ ...profile, foto_perfil: storagePhoto, correo_verificado: true, genero: "Otro", id_region_interes: 9 });
+  });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.foto_perfil, storagePhoto);
+  assert.equal(result.edad_calculada, true);
+  assert.equal(result.verificado, true);
+  assert.equal(result.id_region_interes, 9);
+  assert.equal(normalizeProfile({ ...profile, foto_perfil: storagePhoto + "?secret=x" }, canonical).foto_perfil, null);
+  assert.equal(normalizeProfile({ ...profile, foto_perfil: storagePhoto.replace("/perfiles/", "/avisos/") }, canonical).foto_perfil, null);
+});
+
+test("PATCH entrega solo campos editables, conserva null y comunica fallos del Gateway", async () => {
+  const patch = (changes, headers = {}) => new Request(canonical.origin, {
+    method: "PATCH", headers: { ...canonicalHeaders, "Content-Type": "application/json", ...headers }, body: JSON.stringify(changes),
+  });
+  const changes = { ocupacion: "Ambos", sobre_mi: null, id_region_interes: 9, id_comuna_interes: 9101 };
+  const response = await handleProfile(patch(changes), canonical, async (url, options) => {
+    assert.equal(url, canonical.backend + "/api/usuarios/me");
+    assert.equal(options.method, "PATCH");
+    assert.equal(options.headers.Authorization, "Bearer fixture.token.signature");
+    assert.deepEqual(JSON.parse(options.body), changes);
+    return Response.json({ detail: "no devolver" }, { status: 422 });
+  });
+  assert.equal(response.status, 422);
+  assert.doesNotMatch(await response.text(), /no devolver|success/);
+  const prevent = async () => { assert.fail("No debe contactar el Gateway"); };
+  assert.equal((await handleProfile(patch(changes, { Origin: "https://otro.example" }), canonical, prevent)).status, 403);
+  for (const invalid of [{ edad: 21 }, { nombre: "Otra persona" }, { ocupacion: "Cualquiera" }, { breve_descripcion: "a".repeat(161) }, { id_region_interes: "9" }]) {
+    assert.equal((await handleProfile(patch(invalid), canonical, prevent)).status, 422);
+  }
+});
+
+test("PUT foto conserva el boundary y solo confirma una URL pública válida del bucket perfiles", async () => {
+  const upload = (size = 10, type = "image/webp", headers = canonicalHeaders) => {
+    const form = new FormData();
+    form.set("foto", new File([new Uint8Array(size)], "new.webp", { type }));
+    return new Request(canonical.origin + "/web-api/perfil/foto", { method: "PUT", headers, body: form });
+  };
+  const request = upload();
+  const contentType = request.headers.get("content-type");
+  const response = await handleProfilePhoto(request, canonical, async (url, options) => {
+    assert.equal(url, canonical.backend + "/api/usuarios/me/foto");
+    assert.equal(options.headers["Content-Type"], contentType);
+    const form = await new Response(options.body, { headers: { "Content-Type": contentType } }).formData();
+    assert.deepEqual(Array.from(form.keys()), ["foto"]);
+    assert.equal(form.get("foto").size, 10);
+    assert.equal(options.headers.Authorization, "Bearer fixture.token.signature");
+    return Response.json({ foto_perfil: storagePhoto, token: "privado" });
+  });
+  assert.deepEqual(await response.json(), { foto_perfil: storagePhoto });
+  const prevent = async () => { assert.fail("No debe contactar el Gateway"); };
+  assert.equal((await handleProfilePhoto(upload(5_000_001), canonical, prevent)).status, 413);
+  assert.equal((await handleProfilePhoto(upload(10, "image/svg+xml"), canonical, prevent)).status, 415);
+  assert.equal((await handleProfilePhoto(upload(10, "image/webp", {}), canonical, prevent)).status, 401);
+  assert.equal((await handleProfilePhoto(upload(), canonical, async () => Response.json({ foto_perfil: "blob:temporal" }))).status, 503);
 });

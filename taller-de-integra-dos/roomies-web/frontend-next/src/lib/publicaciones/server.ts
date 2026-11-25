@@ -1,6 +1,6 @@
 import "server-only";
 import { authConfig, authReply, readToken, sessionCookie, type Transport, type WebAuthConfig } from "../auth/gateway";
-import { publicationImageLimit, validatePublicationForm } from "../../features/publicaciones/validation";
+import { publicationBodyLimit, validatePublicationForm } from "../../features/publicaciones/validation";
 
 const unavailable = () => authReply(503, { detail: "No se pudo confirmar la publicación. Comprueba tus publicaciones antes de volver a intentarlo." });
 
@@ -13,7 +13,7 @@ async function readForm(request: Request): Promise<FormData | null> {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.length;
-    if (size > publicationImageLimit + 65_536) {
+    if (size > publicationBodyLimit) {
       await reader.cancel();
       throw new RangeError("form-too-large");
     }
@@ -62,12 +62,15 @@ export async function handleSavePublication(
   try {
     form = await readForm(request);
   } catch (error) {
-    if (error instanceof RangeError) return authReply(413, { detail: "El formulario supera el tamaño permitido de 5 MB." });
+    if (error instanceof RangeError) return authReply(413, { detail: "El formulario supera el tamaño permitido de 26 MB." });
     return authReply(422, { detail: "El formulario no es válido." });
   }
   if (!form) return authReply(422, { detail: "El formulario no es válido." });
   const validationError = validatePublicationForm(form);
   if (validationError) return authReply(422, { detail: validationError });
+  const images = form.getAll("imagenes").filter(image => typeof image !== "string" && (image.name !== "" || image.size > 0));
+  form.delete("imagenes");
+  for (const image of images) form.append("imagenes", image);
 
   try {
     const saved = await transport(`${config.backend}/api/publicaciones${publicationId === undefined ? "" : `/${publicationId}`}`, {
@@ -76,22 +79,26 @@ export async function handleSavePublication(
       cache: "no-store",
       redirect: "error",
       signal: AbortSignal.timeout(20_000),
-      headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+      headers: { Accept: "application/json", Authorization: `Bearer ${token}`,
+        ...(request.headers.has("Idempotency-Key") ? { "Idempotency-Key": request.headers.get("Idempotency-Key")! } : {}) },
     });
     if (saved.status === 401) return expired();
     if (saved.status === 403) return authReply(403, { detail: "No tienes permiso para crear publicaciones." });
     if (saved.status === 413) return authReply(413, { detail: "La imagen debe pesar como máximo 5 MB." });
-    if (saved.status === 422) {
+    if ([409, 415, 422].includes(saved.status)) {
       let payload: unknown;
       try { payload = await saved.json(); } catch { payload = null; }
-      return authReply(422, { detail: upstreamDetail(payload) ?? "Revisa los campos y selecciona una imagen válida." });
+      return authReply(saved.status, { detail: upstreamDetail(payload) ?? "Revisa los campos y selecciona imágenes válidas." });
     }
     if (!saved.ok) return unavailable();
-    if (method === "PUT") return authReply(200, { mensaje: "Publicación actualizada" });
     const result: unknown = await saved.json();
-    if (!result || typeof result !== "object" || !("id" in result) ||
-        !Number.isSafeInteger(result.id) || (result.id as number) < 1) return unavailable();
-    return authReply(201, { id: result.id, mensaje: "Publicación creada" });
+    if (!result || typeof result !== "object" || !("id_publicacion" in result) ||
+        !Number.isSafeInteger(result.id_publicacion) || (result.id_publicacion as number) < 1) return unavailable();
+    if (method === "PUT") {
+      if (result.id_publicacion !== Number(publicationId)) return unavailable();
+      return authReply(200, publication(result));
+    }
+    return authReply(201, publication(result));
   } catch {
     return unavailable();
   }
@@ -100,11 +107,27 @@ export async function handleSavePublication(
 export const handleCreatePublication = handleSavePublication;
 
 type Operation = "mine" | "edit" | "close";
-const fields = ["id", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos", "cupos_totales", "cupos_disponibles", "imagen", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios"];
+const fields = ["id_publicacion", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos_totales", "cupos_disponibles", "imagenes", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios", "id_region", "id_comuna", "reglas", "reglas_arrendador", "fecha_publicacion", "id_arriendo"];
 function publication(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || !("id" in value) || !Number.isSafeInteger(value.id) || Number(value.id) < 1) throw new Error("Invalid response");
+  if (!value || typeof value !== "object" || !("id_publicacion" in value) || !Number.isSafeInteger(value.id_publicacion) || Number(value.id_publicacion) < 1) throw new Error("Invalid response");
   const source = value as Record<string, unknown>;
-  return Object.fromEntries(fields.filter((key) => key in source).map((key) => [key, source[key]]));
+  const result = Object.fromEntries(fields.filter((key) => key in source).map((key) => [key, source[key]]));
+  if ("id_arriendo" in result && result.id_arriendo !== null && (!Number.isSafeInteger(result.id_arriendo) || Number(result.id_arriendo) < 1)) delete result.id_arriendo;
+  for (const key of ["region", "comuna"] as const) {
+    const place = source[key];
+    if (place === null) result[key] = null;
+    if (place && typeof place === "object" && "id" in place && Number.isSafeInteger(place.id) &&
+        "nombre" in place && typeof place.nombre === "string") result[key] = { id: place.id, nombre: place.nombre };
+  }
+  const author = source.autor;
+  if (author === null) result.autor = null;
+  if (author && typeof author === "object" && "id_usuario" in author && Number.isSafeInteger(author.id_usuario) &&
+      "nombre" in author && typeof author.nombre === "string") {
+    result.autor = { id_usuario: author.id_usuario, nombre: author.nombre,
+      foto: "foto" in author && typeof author.foto === "string" ? author.foto : null };
+  }
+  if (Array.isArray(source.imagenes)) result.imagenes = source.imagenes.map(image => ({ id_imagen: image.id_imagen, url: image.url, orden: image.orden }));
+  return result;
 }
 
 export async function handlePublicationRequest(
@@ -120,7 +143,16 @@ export async function handlePublicationRequest(
   if (request.method !== method) return authReply(405, { detail: "Método no permitido." }, { Allow: method });
   if (method !== "GET" && (request.headers.get("origin") !== config.origin || request.headers.get("x-haycupo-csrf") !== "1" ||
       (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin"))) return authReply(403, { detail: "Origen de solicitud no permitido." });
-  const path = operation === "mine" ? "/api/mis-publicaciones" : `/api/publicaciones/${id}${operation === "close" ? "/cerrar" : ""}`;
+  const query = new URLSearchParams();
+  if (operation === "mine") {
+    const supplied = new URL(request.url).searchParams;
+    if (["limite", "cursor", "estado"].some(key => supplied.getAll(key).length > 1) ||
+        (supplied.has("estado") && !["Disponible", "Activa", "Cerrada"].includes(supplied.get("estado")!)) ||
+        (supplied.has("limite") && !/^(?:[1-9]\d?|100)$/.test(supplied.get("limite")!)) ||
+        (supplied.has("cursor") && !/^[A-Za-z0-9_+./=-]{1,1024}$/.test(supplied.get("cursor")!))) return authReply(422, { detail: "Paginación inválida." });
+    for (const key of ["limite", "cursor", "estado"]) if (supplied.has(key)) query.set(key, supplied.get(key)!);
+  }
+  const path = operation === "mine" ? `/api/publicaciones/mias${query.size ? `?${query}` : ""}` : `/api/publicaciones/${id}${operation === "close" ? "/cerrar" : ""}`;
   try {
     const response = await transport(`${config.backend}${path}`, { method, cache: "no-store", redirect: "error",
       signal: AbortSignal.timeout(10_000), headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });
@@ -129,8 +161,12 @@ export async function handlePublicationRequest(
     if (!response.ok) return unavailable();
     const body: unknown = await response.json();
     if (operation === "mine") {
-      if (!Array.isArray(body)) throw new Error("Invalid list");
-      return authReply(200, body.map(publication));
+      if (!body || typeof body !== "object" || !("items" in body) || !Array.isArray(body.items) || !("siguiente_cursor" in body) ||
+          (body.siguiente_cursor !== null && (typeof body.siguiente_cursor !== "string" || !/^[A-Za-z0-9_+./=-]{1,1024}$/.test(body.siguiente_cursor))) ||
+          body.items.length > Number(query.get("limite") ?? 20)) throw new Error("Invalid list");
+      const items = body.items.map(publication);
+      if (new Set(items.map(item => item.id_publicacion)).size !== items.length) throw new Error("Invalid list");
+      return authReply(200, { items, siguiente_cursor: body.siguiente_cursor });
     }
     return authReply(200, publication(body));
   } catch { return unavailable(); }

@@ -26,6 +26,11 @@ class PostgresUsers:
             row = connection.execute(self.select + f" WHERE {self.identity_column}=%s", (subject,)).fetchone()
             return User(**row) if row else None
 
+    def get_by_id(self, user_id):
+        with self.connect() as connection:
+            row = connection.execute(self.select + " WHERE u.id_usuario=%s", (user_id,)).fetchone()
+            return User(**row) if row else None
+
     def ensure(self, subject, name, birth_date):
         with self.connect() as connection:
             if self.progressive:
@@ -70,13 +75,36 @@ class PostgresUsers:
         with self.connect() as connection:
             return [User(**row) for row in connection.execute(self.select + condition + " ORDER BY u.id_usuario LIMIT 100", params).fetchall()]
 
-    def notify(self, event):
-        with self.connect() as connection:
-            connection.execute("INSERT INTO auth_users.notificacion (id_usuario,event_key,tipo,referencia_id,estado) VALUES (%s,%s,'Postulacion_Resultado',%s,%s) ON CONFLICT (event_key) DO NOTHING", (event["id_usuario"],event["event_key"],event["referencia_id"],event["estado"]))
-
     def notifications(self, user_id):
         with self.connect() as connection:
             return connection.execute("SELECT id,tipo,referencia_id,estado,creado_en FROM auth_users.notificacion WHERE id_usuario=%s ORDER BY id DESC LIMIT 100", (user_id,)).fetchall()
+
+    def notification_page(self, user_id, limit, before):
+        boundary = " AND (creado_en,id)<(%s,%s)" if before else ""
+        with self.connect() as connection:
+            return connection.execute(
+                f"""SELECT id,tipo,referencia_id,creado_en FROM auth_users.notificacion
+                    WHERE id_usuario=%s AND tipo IN ('Postulacion_Resultado','expulsion','reporte_actualizado'){boundary}
+                    ORDER BY creado_en DESC,id DESC LIMIT %s""",
+                (user_id, *(before or ()), limit),
+            ).fetchall()
+
+    def notify(self, event):
+        with self.connect() as connection:
+            columns = ("id_usuario", "tipo", "referencia_id", "estado")
+            values = tuple(event[key] for key in columns)
+            inserted = connection.execute(
+                """INSERT INTO auth_users.notificacion (id_usuario,tipo,referencia_id,estado,event_key)
+                   VALUES (%s,%s,%s,%s,%s) ON CONFLICT (event_key) DO NOTHING RETURNING id""",
+                (*values, event["event_key"]),
+            ).fetchone()
+            if inserted is not None:
+                return True
+            existing = connection.execute(
+                "SELECT id_usuario,tipo,referencia_id,estado FROM auth_users.notificacion WHERE event_key=%s",
+                (event["event_key"],),
+            ).fetchone()
+            return existing is not None and tuple(existing[key] for key in columns) == values
 
     def count(self):
         with self.connect() as connection:
@@ -89,3 +117,48 @@ class PostgresUsers:
     def revoke(self,session_id,subject):
         with self.connect() as connection:
             connection.execute("INSERT INTO auth_users.sesion_revocada (session_id,subject) VALUES (%s,%s) ON CONFLICT DO NOTHING",(session_id,subject))
+
+    def profile_fields(self, subject):
+        with self.connect() as connection:
+            return connection.execute("SELECT genero,id_region_interes,id_comuna_interes FROM auth_users.perfil_comun WHERE supabase_user_id=%s", (subject,)).fetchone() or {"genero":None,"id_region_interes":None,"id_comuna_interes":None}
+
+    def swap_photo(self, subject, reference):
+        with self.connect() as connection:
+            condition = "id_usuario=(SELECT id_usuario FROM auth_users.identidad WHERE supabase_user_id=%s)" if self.progressive else "supabase_user_id=%s"
+            old=connection.execute(f"SELECT foto_perfil FROM {self.table} WHERE {condition} FOR UPDATE", (subject,)).fetchone()
+            if old is None: raise ValueError("Perfil inexistente")
+            connection.execute(f"UPDATE {self.table} SET foto_perfil=%s WHERE {condition}", (reference,subject))
+            if old['foto_perfil'] and old['foto_perfil'] != reference:
+                connection.execute("INSERT INTO auth_users.foto_limpieza(subject,reference) VALUES(%s,%s) ON CONFLICT DO NOTHING", (subject,old['foto_perfil']))
+
+    def photo_cleanup(self):
+        with self.connect() as connection:
+            return connection.execute("SELECT subject,reference FROM auth_users.foto_limpieza ORDER BY creada_en LIMIT 20").fetchall()
+
+    def photo_referenced(self, reference):
+        with self.connect() as connection:
+            return bool(connection.execute(f"SELECT 1 FROM {self.table} WHERE foto_perfil=%s LIMIT 1",(reference,)).fetchone())
+
+    def photo_cleaned(self, reference):
+        with self.connect() as connection:
+            connection.execute("DELETE FROM auth_users.foto_limpieza WHERE reference=%s",(reference,))
+
+    def patch_canonical(self, subject, changes, expected):
+        basic = {key:value.strip() or None if isinstance(value,str) else value for key,value in changes.items() if key in {"ocupacion","ciudad","breve_descripcion","sobre_mi"}}
+        extra = {key:value for key,value in changes.items() if key in {"genero","id_region_interes","id_comuna_interes"}}
+        if set(changes)-set(basic)-set(extra): raise ValueError("Campos no editables")
+        with self.connect() as connection:
+            condition = "id_usuario=(SELECT id_usuario FROM auth_users.identidad WHERE supabase_user_id=%s)" if self.progressive else "supabase_user_id=%s"
+            locked = connection.execute(f"SELECT id_usuario FROM {self.table} WHERE {condition} FOR UPDATE", (subject,)).fetchone()
+            if locked is None: raise ValueError("Perfil inexistente")
+            current=connection.execute("SELECT genero,id_region_interes,id_comuna_interes FROM auth_users.perfil_comun WHERE supabase_user_id=%s", (subject,)).fetchone() or {"genero":None,"id_region_interes":None,"id_comuna_interes":None}
+            if current != expected:
+                from backend.service_runtime.contracts import RuleViolation
+                raise RuleViolation("El perfil cambió; vuelve a consultarlo.",409)
+            if basic:
+                assignments = ",".join(f"{key}=%s" for key in basic)
+                connection.execute(f"UPDATE {self.table} SET {assignments} WHERE {condition}", (*basic.values(),subject))
+            if extra:
+                columns=",".join(extra); values=",".join(["%s"]*len(extra))
+                assignments=",".join(f"{key}=EXCLUDED.{key}" for key in extra)
+                connection.execute(f"INSERT INTO auth_users.perfil_comun(supabase_user_id,{columns}) VALUES(%s,{values}) ON CONFLICT(supabase_user_id) DO UPDATE SET {assignments}", (subject,*extra.values()))

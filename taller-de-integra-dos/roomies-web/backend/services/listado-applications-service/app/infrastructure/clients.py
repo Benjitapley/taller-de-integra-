@@ -3,6 +3,7 @@ import os
 from uuid import UUID
 import httpx
 from backend.service_runtime.contracts import DependencyUnavailable, RuleViolation
+from backend.service_runtime.notifications import send_notification
 from backend.service_runtime.settings import service_url
 
 
@@ -28,7 +29,7 @@ class IncorporationRejected(RuleViolation):
 
 
 class HttpIncorporations:
-    """Puerto preparado para F01; decidir Aceptada todavia no lo invoca."""
+    """Contrato de incorporación: solo el recibo validado permite confirmar Aceptada."""
 
     def incorporate(self, payload, idempotency_key):
         fields = {"id_postulacion", "id_publicacion", "id_usuario", "version_capacidad"}
@@ -75,20 +76,40 @@ class UnavailableOccupancy:
 
 class HttpOwners:
     def exists(self, user_id):
+        return any(row.get("id_usuario_PK") == user_id for row in self._profiles({"ids": str(user_id)}))
+
+    def summaries(self, user_ids):
+        if not user_ids:
+            return {}
+        requested = set(user_ids)
+        rows = self._profiles({"ids": ",".join(map(str, user_ids)), "incluir_foto": "true"})
+        return {
+            row["id_usuario_PK"]: {"id_usuario": row["id_usuario_PK"], "nombre": row["nombre"],
+                                   "foto": row.get("foto_perfil") if isinstance(row.get("foto_perfil"), str) else None}
+            for row in rows
+            if type(row.get("id_usuario_PK")) is int and row["id_usuario_PK"] in requested
+            and isinstance(row.get("nombre"), str)
+        }
+
+    def _profiles(self, params):
         url = service_url("AUTH_USERS_UPSTREAM_URL", docker_hosts=("auth-users",))
         try:
             with httpx.Client(timeout=3, trust_env=False, follow_redirects=False) as client:
-                response = client.get(url + "/local/v1/usuarios/publicos", params={"ids": str(user_id)})
+                response = client.get(url + "/local/v1/usuarios/publicos", params=params)
                 response.raise_for_status()
                 rows = response.json()
-                if not isinstance(rows, list): raise ValueError()
-                return any(row.get("id_usuario_PK") == user_id for row in rows)
+                if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+                    raise ValueError()
+                return rows
         except Exception:
             raise DependencyUnavailable() from None
 
 
 class HttpNotifications:
     def send(self,event):
+        if os.environ.get("LISTADO_AUTH_JWT_KEY"):
+            send_notification({**event, "tipo": "postulacion_resultado"})
+            return
         key=os.environ.get("ROOMIES_INTERNAL_TOKEN", "")
         if len(key)<32:
             raise DependencyUnavailable()
@@ -96,3 +117,5 @@ class HttpNotifications:
         with httpx.Client(timeout=3,trust_env=False,follow_redirects=False) as client:
             response=client.post(url+"/internal/v1/notificaciones",json=event,headers={"X-Roomies-Service":key})
             response.raise_for_status()
+            if response.json() != {"success": True}:
+                raise DependencyUnavailable()
