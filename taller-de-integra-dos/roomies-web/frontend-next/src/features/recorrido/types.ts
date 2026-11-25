@@ -14,8 +14,6 @@ export type ArriendoDto = {
   integrantes_activos: number;
   cupos_disponibles: number;
   id_responsable: number | null;
-  puede_retirar?: boolean;
-  id_usuario_actual?: number;
 };
 export type EstadoTarea = "Pendiente" | "Completada";
 

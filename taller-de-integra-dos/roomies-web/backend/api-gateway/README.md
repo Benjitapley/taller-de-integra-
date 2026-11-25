@@ -47,6 +47,7 @@ No usar ese ejemplo contra servicios reales en esta fase.
 | Variable | Predeterminado | Uso |
 | --- | --- | --- |
 | `AUTH_USERS_UPSTREAM_URL` | Ausente | Origen HTTP/HTTPS fijo, sin credenciales, prefijo, query ni fragmento. |
+| `GATEWAY_CORS_ORIGINS` | Vacío | Orígenes del navegador separados por comas. Se validan como orígenes HTTP/HTTPS exactos; no admite `*`, rutas ni credenciales. Ejemplo para Expo Web: `http://localhost:8081`. |
 | `GATEWAY_CONNECT_TIMEOUT` | 3 | Segundos para conexión. |
 | `GATEWAY_READ_TIMEOUT` | 10 | Segundos de espera por lectura. |
 | `GATEWAY_WRITE_TIMEOUT` | 10 | Segundos de espera por escritura. |

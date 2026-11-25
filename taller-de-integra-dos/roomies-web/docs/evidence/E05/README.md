@@ -1,54 +1,76 @@
-# E05 · Retiro por arrendador
+# Evidencia S3R-E05 / SCRUM-122
 
-Implementación según backlog Sprint 3 v1.4, páginas 29–30, y contrato Sprint 3 v2, secciones 6.2 y 8.4.
+Fecha: 24/11/2026 America/Santiago. Entorno Windows/PowerShell, Python 3.14.7, Node v24.20.0, Next 16.4.3, Chromium 1255. HTTP de prueba exclusivamente en loopback, datos ficticios, sin cuentas reales ni dotenv en build/navegador. Se instalo PyJWT 2.10.1 para las pruebas HTTP locales; la dependencia de despliegue conserva su version declarada.
 
-## Comportamiento
+SHA base: `623a95f07a658be1125b5ddc525ed827fc3e9c7d`. Cambios sin commit en `SCRUM-122-Conectar-retiro-por-arrendador-y-revocar-la-experiencia-activa`. [Jira](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-122). PR pendiente. [Manifest SHA-256 de fuentes](sources-sha256.txt) identifica el contenido revisado, incluido codigo nuevo que no aparece en `git diff` sin stage.
 
-- El dueño entra por Mis publicaciones → postulantes aceptados → Gestionar integrantes, o por el enlace de integrantes de un arriendo conocido. Solo el permiso `puede_retirar` confirmado por el servidor muestra la acción. Un admin no obtiene permiso por su rol.
-- El diálogo solicita motivo de 1–500 caracteres y confirmación explícita. Un bloqueo inmediato impide envíos concurrentes desde la UI. Un fallo conserva el formulario para reintentar.
-- `POST /api/arriendos/{id}/expulsiones` valida dueño contra Listado. Bloquea publicación, arriendo y pertenencia; termina la pertenencia, desasigna tareas pendientes, deja intactas las completadas y registra actor, motivo y fecha en una transacción. El retiro repetido de la misma persona es inocuo, incluso con solicitudes concurrentes.
-- El responsable retirado deja vacante el rol. No hay relevo automático. El último integrante finaliza el arriendo e impide nuevas incorporaciones; una persona retirada no puede reingresar al mismo arriendo.
-- La misma transacción registra una proyección versionada y un aviso en `retiro_outbox`. El recuperador existente reintenta entregarlos. Listado aplica la ocupación sin retroceder versiones; al finalizar cierra el aviso, cancela postulaciones pendientes y genera sus avisos. Una confirmación de incorporación antigua no reabre el aviso.
-- Chat y tareas comprueban pertenencia activa en cada operación, incluso por ID directo. En web se descartan las pantallas privadas tras 401/403/404 y se vuelve a verificar al regresar a la ventana. Mi arriendo consulta nuevamente y elimina los accesos activos. En móvil se comprueba la API al entrar/regresar a la app; una denegación desmonta la pantalla y vacía el almacén de demostración.
-- Se añadió persistencia y API mínima de tareas (crear, listar por cursor/filtros, reasignar pendientes, completar solo por asignado activo) porque el estado anterior era una vista local. La ruta web de tareas ahora consume esa API y permite reasignar las tareas que quedan sin asignado.
+## Resultados
 
-## Diseño
+| Comprobacion | Resultado | Limite |
+|---|---|---|
+| Convivencia HTTP/adaptadores | 58 passed | Repositorio o transporte simulado; valida propietario ajeno/admin sin mutar, motivo, confirmacion y puertos |
+| Convivencia retiro SQL | 5 skipped | initdb local termina con 3221226505; el runner informa que no pudo inicializar PostgreSQL efimero |
+| Listado cierre/proyeccion y enlace del arriendo | 4 passed | Repositorio simulado; cierre, evento antiguo y ocupacion invalida |
+| Gateway | 157 passed | Upstream HTTP simulado; incluye retiro, integrantes y tareas |
+| BFF retiro y regresion de reportes | 9 passed | Cookies, CSRF, validacion, errores y DTO con transportes simulados |
+| Chromium + Next/BFF | 1 passed | HTTP sintetico: confirma formulario, doble clic envia 1 POST, accion oculta a no propietario, revocacion elimina tarea visible |
+| typegen / TypeScript | exit 0 | Fuentes del frontend |
+| ESLint archivos modificados | exit 0, sin advertencias | Fuentes del frontend |
+| Build aislado | exit 0 | Compilacion de produccion sin dotenv, red externa bloqueada |
+| git diff --check | exit 0 | Espacios y marcadores |
 
-El diálogo reutiliza el componente Modal, botones, tipografía, morado y superficies redondeadas existentes. Los 33 mockups entregados no incluyen una pantalla específica de expulsión. Las capturas [escritorio](./retiro-confirmacion.png) y [ancho móvil web](./retiro-confirmacion-mobile.png) muestran el nuevo diálogo con datos sintéticos. No son una prueba de Expo en celular físico.
+## Capturas sanitizadas
 
-## Activación
+- [Confirmacion con motivo y checkbox](01-confirmacion-retiro.png).
+- [Tareas desmontadas tras perdida de membresia](02-acceso-revocado.png).
 
-1. Aplicar [005_retiros.up.sql](../../../backend/services/convivencia-mensajeria-service/migrations/005_retiros.up.sql) como migrador después de 001–004. Conserva las pertenencias existentes y toma al primer integrante histórico como responsable; si ya está inactivo deja el rol vacante. No ejecutar el rollback de 001 sobre datos reales.
-2. Desplegar Convivencia, Listado, Gateway y Next de esta revisión. Las nuevas rutas públicas son `/api/arriendos/{id}/integrantes`, `/expulsiones`, `/tareas`, `/api/tareas/{id}` y `/estado`; sus adaptadores Next usan `/web-api`.
-3. Convivencia y Listado reutilizan `ROOMIES_INTERNAL_TOKEN` para las consultas y proyecciones internas, siguiendo el mecanismo de reservas existente. Configurar `LISTADO_UPSTREAM_URL`, `AUTH_USERS_UPSTREAM_URL` y `CONVIVENCIA_AUTH_JWT_KEY` en Convivencia; Auth debe compartir esa clave para verificar los avisos. La clave nunca va a los clientes. El gateway sigue retirando credenciales internas entrantes.
-4. La respuesta de retiro contiene ocupación, estado e indicador `sincronizacion_pendiente`. La revocación local ya está confirmada aunque Listado o Auth estén caídos; la UI distingue la sincronización pendiente. Las tareas Completada conservan su asignación.
+Las capturas proceden de fixtures y no acreditan persistencia en servicios desplegados.
 
-OpenAPI del servicio publica los modelos de solicitud y respuesta del retiro y de tareas. El detalle de arriendo conserva `ocupacion` y `version_capacidad` y agrega `estado`, `id_responsable` y `puede_retirar`. Mi arriendo agrega `id_usuario_actual`; el BFF normaliza la ocupación al formato de las vistas web.
+## Comandos reproducibles
 
-## Validación reproducible
-
-Desde cada servicio:
+Desde `frontend-next`:
 
 ```powershell
-# Convivencia: PostgreSQL efímero, rol dedicado, puertos externos simulados
+node node_modules/next/dist/bin/next typegen
+node node_modules/typescript/bin/tsc --noEmit
+node --test tests/expulsiones.test.mjs tests/reportes.test.mjs
+# Definir REPORTS_PLAYWRIGHT_PATH al modulo Playwright instalado y
+# REPORTS_BROWSER_PATH al ejecutable Chromium local para evitar que se omita:
+node --test tests/expulsiones-browser.test.mjs
+node node_modules/eslint/bin/eslint.js src/features/recorrido/RemoveMember.tsx src/features/recorrido/MemberDirectory.tsx src/features/recorrido/MemberAccessGate.tsx src/features/recorrido/MemberPageGate.tsx src/features/recorrido/TasksPreviewPage.tsx src/features/recorrido/ConvivenciaViews.tsx src/features/recorrido/ChatPreviewPage.tsx src/features/reportes/RentalWithReports.tsx src/lib/recorrido/server.ts src/lib/recorrido/tasks.ts src/lib/reportes.ts
+node tests/build-isolated.mjs
+```
+
+Desde el servicio Convivencia:
+
+```powershell
+python tests/run_offline.py tests/test_retiro.py
+# Resultado: 58 passed, 5 skipped; 1 aviso de deprecacion Starlette/httpx.
 python tests/run_isolated.py
-# Listado: pruebas relacionadas con retiro, reservas y ocupación
-python tests/run_isolated.py -k 'retiro or owner_interno or reserva or ocupacion'
+# Exit 1: No se pudo inicializar PostgreSQL efimero (sin credenciales reales).
 ```
 
-Desde frontend-next:
+Desde la raiz web:
 
 ```powershell
-npm.cmd run test:convivencia
-npm.cmd run test:convivencia-browser
-npm.cmd run typecheck
-npm.cmd run lint
+python -I -B backend/api-gateway/tests/run_isolated.py
+# 157 passed
 ```
 
-La prueba de navegador usa Edge instalado en Windows (o `E05_BROWSER_PATH`), Next/BFF reales y un Gateway HTTP sintético en loopback. Crea una copia temporal sin `.env`, sin cuentas reales, y elimina sus procesos y directorios al terminar. `E05_QA_DIR` permite regenerar las capturas. Comprueba confirmación obligatoria, respuesta perdida tras guardar, reintento, doble clic, acción ausente para quien no es dueño y descarte de tareas tras denegación.
+Listado se ejecuto en un interprete con entorno vaciado y `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`, incorporando las rutas del servicio y raiz web a sys.path, mediante `pytest.main(['tests/test_departure_projection.py', '--import-mode=importlib', '-q', '-p', 'no:cacheprovider'])` desde ese servicio: 4 passed y aviso de deprecacion Starlette/httpx. No utilizo base de datos.
 
-Resultado SQL: 80 pruebas de Convivencia aprobadas. Listado: 11 pruebas seleccionadas aprobadas; la suite completa encontró dos pruebas de multipart bloqueadas por falta de `python-multipart` en el Python local. Los errores iniciales de las nuevas pruebas de Listado se corrigieron y la selección de retiro pasó. BFF: 22 pruebas aprobadas incluyendo las de aplicaciones y reportes. Gateway: 25 pruebas aprobadas. No se modificaron bases compartidas ni se desplegó en Kubero.
+## Pendiente para aceptacion
 
-La prueba de navegador pasó en Edge sin errores JavaScript: confirmación, respuesta perdida, doble clic, exclusión del no propietario y limpieza de tareas tras revocar. Se comprobó además que el diálogo no desborda a 390 px. Typecheck web/móvil y lint web/móvil pasaron. Las 12 pruebas locales de convivencia móvil, incluido vaciado del almacén por retiro, pasaron.
+Ejecutar `tests/run_isolated.py` de Convivencia en un entorno donde PostgreSQL arranque y luego el recorrido sobre Gateway/servicios migrados: doble retiro, admin ajeno, tareas pendientes/completadas, responsable vacante, ultimo integrante, denegacion de lectura/envio y recuperacion de outbox. El desarrollo y la comprobacion de cliente estan listos; los resultados SQL no se infieren de mocks ni de capturas.
 
-La aceptación con cuentas reales, persistencia en el entorno desplegado y celular físico sigue pendiente. El chat y las tareas de Expo conservan su implementación de demostración; el nuevo control de pertenencia evita mostrarlos a una persona retirada, pero no acredita la integración móvil de E03/E04 ni el cierre de E06.
+## Integración con SCRUM-123 · 25/11/2026
+
+Se reconcilió `9c9ab5e` con `dev-web` en `d934a97`, que ya contiene SCRUM-122 y E04. Se conserva el contrato de retiro y tareas integrado en `dev-web`, incluido el formulario `RemoveMember`, la paginación y la comprobación periódica de pertenencia. Las implementaciones alternativas de servicio, BFF y pantalla de tareas se retiraron para evitar rutas y modelos duplicados. Sus commits siguen en el historial.
+
+La secuencia de migración vigente es `001`–`004`, [005_retiro.up.sql](../../../backend/services/convivencia-mensajeria-service/migrations/005_retiro.up.sql) y [006_tareas_reasignables.up.sql](../../../backend/services/convivencia-mensajeria-service/migrations/006_tareas_reasignables.up.sql). Se retiró `005_retiros.up.sql`, que creaba las mismas tablas con un esquema incompatible. Esta integración no aplica migraciones sobre bases compartidas.
+
+Se conserva el control de pertenencia móvil de SCRUM-123: consulta real al entrar/regresar a la app, desmontaje de pantallas privadas y vaciado del almacén tras una denegación. También se conserva el enlace de postulantes aceptados a la gestión de integrantes.
+
+Validación de la integración: Convivencia, 92 pruebas aprobadas con PostgreSQL efímero y migraciones 001–006; Gateway, 185 aprobadas; Listado, 4 pruebas de proyección de retiro aprobadas; web/BFF y regresiones HTTP, 58 aprobadas; convivencia móvil, 12 aprobadas. Typecheck y lint web pasaron. Los resultados y el manifiesto de la sección anterior describen la revisión histórica de SCRUM-122, no certifican por sí solos este merge.
+
+La prueba adicional `npm.cmd run test:convivencia-browser` pasó (1 prueba) con Next/BFF reales y Edge con API sintética, sin Playwright ni cuentas reales; reproduce confirmación, doble clic, respuesta perdida, ausencia de acción para quien no es dueño y revocación de tareas. `E05_QA_DIR` permite regenerar las capturas complementarias [escritorio](retiro-confirmacion.png) y [ancho móvil web](retiro-confirmacion-mobile.png). La aceptación en despliegue y celular físico continúa pendiente.

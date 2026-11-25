@@ -2,10 +2,11 @@ import asyncio
 import base64
 from contextlib import asynccontextmanager
 import hmac
-import json
 import os
 import re
-from typing import Annotated
+from typing import Annotated, Literal
+
+import jwt
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, Header, Path, Query, Request
@@ -15,14 +16,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.http import configure
-from backend.service_runtime.security import confirmed_actor
+from backend.service_runtime.security import confirmed_actor, access_token
 from backend.service_runtime.reporting_security import verify_report_service
-from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, Conversation, Message, MessageCreate, MessagePage, unavailable
+from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, Conversation, Message, MessageCreate, MessagePage, Expulsion, TaskCreate, TaskAssign, TaskComplete, unavailable
 from app.ports import HttpIdentity, HttpPublications
 from app.repository import PostgresRepository
 from app.service import Convivencia
-from app.models import ExpulsionCreate, ExpulsionResult, Task, TaskPage, TaskCreate, TaskAssignment, TaskState
-from app import departures
 
 
 def internal_service(x_roomies_service: Annotated[str | None, Header()] = None):
@@ -105,68 +104,84 @@ def create_app(instance=None, run_recovery=True):
         status, body, replay = application_service.incorporate(idempotency_key, data.model_dump())
         return JSONResponse(body, status_code=status, headers={"Idempotency-Replayed": str(replay).lower()})
 
+    @application.post("/api/arriendos/{id}/expulsiones", responses=errors)
+    def expel(data: Expulsion, id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.expel(id, identity.user_id, data.model_dump())
+
     @application.get("/api/arriendos/mio", response_model=Rental, responses=errors)
     def mine(identity=Depends(confirmed_actor), application_service=Depends(service)):
-        return {**application_service.repository.mine(identity.user_id), 'id_usuario_actual': identity.user_id}
+        return application_service.repository.mine(identity.user_id)
 
     @application.get("/api/arriendos/{id}", response_model=Rental, responses=errors)
-    def detail(id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
-        return departures.detail(application_service, id, identity.user_id)
-
-    @application.post('/api/arriendos/{id}/expulsiones', response_model=ExpulsionResult, responses=errors)
-    def withdraw(id: Annotated[int, Path(gt=0, le=9223372036854775807)], data: ExpulsionCreate, identity=Depends(confirmed_actor), application_service=Depends(service)):
-        return departures.withdraw(application_service, id, identity.user_id, data)
-
-    def page_cursor(cursor, scope):
-        if cursor is None:
-            return 0
+    def detail(request: Request, id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
         try:
-            if not re.fullmatch(r'[A-Za-z0-9_-]{1,2048}', cursor):
-                raise ValueError()
-            context, last = json.loads(base64.urlsafe_b64decode(cursor + '=' * (-len(cursor) % 4)))
-            if context != scope or type(last) is not int or not 0 < last <= 9223372036854775807:
-                raise ValueError()
-            return last
-        except (ValueError, TypeError, UnicodeError):
-            raise ServiceError('INVALID_CURSOR', 'Cursor inválido para esta consulta.', 422) from None
+            return application_service.repository.get(id, identity.user_id)
+        except ServiceError as error:
+            if error.status != 404:
+                raise
+            publication = application_service.repository.rental_publication(id)
+            if type(publication) is not int:
+                raise error
+            token = request.headers.get("authorization", "").partition(" ")[2]
+            if application_service.publications.owned_by(publication, identity.user_id, token) is not True:
+                raise ServiceError("FORBIDDEN", "No tienes acceso al arriendo.", 403)
+            return application_service.repository.get(id, identity.user_id, owner=True)
 
-    def page(rows, limit, scope, key):
-        items = rows[:limit]
-        cursor = base64.urlsafe_b64encode(json.dumps([scope, items[-1][key]]).encode()).decode().rstrip('=') if len(rows) > limit else None
-        return {'items': items, 'siguiente_cursor': cursor}
-
-    @application.get('/api/arriendos/{id}/integrantes', responses=errors)
-    def members(id: Annotated[int, Path(gt=0, le=9223372036854775807)], cursor: str | None = None, activos: bool = True,
+    @application.get("/api/arriendos/{id}/integrantes")
+    def members(id: Annotated[int, Path(gt=0, le=9223372036854775807)],
                 limite: Annotated[int, Query(ge=1, le=100)] = 20,
-                identity=Depends(confirmed_actor), application_service=Depends(service)):
-        departures.detail(application_service, id, identity.user_id)
-        scope = [identity.user_id, id, 'integrantes', activos]
-        rows = application_service.repository.members(id, page_cursor(cursor, scope), limite + 1, activos)
-        return page(rows, limite, scope, 'id_pertenencia')
+                cursor: str | None = None, identity=Depends(confirmed_actor),
+                token=Depends(access_token), application_service=Depends(service)):
+        secret = os.environ.get("ROOMIES_INTERNAL_TOKEN", "")
+        if len(secret) < 32:
+            raise unavailable()
+        context = {"rental": id, "actor": identity.user_id, "limit": limite}
+        after = 0
+        if cursor is not None:
+            try:
+                value = jwt.decode(cursor, secret, algorithms=["HS256"])
+                if any(value.get(k) != v for k, v in context.items()) or type(value.get("after")) is not int or value["after"] < 1:
+                    raise ValueError()
+                after = value["after"]
+            except Exception:
+                raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422) from None
+        repository = application_service.repository
+        publication = repository.rental_publication(id)
+        # A resident does not depend on Listado to read their own membership.
+        try:
+            repository.get(id, identity.user_id)
+            owner = False
+        except ServiceError as error:
+            if error.status != 404:
+                raise
+            owner = application_service.publications.owned_by(publication, identity.user_id, token)
+        rows = repository.members(id, identity.user_id, owner, after, limite)
+        next_cursor = jwt.encode({**context, "after": rows[limite-1]["id_pertenencia"]}, secret, algorithm="HS256") if len(rows) > limite else None
+        return {"items": [{"id_usuario": row["id_usuario"], "nombre": None,
+                  "fecha_ingreso": row["fecha_ingreso"], "activo": row["activo"],
+                  "es_responsable": row["es_responsable"]} for row in rows[:limite]], "siguiente_cursor": next_cursor,
+                "puede_retirar": owner is True}
 
-    @application.get('/api/arriendos/{id}/tareas', response_model=TaskPage, responses=errors)
-    def tasks(id: Annotated[int, Path(gt=0, le=9223372036854775807)], cursor: str | None = None,
-              estado: Annotated[str | None, Query(pattern='^(Pendiente|Completada)$')] = None,
-              id_asignado: Annotated[int | None, Query(gt=0)] = None,
-              limite: Annotated[int, Query(ge=1, le=100)] = 20,
-              identity=Depends(confirmed_actor), application_service=Depends(service)):
-        with application_service.repository.transaction() as c:
-            application_service.repository.active_member(c, id, identity.user_id)
-        scope = [identity.user_id, id, 'tareas', estado, id_asignado]
-        rows = application_service.repository.task_list(id, identity.user_id, page_cursor(cursor, scope), limite + 1, estado, id_asignado)
-        return page(rows, limite, scope, 'id_tarea')
+    @application.get("/api/arriendos/{id}/tareas", responses=errors)
+    def tasks(id: Annotated[int, Path(gt=0)], cursor: str | None = None, limite: Annotated[int, Query(ge=1,le=100)] = 20, estado: Literal["Pendiente", "Completada"] | None = None, id_asignado: Annotated[int | None, Query(gt=0, le=9223372036854775807)] = None, identity=Depends(confirmed_actor), application_service=Depends(service)):
+        repository = application_service.repository
+        repository.tasks(id,identity.user_id,0,1)
+        before = decode_cursor(cursor,identity.user_id,id) if cursor else 0
+        rows = repository.tasks(id,identity.user_id,before,limite,state=estado,assigned=id_asignado)
+        page = rows[:limite]
+        return {"items":page,"siguiente_cursor":cursor_for(identity.user_id,id,page[-1]["id_tarea"]) if len(rows)>limite else None}
 
-    @application.post('/api/arriendos/{id}/tareas', status_code=201, response_model=Task, responses=errors)
-    def create_task(id: Annotated[int, Path(gt=0, le=9223372036854775807)], data: TaskCreate, identity=Depends(confirmed_actor), application_service=Depends(service)):
-        return application_service.repository.create_task(id, identity.user_id, data.model_dump())
+    @application.post("/api/arriendos/{id}/tareas", status_code=201, responses=errors)
+    def create_task(data: TaskCreate, id: Annotated[int, Path(gt=0)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.repository.create_task(id,identity.user_id,data.model_dump())
 
-    @application.patch('/api/tareas/{id}', response_model=Task, responses=errors)
-    def assign_task(id: Annotated[int, Path(gt=0, le=9223372036854775807)], data: TaskAssignment, identity=Depends(confirmed_actor), application_service=Depends(service)):
-        return application_service.repository.update_task(id, identity.user_id, data.model_dump())
+    @application.patch("/api/tareas/{id}", responses=errors)
+    def assign_task(data: TaskAssign, id: Annotated[int, Path(gt=0)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.repository.update_task(id,identity.user_id,assigned=data.id_asignado)
 
-    @application.patch('/api/tareas/{id}/estado', response_model=Task, responses=errors)
-    def complete_task(id: Annotated[int, Path(gt=0, le=9223372036854775807)], data: TaskState, identity=Depends(confirmed_actor), application_service=Depends(service)):
-        return application_service.repository.update_task(id, identity.user_id, data.model_dump(), complete=True)
+    @application.patch("/api/tareas/{id}/estado", responses=errors)
+    def complete_task(data: TaskComplete, id: Annotated[int, Path(gt=0)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.repository.update_task(id,identity.user_id,complete=True)
 
     @application.get("/api/conversaciones", responses=errors)
     def conversations(identity=Depends(confirmed_actor), application_service=Depends(service)):

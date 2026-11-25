@@ -53,6 +53,8 @@ def test_detalle_incluye_propietario_solo_con_sesion_autorizada(monkeypatch):
     subject = UUID(int=1)
     verify = Mock(return_value=subject)
     identity = Mock(return_value=Actor(subject, 1, True, False))
+    repository.viewer_application.return_value = {"id_postulacion": 77, "estado": "Pendiente"}
+    repository.publication_rental.return_value = 123
     monkeypatch.setattr(security, "verified_subject", verify)
     monkeypatch.setattr(routes, "actor", identity)
     web, _ = client(repository)
@@ -69,7 +71,11 @@ def test_detalle_incluye_propietario_solo_con_sesion_autorizada(monkeypatch):
     assert autorizado.json() == {**anonimo.json(), "id_propietario": 22}
     assert autorizado.headers["cache-control"] == "no-store"
     identity.assert_called_once_with("test-session")
-    assert web.get("/api/publicaciones/42", headers=headers).json() == anonimo.json()
+    canonical = web.get("/api/publicaciones/42", headers=headers).json()
+    assert canonical == {**anonimo.json(), "mi_postulacion": {"id_postulacion": 77, "estado": "Pendiente"}}
+    identity.return_value = Actor(subject, 22, True, False)
+    assert web.get("/api/publicaciones/42", headers=headers).json() == {**canonical, "id_arriendo": 123}
+    repository.publication_rental.assert_called_once_with(42)
 
     identity.return_value = Actor(subject, 1, False, False)
     assert web.get(path, headers=headers).json() == anonimo.json()
@@ -210,3 +216,78 @@ def test_consulta_interna_reportes_conserva_autorizacion_y_propietario(repositor
     assert response.json()=={"id_publicacion":id,"id_propietario":22,"tipo":"Arrendador","estado":"Disponible","cupos_totales":3}
     missing=web.get("/internal/publicaciones/999999",headers={"Authorization":"Bearer "+token})
     assert missing.status_code==404 and missing.json()=={"codigo":"PUBLICACION_NO_ENCONTRADA"}
+
+
+def test_e01_dto_ubicacion_autor_reglas_y_filtro_privado():
+    repository = Mock()
+    row = {**validate_publication(DATA), "id_publicacion": 42, "id_usuario": 1,
+           "estado": "Disponible", "fecha_publicacion": datetime.now(timezone.utc),
+           "nombre_region": "La Araucanía", "nombre_comuna": "Temuco", "id_arriendo": 9}
+    repository.publication.return_value = row
+    repository.list_publications.return_value = [row]
+    web, app = client(repository)
+    app.owners = Mock()
+    author = {"id_usuario": 1, "nombre": "Arrendadora de prueba", "foto": None}
+    app.owners.summaries.return_value = {1: author}
+
+    public = web.get("/api/publicaciones").json()["items"][0]
+    assert public["region"] == {"id": 9, "nombre": "La Araucanía"}
+    assert public["comuna"] == {"id": 9101, "nombre": "Temuco"}
+    assert public["autor"] == author
+    assert "id_arriendo" not in public and "reglas_arrendador" not in public
+    assert web.get("/api/publicaciones/42").json()["reglas_arrendador"] == ["Respetar descanso"]
+    assert web.get("/api/publicaciones/mias?estado=Disponible").json()["items"][0]["id_arriendo"] == 9
+    assert repository.list_publications.call_args.args[0]["estado"] == "Disponible"
+    assert repository.list_publications.call_args.args[1] == 1
+    assert web.get("/api/publicaciones?cupos_disponibles=0").status_code == 422
+    app.owners.summaries.side_effect = DependencyUnavailable()
+    assert web.get("/api/publicaciones/42").json()["autor"] is None
+
+
+def test_e01_reglas_canonicas_aplican_limites_y_conservan_alias():
+    minimal = {key: value for key, value in DATA.items() if key not in {"reglas", "categoria", "mascota"}}
+    checked = validate_publication({**minimal, "tipo_vivienda": "Habitacion", "reglas_arrendador": '["Sin humo"]'})
+    assert (checked["tipo_vivienda"], checked["reglas"], checked["mascota"]) == ("habitacion", ["Sin humo"], "no")
+    for invalid_rules in (["a"] * 21, ["a" * 301], [""], {"regla": "no"}):
+        with pytest.raises(RuleViolation):
+            validate_publication({**minimal, "reglas_arrendador": invalid_rules})
+    with pytest.raises(RuleViolation):
+        validate_publication({**DATA, "reglas_arrendador": ["Otra"]})
+    assert validate_publication({**DATA, "reglas": ["a" * 301]})["reglas"] == ["a" * 301]
+
+
+def test_e01_crear_editar_cerrar_y_cancelar_postulaciones(repository):
+    web, app = client(repository)
+    fields = {key: (None, value) for key, value in DATA.items()
+              if key not in {"reglas", "ubicacion", "categoria", "mascota"}}
+    fields["reglas_arrendador"] = (None, '["Sin humo"]')
+    response = web.post("/api/publicaciones", files=fields)
+    assert response.status_code == 201, response.text
+    created = response.json()
+    assert created["ubicacion"] == "Temuco, La Araucanía"
+    assert created["cupos_disponibles"] == 3
+    identifier = created["id_publicacion"]
+    path = f"/api/publicaciones/{identifier}"
+
+    response = web.put(path, files={**fields, "reglas_arrendador": (None, '["No fumar"]')})
+    assert response.status_code == 200, response.text
+    assert response.json()["fecha_publicacion"] == created["fecha_publicacion"]
+    assert web.get(path).json()["reglas_arrendador"] == ["No fumar"]
+
+    pending = app.postulate(21, identifier)["id_postulacion"]
+    shortlisted = app.postulate(22, identifier)["id_postulacion"]
+    app.decide(1, shortlisted, "Preseleccionada")
+    app.occupancy_update(identifier, 1, 1)
+    assert web.put(path, files=fields).status_code == 409
+    assert web.put(path, files={key: value for key, value in fields.items() if key != "reglas_arrendador"}).status_code == 200
+    assert web.get(path).json()["reglas_arrendador"] == ["No fumar"]
+
+    for _ in range(2):
+        closed = web.patch(path + "/cerrar")
+        assert closed.status_code == 200 and closed.json()["estado"] == "Cerrada"
+    assert web.get("/api/publicaciones").json()["items"] == []
+    assert web.get("/api/publicaciones/mias?estado=Cerrada").json()["items"][0]["id_publicacion"] == identifier
+    for application_id in (pending, shortlisted):
+        row = repository.application(application_id)
+        assert (row["estado"], row["motivo"]) == ("Cancelada", "Cierre de publicación")
+        assert sum(event["event_key"] == f"postulacion:{application_id}:Cancelada" for event in repository.pending_events()) == 1

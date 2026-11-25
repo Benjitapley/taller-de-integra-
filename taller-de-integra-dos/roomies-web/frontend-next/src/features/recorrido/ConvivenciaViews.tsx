@@ -18,22 +18,21 @@ function ResourceMessage<T>({ state, emptyTitle, onRetry }: { state: EstadoRecur
   return null;
 }
 
-export function MembersView({ state, onRetry, onWithdraw, emptyTitle = "Todavía no hay integrantes registrados." }: { state: EstadoRecurso<IntegranteArriendoDto[]>; onRetry?: () => void; onWithdraw?: (member: IntegranteArriendoDto) => void; emptyTitle?: string }) {
+export function MembersView({ state, onRetry, emptyTitle = "Todavía no hay integrantes registrados." }: { state: EstadoRecurso<IntegranteArriendoDto[]>; onRetry?: () => void; emptyTitle?: string }) {
   if (state.status !== "ready") return <Card><ResourceMessage state={state} emptyTitle={emptyTitle} onRetry={onRetry} /></Card>;
   const members = state.data.filter((member) => member.activo);
   const responsible = members.filter((member) => member.es_responsable);
   const residents = members.filter((member) => !member.es_responsable);
   return <div className={styles.grid}>
-    <section aria-labelledby="responsable-heading"><h2 id="responsable-heading">Responsable de convivencia</h2><MemberList members={responsible} onWithdraw={onWithdraw} empty="No hay responsable asignado." /></section>
-    <section aria-labelledby="members-heading"><h2 id="members-heading">Otros integrantes residentes</h2><MemberList members={residents} onWithdraw={onWithdraw} empty="Aún no hay otros integrantes residentes." /></section>
+    <section aria-labelledby="responsable-heading"><h2 id="responsable-heading">Responsable de convivencia</h2><MemberList members={responsible} empty="No hay responsable asignado." /></section>
+    <section aria-labelledby="members-heading"><h2 id="members-heading">Otros integrantes residentes</h2><MemberList members={residents} empty="Aún no hay otros integrantes residentes." /></section>
     <p className={styles.note}>El arrendador dueño y los postulantes se consultan por separado en <Link href="/mis-publicaciones">Mis publicaciones</Link>; no forman parte de esta lista de residentes.</p>
   </div>;
 }
 
-function MemberList({ members, empty, onWithdraw }: { members: IntegranteArriendoDto[]; empty: string; onWithdraw?: (member: IntegranteArriendoDto) => void }) {
+function MemberList({ members, empty }: { members: IntegranteArriendoDto[]; empty: string }) {
   return <Card>{members.length === 0 ? <p>{empty}</p> : <ul className={styles.list}>{members.map((member) => <li key={member.id_usuario}>
     <span className={styles.memberIdentity}><span className={styles.avatar} aria-hidden="true">{member.nombre?.charAt(0) || "?"}</span><strong>{member.nombre || `Integrante #${member.id_usuario}`}</strong></span><span className={styles.memberRole}>{member.es_responsable ? "Responsable" : "Integrante"}</span>
-    {onWithdraw ? <Button variant="secondary" onClick={() => onWithdraw(member)}>Retirar integrante</Button> : null}
   </li>)}</ul>}</Card>;
 }
 
@@ -68,16 +67,16 @@ export function ChatView({ state, onSend, onRetry, currentUserId }: {
   </Card>;
 }
 
-export function TasksView({ state, members, onCreate, onRetry, onAssign, onComplete, currentUserId, saving = false, actionError = "" }: {
+export function TasksView({ state, members, onCreate, onRetry, onAssign, onComplete, busy = false, currentUserId, error = "" }: {
   state: EstadoRecurso<TareaDto[]>;
-  members: IntegranteArriendoDto[];
-  onCreate?: (input: { titulo: string; descripcion: string; id_asignado: number | null }) => void | Promise<boolean>;
-  onRetry?: () => void;
-  onAssign?: (task: number, assignee: number | null) => void;
-  onComplete?: (task: number) => void;
   currentUserId?: number;
-  saving?: boolean;
-  actionError?: string;
+  error?: string;
+  onAssign?: (id: number, assignee: number | null) => void;
+  onComplete?: (id: number) => void;
+  busy?: boolean;
+  members: IntegranteArriendoDto[];
+  onCreate?: (input: { titulo: string; descripcion: string; id_asignado: number | null }) => Promise<boolean>;
+  onRetry?: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -87,35 +86,35 @@ export function TasksView({ state, members, onCreate, onRetry, onAssign, onCompl
     event.preventDefault();
     if (!onCreate || !title.trim()) return;
     const saved = await onCreate({ titulo: title.trim(), descripcion: description.trim(), id_asignado: assignee ? Number(assignee) : null });
-    if (saved === false) return;
+    if (!saved) return;
     setTitle(""); setDescription(""); setAssignee("");
     setFormOpen(false);
   }
   if (state.status !== "ready") return <Card><ResourceMessage state={state} emptyTitle="Todavía no hay tareas para este arriendo." onRetry={onRetry} /></Card>;
   return <div className={styles.grid}>
     <Card className={styles.taskBoard}>
-      <div className={styles.sectionHeading}><h2>Organización de la casa</h2><Button variant="secondary" onClick={() => setFormOpen(true)}>＋ Nueva tarea</Button></div>
+      <div className={styles.sectionHeading}><h2>Organización de la casa</h2><Button variant="secondary" disabled={busy || !onCreate} onClick={() => setFormOpen(true)}>＋ Nueva tarea</Button></div>
       {state.data.length === 0 ? <p>Todavía no hay tareas. Puedes proponer la primera.</p> : <ul className={styles.taskList}>{state.data.map((task) => <li key={task.id_tarea}>
-        <div><strong>{task.titulo}</strong>{task.descripcion ? <p>{task.descripcion}</p> : null}<small>{task.id_asignado === null ? "Sin asignar" : `Asignada a ${members.find((member) => member.id_usuario === task.id_asignado)?.nombre ?? "integrante"}`}</small></div><TareaStatus estado={task.estado} />
-        {task.estado === "Pendiente" && onAssign ? <label>Asignar a<select aria-label={`Asignar ${task.titulo}`} value={task.id_asignado ?? ""} disabled={saving} onChange={event => onAssign(task.id_tarea, event.target.value ? Number(event.target.value) : null)}>
-          <option value="">Sin asignar</option>{members.filter(member => member.activo).map(member => <option key={member.id_usuario} value={member.id_usuario}>{member.nombre || `Integrante #${member.id_usuario}`}</option>)}
-        </select></label> : null}
-        {task.estado === "Pendiente" && task.id_asignado === currentUserId && onComplete ? <Button disabled={saving} onClick={() => onComplete(task.id_tarea)}>Completar</Button> : null}
+        <div><strong>{task.titulo}</strong>{task.descripcion ? <p>{task.descripcion}</p> : null}<small>{task.id_asignado === null ? "Sin asignar" : `Asignada a ${members.find((member) => member.id_usuario === task.id_asignado)?.nombre || `Integrante #${task.id_asignado}`}`}</small></div><TareaStatus estado={task.estado} />
+        {task.estado === "Pendiente" && onAssign ? <label>Asignar tarea
+          <select aria-label={`Asignar ${task.titulo}`} value={task.id_asignado ?? ""} disabled={busy} onChange={event => onAssign(task.id_tarea, event.target.value ? Number(event.target.value) : null)}>
+            <option value="">Sin asignar</option>{members.filter(member => member.activo).map(member => <option key={member.id_usuario} value={member.id_usuario}>{member.nombre || `Integrante #${member.id_usuario}`}</option>)}
+          </select>
+        </label> : null}
+        {task.estado === "Pendiente" && task.id_asignado === currentUserId && members.some(member => member.activo && member.id_usuario === currentUserId) && onComplete ? <Button disabled={busy} onClick={() => onComplete(task.id_tarea)}>Completar</Button> : null}
       </li>)}</ul>}
-      {actionError && !formOpen ? <p role="alert">{actionError}</p> : null}
     </Card>
-    <Modal open={formOpen} onClose={() => setFormOpen(false)} title="Nueva tarea" surfaceClassName={styles.taskModalSurface}>
-      <form className={styles.taskForm} onSubmit={submit}>
+    <Modal open={formOpen} onClose={() => { if (!busy) setFormOpen(false); }} title="Nueva tarea" surfaceClassName={styles.taskModalSurface}>
+      <form className={styles.taskForm} onSubmit={submit} aria-busy={busy}>
+      {error ? <p role="alert">{error}</p> : null}
       <p className={styles.formIntro}>Organiza responsabilidades del hogar. La asignación es opcional.</p>
       <label htmlFor="task-title">Nombre de la tarea</label><input id="task-title" placeholder="Ej.: Aseo de la cocina" value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={120} disabled={!onCreate} />
       <label htmlFor="task-description">Descripción (opcional)</label><textarea id="task-description" placeholder="Detalles de la tarea" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} rows={2} disabled={!onCreate} />
       <label htmlFor="task-assignee">Asignar a (opcional)</label><select id="task-assignee" value={assignee} onChange={(event) => setAssignee(event.target.value)} disabled={!onCreate}>
-        <option value="">Sin asignar</option>{members.filter((member) => member.activo).map((member) => <option key={member.id_usuario} value={member.id_usuario}>{member.nombre}</option>)}
+        <option value="">Sin asignar</option>{members.filter((member) => member.activo).map((member) => <option key={member.id_usuario} value={member.id_usuario}>{member.nombre || `Integrante #${member.id_usuario}`}</option>)}
       </select>
-      <p className={styles.assignmentHint} aria-live="polite">{assignee ? `Asignada a ${members.find((member) => String(member.id_usuario) === assignee)?.nombre ?? "integrante"}` : "Se creará sin asignado"}</p>
-      {actionError ? <p role="alert">{actionError}</p> : null}
-      <div className={styles.modalActions}><Button variant="secondary" disabled={saving} onClick={() => setFormOpen(false)}>Cancelar</Button><Button type="submit" disabled={saving || !onCreate || !title.trim()}>{saving ? "Guardando…" : "Crear tarea"}</Button></div>
-      {!onCreate ? <p className={styles.note}>El guardado se habilitará cuando esté disponible la API de convivencia.</p> : null}
+      <p className={styles.assignmentHint} aria-live="polite">{assignee ? `Asignada a ${members.find((member) => String(member.id_usuario) === assignee)?.nombre || `Integrante #${assignee}`}` : "Se creará sin asignado"}</p>
+      <div className={styles.modalActions}><Button variant="secondary" disabled={busy} onClick={() => setFormOpen(false)}>Cancelar</Button><Button type="submit" disabled={busy || !onCreate || !title.trim()}>{busy ? "Guardando…" : "Crear tarea"}</Button></div>
       </form>
     </Modal>
   </div>;

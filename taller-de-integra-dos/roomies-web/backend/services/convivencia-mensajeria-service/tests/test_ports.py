@@ -111,33 +111,24 @@ def test_identidad_habilitada_y_deshabilitada(transport):
         assert HttpIdentity().enabled(2) is enabled
 
 
-def test_retiro_consulta_dueno_y_envia_proyeccion_versionada(transport):
-    import json
-    projection = {'id_publicacion': 7, 'id_arriendo': 1, 'ocupacion': 0, 'version_ocupacion': 3, 'finalizado': True}
-    calls = []
-    def handler(request):
-        calls.append(request)
-        if request.method == 'GET':
-            return httpx.Response(200, json={'id_publicacion': 7, 'id_propietario': 1})
-        assert json.loads(request.content) == {key: value for key, value in projection.items() if key != 'id_publicacion'}
-        return httpx.Response(200, json={'success': True})
-    transport(handler)
-    assert HttpPublications().owner(7) == 1
-    HttpPublications().departure(projection)
-    assert [call.url.path for call in calls] == ['/internal/publicaciones/7', '/internal/publicaciones/7/retiros']
-    assert all(len(call.headers['X-Roomies-Service']) >= 32 for call in calls)
-
-
-@pytest.mark.parametrize('body', [{'id_publicacion': 7, 'id_propietario': True}, {'id_publicacion': 8, 'id_propietario': 1}, {}])
-def test_dueno_malformado_no_autoriza(transport, body):
-    transport(lambda request: httpx.Response(200, json=body))
+@pytest.mark.parametrize("owner", [True,0,"1",None])
+def test_propietario_invalido_falla_cerrado(transport, owner):
+    transport(lambda request:httpx.Response(200,json={"id_propietario":owner}))
     with pytest.raises(ServiceError) as error:
         HttpPublications().owner(7)
     assert error.value.status == 503
 
 
-def test_no_confirma_entrega_de_retiro_con_respuesta_malformada(transport):
-    transport(lambda request: httpx.Response(200, json={'success': False}))
-    with pytest.raises(ServiceError) as error:
-        HttpPublications().departure({'id_publicacion': 7})
-    assert error.value.status == 503
+def test_propietario_y_ocupacion_usan_api_interna(transport):
+    calls=[]
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(200,json={"id_propietario":1})
+    transport(handler)
+    port=HttpPublications()
+    assert port.owner(7) == 1
+    port.occupancy({"id_publicacion":7,"ocupacion":0,"version_ocupacion":3,"finalizado":True})
+    import json
+    assert calls[0].url.path == "/internal/publicaciones/7/propietario"
+    assert calls[1].method == "PUT"
+    assert json.loads(calls[1].content) == {"ocupacion":0,"version_ocupacion":3,"finalizado":True}

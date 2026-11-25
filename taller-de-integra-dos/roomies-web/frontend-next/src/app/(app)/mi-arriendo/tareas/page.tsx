@@ -1,7 +1,6 @@
 import MemberPageGate from "@/features/recorrido/MemberPageGate";
-import TasksPageView from "@/features/recorrido/TasksPage";
-import MemberAccessGate from "@/features/recorrido/MemberAccessGate";
+import TasksPreviewPage from "@/features/recorrido/TasksPreviewPage";
 
 export default function TasksPage() {
-  return <MemberPageGate><MemberAccessGate><TasksPageView /></MemberAccessGate></MemberPageGate>;
+  return <MemberPageGate><TasksPreviewPage /></MemberPageGate>;
 }

@@ -20,7 +20,7 @@ from app.infrastructure.repository import PostgresPublications
 from app.infrastructure.clients import UnavailableOccupancy, HttpOwners
 from backend.service_runtime.security import access_token, actor, admin_actor, bearer, confirmed_actor
 from app.infrastructure.storage import SupabasePublicationImages, MAX_IMAGE_BYTES
-from app.api.schemas import Publication, PublicationDetail, PublicationSaved, PublicationPage, Region, Commune, MULTIPART
+from app.api.schemas import Publication, PublicationDetail, PublicationSaved, PublicationPage, OwnedPublicationPage, Region, Commune, MULTIPART
 from backend.service_runtime.contracts import DependencyUnavailable
 
 router=APIRouter()
@@ -30,7 +30,20 @@ def service():
     return Publications(PostgresPublications(),UnavailableOccupancy(),SupabasePublicationImages(),HttpOwners())
 
 
-def dto(row,occupancy):
+def owner_summaries(app, rows):
+    if app.owners is None:
+        return {}
+    ids = sorted({row["id_usuario"] for row in rows if row.get("id_usuario") is not None})
+    try:
+        return app.owners.summaries(ids)
+    except DependencyUnavailable:
+        return {}
+
+
+def dto(row, occupancy, authors=None):
+    def location(key):
+        identifier, name = row.get(f"id_{key}"), row.get(f"nombre_{key}")
+        return {"id": identifier, "nombre": name} if identifier is not None and name is not None else None
     try: slots=available(row,occupancy)
     except DependencyUnavailable: slots=None
     return {"id_publicacion":row["id_publicacion"],"id":row["id_publicacion"],"titulo":row["titulo"],"tipo":row["tipo"],"descripcion":row["descripcion"],
@@ -38,13 +51,18 @@ def dto(row,occupancy):
             "cupos_totales":row["cupos_totales"],"cupos":row["cupos_totales"],"cupos_disponibles":slots,
             "tipo_vivienda":row["tipo_vivienda"],"categoria":row["categoria"],"mascota":row["mascota"],
             "permitir_comentarios":row["permitir_comentarios"],"imagen":row.get("imagen"),"fecha_publicacion":row["fecha_publicacion"],
-            "id_region":row.get("id_region"),"id_comuna":row.get("id_comuna"),"reglas":row.get("reglas",[]),"imagenes":row.get("imagenes",[])}
+            "id_region":row.get("id_region"),"id_comuna":row.get("id_comuna"),"reglas":row.get("reglas",[]),"imagenes":row.get("imagenes",[]),
+            "region":location("region"), "comuna":location("comuna"), "autor":(authors or {}).get(row.get("id_usuario"))}
+
+
+def saved_dto(app, row):
+    return dto(row, app.occupancy, owner_summaries(app, [row]))
 
 
 @router.get("/api/publicaciones",response_model=PublicationPage)
 @router.get("/api/publicaciones/buscar",response_model=PublicationPage,deprecated=True)
 def catalog(consulta: str|None=Query(None,max_length=250),precio_min:Decimal|None=Query(None,ge=0),precio_max:Decimal|None=Query(None,ge=0),
-            cupos_min:int|None=Query(None,ge=1,le=2147483647),cupos_disponibles:int|None=Query(None,ge=0,le=2147483647),tipo_vivienda:Literal["casa","departamento","habitacion"]|None=None,
+            cupos_min:int|None=Query(None,ge=1,le=2147483647),cupos_disponibles:int|None=Query(None,ge=1,le=2147483647),tipo_vivienda:Literal["casa","departamento","habitacion"]|None=None,
             mascota:Literal["si","no"]|None=None,categoria:Literal["busco","ofrezco"]|None=None,
             tipo:Literal["casa","departamento","habitacion"]|None=None,mascotas:Literal["si","no"]|None=None,
             personas:Literal["1","2","3"]|None=None,id_region:int|None=Query(None,ge=1),id_comuna:int|None=Query(None,ge=1),
@@ -66,14 +84,21 @@ def catalog(consulta: str|None=Query(None,max_length=250),precio_min:Decimal|Non
             raise HTTPException(422,"El precio debe ser un entero CLP entre 0 y 999999999999.")
     filters={"consulta":consulta,"precio_min":precio_min,"precio_max":precio_max,"cupos_min":cupos_min or (int(personas) if personas else None),"cupos_disponibles":cupos_disponibles,"tipo_vivienda":tipo_vivienda or tipo,"mascota":mascota or mascotas,"categoria":categoria,"id_region":id_region,"id_comuna":id_comuna,"limite":limite,"cursor":cursor}
     page=app.list(filters)
-    return {**page,"items":[dto(row,app.occupancy) for row in page["items"]]}
+    authors = owner_summaries(app, page["items"])
+    return {**page,"items":[dto(row, app.occupancy, authors) for row in page["items"]]}
 
 
-@router.get("/api/mis-publicaciones",response_model=PublicationPage,deprecated=True)
-@router.get("/api/publicaciones/mias",response_model=PublicationPage)
-def mine(limite:int=Query(20,ge=1,le=100),cursor:str|None=Query(None,max_length=1024),identity=Depends(confirmed_actor),app=Depends(service)):
-    page=app.list({"limite":limite,"cursor":cursor},identity.user_id)
-    return {**page,"items":[dto(row,app.occupancy) for row in page["items"]]}
+@router.get("/api/mis-publicaciones",response_model=OwnedPublicationPage,deprecated=True)
+@router.get("/api/publicaciones/mias",response_model=OwnedPublicationPage)
+def mine(limite:int=Query(20,ge=1,le=100),cursor:str|None=Query(None,max_length=1024),
+         estado:Literal["Disponible","Activa","Cerrada"]|None=None,identity=Depends(confirmed_actor),app=Depends(service)):
+    filters = {"limite": limite, "cursor": cursor}
+    if estado is not None:
+        filters["estado"] = estado
+    page = app.list(filters, identity.user_id)
+    authors = owner_summaries(app, page["items"])
+    return {**page, "items":[{**dto(row, app.occupancy, authors), "id_arriendo": row.get("id_arriendo")}
+                            for row in page["items"]]}
 
 
 @router.get("/api/regiones",response_model=list[Region])
@@ -92,9 +117,22 @@ def my_count(identity=Depends(confirmed_actor),app=Depends(service)):
     return {"total_publicaciones":app.repository.count(identity.user_id)}
 
 
-@router.get("/api/publicaciones/{id}",response_model=Publication)
-def detail(id:int,app=Depends(service)):
-    return dto(app.get(id),app.occupancy)
+@router.get("/api/publicaciones/{id}", response_model=PublicationDetail,
+            response_model_exclude_unset=True, openapi_extra={"security": [{}]})
+def detail(id: int, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)] = None,
+           app=Depends(service)):
+    row = app.get(id)
+    publication = {**saved_dto(app, row), "reglas_arrendador": row.get("reglas", [])}
+    if credentials is None:
+        return publication
+    try:
+        identity = actor(access_token(credentials))
+    except HTTPException:
+        return publication
+    publication["mi_postulacion"] = app.repository.viewer_application(id, identity.user_id)
+    if identity.user_id == row["id_usuario"]:
+        publication["id_arriendo"] = app.repository.publication_rental(id)
+    return publication
 
 
 @router.get(
@@ -112,7 +150,7 @@ def detail_alias(
     app=Depends(service),
 ):
     row = app.get(id)
-    publication = dto(row, app.occupancy)
+    publication = {**saved_dto(app, row), "reglas_arrendador": row.get("reglas", [])}
     if credentials is not None:
         try:
             confirmed_actor(actor(access_token(credentials)))
@@ -127,12 +165,8 @@ def publication_for_report(
     id: Annotated[int, Path(gt=0, le=9223372036854775807)],
     app=Depends(service),
     authorization: Annotated[str | None, Header()] = None,
-    x_roomies_service: Annotated[str | None, Header()] = None,
 ):
-    if x_roomies_service is not None:
-        internal_service(x_roomies_service)
-    else:
-        verify_report_service(authorization, "listado-applications", "REPORTES_LISTADO_JWT_KEY")
+    verify_report_service(authorization, "listado-applications", "REPORTES_LISTADO_JWT_KEY")
     row = app.repository.report_target(id)
     if row is None:
         return JSONResponse({"codigo": "PUBLICACION_NO_ENCONTRADA"}, status_code=404)
@@ -146,6 +180,7 @@ def slots(id:int,app=Depends(service)):
 
 
 class OccupancyUpdate(BaseModel):
+    finalizado:bool=Field(default=False,strict=True)
     model_config=ConfigDict(extra="forbid")
     ocupacion:int=Field(strict=True,ge=0,le=2147483647)
     version_ocupacion:int=Field(strict=True,ge=0,le=9223372036854775807)
@@ -177,33 +212,7 @@ def internal_service(x_roomies_service:str|None=Header(None)):
 
 @router.put("/internal/publicaciones/{id}/ocupacion",dependencies=[Depends(internal_service)])
 def occupancy_update(id:int,data:OccupancyUpdate,app=Depends(service)):
-    return dto(app.occupancy_update(id,data.ocupacion,data.version_ocupacion),app.occupancy)
-
-
-class DepartureProjection(ReservationProjection):
-    finalizado: bool = Field(strict=True)
-
-
-@router.put('/internal/publicaciones/{id}/retiros', dependencies=[Depends(internal_service)])
-def departure_projection(id: int, data: DepartureProjection, app=Depends(service)):
-    from backend.service_runtime.contracts import RuleViolation
-    if data.finalizado != (data.ocupacion == 0):
-        raise RuleViolation('Un arriendo finalizado no tiene integrantes activos.', 422)
-    with app.repository.transaction():
-        row = app.repository.publication(id, lock=True)
-        if row is None:
-            raise RuleViolation('Publicación no encontrada.', 404)
-        if data.version_ocupacion < row['version_ocupacion']:
-            return {'success': True}
-        app.occupancy_update_locked(row, data.ocupacion, data.version_ocupacion)
-        if data.finalizado:
-            app.repository.close(id)
-            cancelled = app.repository.query("""UPDATE listado_applications.postulacion
-                SET estado='Cancelada',motivo='Cierre de publicación',actualizada_en=clock_timestamp()
-                WHERE id_publicacion=%s AND estado IN ('Pendiente','Preseleccionada') RETURNING *""", (id,), many=True)
-            for application in cancelled:
-                app.repository.event(application)
-    return {'success': True}
+    return dto(app.occupancy_update(id,data.ocupacion,data.version_ocupacion,data.finalizado),app.occupancy)
 
 
 @router.post("/internal/publicaciones/{id}/reservas",dependencies=[Depends(internal_service)])
@@ -227,8 +236,8 @@ async def publication_form(request):
     except StarletteHTTPException as error:
         raise HTTPException(422,"Multipart inválido o exceso de imágenes/campos.") from error
     try:
-        allowed={"titulo","descripcion","ubicacion","precio","tipo","categoria","tipo_vivienda","mascota","cupos_totales","permitir_comentarios","id_region","id_comuna","reglas","imagen","imagenes","imagenes_conservar"}
-        if set(form)-allowed or any(len(form.getlist(k))!=1 for k in form if k!="imagenes") or ("imagen" in form and "imagenes" in form):
+        allowed={"titulo","descripcion","ubicacion","precio","tipo","categoria","tipo_vivienda","mascota","cupos_totales","permitir_comentarios","id_region","id_comuna","reglas","reglas_arrendador","imagen","imagenes","imagenes_conservar"}
+        if set(form)-allowed or any(len(form.getlist(k))!=1 for k in form if k!="imagenes") or ("imagen" in form and "imagenes" in form) or ("reglas" in form and "reglas_arrendador" in form):
             raise HTTPException(422,"Campos no permitidos o repetidos.")
         data={k:v for k,v in form.items() if k not in {"imagen","imagenes","imagenes_conservar"}}
         if any(not isinstance(value,str) for value in data.values()):
@@ -255,22 +264,24 @@ async def publication_form(request):
 async def create(request:Request,identity=Depends(confirmed_actor),app=Depends(service)):
     data,images,retained=await publication_form(request)
     id=await run_in_threadpool(app.save,identity.user_id,data,images,retained=retained,key=request.headers.get("Idempotency-Key"))
-    return {**dto(app.get(id,identity.user_id),app.occupancy),"mensaje":"Publicación creada"}
+    row = await run_in_threadpool(app.get, id, identity.user_id)
+    return {**await run_in_threadpool(saved_dto, app, row), "mensaje":"Publicación creada"}
 
 
 @router.put("/api/publicaciones/{id}",response_model=PublicationSaved,openapi_extra=MULTIPART)
 async def edit(id:int,request:Request,identity=Depends(confirmed_actor),app=Depends(service)):
-    previous=app.get(id,identity.user_id)
+    previous = await run_in_threadpool(app.get, id, identity.user_id)
     data,images,retained=await publication_form(request)
     data.setdefault("tipo",previous["tipo"])
     data.setdefault("permitir_comentarios",previous["permitir_comentarios"])
     await run_in_threadpool(app.save,identity.user_id,data,images,id,retained,key=request.headers.get("Idempotency-Key"))
-    return {**dto(app.get(id,identity.user_id),app.occupancy),"mensaje":"Publicación actualizada"}
+    row = await run_in_threadpool(app.get, id, identity.user_id)
+    return {**await run_in_threadpool(saved_dto, app, row), "mensaje":"Publicación actualizada"}
 
 
 @router.patch("/api/publicaciones/{id}/cerrar",response_model=Publication)
 def close(id:int,identity=Depends(confirmed_actor),app=Depends(service)):
-    return dto(app.close(identity.user_id,id),app.occupancy)
+    return saved_dto(app, app.close(identity.user_id, id))
 
 
 @router.post("/api/publicaciones/{id}/postulaciones",status_code=201)
@@ -323,3 +334,11 @@ def summary(_=Depends(admin_actor),app=Depends(service)):
 def admin_publications(limite:int=Query(20,ge=1,le=100),pagina:int=Query(1,ge=1,le=100000),_=Depends(admin_actor),app=Depends(service)):
     rows=app.repository.admin_list(limite,pagina)
     return {"items":[{k:v for k,v in dto(row,app.occupancy).items() if k in {"id","titulo","precio","ubicacion","estado","cupos_totales"}} for row in rows[:limite]],"pagina":pagina,"hay_mas":len(rows)>limite}
+
+
+@router.get("/internal/publicaciones/{id}/propietario",dependencies=[Depends(internal_service)])
+def departure_owner(id:int,app=Depends(service)):
+    row=app.repository.publication(id)
+    if row is None:
+        raise HTTPException(404,"Publicación no encontrada.")
+    return {"id_propietario":row["id_usuario"]}

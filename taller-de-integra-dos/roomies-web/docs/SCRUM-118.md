@@ -1,5 +1,44 @@
 # S3R-E01 · Conectar catálogo y formularios al DTO y cursor
 
+## Revisión local del 24/11/2026
+
+Base del workspace: `1acd903` en `SCRUM-118`. Se comparó el código con la ficha
+S3R-E01 del backlog v1.4 (pp. 27–28) y el contrato Sprint 3 v2 (pp. 7, 12–14 y 27).
+La referencia visual de TI4 se usó para la vista previa del aviso.
+
+- Listado incorpora región y comuna con nombre, autor público y reglas del detalle.
+  Mis publicaciones filtra por estado y conserva el ID de arriendo del dueño.
+- El formulario admite reglas textuales, muestra vista previa y abre el detalle
+  del ID confirmado por la API. La edición conserva reglas omitidas y bloquea
+  cambios de reglas cuando el aviso está Activa o Cerrada.
+- El catálogo aplica región, comuna y cupos exactos a la búsqueda y a la
+  paginación. Cerrar preserva imágenes e integrantes y cancela postulaciones
+  pendientes o preseleccionadas con motivo de cierre.
+- Se conservaron los campos de transición para los clientes existentes.
+
+| Verificación | Resultado |
+| --- | --- |
+| Suite web completa con `PUBLICATIONS_BROWSER_TESTS=1` | 148 aprobadas, 0 fallidas, 3 opcionales omitidas. El recorrido E01 usa Chromium, Next temporal y un Gateway de prueba. |
+| `node.exe tests/build-isolated.mjs` y ESLint de los archivos modificados | Correctos. El build aislado incluye TypeScript. |
+| `backend/local_stack/run_unit.py listado` | 40 aprobadas. |
+| Suite de Listado sin DSN | 29 aprobadas, 37 omitidas al requerir PostgreSQL. |
+| `backend/api-gateway/tests/run_isolated.py` | 146 aprobadas. |
+| `backend/services/listado-applications-service/tests/run_isolated.py` | Bloqueada antes de ejecutar casos SQL. Falló la inicialización del clúster temporal con PostgreSQL 19 y 18.6 portátil en este Windows. |
+
+Para reproducir la prueba de Chromium usar `node.exe --test tests/proxy.test.mjs`
+desde `frontend-next` con `PUBLICATIONS_BROWSER_TESTS=1`,
+`PROFILE_PLAYWRIGHT_PATH` apuntando al paquete local de Playwright y
+`PROFILE_BROWSER_PATH` a Chromium.
+
+Sigue pendiente ejecutar la suite con PostgreSQL, demostrar el ciclo real con
+un Gateway de pruebas compartido y verificar fotos aportadas por el equipo en
+otro navegador y después de un reinicio. Los cambios de capacidad con ocupación
+actual requieren coordinación con Convivencia y mantienen la protección 409.
+
+[SCRUM-118](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-118)
+
+## Registro anterior
+
 ## Estado de evidencia
 
 Implementación local preparada sobre `dev-web`. Este registro no declara cerrada

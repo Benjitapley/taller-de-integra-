@@ -1,7 +1,8 @@
 # Convivencia y Mensajería - incorporación v1 / chat persistido
 
 E05 añade retiro por el dueño, tareas persistidas y sincronización durable de cupos y avisos.
-Aplicar la migración 005 después de 001–004. La [guía de E05](../../../docs/evidence/E05/README.md)
+Aplicar `005_retiro.up.sql` y `006_tareas_reasignables.up.sql` después de 001–004.
+La [guía de E05](../../../docs/evidence/E05/README.md)
 documenta activación, contratos, pruebas, capturas y límites de la aceptación.
 
 Base ejecutable del release inicial. Incluye contrato HTTP, persistencia propia,

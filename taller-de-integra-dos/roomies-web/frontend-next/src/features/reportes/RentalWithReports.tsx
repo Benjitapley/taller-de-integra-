@@ -41,19 +41,16 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
       const data = await response.json();
       if (!signal.aborted) setArriendo(data);
     }).catch(() => {
-      if (!signal.aborted) setError("No pudimos cargar tu arriendo. Intenta nuevamente.");
+      if (!signal.aborted) { setArriendo(null); setError("No pudimos cargar tu arriendo. Intenta nuevamente."); }
     }).finally(() => {
       if (!signal.aborted) setLoading(false);
     });
-    return () => controller.abort();
-  }, [requestVersion, preview]);
-
-  useEffect(() => {
-    const refresh = () => { if (document.visibilityState === "visible") { setArriendo(null); setLoading(true); setError(""); setRequestVersion(value => value + 1); } };
+    const refresh = () => { if (document.visibilityState === "visible") setRequestVersion(value => value + 1); };
+    const timer = window.setInterval(refresh, 5000);
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
-    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
-  }, []);
+    return () => { controller.abort(); window.clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, [requestVersion, preview]);
 
   const showingPreview = isDevelopment && preview !== "api";
   const visibleLoading = showingPreview ? preview === "loading" : loading;

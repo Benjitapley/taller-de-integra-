@@ -46,25 +46,6 @@ class HttpIdentity:
 
 
 class HttpPublications:
-    def owner(self, publication_id):
-        response = self.request('GET', f'/internal/publicaciones/{publication_id}', None)
-        try:
-            row = response.json()
-            if type(row['id_publicacion']) is not int or row['id_publicacion'] != publication_id or type(row['id_propietario']) is not int or row['id_propietario'] < 1:
-                raise ValueError()
-            return row['id_propietario']
-        except (KeyError, ValueError, TypeError):
-            raise unavailable() from None
-
-    def departure(self, projection):
-        response = self.request('PUT', f"/internal/publicaciones/{projection['id_publicacion']}/retiros", None,
-                                {key: value for key, value in projection.items() if key != 'id_publicacion'})
-        try:
-            if response.status_code != 200 or response.json() != {'success': True}:
-                raise ValueError()
-        except ValueError:
-            raise unavailable() from None
-
     def request(self, method, path, key, payload=None):
         try:
             url = service_url("LISTADO_UPSTREAM_URL", docker_hosts=("listado", "listado-applications"))
@@ -110,3 +91,26 @@ class HttpPublications:
     def release(self, key, reservation):
         path = f"/internal/publicaciones/{reservation['id_publicacion']}/reservas/{reservation['id_reserva']}"
         self.request("DELETE", path, key)
+
+
+    def owner(self, publication_id):
+        value = self.request("GET", f"/internal/publicaciones/{publication_id}/propietario", None).json()
+        owner = value.get("id_propietario")
+        if type(owner) is not int or owner < 1:
+            raise unavailable()
+        return owner
+
+    def occupancy(self, payload):
+        self.request("PUT", f"/internal/publicaciones/{payload['id_publicacion']}/ocupacion", None,
+                     {k: payload[k] for k in ("ocupacion", "version_ocupacion", "finalizado")})
+
+    def owned_by(self, publication_id, user_id, token):
+        try:
+            url = service_url("LISTADO_UPSTREAM_URL", docker_hosts=("listado", "listado-applications"))
+            with httpx.Client(timeout=3, trust_env=False, follow_redirects=False) as client:
+                response = client.get(f"{url}/api/publicaciones/{publication_id}", headers={"Authorization": "Bearer " + token})
+            response.raise_for_status()
+            value = response.json()
+            return type(value.get("id_propietario")) is int and value["id_propietario"] == user_id
+        except Exception:
+            raise unavailable() from None

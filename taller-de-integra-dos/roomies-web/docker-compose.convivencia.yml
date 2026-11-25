@@ -1,5 +1,5 @@
 # Overlay local: docker compose -f docker-compose.local.yml -f docker-compose.convivencia.yml up --build
-# Aplicar primero las migraciones 001-004 de Convivencia y 001-004 de Listado.
+# Aplicar primero las migraciones 001-006 de Convivencia y 001-004 de Listado.
 # El bootstrap antiguo no crea este rol/esquema; sin migracion, operaciones fallan cerradas.
 # C03 conserva una operación pendiente hasta recibir la pertenencia confirmada.
 services:
@@ -11,6 +11,7 @@ services:
       ROOMIES_LOCAL_MODE: "1"
       ROOMIES_AUTH_PROVIDER_URL: ${ROOMIES_LOCAL_AUTH_ORIGIN:?Proveedor Supabase Auth LOCAL requerido}
       ROOMIES_JWT_ISSUER: ${ROOMIES_LOCAL_AUTH_ISSUER:?Issuer LOCAL exacto requerido}
+      CONVIVENCIA_AUTH_JWT_KEY: ${ROOMIES_CONVIVENCIA_AUTH_JWT_KEY:?Clave exclusiva de avisos requerida}
       AUTH_USERS_UPSTREAM_URL: http://auth-users:8000
       LISTADO_UPSTREAM_URL: http://listado-applications:8000
       ROOMIES_INTERNAL_TOKEN: ${ROOMIES_LOCAL_SERVICE_TOKEN:?Token interno local requerido}
@@ -24,3 +25,7 @@ services:
     environment:
       CONVIVENCIA_UPSTREAM_URL: http://convivencia-mensajeria:8000
     depends_on: [convivencia-mensajeria]
+
+  auth-users:
+    environment:
+      CONVIVENCIA_AUTH_JWT_KEY: ${ROOMIES_CONVIVENCIA_AUTH_JWT_KEY:?Clave exclusiva de avisos requerida}

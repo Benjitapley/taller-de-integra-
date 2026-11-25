@@ -27,7 +27,7 @@ test("E05 navegador: dueño, confirmación, respuesta perdida, doble clic y revo
     if (path === "/api/perfil") return reply(200, { nombre: "Prueba E05" });
     if (path === "/api/arriendos/mio") return reply(removed ? 404 : 200, rental());
     if (path === "/api/arriendos/7") return reply(200, rental());
-    if (path === "/api/arriendos/7/integrantes") return reply(200, { items: removed ? [] : [member], siguiente_cursor: null });
+    if (path === "/api/arriendos/7/integrantes") return reply(200, { items: removed ? [] : [member], siguiente_cursor: null, puede_retirar: owner });
     if (path === "/api/arriendos/7/tareas") return reply(removed ? 403 : 200, { items: [task], siguiente_cursor: null });
     if (path === "/api/arriendos/7/expulsiones") {
       let body = ""; for await (const chunk of request) body += chunk;
@@ -35,7 +35,7 @@ test("E05 navegador: dueño, confirmación, respuesta perdida, doble clic y revo
       if (!owner) return reply(403, {});
       if (!removed) { withdrawals++; removed = true; }
       if (loseResponse) { loseResponse = false; return reply(503, {}); }
-      return reply(200, { id_arriendo: 7, id_usuario_retirado: 2, estado: "Finalizado", cupos_totales: 2, ocupacion: 0, sincronizacion_pendiente: false });
+      return reply(200, { id_arriendo: 7, id_usuario: 2, estado: "Finalizado", integrantes_activos: 0, cupos_disponibles: 2 });
     }
     return reply(404, {});
   });
@@ -106,10 +106,10 @@ test("E05 navegador: dueño, confirmación, respuesta perdida, doble clic y revo
   await cdp("Network.setCookie", { name: "haycupo_dev_session", value: "e05.local.fixture", url: base, httpOnly: true, sameSite: "Strict" });
   await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await navigate("/mi-arriendo/7/integrantes", "Alex de prueba");
-  await click("Retirar integrante");
+  await click("Retirar a Alex de prueba");
   await wait("Boolean(document.querySelector('dialog[open]'))");
   assert.equal(await evaluate("[...document.querySelectorAll('button')].find(button => button.type==='submit').disabled"), true);
-  await evaluate("document.querySelector('#withdraw-reason').focus()");
+  await evaluate("document.querySelector('#remove-reason').focus()");
   await cdp("Input.insertText", { text: "Motivo de prueba E05" });
   await evaluate("document.querySelector('input[type=checkbox]').click()");
   await wait("![...document.querySelectorAll('button')].find(button => button.type==='submit').disabled");
@@ -125,14 +125,14 @@ test("E05 navegador: dueño, confirmación, respuesta perdida, doble clic y revo
     await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   }
   await evaluate("document.querySelector('button[type=submit]').click(); document.querySelector('button[type=submit]').click()");
-  await wait("document.body.innerText.includes('No pudimos confirmar')");
-  assert.equal(await evaluate("document.querySelector('#withdraw-reason').value"), "Motivo de prueba E05");
+  await wait("document.body.innerText.includes('No se pudo confirmar el retiro')");
+  assert.equal(await evaluate("document.querySelector('#remove-reason').value"), "Motivo de prueba E05");
   await evaluate("document.querySelector('button[type=submit]').click()");
-  await wait("document.body.innerText.includes('Integrante retirado. Cupos disponibles: 2.')");
+  await wait("document.body.innerText.includes('Integrante retirado. El arriendo')");
   assert.equal(withdrawals, 1);
   owner = false; removed = false;
   await navigate("/mi-arriendo/7/integrantes", "Alex de prueba");
-  assert.equal(await evaluate("[...document.querySelectorAll('button')].some(button => button.textContent.trim()==='Retirar integrante')"), false);
+  assert.equal(await evaluate("[...document.querySelectorAll('button')].some(button => button.textContent.trim().startsWith('Retirar a '))"), false);
   await navigate("/mi-arriendo/tareas", "Tarea privada de prueba");
   removed = true;
   await evaluate("window.dispatchEvent(new Event('focus'))");

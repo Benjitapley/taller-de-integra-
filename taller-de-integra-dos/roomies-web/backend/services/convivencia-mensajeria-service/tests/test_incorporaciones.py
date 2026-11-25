@@ -267,9 +267,10 @@ def test_indice_parcial_impide_segunda_pertenencia_del_usuario(service, reposito
                 (id_arriendo,id_usuario,id_postulacion,id_operacion) VALUES(%s,2,10,%s)""", (body["id_arriendo"], other))
 
 
-def test_runtime_no_puede_mutar_capacidad_ni_identidad(service):
+def test_runtime_no_puede_mutar_snapshot_ni_identidad_de_pertenencia(service):
     service.incorporate(uuid4(), payload())
     for statement in ["UPDATE convivencia_mensajeria.arriendo SET cupos_totales=99",
+                      # Retiro grants only estado/terminada_en, never member identity.
                       "UPDATE convivencia_mensajeria.pertenencia SET id_usuario=99"]:
         with psycopg.connect(os.environ["CONVIVENCIA_DATABASE_URL"]) as connection:
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
