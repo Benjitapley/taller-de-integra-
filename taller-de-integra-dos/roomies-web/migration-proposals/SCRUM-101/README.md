@@ -1,6 +1,6 @@
 # SCRUM-101 · Preflight y provisionamiento de PostgreSQL 17.6
 
-Esta carpeta implementa los pasos 000–010 del ensayo `private-v1`. El resultado esperado es una base desechable vacía, con un rol propietario de objetos y cinco logins sin credenciales iniciales. El contrato de tablas y datos está en la [matriz de migración](../../docs/deployment/scrum-101-matriz-migracion.md). La fase termina antes del primer esquema de negocio.
+Esta carpeta contiene los pasos 000–010 del ensayo `private-v1` y los pasos 020–022 de Auth/Users. El provisionamiento produce una base desechable vacía, con un propietario de objetos y cinco logins sin credenciales iniciales. Auth/Users instala su esquema y permisos sobre esa base provisionada. El contrato de tablas y datos está en la [matriz de migración](../../docs/deployment/scrum-101-matriz-migracion.md).
 
 ## Preparación del primer ensayo Docker
 
@@ -28,9 +28,26 @@ Los archivos en `checks/` son inclusiones internas. El preflight comprueba una l
 
 Desde esta carpeta, ejecutar `python -B -m unittest -v test_static`. Solo se usa la biblioteca estándar. Las pruebas leen el manifiesto y los SQL para comprobar el orden, las inclusiones, los guards, las transacciones, los roles, los grants y la ausencia de operaciones fuera de alcance. La validación de sintaxis PL/pgSQL y de permisos efectivos queda para el ensayo posterior en PostgreSQL 17.6.
 
-## Pendientes para 020–070
+## Ensayo futuro de Auth/Users (020–022)
 
-- 020–022: elegir DDL base de Auth, conciliar `edad`, `presupuesto` y `zona_interes`, añadir las tablas auxiliares y la variante privada de SCRUM-111. Confirmar rutas y adaptador efectivo con SCRUM-102.
+Antes de ejecutar, comprobar el ID, el volumen exclusivo, la red deshabilitada, el montaje en solo lectura en `/scrum101` y la identidad del servidor y de la base. Confirmar 010 desde una sesión independiente con su verificador y ejecutar las pruebas estáticas en el worktree. Los pasos de Auth comprueban destino y estado posterior a 010. El preflight 000 exige ausencia de esos roles y queda fuera de esta secuencia.
+
+Desde el contenedor autorizado invocar cada archivo por separado con `psql -X -h /var/run/postgresql -p 5432 -U scrum101_admin -d roomies_scrum101_disposable -v ON_ERROR_STOP=1 -f /scrum101/ARCHIVO`, usando el mecanismo de autenticación efímero. Exigir salida 0 antes de avanzar. Los tres pasos de escritura son transacciones independientes. Ante error o desconexión, inspeccionar el catálogo en solo lectura antes de decidir cómo continuar. Una repetición desde cero se ensaya en otro clúster desechable.
+
+| Orden | Archivo | Resultado esperado |
+|---|---|---|
+| 020 | `020-auth-base.sql` | Comprueba integridad de Auth 001 antes del cambio de rol. El propietario crea el esquema, `usuario`, su identidad y la unicidad UUID. |
+| 021 | `021-auth-extensions.sql` | Añade presupuesto y zona a `usuario`, más notificaciones, revocaciones, perfil común y cola de limpieza de fotos. |
+| 022 | `022-auth-acl.sql` | Aplica grants mínimos por columna y acción, acceso a ambas secuencias y políticas RLS por operación. Comprueba los permisos antes de confirmar. |
+| Verificación | `022-auth-verify.sql` | Comprueba catálogo, columnas, restricciones, propietarios, secuencias, RLS y permisos efectivos en solo lectura. |
+| Comportamiento | `tests/auth-behavior.sql` | Ensayo sintético opt-in. Usa `SET LOCAL ROLE`, comprueba altas, reintentos, bloqueos, operaciones prohibidas y aislamiento entre roles. Ejecutar solo cuando se autorice escritura sintética. El rollback revierte filas, pero las secuencias pueden avanzar. |
+
+La copia de Auth 001 bajo `upstream/` permite usar el montaje existente, que solo expone esta carpeta. La prueba estática compara la copia y el original normalizando CRLF a LF. 020 comprueba la huella SHA-256 normalizada dentro del servidor antes de incluir la copia. El proceso PostgreSQL debe poder leer ese archivo. El wrapper controla la transacción y cambia a `scrum101_owner` después de comprobar la sesión administradora. El paso 022 expresa sus ACL directamente porque Auth 002 concede lectura de tabla completa y solo cubre el adaptador básico. Ninguno de los pasos crea roles propios de Supabase ni toca las migraciones originales.
+
+El ensayo cubre el adaptador básico y el ampliado. SCRUM-102 debe confirmar las rutas y la configuración efectiva del adaptador en Kubero, incluido el modo SSL. Las políticas representan al rol del servicio. La autorización de cada usuario se comprueba en la API. `perfil_comun` y `foto_limpieza` conservan la semántica de SCRUM-111. La conciliación de UUID, geografía y referencias a archivos queda para los datos autorizados. El alcance de 020–022 es Auth. Los permisos de `PUBLIC` observados en las bases estándar requieren un paso de endurecimiento separado.
+
+## Pendientes para 030–070
+
 - 030–041: definir tablas base de Listado y Match y encadenar sus ampliaciones, catálogos, índices y triggers históricos. Acordar tratamiento de precios, ocupación, fechas e historial.
 - 050–062: incorporar las series de Convivencia y Reportes, conservando su orden y dependencias. Resolver si se aplica RLS adicional en Convivencia.
 - 070: cerrar la matriz de ACL y RLS por objeto y probar con logins de ensayo. Después se podrán ensayar carga sintética y recuperación aislada. Origen autorizado, reconciliación de identidad y archivos, y corte en Kubero pertenecen a fases posteriores.

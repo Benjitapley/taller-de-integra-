@@ -33,6 +33,38 @@
       "preconditions": ["same target and executor", "reserved roles absent"],
       "checks": ["checks/target.sql", "checks/pristine.sql", "checks/provisioned.sql"],
       "verify": "010-verify.sql"
+    },
+    {
+      "id": "020",
+      "entrypoint": "020-auth-base.sql",
+      "transaction": "atomic",
+      "requires": ["010"],
+      "preconditions": ["verified 010", "auth_users schema absent", "reviewed read-only /scrum101 mount"],
+      "includes": ["checks/target.sql", "checks/provisioned.sql", "upstream/001_auth_users_schema.up.sql"],
+      "upstream": {
+        "source": "../../backend/services/auth-users-service/migrations/001_auth_users_schema.up.sql",
+        "mirror": "upstream/001_auth_users_schema.up.sql",
+        "source_revision": "e3a2294",
+        "sha256_lf": "fa716fc618dd00ffb0366f4bbdcb95c3a45006fc3fe0bfef8430002068d4a9b3"
+      }
+    },
+    {
+      "id": "021",
+      "entrypoint": "021-auth-extensions.sql",
+      "transaction": "atomic",
+      "requires": ["020"],
+      "preconditions": ["owned Auth base installed", "extensions absent"],
+      "includes": ["checks/target.sql", "checks/provisioned.sql", "checks/auth-base.sql"]
+    },
+    {
+      "id": "022",
+      "entrypoint": "022-auth-acl.sql",
+      "transaction": "atomic",
+      "requires": ["021"],
+      "preconditions": ["owned Auth extensions installed", "runtime policies absent"],
+      "includes": ["checks/target.sql", "checks/provisioned.sql", "checks/auth-base.sql", "checks/auth-shape.sql", "checks/auth-permissions.sql"],
+      "verify": "022-auth-verify.sql",
+      "behavior": "tests/auth-behavior.sql"
     }
   ]
 }

@@ -1,4 +1,5 @@
 """Offline checks for the SCRUM-101 phase entry points."""
+import hashlib
 import json
 import re
 import unittest
@@ -19,7 +20,7 @@ def includes(path):
 
 class PhaseContract(unittest.TestCase):
     def test_manifest_order_and_includes(self):
-        preflight, provision = MANIFEST["steps"]
+        preflight, provision = MANIFEST["steps"][:2]
         self.assertEqual(MANIFEST["manifest_version"], 1)
         self.assertEqual([preflight["id"], provision["id"]], ["000", "010"])
         self.assertEqual(preflight["requires"], [])
@@ -33,7 +34,7 @@ class PhaseContract(unittest.TestCase):
                          [preflight["checks"][0], provision["checks"][-1]])
 
     def test_verifiers_are_read_only(self):
-        for name in ("000-preflight.sql", "010-verify.sql"):
+        for name in ("000-preflight.sql", "010-verify.sql", "022-auth-verify.sql"):
             body = read(name)
             self.assertTrue(body.startswith("\\set ON_ERROR_STOP on\nBEGIN TRANSACTION READ ONLY;\n"))
             self.assertTrue(body.endswith("ROLLBACK;\n"))
@@ -84,9 +85,64 @@ class PhaseContract(unittest.TestCase):
             body = "\n".join(line for line in path.read_text(encoding="utf-8").splitlines()
                              if not line.lstrip().startswith("--"))
             with self.subTest(path=path.name):
-                self.assertNotRegex(body, r"(?i)\b(DROP|TRUNCATE|PASSWORD)\b")
+                self.assertNotRegex(body, r"(?i)\b(?:DROP\s+\w+|TRUNCATE\s+\w+|PASSWORD)\b")
                 self.assertNotRegex(body, r"(?i)\bALTER\s+ROLE\b|postgres(?:ql)?://")
-                self.assertNotRegex(body, r"(?im)^\s*CREATE\s+(TABLE|SCHEMA|DATABASE)\b")
+            self.assertNotRegex(body, r"(?im)^\s*CREATE\s+DATABASE\b")
+            if path.relative_to(ROOT).as_posix() in {
+                "000-preflight.sql", "010-provision.sql", "010-verify.sql",
+                "checks/target.sql", "checks/pristine.sql", "checks/provisioned.sql",
+            }:
+                self.assertNotRegex(body, r"(?im)^\s*CREATE\s+(TABLE|SCHEMA)\b")
+
+    def test_auth_dependencies_and_transaction_order(self):
+        steps = MANIFEST["steps"][2:]
+        self.assertEqual([step["id"] for step in steps], ["020", "021", "022"])
+        self.assertEqual([step["requires"] for step in steps], [["010"], ["020"], ["021"]])
+        for step in steps:
+            body = read(step["entrypoint"])
+            self.assertEqual(includes(step["entrypoint"]), step["includes"])
+            self.assertTrue(body.startswith("\\set ON_ERROR_STOP on\nBEGIN;\n"))
+            self.assertTrue(body.endswith("COMMIT;\n"))
+            self.assertLess(body.index("checks/target.sql"), body.index("SET LOCAL ROLE"))
+            self.assertLess(body.index("checks/provisioned.sql"), body.index("SET LOCAL ROLE"))
+            self.assertNotIn("checks/pristine.sql", body)
+            for path in step["includes"]:
+                self.assertTrue((ROOT / path).is_file())
+        acl = read(steps[-1]["entrypoint"])
+        self.assertLess(acl.index("RESET ROLE;"), acl.index("checks/auth-permissions.sql"))
+
+    def test_auth_upstream_copy_and_pinned_digest(self):
+        step = MANIFEST["steps"][2]
+        upstream = step["upstream"]
+        original = (ROOT / upstream["source"]).read_text(encoding="utf-8")
+        mirror = read(upstream["mirror"])
+        self.assertEqual(mirror, original)
+        self.assertEqual(hashlib.sha256(mirror.encode()).hexdigest(), upstream["sha256_lf"])
+        entrypoint = read(step["entrypoint"])
+        self.assertIn(upstream["sha256_lf"], entrypoint)
+        self.assertLess(entrypoint.index("pg_read_binary_file"), entrypoint.index("SET LOCAL ROLE"))
+        self.assertNotRegex(mirror, r"(?im)^\s*(BEGIN|COMMIT|ROLLBACK);")
+
+    def test_auth_policy_actions_match_grants_and_verifier(self):
+        acl = read("022-auth-acl.sql")
+        policies = re.findall(r"CREATE POLICY runtime_\w+ ON auth_users\.(\w+) FOR (\w+)", acl)
+        grants = re.findall(r"GRANT (SELECT|INSERT|UPDATE|DELETE)(?: \(([^)]+)\))? ON auth_users\.(\w+) TO sql_auth_users;", acl)
+        self.assertEqual(policies, [(table, action) for action, _, table in grants])
+        verifier = read("checks/auth-permissions.sql")
+        expected = [(table, action, columns.replace(" ", "")) for action, columns, table in grants]
+        self.assertEqual(expected, re.findall(r"\('(\w+)', '(SELECT|INSERT|UPDATE|DELETE)', '([^']*)'\)", verifier))
+        self.assertEqual(len(policies), 13)
+        self.assertIn("<> expected_policies THEN", verifier)
+        self.assertNotRegex(acl, r"\b(?:anon|authenticated|PUBLIC)\b")
+
+    def test_auth_behavior_is_opt_in_and_rolls_back(self):
+        step = MANIFEST["steps"][-1]
+        body = read(step["behavior"])
+        self.assertTrue(body.startswith("\\set ON_ERROR_STOP on\nBEGIN;\n"))
+        self.assertTrue(body.endswith("ROLLBACK;\n"))
+        self.assertNotIn("COMMIT;", body)
+        for path in includes(step["behavior"]):
+            self.assertTrue((ROOT / "tests" / path).is_file())
 
 
 if __name__ == "__main__":
