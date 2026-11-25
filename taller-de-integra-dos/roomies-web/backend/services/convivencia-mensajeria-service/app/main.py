@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 import hmac
 import os
 import re
+
+import jwt
 from typing import Annotated
 from uuid import UUID
 
@@ -14,7 +16,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.http import configure
-from backend.service_runtime.security import confirmed_actor
+from backend.service_runtime.security import confirmed_actor, access_token
 from backend.service_runtime.reporting_security import verify_report_service
 from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, Conversation, Message, MessageCreate, MessagePage, unavailable
 from app.ports import HttpIdentity, HttpPublications
@@ -107,8 +109,53 @@ def create_app(instance=None, run_recovery=True):
         return application_service.repository.mine(identity.user_id)
 
     @application.get("/api/arriendos/{id}", response_model=Rental, responses=errors)
-    def detail(id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
-        return application_service.repository.get(id, identity.user_id)
+    def detail(request: Request, id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        try:
+            return application_service.repository.get(id, identity.user_id)
+        except ServiceError as error:
+            if error.status != 404:
+                raise
+            publication = application_service.repository.rental_publication(id)
+            if type(publication) is not int:
+                raise error
+            token = request.headers.get("authorization", "").partition(" ")[2]
+            if application_service.publications.owned_by(publication, identity.user_id, token) is not True:
+                raise ServiceError("FORBIDDEN", "No tienes acceso al arriendo.", 403)
+            return application_service.repository.get(id, identity.user_id, owner=True)
+
+    @application.get("/api/arriendos/{id}/integrantes")
+    def members(id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+                limite: Annotated[int, Query(ge=1, le=100)] = 20,
+                cursor: str | None = None, identity=Depends(confirmed_actor),
+                token=Depends(access_token), application_service=Depends(service)):
+        secret = os.environ.get("ROOMIES_INTERNAL_TOKEN", "")
+        if len(secret) < 32:
+            raise unavailable()
+        context = {"rental": id, "actor": identity.user_id, "limit": limite}
+        after = 0
+        if cursor is not None:
+            try:
+                value = jwt.decode(cursor, secret, algorithms=["HS256"])
+                if any(value.get(k) != v for k, v in context.items()) or type(value.get("after")) is not int or value["after"] < 1:
+                    raise ValueError()
+                after = value["after"]
+            except Exception:
+                raise ServiceError("INVALID_CURSOR", "Cursor inv?lido.", 422) from None
+        repository = application_service.repository
+        publication = repository.rental_publication(id)
+        # A resident does not depend on Listado to read their own membership.
+        try:
+            repository.get(id, identity.user_id)
+            owner = False
+        except ServiceError as error:
+            if error.status != 404:
+                raise
+            owner = application_service.publications.owned_by(publication, identity.user_id, token)
+        rows = repository.members(id, identity.user_id, owner, after, limite)
+        next_cursor = jwt.encode({**context, "after": rows[limite-1]["id_pertenencia"]}, secret, algorithm="HS256") if len(rows) > limite else None
+        return {"items": [{"id_usuario": row["id_usuario"], "nombre": None,
+                  "fecha_ingreso": row["fecha_ingreso"], "activo": row["activo"],
+                  "es_responsable": row["es_responsable"]} for row in rows[:limite]], "siguiente_cursor": next_cursor}
 
     @application.get("/api/conversaciones", responses=errors)
     def conversations(identity=Depends(confirmed_actor), application_service=Depends(service)):

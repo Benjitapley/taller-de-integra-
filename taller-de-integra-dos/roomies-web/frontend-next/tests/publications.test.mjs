@@ -245,3 +245,44 @@ test("adaptador recorre tres páginas sin duplicar avisos y conserva ocupación 
   for (const url of ["data:image/png,a", "blob:local", "file:///photo.png", "https://user:secret@example.com/a"]) assert.equal(publicImageURL(url), null);
   assert.throws(() => publicationPage([item(1)]));
 });
+
+
+test("BFF conserva el DTO canónico y filtra los campos privados anidados", async () => {
+  const form = validForm();
+  form.delete("ubicacion");
+  form.delete("categoria");
+  form.delete("mascota");
+  form.set("reglas_arrendador", '["Sin humo"]');
+  const result = await handleCreatePublication(request(form), config, async (_, options) => {
+    assert.equal(options.body.get("reglas_arrendador"), '["Sin humo"]');
+    return Response.json({
+      id_publicacion: 42, fecha_publicacion: "2026-11-24T18:00:00Z",
+      region: { id: 9, nombre: "La Araucanía", private: "discard" },
+      comuna: { id: 9101, nombre: "Temuco" },
+      autor: { id_usuario: 52, nombre: "Autora", foto: null, correo: "discard" },
+    }, { status: 201 });
+  });
+  assert.equal(result.status, 201);
+  assert.deepEqual(await result.json(), {
+    id_publicacion: 42, fecha_publicacion: "2026-11-24T18:00:00Z",
+    region: { id: 9, nombre: "La Araucanía" },
+    comuna: { id: 9101, nombre: "Temuco" },
+    autor: { id_usuario: 52, nombre: "Autora", foto: null },
+  });
+  form.set("reglas_arrendador", JSON.stringify(["x".repeat(301)]));
+  assert.equal((await handleCreatePublication(request(form), config, () => assert.fail("No se debe llamar a Listado"))).status, 422);
+});
+
+test("Mis publicaciones conserva filtro de estado y cursor", async () => {
+  const req = params => new Request(config.origin + "/web-api/mis-publicaciones?" + params, { headers: { cookie } });
+  const result = await handlePublicationRequest(req("estado=Cerrada&cursor=siguiente"), "mine", undefined, config, async url => {
+    const query = new URL(url).searchParams;
+    assert.equal(query.get("estado"), "Cerrada");
+    assert.equal(query.get("cursor"), "siguiente");
+    return Response.json({ items: [{ id_publicacion: 42, estado: "Cerrada", id_arriendo: 10 }], siguiente_cursor: null });
+  });
+  assert.deepEqual((await result.json()).items, [{ id_publicacion: 42, estado: "Cerrada", id_arriendo: 10 }]);
+  for (const params of ["estado=archivada", "estado=Cerrada&estado=Activa"]) {
+    assert.equal((await handlePublicationRequest(req(params), "mine", undefined, config, () => assert.fail("No se debe llamar a Listado"))).status, 422);
+  }
+});

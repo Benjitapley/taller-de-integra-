@@ -35,13 +35,13 @@ class PostgresRepository:
                 UPDATE convivencia_mensajeria.incorporacion i SET ultimo_intento=clock_timestamp()
                 FROM picked p WHERE i.id_operacion=p.id_operacion RETURNING i.id_operacion,i.payload""").fetchall()
 
-    def get(self, rental_id, user_id):
+    def get(self, rental_id, user_id, owner=False):
         with self.transaction() as c:
             row = c.execute("""SELECT a.id_arriendo,a.id_publicacion,a.cupos_totales,a.version_capacidad,
                 (SELECT count(*) FROM convivencia_mensajeria.pertenencia p WHERE p.id_arriendo=a.id_arriendo AND p.estado='Activa') AS ocupacion
                 FROM convivencia_mensajeria.arriendo a
-                WHERE a.id_arriendo=%s AND EXISTS (SELECT 1 FROM convivencia_mensajeria.pertenencia p
-                  WHERE p.id_arriendo=a.id_arriendo AND p.id_usuario=%s AND p.estado='Activa')""", (rental_id, user_id)).fetchone()
+                WHERE a.id_arriendo=%s AND (%s OR EXISTS (SELECT 1 FROM convivencia_mensajeria.pertenencia p
+                  WHERE p.id_arriendo=a.id_arriendo AND p.id_usuario=%s AND p.estado='Activa'))""", (rental_id, owner, user_id)).fetchone()
             if row is None:
                 raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
             return row
@@ -130,3 +130,20 @@ class PostgresRepository:
             if row["contenido"] != content:
                 raise ServiceError("MESSAGE_IDEMPOTENCY_CONFLICT", "El UUID ya fue usado con otro contenido.", 409)
             return row
+
+    def rental_publication(self, rental_id):
+        with self.transaction() as c:
+            row = c.execute("SELECT id_publicacion FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
+            if row is None:
+                raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+            return row["id_publicacion"]
+
+    def members(self, rental_id, user_id, owner, after, limit):
+        with self.transaction() as c:
+            if not owner and not c.execute("SELECT 1 FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa'", (rental_id, user_id)).fetchone():
+                raise ServiceError("FORBIDDEN", "No tienes acceso al arriendo.", 403)
+            return c.execute("""SELECT id_pertenencia,id_usuario,creada_en AS fecha_ingreso,
+                estado='Activa' AS activo,
+                id_pertenencia=(SELECT min(first.id_pertenencia) FROM convivencia_mensajeria.pertenencia first WHERE first.id_arriendo=%s) AS es_responsable FROM convivencia_mensajeria.pertenencia
+                WHERE id_arriendo=%s AND id_pertenencia>%s AND estado='Activa'
+                ORDER BY id_pertenencia LIMIT %s""", (rental_id, rental_id, after, limit + 1)).fetchall()
