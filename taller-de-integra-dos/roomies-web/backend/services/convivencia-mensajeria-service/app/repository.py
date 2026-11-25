@@ -154,10 +154,10 @@ class PostgresRepository:
         if not c.execute("SELECT 1 FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa'", (rental_id,user_id)).fetchone():
             raise ServiceError("FORBIDDEN", "Las tareas requieren pertenencia activa.", 403)
 
-    def tasks(self, rental_id, user_id, before=0, limit=20):
+    def tasks(self, rental_id, user_id, before=0, limit=20, state=None, assigned=None):
         with self.transaction() as c:
             self._task_member(c,rental_id,user_id)
-            return c.execute("SELECT * FROM convivencia_mensajeria.tarea WHERE id_arriendo=%s AND id_tarea>%s ORDER BY id_tarea LIMIT %s", (rental_id,before,limit+1)).fetchall()
+            return c.execute("SELECT * FROM convivencia_mensajeria.tarea WHERE id_arriendo=%s AND id_tarea>%s AND (%s::text IS NULL OR estado=%s) AND (%s::bigint IS NULL OR id_asignado=%s) ORDER BY id_tarea LIMIT %s", (rental_id,before,state,state,assigned,assigned,limit+1)).fetchall()
 
     def create_task(self, rental_id, user_id, data):
         with self.transaction() as c:

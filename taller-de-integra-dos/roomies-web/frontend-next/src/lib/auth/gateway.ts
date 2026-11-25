@@ -100,7 +100,10 @@ export async function getSession(config: WebAuthConfig | null, token: string, tr
     if (config.provider === "supabase") {
       try { remaining = Math.max(0, Math.floor(JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).exp - Date.now() / 1000)); } catch { return authError(401); }
     }
-    return authReply(200, { authenticated: true, user: { nombre: profile.nombre }, ...(remaining === undefined ? {} : { expires_in: remaining }) });
+    const userId = profile.id_usuario ?? profile.id_usuario_PK;
+    return authReply(200, { authenticated: true, user: { nombre: profile.nombre,
+      ...(Number.isSafeInteger(userId) && userId > 0 ? { id_usuario: userId } : {}),
+    }, ...(remaining === undefined ? {} : { expires_in: remaining }) });
   } catch { return authError(503); }
 }
 const actions = ["registro", "verificar", "reenviar-codigo", "login", "logout", "sesion", "renovar", "confirmar", "recuperar", "recuperacion-callback", "cambiar-contrasena", "recuperacion-estado"];

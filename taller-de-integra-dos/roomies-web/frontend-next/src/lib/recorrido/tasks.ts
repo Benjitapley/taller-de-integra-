@@ -10,7 +10,10 @@ export async function handleTasks(request: Request, id: string, operation: "rent
   let path = operation === "rental" ? `/api/arriendos/${id}/tareas` : `/api/tareas/${id}${operation === "complete" ? "/estado" : ""}`;
   let body: Record<string, unknown> | undefined;
   if (request.method === "GET") {
-    if ([...query.keys()].some(key => key !== "cursor") || query.getAll("cursor").length > 1 || (query.has("cursor") && !/^[A-Za-z0-9_-]{1,128}$/.test(query.get("cursor")!))) return authReply(422, {});
+    if ([...query.keys()].some(key => !["cursor", "estado", "id_asignado"].includes(key)) || ["cursor", "estado", "id_asignado"].some(key => query.getAll(key).length > 1) ||
+        (query.has("id_asignado") && (!/^[1-9][0-9]*$/.test(query.get("id_asignado")!) || !Number.isSafeInteger(Number(query.get("id_asignado"))))) ||
+        (query.has("estado") && !["Pendiente", "Completada"].includes(query.get("estado")!)) ||
+        (query.has("cursor") && !/^[A-Za-z0-9_-]{1,128}$/.test(query.get("cursor")!))) return authReply(422, { detail: "Consulta de tareas inválida." });
     if (query.size) path += "?" + query;
   } else {
     if (request.headers.get("origin") !== config.origin || request.headers.get("x-haycupo-csrf") !== "1" ||
@@ -19,11 +22,20 @@ export async function handleTasks(request: Request, id: string, operation: "rent
     try { body = await limitedJson(request); } catch { return authReply(422, {}); }
     const fields = operation === "rental" ? ["titulo", "descripcion", "id_asignado"] : operation === "assign" ? ["id_asignado"] : ["estado"];
     if (Object.keys(body).some(key => !fields.includes(key))) return authReply(422, {});
+    const validAssignee = (value: unknown) => value === null || (Number.isSafeInteger(value) && Number(value) > 0);
+    if (operation === "rental" && (typeof body.titulo !== "string" || !body.titulo.trim() || body.titulo.length > 120 ||
+        !(body.descripcion === undefined || body.descripcion === null || (typeof body.descripcion === "string" && body.descripcion.length <= 1000)) ||
+        !(body.id_asignado === undefined || validAssignee(body.id_asignado)))) return authReply(422, { detail: "Revisa el título, la descripción y el asignado." });
+    if (operation === "assign" && !validAssignee(body.id_asignado)) return authReply(422, { detail: "Selecciona un integrante activo o sin asignar." });
+    if (operation === "complete" && body.estado !== "Completada") return authReply(422, { detail: "Estado inválido." });
   }
   try {
     const response = await transport(config.backend + path, { method: request.method, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10000),
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
-    if (!response.ok) return authReply([401,403,404,409,422].includes(response.status) ? response.status : 503, { detail: "No se pudo completar la operación de tareas." });
+    if (!response.ok) return authReply([401,403,404,409,422].includes(response.status) ? response.status : 503, { detail:
+      response.status === 403 ? "La operación requiere pertenencia activa y completar requiere ser el asignado activo." :
+      response.status === 422 ? "Revisa los datos y selecciona un integrante activo." :
+      response.status === 409 ? "La tarea cambió. Actualiza la lista antes de reintentar." : "No se pudo completar la operación de tareas." });
     const task = (row: Record<string, unknown>) => {
       if (!row || ![row.id_tarea,row.id_arriendo,row.id_creador].every(value => Number.isSafeInteger(value) && Number(value)>0) || typeof row.titulo !== "string" || !["Pendiente","Completada"].includes(String(row.estado)) || (row.id_asignado !== null && (!Number.isSafeInteger(row.id_asignado) || Number(row.id_asignado)<1))) throw new Error();
       return { id_tarea: row.id_tarea, id_arriendo: row.id_arriendo, id_creador: row.id_creador, titulo: row.titulo, descripcion: row.descripcion,

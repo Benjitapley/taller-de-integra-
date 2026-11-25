@@ -67,51 +67,54 @@ export function ChatView({ state, onSend, onRetry, currentUserId }: {
   </Card>;
 }
 
-export function TasksView({ state, members, onCreate, onRetry, onAssign, onComplete, busy = false }: {
+export function TasksView({ state, members, onCreate, onRetry, onAssign, onComplete, busy = false, currentUserId, error = "" }: {
   state: EstadoRecurso<TareaDto[]>;
+  currentUserId?: number;
+  error?: string;
   onAssign?: (id: number, assignee: number | null) => void;
   onComplete?: (id: number) => void;
   busy?: boolean;
   members: IntegranteArriendoDto[];
-  onCreate?: (input: { titulo: string; descripcion: string; id_asignado: number | null }) => void;
+  onCreate?: (input: { titulo: string; descripcion: string; id_asignado: number | null }) => Promise<boolean>;
   onRetry?: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignee, setAssignee] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!onCreate || !title.trim()) return;
-    onCreate({ titulo: title.trim(), descripcion: description.trim(), id_asignado: assignee ? Number(assignee) : null });
+    const saved = await onCreate({ titulo: title.trim(), descripcion: description.trim(), id_asignado: assignee ? Number(assignee) : null });
+    if (!saved) return;
     setTitle(""); setDescription(""); setAssignee("");
     setFormOpen(false);
   }
   if (state.status !== "ready") return <Card><ResourceMessage state={state} emptyTitle="Todavía no hay tareas para este arriendo." onRetry={onRetry} /></Card>;
   return <div className={styles.grid}>
     <Card className={styles.taskBoard}>
-      <div className={styles.sectionHeading}><h2>Organización de la casa</h2><Button variant="secondary" onClick={() => setFormOpen(true)}>＋ Nueva tarea</Button></div>
+      <div className={styles.sectionHeading}><h2>Organización de la casa</h2><Button variant="secondary" disabled={busy || !onCreate} onClick={() => setFormOpen(true)}>＋ Nueva tarea</Button></div>
       {state.data.length === 0 ? <p>Todavía no hay tareas. Puedes proponer la primera.</p> : <ul className={styles.taskList}>{state.data.map((task) => <li key={task.id_tarea}>
-        <div><strong>{task.titulo}</strong>{task.descripcion ? <p>{task.descripcion}</p> : null}<small>{task.id_asignado === null ? "Sin asignar" : `Asignada a ${members.find((member) => member.id_usuario === task.id_asignado)?.nombre ?? "integrante"}`}</small></div><TareaStatus estado={task.estado} />
+        <div><strong>{task.titulo}</strong>{task.descripcion ? <p>{task.descripcion}</p> : null}<small>{task.id_asignado === null ? "Sin asignar" : `Asignada a ${members.find((member) => member.id_usuario === task.id_asignado)?.nombre || `Integrante #${task.id_asignado}`}`}</small></div><TareaStatus estado={task.estado} />
         {task.estado === "Pendiente" && onAssign ? <label>Asignar tarea
           <select aria-label={`Asignar ${task.titulo}`} value={task.id_asignado ?? ""} disabled={busy} onChange={event => onAssign(task.id_tarea, event.target.value ? Number(event.target.value) : null)}>
-            <option value="">Sin asignar</option>{members.map(member => <option key={member.id_usuario} value={member.id_usuario}>{member.nombre || `Integrante #${member.id_usuario}`}</option>)}
+            <option value="">Sin asignar</option>{members.filter(member => member.activo).map(member => <option key={member.id_usuario} value={member.id_usuario}>{member.nombre || `Integrante #${member.id_usuario}`}</option>)}
           </select>
         </label> : null}
-        {task.estado === "Pendiente" && task.id_asignado !== null && onComplete ? <Button disabled={busy} onClick={() => onComplete(task.id_tarea)}>Completar</Button> : null}
+        {task.estado === "Pendiente" && task.id_asignado === currentUserId && members.some(member => member.activo && member.id_usuario === currentUserId) && onComplete ? <Button disabled={busy} onClick={() => onComplete(task.id_tarea)}>Completar</Button> : null}
       </li>)}</ul>}
     </Card>
-    <Modal open={formOpen} onClose={() => setFormOpen(false)} title="Nueva tarea" surfaceClassName={styles.taskModalSurface}>
-      <form className={styles.taskForm} onSubmit={submit}>
+    <Modal open={formOpen} onClose={() => { if (!busy) setFormOpen(false); }} title="Nueva tarea" surfaceClassName={styles.taskModalSurface}>
+      <form className={styles.taskForm} onSubmit={submit} aria-busy={busy}>
+      {error ? <p role="alert">{error}</p> : null}
       <p className={styles.formIntro}>Organiza responsabilidades del hogar. La asignación es opcional.</p>
       <label htmlFor="task-title">Nombre de la tarea</label><input id="task-title" placeholder="Ej.: Aseo de la cocina" value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={120} disabled={!onCreate} />
       <label htmlFor="task-description">Descripción (opcional)</label><textarea id="task-description" placeholder="Detalles de la tarea" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} rows={2} disabled={!onCreate} />
       <label htmlFor="task-assignee">Asignar a (opcional)</label><select id="task-assignee" value={assignee} onChange={(event) => setAssignee(event.target.value)} disabled={!onCreate}>
-        <option value="">Sin asignar</option>{members.filter((member) => member.activo).map((member) => <option key={member.id_usuario} value={member.id_usuario}>{member.nombre}</option>)}
+        <option value="">Sin asignar</option>{members.filter((member) => member.activo).map((member) => <option key={member.id_usuario} value={member.id_usuario}>{member.nombre || `Integrante #${member.id_usuario}`}</option>)}
       </select>
-      <p className={styles.assignmentHint} aria-live="polite">{assignee ? `Asignada a ${members.find((member) => String(member.id_usuario) === assignee)?.nombre ?? "integrante"}` : "Se creará sin asignado"}</p>
-      <div className={styles.modalActions}><Button variant="secondary" onClick={() => setFormOpen(false)}>Cancelar</Button><Button type="submit" disabled={!onCreate || !title.trim()}>Crear tarea</Button></div>
-      {!onCreate ? <p className={styles.note}>El guardado se habilitará cuando esté disponible la API de convivencia.</p> : null}
+      <p className={styles.assignmentHint} aria-live="polite">{assignee ? `Asignada a ${members.find((member) => String(member.id_usuario) === assignee)?.nombre || `Integrante #${assignee}`}` : "Se creará sin asignado"}</p>
+      <div className={styles.modalActions}><Button variant="secondary" disabled={busy} onClick={() => setFormOpen(false)}>Cancelar</Button><Button type="submit" disabled={busy || !onCreate || !title.trim()}>{busy ? "Guardando…" : "Crear tarea"}</Button></div>
       </form>
     </Modal>
   </div>;

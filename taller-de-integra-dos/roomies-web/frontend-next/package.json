@@ -26,7 +26,9 @@
     "test:supabase-auth": "node --test tests/supabase-auth.test.mjs",
     "test:applications": "node --test tests/applications.test.mjs",
     "test:expulsions": "node --test tests/expulsiones.test.mjs",
-    "test:expulsions-browser": "node --test tests/expulsiones-browser.test.mjs"
+    "test:expulsions-browser": "node --test tests/expulsiones-browser.test.mjs",
+    "test:tasks": "node --test tests/tareas.test.mjs",
+    "test:tasks-browser": "node --test tests/tareas-browser.test.mjs"
   },
   "dependencies": {
     "next": "16.4.3",

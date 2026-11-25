@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import hmac
 import os
 import re
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, Header, Path, Query, Request
@@ -134,11 +134,11 @@ def create_app(instance=None, run_recovery=True):
         return {"items": page, "siguiente_cursor": cursor_for(identity.user_id,id,page[-1]["id_usuario"]) if len(rows)>20 else None, "puede_retirar": owner}
 
     @application.get("/api/arriendos/{id}/tareas", responses=errors)
-    def tasks(id: Annotated[int, Path(gt=0)], cursor: str | None = None, limite: Annotated[int, Query(ge=1,le=100)] = 20, identity=Depends(confirmed_actor), application_service=Depends(service)):
+    def tasks(id: Annotated[int, Path(gt=0)], cursor: str | None = None, limite: Annotated[int, Query(ge=1,le=100)] = 20, estado: Literal["Pendiente", "Completada"] | None = None, id_asignado: Annotated[int | None, Query(gt=0, le=9223372036854775807)] = None, identity=Depends(confirmed_actor), application_service=Depends(service)):
         repository = application_service.repository
         repository.tasks(id,identity.user_id,0,1)
         before = decode_cursor(cursor,identity.user_id,id) if cursor else 0
-        rows = repository.tasks(id,identity.user_id,before,limite)
+        rows = repository.tasks(id,identity.user_id,before,limite,state=estado,assigned=id_asignado)
         page = rows[:limite]
         return {"items":page,"siguiente_cursor":cursor_for(identity.user_id,id,page[-1]["id_tarea"]) if len(rows)>limite else None}
 

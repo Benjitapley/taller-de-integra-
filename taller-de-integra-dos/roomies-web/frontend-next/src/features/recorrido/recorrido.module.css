@@ -73,12 +73,17 @@
 .taskBoard { padding: 22px; max-width: 980px; }
 .taskBoard h2 { color: var(--primary); font-size: 20px; }
 .taskBoard > p { color: var(--muted); font-size: 13px; }
+.taskToolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin: 20px 0; }
+.taskToolbar label { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.taskToolbar select, .taskList select { max-width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--foreground); background: white; font: inherit; }
+.taskList li { min-width: 0; overflow-wrap: anywhere; }
 .taskList { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; padding: 20px 0 0; }
 .taskList li { display: flex; flex-direction: column; align-items: flex-start; min-height: 145px; padding: 16px; border: 1px solid var(--line); border-radius: 17px; }
 .taskList li:last-child { border-bottom: 1px solid var(--line); }
 .taskList li strong { color: var(--primary); }
 .taskList li p { margin: 4px 0; color: var(--muted); font-size: 13px; }
 .taskList small { color: var(--muted); }
+.taskList li > div > small { display: block; margin-top: 6px; }
 .taskModalSurface { width: min(480px, calc(100% - 32px)); padding: 29px 33px 31px; }
 .taskForm { display: grid; gap: 8px; }
 .formIntro { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
