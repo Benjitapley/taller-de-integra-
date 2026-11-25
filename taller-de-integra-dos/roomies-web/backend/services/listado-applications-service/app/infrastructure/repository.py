@@ -55,6 +55,10 @@ class PostgresPublications:
     def publication(self,id,lock=False):
         return self.query(self.select+" WHERE p.id_publicacion=%s"+(" FOR UPDATE OF p" if lock else ""),(id,))
 
+    def publication_rental(self, publication_id):
+        row = self.query("SELECT id_arriendo FROM listado_applications.postulacion WHERE id_publicacion=%s AND id_arriendo IS NOT NULL ORDER BY id_postulacion LIMIT 1", (publication_id,))
+        return row["id_arriendo"] if row else None
+
     def report_target(self, publication_id):
         return self.query(
             """SELECT id_publicacion,id_usuario AS id_propietario,tipo,estado,cupos_totales

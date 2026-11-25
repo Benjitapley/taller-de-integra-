@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/layout/PageHeader";
 import Button from "@/components/ui/Button";
+import RemoveMember from "./RemoveMember";
 import { MembersView } from "@/features/recorrido/ConvivenciaViews";
 import type { EstadoRecurso, IntegranteArriendoDto } from "@/features/recorrido/types";
 
@@ -11,6 +12,8 @@ type Rental = { id_arriendo: number };
 
 export default function MemberDirectory({ rentalId }: { rentalId?: string }) {
   const [state, setState] = useState<EstadoRecurso<IntegranteArriendoDto[]>>({ status: "loading" });
+  const [notice, setNotice] = useState("");
+  const [canRemove, setCanRemove] = useState(false);
   const [cursor, setCursor] = useState<string | null>(null);
   const [resolvedRentalId, setResolvedRentalId] = useState<string | null>(rentalId ?? null);
   const [emptyMessage, setEmptyMessage] = useState("Aún no hay integrantes residentes.");
@@ -41,6 +44,7 @@ export default function MemberDirectory({ rentalId }: { rentalId?: string }) {
         if (live) {
           setState(payload.items.length ? { status: "ready", data: payload.items } : { status: "empty" });
           setCursor(payload.siguiente_cursor);
+          setCanRemove(payload.puede_retirar === true);
         }
       } catch (error) {
         if (live && !controller.signal.aborted) {
@@ -78,7 +82,9 @@ export default function MemberDirectory({ rentalId }: { rentalId?: string }) {
   return <main>
     <PageHeader title="Integrantes" description="Responsable de convivencia e integrantes activos del arriendo." />
     <p><Link href={rentalId ? `/mi-arriendo/${rentalId}` : "/mi-arriendo"}>Volver al arriendo</Link></p>
+    {notice ? <p role="status">{notice}</p> : null}
     <MembersView state={state} emptyTitle={emptyMessage} />
+    {canRemove && resolvedRentalId && state.status === "ready" ? <RemoveMember rentalId={resolvedRentalId} members={state.data} onRemoved={message => { setNotice(message); retry(); }} /> : null}
     {state.status === "error" ? <Button variant="secondary" onClick={retry}>Reintentar</Button> : null}
     {cursor && state.status === "ready" ? <Button variant="secondary" disabled={loadingMore} onClick={() => void more()}>{loadingMore ? "Cargando…" : "Más integrantes"}</Button> : null}
   </main>;

@@ -20,7 +20,7 @@ from app.infrastructure.repository import PostgresPublications
 from app.infrastructure.clients import UnavailableOccupancy, HttpOwners
 from backend.service_runtime.security import access_token, actor, admin_actor, bearer, confirmed_actor
 from app.infrastructure.storage import SupabasePublicationImages, MAX_IMAGE_BYTES
-from app.api.schemas import Publication, PublicationDetail, PublicationSaved, PublicationPage, Region, Commune, MULTIPART
+from app.api.schemas import OwnerPublicationPage, Publication, PublicationDetail, PublicationSaved, PublicationPage, Region, Commune, MULTIPART
 from backend.service_runtime.contracts import DependencyUnavailable
 
 router=APIRouter()
@@ -69,11 +69,11 @@ def catalog(consulta: str|None=Query(None,max_length=250),precio_min:Decimal|Non
     return {**page,"items":[dto(row,app.occupancy) for row in page["items"]]}
 
 
-@router.get("/api/mis-publicaciones",response_model=PublicationPage,deprecated=True)
-@router.get("/api/publicaciones/mias",response_model=PublicationPage)
+@router.get("/api/mis-publicaciones",response_model=OwnerPublicationPage,deprecated=True)
+@router.get("/api/publicaciones/mias",response_model=OwnerPublicationPage)
 def mine(limite:int=Query(20,ge=1,le=100),cursor:str|None=Query(None,max_length=1024),identity=Depends(confirmed_actor),app=Depends(service)):
     page=app.list({"limite":limite,"cursor":cursor},identity.user_id)
-    return {**page,"items":[dto(row,app.occupancy) for row in page["items"]]}
+    return {**page,"items":[{**dto(row,app.occupancy),"id_arriendo":app.repository.publication_rental(row["id_publicacion"])} for row in page["items"]]}
 
 
 @router.get("/api/regiones",response_model=list[Region])
@@ -142,6 +142,7 @@ def slots(id:int,app=Depends(service)):
 
 
 class OccupancyUpdate(BaseModel):
+    finalizado:bool=Field(default=False,strict=True)
     model_config=ConfigDict(extra="forbid")
     ocupacion:int=Field(strict=True,ge=0,le=2147483647)
     version_ocupacion:int=Field(strict=True,ge=0,le=9223372036854775807)
@@ -173,7 +174,7 @@ def internal_service(x_roomies_service:str|None=Header(None)):
 
 @router.put("/internal/publicaciones/{id}/ocupacion",dependencies=[Depends(internal_service)])
 def occupancy_update(id:int,data:OccupancyUpdate,app=Depends(service)):
-    return dto(app.occupancy_update(id,data.ocupacion,data.version_ocupacion),app.occupancy)
+    return dto(app.occupancy_update(id,data.ocupacion,data.version_ocupacion,data.finalizado),app.occupancy)
 
 
 @router.post("/internal/publicaciones/{id}/reservas",dependencies=[Depends(internal_service)])
@@ -293,3 +294,11 @@ def summary(_=Depends(admin_actor),app=Depends(service)):
 def admin_publications(limite:int=Query(20,ge=1,le=100),pagina:int=Query(1,ge=1,le=100000),_=Depends(admin_actor),app=Depends(service)):
     rows=app.repository.admin_list(limite,pagina)
     return {"items":[{k:v for k,v in dto(row,app.occupancy).items() if k in {"id","titulo","precio","ubicacion","estado","cupos_totales"}} for row in rows[:limite]],"pagina":pagina,"hay_mas":len(rows)>limite}
+
+
+@router.get("/internal/publicaciones/{id}/propietario",dependencies=[Depends(internal_service)])
+def departure_owner(id:int,app=Depends(service)):
+    row=app.repository.publication(id)
+    if row is None:
+        raise HTTPException(404,"Publicación no encontrada.")
+    return {"id_propietario":row["id_usuario"]}

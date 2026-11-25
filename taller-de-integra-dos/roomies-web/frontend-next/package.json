@@ -24,7 +24,9 @@
     "test:admin-reports-browser": "node --test tests/admin-reportes-browser.test.mjs",
     "test:private-lists-browser": "node --test tests/private-lists-browser.test.mjs",
     "test:supabase-auth": "node --test tests/supabase-auth.test.mjs",
-    "test:applications": "node --test tests/applications.test.mjs"
+    "test:applications": "node --test tests/applications.test.mjs",
+    "test:expulsions": "node --test tests/expulsiones.test.mjs",
+    "test:expulsions-browser": "node --test tests/expulsiones-browser.test.mjs"
   },
   "dependencies": {
     "next": "16.4.3",

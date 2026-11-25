@@ -16,7 +16,7 @@ from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.http import configure
 from backend.service_runtime.security import confirmed_actor
 from backend.service_runtime.reporting_security import verify_report_service
-from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, Conversation, Message, MessageCreate, MessagePage, unavailable
+from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, Conversation, Message, MessageCreate, MessagePage, Expulsion, TaskCreate, TaskAssign, TaskComplete, unavailable
 from app.ports import HttpIdentity, HttpPublications
 from app.repository import PostgresRepository
 from app.service import Convivencia
@@ -102,13 +102,57 @@ def create_app(instance=None, run_recovery=True):
         status, body, replay = application_service.incorporate(idempotency_key, data.model_dump())
         return JSONResponse(body, status_code=status, headers={"Idempotency-Replayed": str(replay).lower()})
 
+    @application.post("/api/arriendos/{id}/expulsiones", responses=errors)
+    def expel(data: Expulsion, id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.expel(id, identity.user_id, data.model_dump())
+
     @application.get("/api/arriendos/mio", response_model=Rental, responses=errors)
     def mine(identity=Depends(confirmed_actor), application_service=Depends(service)):
         return application_service.repository.mine(identity.user_id)
 
     @application.get("/api/arriendos/{id}", response_model=Rental, responses=errors)
     def detail(id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):
-        return application_service.repository.get(id, identity.user_id)
+        repository = application_service.repository
+        try:
+            return repository.get(id, identity.user_id)
+        except ServiceError as error:
+            if error.status != 404:
+                raise
+        owner = application_service.publications.owner(repository.publication_id(id)) == identity.user_id
+        if not owner:
+            raise ServiceError("FORBIDDEN", "No tienes acceso a este arriendo.", 403)
+        return repository.get(id, identity.user_id, owner=True)
+
+    @application.get("/api/arriendos/{id}/integrantes", responses=errors)
+    def members(id: Annotated[int, Path(gt=0)], cursor: str | None = None, activos: bool = True, identity=Depends(confirmed_actor), application_service=Depends(service)):
+        repository = application_service.repository
+        owner = application_service.publications.owner(repository.publication_id(id)) == identity.user_id
+        rows = repository.members(id, identity.user_id, owner)
+        before = decode_cursor(cursor,identity.user_id,id) if cursor else 0
+        rows = [row for row in rows if row["id_usuario"] > before]
+        page = rows[:20]
+        return {"items": page, "siguiente_cursor": cursor_for(identity.user_id,id,page[-1]["id_usuario"]) if len(rows)>20 else None, "puede_retirar": owner}
+
+    @application.get("/api/arriendos/{id}/tareas", responses=errors)
+    def tasks(id: Annotated[int, Path(gt=0)], cursor: str | None = None, limite: Annotated[int, Query(ge=1,le=100)] = 20, identity=Depends(confirmed_actor), application_service=Depends(service)):
+        repository = application_service.repository
+        repository.tasks(id,identity.user_id,0,1)
+        before = decode_cursor(cursor,identity.user_id,id) if cursor else 0
+        rows = repository.tasks(id,identity.user_id,before,limite)
+        page = rows[:limite]
+        return {"items":page,"siguiente_cursor":cursor_for(identity.user_id,id,page[-1]["id_tarea"]) if len(rows)>limite else None}
+
+    @application.post("/api/arriendos/{id}/tareas", status_code=201, responses=errors)
+    def create_task(data: TaskCreate, id: Annotated[int, Path(gt=0)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.repository.create_task(id,identity.user_id,data.model_dump())
+
+    @application.patch("/api/tareas/{id}", responses=errors)
+    def assign_task(data: TaskAssign, id: Annotated[int, Path(gt=0)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.repository.update_task(id,identity.user_id,assigned=data.id_asignado)
+
+    @application.patch("/api/tareas/{id}/estado", responses=errors)
+    def complete_task(data: TaskComplete, id: Annotated[int, Path(gt=0)], identity=Depends(confirmed_actor), application_service=Depends(service)):
+        return application_service.repository.update_task(id,identity.user_id,complete=True)
 
     @application.get("/api/conversaciones", responses=errors)
     def conversations(identity=Depends(confirmed_actor), application_service=Depends(service)):

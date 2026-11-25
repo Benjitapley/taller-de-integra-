@@ -91,3 +91,15 @@ class HttpPublications:
     def release(self, key, reservation):
         path = f"/internal/publicaciones/{reservation['id_publicacion']}/reservas/{reservation['id_reserva']}"
         self.request("DELETE", path, key)
+
+
+    def owner(self, publication_id):
+        value = self.request("GET", f"/internal/publicaciones/{publication_id}/propietario", None).json()
+        owner = value.get("id_propietario")
+        if type(owner) is not int or owner < 1:
+            raise unavailable()
+        return owner
+
+    def occupancy(self, payload):
+        self.request("PUT", f"/internal/publicaciones/{payload['id_publicacion']}/ocupacion", None,
+                     {k: payload[k] for k in ("ocupacion", "version_ocupacion", "finalizado")})

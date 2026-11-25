@@ -67,8 +67,11 @@ export function ChatView({ state, onSend, onRetry, currentUserId }: {
   </Card>;
 }
 
-export function TasksView({ state, members, onCreate, onRetry }: {
+export function TasksView({ state, members, onCreate, onRetry, onAssign, onComplete, busy = false }: {
   state: EstadoRecurso<TareaDto[]>;
+  onAssign?: (id: number, assignee: number | null) => void;
+  onComplete?: (id: number) => void;
+  busy?: boolean;
   members: IntegranteArriendoDto[];
   onCreate?: (input: { titulo: string; descripcion: string; id_asignado: number | null }) => void;
   onRetry?: () => void;
@@ -90,6 +93,12 @@ export function TasksView({ state, members, onCreate, onRetry }: {
       <div className={styles.sectionHeading}><h2>Organización de la casa</h2><Button variant="secondary" onClick={() => setFormOpen(true)}>＋ Nueva tarea</Button></div>
       {state.data.length === 0 ? <p>Todavía no hay tareas. Puedes proponer la primera.</p> : <ul className={styles.taskList}>{state.data.map((task) => <li key={task.id_tarea}>
         <div><strong>{task.titulo}</strong>{task.descripcion ? <p>{task.descripcion}</p> : null}<small>{task.id_asignado === null ? "Sin asignar" : `Asignada a ${members.find((member) => member.id_usuario === task.id_asignado)?.nombre ?? "integrante"}`}</small></div><TareaStatus estado={task.estado} />
+        {task.estado === "Pendiente" && onAssign ? <label>Asignar tarea
+          <select aria-label={`Asignar ${task.titulo}`} value={task.id_asignado ?? ""} disabled={busy} onChange={event => onAssign(task.id_tarea, event.target.value ? Number(event.target.value) : null)}>
+            <option value="">Sin asignar</option>{members.map(member => <option key={member.id_usuario} value={member.id_usuario}>{member.nombre || `Integrante #${member.id_usuario}`}</option>)}
+          </select>
+        </label> : null}
+        {task.estado === "Pendiente" && task.id_asignado !== null && onComplete ? <Button disabled={busy} onClick={() => onComplete(task.id_tarea)}>Completar</Button> : null}
       </li>)}</ul>}
     </Card>
     <Modal open={formOpen} onClose={() => setFormOpen(false)} title="Nueva tarea" surfaceClassName={styles.taskModalSurface}>
