@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import PageHeader from "@/components/layout/PageHeader";
-import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import Icon from "@/components/ui/Icon";
 import type { ConversacionDto, MensajeServicioDto } from "@/features/recorrido/types";
 import styles from "./ChatPreviewPage.module.css";
 
@@ -172,13 +171,15 @@ export default function ChatPreviewPage() {
   }
 
   return <main id="contenido" className={styles.page}>
-    <PageHeader title="Chat del arriendo" description="Conversación compartida por integrantes activos." />
-    <p className={styles.backLink}><Link href="/mi-arriendo">Volver a Mi arriendo</Link></p>
-    <Card className={styles.chatCard}>
+    <section className={styles.chatCard} aria-label="Conversación del arriendo">
       <header className={styles.conversationHeader}>
-        <div className={styles.groupAvatar} aria-hidden="true">⌂</div>
-        <div><h2>Chat del arriendo</h2><p>Convivencia · integrantes activos</p></div>
-        <span className={styles.activeBadge}><span /> Activo</span>
+        <Link className={styles.backLink} href="/mi-arriendo" aria-label="Volver a Mi arriendo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+            <path d="m14 6-6 6 6 6" />
+          </svg>
+        </Link>
+        <div className={styles.groupAvatar}><Icon name="home" size={22} /></div>
+        <div><h1>Chat del arriendo</h1><p>Convivencia · integrantes activos</p></div>
       </header>
       {busy ? <p className={styles.notice} role="status">Cargando mensajes…</p> : denied ? <div className={styles.notice} role="alert"><h2>Acceso retirado</h2><p>Ya no perteneces a este arriendo. Se limpiaron los mensajes de esta conversación.</p></div> : error && conversationId === null ? <div className={styles.notice} role="alert"><p>{error}</p><Button variant="secondary" onClick={() => void load()}>Reintentar</Button></div> : <>
         {error ? <p className={styles.inlineError} role="alert">{error}</p> : null}
@@ -187,29 +188,39 @@ export default function ChatPreviewPage() {
           followLatest.current = element.scrollHeight - element.scrollTop - element.clientHeight < 48;
         }}>
           {cursor ? <Button className={styles.olderButton} variant="secondary" disabled={olderBusy} onClick={() => void loadOlder()}>{olderBusy ? "Cargando…" : "Cargar mensajes anteriores"}</Button> : null}
-          {!messages.length ? <p className={styles.emptyState}>Aún no hay mensajes. Puedes iniciar la conversación.</p> : messages.map((message) => {
+          {!messages.length ? <p className={styles.emptyState}>Aún no hay mensajes. Puedes iniciar la conversación.</p> : messages.map((message, index) => {
             const own = message.nombre_remitente === currentUserName || message.nombre_remitente === "Tú" || message.id_remitente === 0;
-            return <article className={`${styles.messageRow} ${own ? styles.ownMessage : ""}`} key={message.key}>
-              {!own ? <span className={styles.memberAvatar} aria-hidden="true">{message.nombre_remitente.trim().charAt(0).toLocaleUpperCase("es-CL")}</span> : null}
-              <div className={styles.messageBubble}>
-                {!own ? <strong>{message.nombre_remitente}</strong> : null}
-                <p>{message.contenido}</p>
-                <div className={styles.messageMeta}>
-                  <time dateTime={message.fecha_envio}>{new Date(message.fecha_envio).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}</time>
-                  {message.state === "sending" ? <span role="status">Enviando…</span> : null}
-                  {message.state === "failed" ? <><span className={styles.failedStatus} role="alert">No enviado</span><Button className={styles.retryButton} variant="secondary" onClick={() => void send(message.contenido, message.key)}>Reintentar</Button></> : null}
+            const date = new Date(message.fecha_envio);
+            const previousDate = index > 0 ? new Date(messages[index - 1].fecha_envio) : null;
+            const showDate = previousDate === null || date.toDateString() !== previousDate.toDateString();
+            return <Fragment key={message.key}>
+              {showDate ? <div className={styles.dateSeparator}><time dateTime={message.fecha_envio}>{date.toDateString() === new Date().toDateString() ? "Hoy" : date.toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" })}</time></div> : null}
+              <article className={`${styles.messageRow} ${own ? styles.ownMessage : ""}`}>
+                {!own ? <span className={styles.memberAvatar} aria-hidden="true">{message.nombre_remitente.trim().charAt(0).toLocaleUpperCase("es-CL")}</span> : null}
+                <div className={styles.messageBubble}>
+                  {!own ? <strong>{message.nombre_remitente}</strong> : null}
+                  <p>{message.contenido}</p>
+                  <div className={styles.messageMeta}>
+                    <time dateTime={message.fecha_envio}>{date.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}</time>
+                    {message.state === "sending" ? <span role="status">Enviando…</span> : null}
+                    {message.state === "failed" ? <><span className={styles.failedStatus} role="alert">No enviado</span><Button className={styles.retryButton} variant="secondary" onClick={() => void send(message.contenido, message.key)}>Reintentar</Button></> : null}
+                  </div>
                 </div>
-              </div>
-            </article>;
+              </article>
+            </Fragment>;
           })}
         </div>
         <form className={styles.composer} onSubmit={submit}>
           <label className={styles.srOnly} htmlFor="chat-message">Escribe un mensaje</label>
-          <textarea id="chat-message" value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={2} disabled={denied || conversationId === null} placeholder="Escribe un mensaje…" />
-          <span className={styles.characterCount}>{draft.length}/2.000</span>
-          <Button type="submit" aria-label="Enviar mensaje" disabled={conversationId === null || !draft.trim() || draft.trim().length > 2000}>Enviar <span aria-hidden="true">➤</span></Button>
+          <textarea id="chat-message" value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={1} aria-describedby="chat-character-count" disabled={denied || conversationId === null} placeholder="Escribe un mensaje…" />
+          <span id="chat-character-count" className={draft.length > 1800 ? styles.characterCount : styles.srOnly}>{draft.length}/2.000 caracteres</span>
+          <Button className={styles.sendButton} type="submit" aria-label="Enviar mensaje" disabled={conversationId === null || !draft.trim() || draft.trim().length > 2000}>
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+              <path d="m3 3 19 9-19 9 4-9-4-9Zm4 9h15" />
+            </svg>
+          </Button>
         </form>
       </>}
-    </Card>
+    </section>
   </main>;
 }

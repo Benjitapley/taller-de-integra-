@@ -6,6 +6,7 @@ import PageHeader from "@/components/layout/PageHeader";
 import DevelopmentReviewControl from "@/features/recorrido/DevelopmentReviewControl";
 import { TasksView } from "@/features/recorrido/ConvivenciaViews";
 import type { EstadoRecurso, IntegranteArriendoDto, TareaDto } from "@/features/recorrido/types";
+import styles from "./recorrido.module.css";
 
 type ReviewState = "ready" | "empty" | "loading" | "error" | "forbidden";
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -32,7 +33,7 @@ export default function TasksPreviewPage() {
   }
   return <main>
     <PageHeader title="Tareas del arriendo" description="Organiza las responsabilidades del hogar." />
-    <p><Link href="/mi-arriendo">Volver a Mi arriendo</Link></p>
+    <p className={styles.backLink}><Link href="/mi-arriendo">‹ Volver a Mi arriendo</Link></p>
     {isDevelopment ? <DevelopmentReviewControl label="Estado de tareas" value={preview} onChange={changePreview} options={[
       { value: "ready", label: "Lista revisable / crear tarea local" }, { value: "empty", label: "Sin tareas" },
       { value: "loading", label: "Cargando" }, { value: "error", label: "Error recuperable" }, { value: "forbidden", label: "Acceso retirado (403)" },

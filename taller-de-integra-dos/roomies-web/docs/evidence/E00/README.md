@@ -65,3 +65,18 @@ git diff --check
 La ejecución de Next.js regeneró `.next/dev/types/validator.ts`, que antes apuntaba a rutas borradas; luego `tsc --noEmit` pasó con la configuración normal.
 
 SHA de esta revisión: `946f9a8a9b6159ed8faeb09248ad73a19ad89b0a`. Entorno: Windows, Node.js 24.20.0, Next.js 16.4.3, Edge local, `NODE_ENV=development`. Enlace PR/Jira y aprobación de TI4: pendientes.
+
+## Revisión visual responsive de SCRUM-117
+
+El capturador actual comprueba además el modal centrado en escritorio (1440 × 1000) y el panel inferior móvil (390 × 844 y 320 × 800), las acciones apiladas con Crear tarea arriba, las etiquetas de los campos, el cierre con Escape y el retorno de foco al botón Nueva tarea. Revisa el ancho del dashboard, integrantes, chat y tareas para detectar desbordamiento horizontal y comprueba la creación local de una tarea sin asignado. Mantiene las comprobaciones anteriores de reintentos y acceso 403/404.
+
+Para ejecutar la revisión sin sobrescribir las capturas históricas, desde la raíz del repositorio:
+
+```powershell
+$env:E00_OUTPUT_DIR = Join-Path $env:TEMP ('roomies-scrum117-review-' + [guid]::NewGuid().ToString('N'))
+node taller-de-integra-dos/roomies-web/docs/evidence/E00/capture-e00-current.mjs
+```
+
+Resultado de la revisión del 24/11/2026: salida 0, quince capturas temporales y comprobaciones DOM aprobadas en las tres resoluciones. Se inspeccionaron las capturas del panel, chat y formulario. La prueba usa datos sintéticos y no acredita una integración remota ni sustituye la confirmación pendiente de TI4.
+
+Validaciones del frontend tras el ajuste: `npm.cmd run lint`, `npm.cmd run typecheck`, `npm.cmd run build:isolated` y `npm.cmd run test:proxy` aprobados; este último registró doce pruebas sin fallos. La compilación aislada usa los fuentes actuales sin credenciales ni archivos de entorno del proyecto. La revisión del diff no detectó conflictos, referencias a la vista de chat eliminada ni errores de whitespace.

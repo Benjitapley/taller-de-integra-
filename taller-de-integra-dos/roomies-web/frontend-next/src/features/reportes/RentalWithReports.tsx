@@ -62,7 +62,7 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
   }
 
   return <main>
-    <PageHeader title="Mi arriendo" description="Consulta el estado de tu incorporación y de la convivencia." />
+    <PageHeader title="Arriendo" description="Tu espacio de convivencia y organización de la casa." />
     {isDevelopment ? <DevelopmentReviewControl label="Estado de Mi arriendo" value={preview} onChange={setPreview} options={[
       { value: "api", label: "Respuesta de API" }, { value: "loading", label: "Cargando" },
       { value: "empty", label: "Sin arriendo activo (404)" }, { value: "error", label: "Error recuperable (503/red)" },
@@ -81,14 +81,17 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
           </Link>
           {visibleArriendo.estado === "Activo" ? <>
             <Link className={styles.journeyLink} href="/mi-arriendo/chat">
-              <span className={styles.avatarStack} aria-hidden="true">{Array.from({ length: Math.min(visibleArriendo.integrantes_activos, 3) }, (_, index) => <span key={index}>R</span>)}</span>
+              <span className={styles.iconBubble}><Icon name="chat" size={24} /></span>
               <span><strong>Chat del arriendo</strong><small>Conversación compartida por integrantes activos</small></span>
               <span className={styles.cardArrow} aria-hidden="true">›</span>
             </Link>
             <Card className={styles.taskPreview}>
-              <div className={styles.sectionHeading}><h2>Organización de la casa</h2><Link href="/mi-arriendo/tareas">Ver tareas <span aria-hidden="true">›</span></Link></div>
-              <p>Coordina las tareas con los integrantes del arriendo.</p>
-              <Link className={styles.taskPreviewAction} href="/mi-arriendo/tareas"><Icon name="plus" size={19} /> Abrir tareas</Link>
+              <div className={styles.sectionHeading}><h2>Organización de la casa</h2><Link href="/mi-arriendo/tareas">Ver todo <span aria-hidden="true">›</span></Link></div>
+              <Link className={styles.taskPreviewAction} href="/mi-arriendo/tareas">
+                <span className={styles.iconBubble}><Icon name="file" size={22} /></span>
+                <span><strong>Tareas del hogar</strong><small>Coordina las responsabilidades con tu grupo.</small></span>
+                <span className={styles.cardArrow} aria-hidden="true">›</span>
+              </Link>
             </Card>
           </> : null}
           <Link className={styles.journeyLink} href="/mi-arriendo/integrantes">
