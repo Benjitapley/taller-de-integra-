@@ -10,12 +10,12 @@ El OpenAPI del proceso se publica en `/openapi.json`.
 | Método/ruta | Contrato |
 | --- | --- |
 | GET `/api/publicaciones` | Catálogo público, solo Arrendador disponible con ocupación confirmada. |
-| GET `/api/publicaciones/{id}` | Detalle público, también después del cierre. |
+| GET `/api/publicaciones/{id}` | Detalle público con autor y reglas, también después del cierre. Con sesión incluye la última postulación propia. Solo al dueño le devuelve id_arriendo. |
 | GET `/api/publicaciones/{id}/detalle` | Detalle público. Incluye `id_propietario` como entero cuando el Bearer corresponde a una sesión activa con correo confirmado. |
-| GET `/api/publicaciones/mias` | JWT confirmado; solo publicaciones del actor, incluidas cerradas. |
+| GET `/api/publicaciones/mias` | JWT confirmado; solo publicaciones del actor, con filtro por estado e ID de arriendo si existe. |
 | POST `/api/publicaciones` | JWT confirmado; multipart; propietario derivado del JWT. |
 | PUT `/api/publicaciones/{id}` | Multipart; solo propietario. Conserva fecha de publicación. |
-| PATCH `/api/publicaciones/{id}/cerrar` | Solo propietario; conserva imágenes. |
+| PATCH `/api/publicaciones/{id}/cerrar` | Solo propietario; conserva imágenes e integrantes y cancela postulaciones pendientes o preseleccionadas. |
 | GET `/api/regiones` | Catálogo nacional acotado, sin paginar. |
 | GET `/api/regiones/{id}/comunas` | Comunas de esa región. |
 
@@ -27,7 +27,9 @@ Match adapta el envelope al arreglo anterior de hasta 100 resultados en
 Se conservan `id`, `cupos` e `imagen` como alias de transición, además de los
 campos canónicos `id_publicacion`, `cupos_totales` e `imagenes`.
 `tipo` identifica el origen (`Arrendador`); `tipo_vivienda` es
-`casa`, `departamento` o `habitacion`.
+`casa`, `departamento` o `habitacion`. El DTO incluye región y comuna con ID y
+nombre, autor público resumido y la fecha original. Las referencias geográficas
+de datos heredados y el autor sin perfil disponible pueden ser nulos.
 
 ## Listas, filtros y disponibilidad
 
@@ -53,9 +55,12 @@ remota y la garantía de admisión concurrente corresponden a C03/C04/F01.
 
 ## Formulario e imágenes
 
-Campos: `titulo`, `descripcion`, `ubicacion`, `precio`, `cupos_totales`, `tipo`,
-`tipo_vivienda`, `categoria`, `mascota`, `id_region`, `id_comuna`;
-`reglas` admite una lista JSON de textos opcional. Precio CLP entero entre
+Campos obligatorios: `titulo`, `descripcion`, `precio`, `cupos_totales`, `tipo`,
+`tipo_vivienda`, `id_region` e `id_comuna`. `mascota` es opcional y por defecto vale `no`.
+`reglas_arrendador` admite una lista JSON opcional de hasta 20 textos de 300 caracteres.
+Omitir las reglas en una edición las conserva. Cambiarlas cuando el aviso está Activa o Cerrada devuelve 409.
+La API deriva `ubicacion` del catálogo si el cliente omite el texto. Se siguen aceptando
+`ubicacion`, `categoria`, `permitir_comentarios` y `reglas` para clientes existentes. Precio CLP entero entre
 0 y 999999999999, tanto en BD `bigint` como en JSON. Fracciones y valores fuera
 del rango se rechazan antes de persistir. No se aceptan URLs de fotos nuevas.
 

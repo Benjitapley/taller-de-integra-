@@ -44,6 +44,8 @@ def test_mis_publicaciones_incluye_enlace_al_arriendo_confirmado():
     app.include_router(router)
     instance,repository=publication()
     row={"id_publicacion":7,"titulo":"Prueba","tipo":"Arrendador","descripcion":"Espacio","precio":1000,"ubicacion":"Temuco","estado":"Activa","cupos_totales":2,"ocupacion_confirmada":1,"tipo_vivienda":"habitacion","categoria":"ofrezco","mascota":"no","permitir_comentarios":False,"fecha_publicacion":"2026-11-24T12:00:00Z"}
+    # The listing query now projects the confirmed rental without a per-row lookup.
+    row["id_arriendo"] = 4
     instance.list=Mock(return_value={"items":[row],"siguiente_cursor":None})
     repository.publication_rental.return_value=4
     app.dependency_overrides[dependency]=lambda:instance
@@ -52,4 +54,4 @@ def test_mis_publicaciones_incluye_enlace_al_arriendo_confirmado():
         response=client.get("/api/publicaciones/mias")
     assert response.status_code == 200
     assert response.json()["items"][0]["id_arriendo"] == 4
-    repository.publication_rental.assert_called_once_with(7)
+    repository.publication_rental.assert_not_called()

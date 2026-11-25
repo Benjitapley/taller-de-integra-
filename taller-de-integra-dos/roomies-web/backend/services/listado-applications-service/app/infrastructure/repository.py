@@ -14,6 +14,8 @@ SELECT="""SELECT p.*,(SELECT i.url FROM listado_applications.imagen_publicacion 
  FROM listado_applications.imagen_publicacion i WHERE i.id_publicacion=p.id_publicacion),'[]'::jsonb) AS imagenes
  ,(SELECT count(*) FROM listado_applications.admision_reserva r JOIN listado_applications.admision_operacion o USING(id_operacion)
  WHERE o.id_publicacion=p.id_publicacion AND r.estado='Reservada') AS cupos_reservados
+ ,(SELECT nombre FROM listado_applications.region r WHERE r.id_region=p.id_region) AS nombre_region
+ ,(SELECT nombre FROM listado_applications.comuna c WHERE c.id_comuna=p.id_comuna) AS nombre_comuna
  FROM listado_applications.publicacion p"""
 
 VACANCIES="GREATEST(0,p.cupos_totales-p.ocupacion_confirmada-(SELECT count(*) FROM listado_applications.admision_reserva r JOIN listado_applications.admision_operacion o USING(id_operacion) WHERE o.id_publicacion=p.id_publicacion AND r.estado='Reservada'))"
@@ -55,10 +57,6 @@ class PostgresPublications:
     def publication(self,id,lock=False):
         return self.query(self.select+" WHERE p.id_publicacion=%s"+(" FOR UPDATE OF p" if lock else ""),(id,))
 
-    def publication_rental(self, publication_id):
-        row = self.query("SELECT id_arriendo FROM listado_applications.postulacion WHERE id_publicacion=%s AND id_arriendo IS NOT NULL ORDER BY id_postulacion LIMIT 1", (publication_id,))
-        return row["id_arriendo"] if row else None
-
     def report_target(self, publication_id):
         return self.query(
             """SELECT id_publicacion,id_usuario AS id_propietario,tipo,estado,cupos_totales
@@ -71,7 +69,7 @@ class PostgresPublications:
             where.append("p.id_usuario=%s");params.append(owner)
         else:
             where.extend(["p.tipo='Arrendador'","p.estado IN ('Disponible','Activa')","p.ocupacion_confirmada IS NOT NULL",VACANCIES+">0"])
-        for key,op,column in [("precio_min",">=","precio"),("precio_max","<=","precio"),("tipo_vivienda","=","tipo_vivienda"),("mascota","=","mascota"),("categoria","=","categoria"),("id_region","=","id_region"),("id_comuna","=","id_comuna")]:
+        for key,op,column in [("estado","=","estado"),("precio_min",">=","precio"),("precio_max","<=","precio"),("tipo_vivienda","=","tipo_vivienda"),("mascota","=","mascota"),("categoria","=","categoria"),("id_region","=","id_region"),("id_comuna","=","id_comuna")]:
             if filters.get(key) is not None:
                 where.append(f"p.{column}{op}%s");params.append(filters[key])
         for key, op in (("cupos_min", ">="), ("cupos_disponibles", "=")):
@@ -85,7 +83,25 @@ class PostgresPublications:
             where.append(f"({date_column},p.id_publicacion)<(%s,%s)");params.extend(filters["after"])
         condition=" WHERE "+" AND ".join(where) if where else ""
         params.append(filters.get("limite",21))
-        return self.query(self.select+condition+f" ORDER BY {date_column} DESC,p.id_publicacion DESC LIMIT %s",params,True)
+        select = self.select
+        if owner is not None:
+            select = select.replace("SELECT p.*,", """SELECT p.*,
+                (SELECT a.id_arriendo FROM listado_applications.postulacion a
+                 WHERE a.id_publicacion=p.id_publicacion AND a.estado='Aceptada'
+                   AND a.id_arriendo IS NOT NULL
+                 ORDER BY a.id_postulacion LIMIT 1) AS id_arriendo,""", 1)
+        return self.query(select+condition+f" ORDER BY {date_column} DESC,p.id_publicacion DESC LIMIT %s",params,True)
+
+    def publication_rental(self, publication_id):
+        row = self.query("""SELECT id_arriendo FROM listado_applications.postulacion
+            WHERE id_publicacion=%s AND estado='Aceptada' AND id_arriendo IS NOT NULL
+            ORDER BY id_postulacion LIMIT 1""", (publication_id,))
+        return row["id_arriendo"] if row else None
+
+    def viewer_application(self, publication_id, user_id):
+        return self.query("""SELECT id_postulacion,estado FROM listado_applications.postulacion
+            WHERE id_publicacion=%s AND id_usuario=%s
+            ORDER BY fecha_postulacion DESC,id_postulacion DESC LIMIT 1""", (publication_id, user_id))
 
     def regions(self):
         return self.query("SELECT id_region,nombre FROM listado_applications.region ORDER BY id_region",many=True)
@@ -98,6 +114,14 @@ class PostgresPublications:
     def validate_location(self,region,commune):
         if not self.query("SELECT id_comuna FROM listado_applications.comuna WHERE id_region=%s AND id_comuna=%s",(region,commune)):
             raise RuleViolation("La comuna no pertenece a la región indicada.")
+
+    def location(self, region, commune):
+        row = self.query("""SELECT c.nombre AS comuna, r.nombre AS region
+            FROM listado_applications.comuna c JOIN listado_applications.region r USING(id_region)
+            WHERE c.id_region=%s AND c.id_comuna=%s""", (region, commune))
+        if row is None:
+            raise RuleViolation("La comuna no pertenece a la región indicada.")
+        return f"{row['comuna']}, {row['region']}"
 
     def create(self,owner,data):
         data={**data,"ocupacion_confirmada":0,"version_ocupacion":0}
@@ -126,6 +150,12 @@ class PostgresPublications:
 
     def close(self,id):
         self.query("UPDATE listado_applications.publicacion SET estado='Cerrada',version_capacidad=version_capacidad+1 WHERE id_publicacion=%s AND estado<>'Cerrada' RETURNING id_publicacion",(id,))
+        cancelled = self.query("""UPDATE listado_applications.postulacion
+            SET estado='Cancelada',motivo='Cierre de publicación',actualizada_en=clock_timestamp()
+            WHERE id_publicacion=%s AND estado IN ('Pendiente','Preseleccionada')
+            RETURNING id_postulacion,id_usuario,estado""", (id,), many=True)
+        for application in cancelled:
+            self.event(application)
 
     def update_occupancy(self,id,count,version):
         return self.query("UPDATE listado_applications.publicacion SET ocupacion_confirmada=%s,version_ocupacion=%s,estado=CASE WHEN estado='Cerrada' THEN estado WHEN %s>0 THEN 'Activa' ELSE 'Disponible' END WHERE id_publicacion=%s RETURNING id_publicacion",(count,version,count,id))

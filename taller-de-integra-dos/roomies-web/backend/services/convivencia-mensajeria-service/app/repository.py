@@ -41,8 +41,8 @@ class PostgresRepository:
                 (SELECT count(*) FROM convivencia_mensajeria.pertenencia p WHERE p.id_arriendo=a.id_arriendo AND p.estado='Activa') AS ocupacion
                 ,(SELECT CASE WHEN p.estado='Activa' THEN p.id_usuario ELSE NULL END FROM convivencia_mensajeria.pertenencia p WHERE p.id_arriendo=a.id_arriendo ORDER BY p.id_pertenencia LIMIT 1) AS id_responsable
                 FROM convivencia_mensajeria.arriendo a
-                WHERE a.id_arriendo=%s AND EXISTS (SELECT 1 FROM convivencia_mensajeria.pertenencia p
-                  WHERE p.id_arriendo=a.id_arriendo AND p.id_usuario=%s AND p.estado='Activa') OR (a.id_arriendo=%s AND %s)""", (rental_id, user_id, rental_id, owner)).fetchone()
+                WHERE a.id_arriendo=%s AND (%s OR EXISTS (SELECT 1 FROM convivencia_mensajeria.pertenencia p
+                  WHERE p.id_arriendo=a.id_arriendo AND p.id_usuario=%s AND p.estado='Activa'))""", (rental_id, owner, user_id)).fetchone()
             if row is None:
                 raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
             return row
@@ -132,21 +132,22 @@ class PostgresRepository:
                 raise ServiceError("MESSAGE_IDEMPOTENCY_CONFLICT", "El UUID ya fue usado con otro contenido.", 409)
             return row
 
-
-    def publication_id(self, rental_id):
+    def rental_publication(self, rental_id):
         with self.transaction() as c:
             row = c.execute("SELECT id_publicacion FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
             if row is None:
                 raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
             return row["id_publicacion"]
 
-    def members(self, rental_id, user_id, owner=False):
-        self.get(rental_id,user_id,owner)
+    def members(self, rental_id, user_id, owner=False, after=0, limit=20):
         with self.transaction() as c:
-            rows = c.execute("SELECT id_usuario,creada_en AS fecha_ingreso FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND estado='Activa' ORDER BY id_usuario", (rental_id,)).fetchall()
-            first = c.execute("SELECT id_usuario,estado FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s ORDER BY id_pertenencia LIMIT 1", (rental_id,)).fetchone()
-            return [{**row,"nombre":None,"activo":True,"es_responsable": bool(first and first["estado"] == "Activa" and first["id_usuario"] == row["id_usuario"])} for row in rows]
-
+            if not owner and not c.execute("SELECT 1 FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa'", (rental_id, user_id)).fetchone():
+                raise ServiceError("FORBIDDEN", "No tienes acceso al arriendo.", 403)
+            return c.execute("""SELECT id_pertenencia,id_usuario,creada_en AS fecha_ingreso,
+                estado='Activa' AS activo,
+                id_pertenencia=(SELECT min(first.id_pertenencia) FROM convivencia_mensajeria.pertenencia first WHERE first.id_arriendo=%s) AS es_responsable FROM convivencia_mensajeria.pertenencia
+                WHERE id_arriendo=%s AND id_pertenencia>%s AND estado='Activa'
+                ORDER BY id_pertenencia LIMIT %s""", (rental_id, rental_id, after, limit + 1)).fetchall()
 
     @staticmethod
     def _task_member(c, rental_id, user_id):

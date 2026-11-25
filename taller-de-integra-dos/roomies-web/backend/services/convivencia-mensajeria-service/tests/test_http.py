@@ -253,3 +253,40 @@ def test_dominio_verifica_dueno_antes_de_mutar(role):
     assert response.status_code == 403
     publications.owner.assert_called_once_with(7)
     assert connection.execute.call_count == 1
+
+
+def test_members_pages_are_bound_to_actor_and_rental(http):
+    from app.main import access_token
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2)
+    application.dependency_overrides[access_token] = lambda: "fixture"
+    service.repository.rental_publication.return_value = 7
+    rows = [{"id_pertenencia": i, "id_usuario": i, "fecha_ingreso": "2026-11-20T12:00:00Z", "activo": True, "es_responsable": i == 1} for i in range(1, 4)]
+    service.repository.members.return_value = rows
+    result = client.get("/api/arriendos/1/integrantes?limite=2")
+    assert result.status_code == 200
+    assert len(result.json()["items"]) == 2
+    cursor = result.json()["siguiente_cursor"]
+    assert cursor
+    assert client.get("/api/arriendos/2/integrantes", params={"cursor": cursor, "limite": 2}).status_code == 422
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=3)
+    assert client.get("/api/arriendos/1/integrantes", params={"cursor": cursor, "limite": 2}).status_code == 422
+    assert client.get("/api/arriendos/1/integrantes?cursor=bad").status_code == 422
+
+
+def test_nonresident_owner_can_read_but_admin_cannot(http):
+    from app.main import access_token
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2, administrator=True)
+    application.dependency_overrides[access_token] = lambda: "fixture"
+    service.repository.rental_publication.return_value = 7
+    service.repository.get.side_effect = ServiceError("NOT_FOUND", "No pertenece", 404)
+    service.publications.owned_by.return_value = False
+    service.repository.members.side_effect = ServiceError("FORBIDDEN", "Sin acceso", 403)
+    assert client.get("/api/arriendos/1/integrantes").status_code == 403
+    service.repository.members.assert_called_with(1, 2, False, 0, 20)
+    service.publications.owned_by.return_value = True
+    service.repository.members.side_effect = None
+    service.repository.members.return_value = []
+    assert client.get("/api/arriendos/1/integrantes").json() == {"items": [], "siguiente_cursor": None, "puede_retirar": True}
+    service.repository.members.assert_called_with(1, 2, True, 0, 20)

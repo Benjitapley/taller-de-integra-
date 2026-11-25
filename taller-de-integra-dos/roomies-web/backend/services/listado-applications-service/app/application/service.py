@@ -57,11 +57,23 @@ class Publications:
         return {"items":items,"siguiente_cursor":pagination.encode(items[-1],scope) if len(rows)>limit else None}
 
     def save(self,actor_id,data,image=None,id=None,retained=None,key=None):
+        previous = self.get(id, actor_id) if id is not None else None
+        has_rules = "reglas" in data or "reglas_arrendador" in data
+        if "ubicacion" not in data:
+            try:
+                region, commune = (int(str(data[key])) for key in ("id_region", "id_comuna"))
+            except (KeyError, ValueError):
+                raise RuleViolation("Región o comuna inválida.") from None
+            if previous and (region, commune) == (previous.get("id_region"), previous.get("id_comuna")):
+                location = previous["ubicacion"]
+            else:
+                location = self.repository.location(region, commune)
+            data = {**data, "ubicacion": location}
         data=validate_publication(data)
+        if previous is not None and not has_rules:
+            data.pop("reglas")
         if id is None and data["tipo"] == "Arrendador" and data["categoria"] != "ofrezco":
             raise RuleViolation("Una publicación de arrendador debe ofrecer un espacio.")
-        if id is not None:
-            self.get(id,actor_id)
         self.repository.validate_location(data["id_region"],data["id_comuna"])
         files=[(image,None)] if isinstance(image,bytes) else image
         return save_publication(self,actor_id,data,files,id,retained,key)

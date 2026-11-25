@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { publicImageURL, type PublicationImage } from "./contracts";
 export type { PublicationImage } from "./contracts";
 
-export default function ImageFields({ images = [] }: { images?: PublicationImage[] }) {
+export default function ImageFields({ images = [], onRemoveFile }: { images?: PublicationImage[]; onRemoveFile?: () => void }) {
   const [retained, setRetained] = useState(images.map(item => item.id_imagen));
   const [previews, setPreviews] = useState<{ file: File; url: string }[]>([]);
   const input = useRef<HTMLInputElement>(null);
@@ -29,7 +29,10 @@ export default function ImageFields({ images = [] }: { images?: PublicationImage
     </label>
     <div>{previews.map(({ file, url }, index) => <span key={url} style={{ display: "inline-grid", gap: 4, margin: 8 }}>
       <Image src={url} alt={`Vista previa ${index + 1}`} width={120} height={90} unoptimized />
-      <span>{file.name} · {file.size} bytes <button type="button" onClick={() => selectFiles(previews.filter(item => item.file !== file).map(item => item.file))}>Quitar</button></span>
+      <span>{file.name} · {file.size} bytes <button type="button" onClick={() => {
+        selectFiles(previews.filter(item => item.file !== file).map(item => item.file));
+        onRemoveFile?.();
+      }}>Quitar</button></span>
     </span>)}</div>
   </div>;
 }
