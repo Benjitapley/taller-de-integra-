@@ -1,13 +1,14 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { createServer as createTcpServer } from "node:net";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const frontend = resolve(process.cwd(), "taller-de-integra-dos/roomies-web/frontend-next");
-const outDir = resolve(frontend, "../docs/evidence/E00");
+const outDir = process.env.E00_OUTPUT_DIR ? resolve(process.env.E00_OUTPUT_DIR) : resolve(frontend, "../docs/evidence/E00");
+mkdirSync(outDir, { recursive: true });
 const edge = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
 const port = async () => new Promise((ok, fail) => {
   const s = createTcpServer(); s.once("error", fail); s.listen(0, "127.0.0.1", () => { const p = s.address().port; s.close(() => ok(p)); });
@@ -111,6 +112,53 @@ try {
     writeFileSync(join(outDir, name), Buffer.from(shot.data, "base64"));
     console.log(`Captura ${name}`);
   }
+  async function viewport(width, height) {
+    await cdp("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+    await sleep(250);
+  }
+  async function checkOverflow(path) {
+    const { result } = await cdp("Runtime.evaluate", { expression: `(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth }))()`, returnByValue: true });
+    const widths = result.value;
+    if (widths.document > widths.viewport + 1 || widths.body > widths.viewport + 1) throw new Error(`Desbordamiento horizontal en ${path}: ${JSON.stringify(widths)}`);
+  }
+  async function openTaskForm() {
+    const { result } = await cdp("Runtime.evaluate", { expression: `(() => { const b=[...document.querySelectorAll('button')].find(x=>x.textContent.includes('Nueva tarea')); if(!b) return false; b.focus(); b.click(); return true; })()`, returnByValue: true });
+    if (!result.value) throw new Error("No se encontró el botón Nueva tarea.");
+    await waitText("Se creará sin asignado", "/mi-arriendo/tareas");
+  }
+  async function closeTaskForm() {
+    await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+    await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+    await sleep(300);
+    const { result } = await cdp("Runtime.evaluate", { expression: `(() => ({ closed: !document.querySelector('dialog[open]'), focus: document.activeElement?.textContent.includes('Nueva tarea') }))()`, returnByValue: true });
+    if (!result.value.closed || !result.value.focus) throw new Error(`Escape no cerró la tarea o no devolvió el foco: ${JSON.stringify(result.value)}`);
+  }
+  async function checkTaskLayout(mobile) {
+    const { result } = await cdp("Runtime.evaluate", { expression: `(() => {
+      const form = document.getElementById('task-title')?.closest('form');
+      const surface = form?.parentElement;
+      const primary = form?.querySelector('button[type="submit"]');
+      const cancel = [...(form?.querySelectorAll('button') || [])].find(button => button.textContent.trim() === 'Cancelar');
+      if (!surface || !primary || !cancel) return null;
+      const rect = element => { const r = element.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
+      const style = getComputedStyle(surface);
+      return {
+        viewport: { width: innerWidth, height: innerHeight }, surface: rect(surface), primary: rect(primary), cancel: rect(cancel),
+        corners: [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomLeftRadius, style.borderBottomRightRadius].map(parseFloat),
+        overflow: surface.scrollWidth > surface.clientWidth + 1,
+        fields: ['task-title', 'task-description', 'task-assignee'].map(id => rect(document.getElementById(id)))
+      };
+    })()`, returnByValue: true });
+    const layout = result.value;
+    if (!layout) throw new Error("No se encontró la estructura del formulario de tarea.");
+    const { surface, primary, cancel, corners, viewport: size } = layout;
+    const contained = surface.top >= -1 && surface.bottom <= size.height + 1 && !layout.overflow && layout.fields.every(field => field.width > 0 && field.left >= surface.left && field.right <= surface.right);
+    const matches = mobile
+      ? Math.abs(surface.left) <= 1 && Math.abs(surface.width - size.width) <= 1 && Math.abs(surface.bottom - size.height) <= 1 && corners[0] > 0 && corners[1] > 0 && corners[2] === 0 && corners[3] === 0 && primary.bottom <= cancel.top + 1
+      : Math.abs(surface.left + surface.width / 2 - size.width / 2) <= 2 && Math.abs(surface.top + surface.height / 2 - size.height / 2) <= 2 && Math.abs(primary.top - cancel.top) <= 1 && cancel.right <= primary.left + 1;
+    if (!contained || !matches) throw new Error(`Distribución de tarea incorrecta (${mobile ? 'móvil' : 'escritorio'}): ${JSON.stringify(layout)}`);
+    console.log(`Formulario de tarea verificado a ${size.width}×${size.height}`);
+  }
   await navigate("/mi-arriendo", "Mi arriendo"); await choose("Arriendo activo de muestra");
   await waitText("Nuestro lugar", "/mi-arriendo"); await capture("10-actual-mi-arriendo-activo.png");
   await navigate("/mi-arriendo/integrantes", "Pat (muestra)"); await capture("11-actual-integrantes.png");
@@ -133,17 +181,41 @@ try {
   await navigate("/mi-arriendo/chat", "Acceso retirado"); await capture("15-actual-chat-acceso-retirado.png");
   chatMode = "ready";
   await navigate("/mi-arriendo/tareas", "Ordenar la cocina");
-  const openTask = await cdp("Runtime.evaluate", { expression: `(() => { const b=[...document.querySelectorAll('button')].find(x=>x.textContent.includes('Nueva tarea')); if(!b) return false; b.click(); return true; })()`, returnByValue: true });
-  if (!openTask.result.value) throw new Error("No se encontró el botón Nueva tarea.");
-  await waitText("Se creará sin asignado", "/mi-arriendo/tareas"); await capture("16-actual-tarea-sin-asignar.png");
+  await openTaskForm(); await capture("16-actual-tarea-sin-asignar.png");
   const accessibleForm = await cdp("Runtime.evaluate", { expression: `(() => { const d=document.querySelector('dialog[open]'); const fields=['task-title','task-description','task-assignee'].map(id=>document.getElementById(id)); return { open:!!d?.open, focus:document.activeElement?.getAttribute('aria-label'), labels:fields.map(x=>x?.labels?.length), assignee:document.getElementById('task-assignee')?.value, title:!!d?.getAttribute('aria-labelledby') }; })()`, returnByValue: true });
   const form = accessibleForm.result.value;
   if (!form.open || form.focus !== "Cerrar diálogo" || form.labels.some((n) => !n) || form.assignee !== "" || !form.title) throw new Error(`Foco, etiquetas o valor Sin asignar del formulario incorrectos: ${JSON.stringify(form)}`);
-  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
-  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
-  await sleep(300);
-  const closedWithEscape = await cdp("Runtime.evaluate", { expression: `!document.querySelector('dialog[open]')`, returnByValue: true });
-  if (!closedWithEscape.result.value) throw new Error("Escape no cerró el formulario de tarea.");
+  await checkTaskLayout(false);
+  await closeTaskForm();
+  for (const [width, height] of [[390, 844], [320, 800]]) {
+    await viewport(width, height);
+    await navigate("/mi-arriendo", "Nuestro lugar");
+    await checkOverflow("/mi-arriendo");
+    await capture(`responsive-${width}-dashboard.png`);
+    await navigate("/mi-arriendo/integrantes", "Pat (muestra)");
+    await checkOverflow("/mi-arriendo/integrantes");
+    await navigate("/mi-arriendo/chat", "Coordinamos las tareas");
+    await checkOverflow("/mi-arriendo/chat");
+    await capture(`responsive-${width}-chat.png`);
+    await navigate("/mi-arriendo/tareas", "Ordenar la cocina");
+    await checkOverflow("/mi-arriendo/tareas");
+    await openTaskForm();
+    await checkTaskLayout(true);
+    await checkOverflow("/mi-arriendo/tareas (diálogo)");
+    await capture(`responsive-${width}-task.png`);
+    await closeTaskForm();
+    console.log(`Dashboard, integrantes, chat y tareas sin desbordamiento a ${width}×${height}`);
+  }
+  await openTaskForm();
+  await cdp("Runtime.evaluate", { expression: `document.getElementById('task-title').focus()` });
+  await cdp("Input.insertText", { text: "Tarea local revisión responsive" });
+  await sleep(250);
+  await cdp("Runtime.evaluate", { expression: `document.getElementById('task-title').closest('form').requestSubmit()` });
+  await waitText("Tarea local revisión responsive", "/mi-arriendo/tareas");
+  const createdTask = await cdp("Runtime.evaluate", { expression: `(() => { const task=[...document.querySelectorAll('li')].find(item=>item.textContent.includes('Tarea local revisión responsive')); return !!task?.textContent.includes('Sin asignar') && !document.querySelector('dialog[open]'); })()`, returnByValue: true });
+  if (!createdTask.result.value) throw new Error("La tarea local no se creó sin asignado o el formulario no se cerró.");
+  console.log("Creación local de tarea sin asignado verificada");
+  await viewport(1440, 1000);
   rentalMode = "forbidden";
   await navigate("/mi-arriendo/tareas", "Acceso no disponible"); await capture("17-actual-tareas-sin-acceso.png");
   const revokedActions = await cdp("Runtime.evaluate", { expression: `(() => ![...document.querySelectorAll('button')].some(x=>x.textContent.includes('Nueva tarea')))()`, returnByValue: true });
