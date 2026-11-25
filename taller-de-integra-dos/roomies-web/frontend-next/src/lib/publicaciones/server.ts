@@ -107,11 +107,24 @@ export async function handleSavePublication(
 export const handleCreatePublication = handleSavePublication;
 
 type Operation = "mine" | "edit" | "close";
-const fields = ["id_publicacion", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos_totales", "cupos_disponibles", "imagenes", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios", "id_region", "id_comuna", "reglas"];
+const fields = ["id_publicacion", "titulo", "precio", "estado", "tipo", "ubicacion", "cupos_totales", "cupos_disponibles", "imagenes", "categoria", "tipo_vivienda", "mascota", "descripcion", "permitir_comentarios", "id_region", "id_comuna", "reglas", "reglas_arrendador", "fecha_publicacion", "id_arriendo"];
 function publication(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || !("id_publicacion" in value) || !Number.isSafeInteger(value.id_publicacion) || Number(value.id_publicacion) < 1) throw new Error("Invalid response");
   const source = value as Record<string, unknown>;
   const result = Object.fromEntries(fields.filter((key) => key in source).map((key) => [key, source[key]]));
+  for (const key of ["region", "comuna"] as const) {
+    const place = source[key];
+    if (place === null) result[key] = null;
+    if (place && typeof place === "object" && "id" in place && Number.isSafeInteger(place.id) &&
+        "nombre" in place && typeof place.nombre === "string") result[key] = { id: place.id, nombre: place.nombre };
+  }
+  const author = source.autor;
+  if (author === null) result.autor = null;
+  if (author && typeof author === "object" && "id_usuario" in author && Number.isSafeInteger(author.id_usuario) &&
+      "nombre" in author && typeof author.nombre === "string") {
+    result.autor = { id_usuario: author.id_usuario, nombre: author.nombre,
+      foto: "foto" in author && typeof author.foto === "string" ? author.foto : null };
+  }
   if (Array.isArray(source.imagenes)) result.imagenes = source.imagenes.map(image => ({ id_imagen: image.id_imagen, url: image.url, orden: image.orden }));
   return result;
 }
@@ -132,10 +145,11 @@ export async function handlePublicationRequest(
   const query = new URLSearchParams();
   if (operation === "mine") {
     const supplied = new URL(request.url).searchParams;
-    if (["limite", "cursor"].some(key => supplied.getAll(key).length > 1) ||
+    if (["limite", "cursor", "estado"].some(key => supplied.getAll(key).length > 1) ||
+        (supplied.has("estado") && !["Disponible", "Activa", "Cerrada"].includes(supplied.get("estado")!)) ||
         (supplied.has("limite") && !/^(?:[1-9]\d?|100)$/.test(supplied.get("limite")!)) ||
         (supplied.has("cursor") && !/^[A-Za-z0-9_+./=-]{1,1024}$/.test(supplied.get("cursor")!))) return authReply(422, { detail: "Paginación inválida." });
-    for (const key of ["limite", "cursor"]) if (supplied.has(key)) query.set(key, supplied.get(key)!);
+    for (const key of ["limite", "cursor", "estado"]) if (supplied.has(key)) query.set(key, supplied.get(key)!);
   }
   const path = operation === "mine" ? `/api/publicaciones/mias${query.size ? `?${query}` : ""}` : `/api/publicaciones/${id}${operation === "close" ? "/cerrar" : ""}`;
   try {

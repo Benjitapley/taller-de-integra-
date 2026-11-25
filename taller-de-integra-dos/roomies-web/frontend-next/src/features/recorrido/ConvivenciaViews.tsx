@@ -23,7 +23,7 @@ export function MembersView({ state }: { state: EstadoRecurso<IntegranteArriendo
   const owner = members.filter((member) => member.es_responsable);
   const residents = members.filter((member) => !member.es_responsable);
   return <div className={styles.grid}>
-    <section aria-labelledby="responsable-heading"><h2 id="responsable-heading">Arrendador responsable</h2><MemberList members={owner} empty="No hay un arrendador informado." /></section>
+    <section aria-labelledby="responsable-heading"><h2 id="responsable-heading">Responsable residente</h2><MemberList members={owner} empty="No hay responsable informado." /></section>
     <section aria-labelledby="members-heading"><h2 id="members-heading">Integrantes residentes</h2><MemberList members={residents} empty="Aún no hay otros integrantes residentes." /></section>
     <p className={styles.note}>Los postulantes se revisan por separado en <Link href="/mis-publicaciones">Mis publicaciones</Link>; no forman parte de la lista de integrantes.</p>
   </div>;
@@ -31,7 +31,7 @@ export function MembersView({ state }: { state: EstadoRecurso<IntegranteArriendo
 
 function MemberList({ members, empty }: { members: IntegranteArriendoDto[]; empty: string }) {
   return <Card>{members.length === 0 ? <p>{empty}</p> : <ul className={styles.list}>{members.map((member) => <li key={member.id_usuario}>
-    <strong>{member.nombre}</strong><span>{member.es_responsable ? "Arrendador" : "Integrante"}</span>
+    <strong>{member.nombre || `Integrante #${member.id_usuario}`}</strong><span>{member.es_responsable ? "Responsable residente" : "Integrante"}</span>
   </li>)}</ul>}</Card>;
 }
 

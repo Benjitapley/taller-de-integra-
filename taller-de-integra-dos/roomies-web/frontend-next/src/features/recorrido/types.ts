@@ -13,7 +13,7 @@ export type EstadoTarea = "Pendiente" | "Completada";
  */
 export type IntegranteArriendoDto = {
   id_usuario: number;
-  nombre: string;
+  nombre: string | null;
   es_responsable: boolean;
   fecha_ingreso: string;
   activo: boolean;

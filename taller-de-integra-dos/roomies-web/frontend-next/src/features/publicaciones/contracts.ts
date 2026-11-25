@@ -1,5 +1,6 @@
 export type PublicationImage = { id_imagen: number; url: string; orden: number };
 export type Publication = {
+  id_arriendo?: number | null;
   id_publicacion: number; titulo: string; precio: number; ubicacion: string;
   tipo: string | null; tipo_vivienda: string | null; categoria: string | null;
   cupos_totales: number | null; cupos_disponibles: number | null;

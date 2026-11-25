@@ -26,7 +26,7 @@ const previewRental: Arriendo = {
   integrantes_activos: 3, cupos_disponibles: 1, id_responsable: 7,
 };
 
-export default function MyArriendoPage({ canReport = false }: { canReport?: boolean }) {
+export default function MyArriendoPage({ canReport = false, rentalId }: { canReport?: boolean; rentalId?: string }) {
   const [arriendo, setArriendo] = useState<Arriendo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -37,7 +37,7 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
     if (isDevelopment && preview !== "api") return;
     const controller = new AbortController();
     const { signal } = controller;
-    void fetch("/web-api/arriendos/mio", { credentials: "same-origin", cache: "no-store", signal }).then(async response => {
+    void fetch(rentalId ? `/web-api/arriendos/${encodeURIComponent(rentalId)}` : "/web-api/arriendos/mio", { credentials: "same-origin", cache: "no-store", signal }).then(async response => {
       if (signal.aborted) return;
       if (response.status === 404) {
         setArriendo(null);
@@ -53,7 +53,7 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
       if (!signal.aborted) setLoading(false);
     });
     return () => controller.abort();
-  }, [requestVersion, preview]);
+  }, [requestVersion, preview, rentalId]);
 
   const showingPreview = isDevelopment && preview !== "api";
   const visibleLoading = showingPreview ? preview === "loading" : loading;
@@ -69,7 +69,7 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
   }
 
   return <main>
-    <PageHeader title="Mi arriendo" description="Consulta el estado de tu incorporación y de la convivencia." />
+    <PageHeader title={rentalId ? "Arriendo de la publicaci?n" : "Mi arriendo"} description="Consulta el estado de tu incorporación y de la convivencia." />
     {isDevelopment ? <DevelopmentReviewControl label="Estado de Mi arriendo" value={preview} onChange={setPreview} options={[
       { value: "api", label: "Respuesta de API" }, { value: "loading", label: "Cargando" },
       { value: "empty", label: "Sin arriendo activo (404)" }, { value: "error", label: "Error recuperable (503/red)" },
@@ -82,7 +82,9 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
       <div className={styles.header}>
         <div>
           <h2 style={{ margin: 0 }}>Arriendo #{visibleArriendo.id_arriendo}</h2>
-          <p style={{ margin: "6px 0 0", color: "var(--muted)" }}>Publicación #{visibleArriendo.id_publicacion}</p>
+          <p style={{ margin: "6px 0 0", color: "var(--muted)" }}>
+            Publicación #{visibleArriendo.id_publicacion} · <Link href={`/publicaciones/${visibleArriendo.id_publicacion}`}>Ver publicación</Link>
+          </p>
         </div>
         <ArriendoStatus estado={visibleArriendo.estado} />
       </div>
@@ -91,7 +93,8 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
         <div className={styles.fact}><span>Integrantes activos</span><strong>{visibleArriendo.integrantes_activos}</strong></div>
         <div className={styles.fact}><span>Cupos disponibles</span><strong>{visibleArriendo.cupos_disponibles}</strong></div>
       </div>
-      {visibleArriendo.estado === "Activo" ? <>
+      {rentalId ? <Link href={`/mi-arriendo/integrantes?arriendo=${visibleArriendo.id_arriendo}`}>Ver integrantes</Link> : null}
+      {!rentalId && visibleArriendo.estado === "Activo" ? <>
         <div className={styles.actions}>
           <Link className={styles.actionLink} href="/mi-arriendo/integrantes">Ver integrantes</Link>
           <Link className={styles.actionLink} href="/mi-arriendo/chat">Abrir chat</Link>
