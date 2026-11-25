@@ -91,3 +91,14 @@ class HttpPublications:
     def release(self, key, reservation):
         path = f"/internal/publicaciones/{reservation['id_publicacion']}/reservas/{reservation['id_reserva']}"
         self.request("DELETE", path, key)
+
+    def owned_by(self, publication_id, user_id, token):
+        try:
+            url = service_url("LISTADO_UPSTREAM_URL", docker_hosts=("listado", "listado-applications"))
+            with httpx.Client(timeout=3, trust_env=False, follow_redirects=False) as client:
+                response = client.get(f"{url}/api/publicaciones/{publication_id}", headers={"Authorization": "Bearer " + token})
+            response.raise_for_status()
+            value = response.json()
+            return type(value.get("id_propietario")) is int and value["id_propietario"] == user_id
+        except Exception:
+            raise unavailable() from None
