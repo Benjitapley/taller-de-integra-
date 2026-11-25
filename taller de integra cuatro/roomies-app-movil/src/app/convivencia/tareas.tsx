@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AccesoArriendo from "@/components/convivencia/AccesoArriendo";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useConvivenciaDemo } from "@/hooks/useConvivenciaDemo";
 import type { TareaConvivencia } from "@/types/Convivencia";
@@ -44,6 +45,10 @@ function Seccion({ titulo, tareas }: { titulo: string; tareas: TareaConvivencia[
 
 
 export default function TareasConvivencia() {
+  return <AccesoArriendo><TareasActivas /></AccesoArriendo>;
+}
+
+function TareasActivas() {
   const { tareas, tareasProximas } = useConvivenciaDemo();
 
   return (

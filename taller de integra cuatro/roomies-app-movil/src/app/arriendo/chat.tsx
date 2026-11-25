@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AccesoArriendo from "@/components/convivencia/AccesoArriendo";
 import ContenedorChat from "@/components/chat/ContenedorChat";
 import EncabezadoConvivencia from "@/components/EncabezadoConvivencia";
 import { INTEGRANTES_MOCK, MENSAJES_MOCK, USUARIO_ACTUAL_MOCK } from "@/data/convivenciaMock";
@@ -13,6 +14,10 @@ function horaActualTexto(): string {
 }
 
 export default function ChatArriendo() {
+  return <AccesoArriendo><ChatActivo /></AccesoArriendo>;
+}
+
+function ChatActivo() {
   const [mensajes, setMensajes] = useState<MensajeConvivencia[]>(MENSAJES_MOCK);
   const [texto, setTexto] = useState("");
 

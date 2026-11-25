@@ -28,7 +28,8 @@
     "test:expulsions": "node --test tests/expulsiones.test.mjs",
     "test:expulsions-browser": "node --test tests/expulsiones-browser.test.mjs",
     "test:tasks": "node --test tests/tareas.test.mjs",
-    "test:tasks-browser": "node --test tests/tareas-browser.test.mjs"
+    "test:tasks-browser": "node --test tests/tareas-browser.test.mjs",
+    "test:convivencia-browser": "node --test tests/convivencia-browser.test.mjs"
   },
   "dependencies": {
     "next": "16.4.3",

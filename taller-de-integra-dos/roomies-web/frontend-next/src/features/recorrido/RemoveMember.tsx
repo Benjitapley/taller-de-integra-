@@ -13,7 +13,7 @@ export default function RemoveMember({ rentalId, members, onRemoved }: {
   const [reason, setReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
-  
+
   const [error, setError] = useState("");
   const inFlight = useRef(false);
   const [revoked, setRevoked] = useState(false);

@@ -62,3 +62,15 @@ Listado se ejecuto en un interprete con entorno vaciado y `PYTEST_DISABLE_PLUGIN
 ## Pendiente para aceptacion
 
 Ejecutar `tests/run_isolated.py` de Convivencia en un entorno donde PostgreSQL arranque y luego el recorrido sobre Gateway/servicios migrados: doble retiro, admin ajeno, tareas pendientes/completadas, responsable vacante, ultimo integrante, denegacion de lectura/envio y recuperacion de outbox. El desarrollo y la comprobacion de cliente estan listos; los resultados SQL no se infieren de mocks ni de capturas.
+
+## Integración con SCRUM-123 · 25/11/2026
+
+Se reconcilió `9c9ab5e` con `dev-web` en `d934a97`, que ya contiene SCRUM-122 y E04. Se conserva el contrato de retiro y tareas integrado en `dev-web`, incluido el formulario `RemoveMember`, la paginación y la comprobación periódica de pertenencia. Las implementaciones alternativas de servicio, BFF y pantalla de tareas se retiraron para evitar rutas y modelos duplicados. Sus commits siguen en el historial.
+
+La secuencia de migración vigente es `001`–`004`, [005_retiro.up.sql](../../../backend/services/convivencia-mensajeria-service/migrations/005_retiro.up.sql) y [006_tareas_reasignables.up.sql](../../../backend/services/convivencia-mensajeria-service/migrations/006_tareas_reasignables.up.sql). Se retiró `005_retiros.up.sql`, que creaba las mismas tablas con un esquema incompatible. Esta integración no aplica migraciones sobre bases compartidas.
+
+Se conserva el control de pertenencia móvil de SCRUM-123: consulta real al entrar/regresar a la app, desmontaje de pantallas privadas y vaciado del almacén tras una denegación. También se conserva el enlace de postulantes aceptados a la gestión de integrantes.
+
+Validación de la integración: Convivencia, 92 pruebas aprobadas con PostgreSQL efímero y migraciones 001–006; Gateway, 185 aprobadas; Listado, 4 pruebas de proyección de retiro aprobadas; web/BFF y regresiones HTTP, 58 aprobadas; convivencia móvil, 12 aprobadas. Typecheck y lint web pasaron. Los resultados y el manifiesto de la sección anterior describen la revisión histórica de SCRUM-122, no certifican por sí solos este merge.
+
+La prueba adicional `npm.cmd run test:convivencia-browser` pasó (1 prueba) con Next/BFF reales y Edge con API sintética, sin Playwright ni cuentas reales; reproduce confirmación, doble clic, respuesta perdida, ausencia de acción para quien no es dueño y revocación de tareas. `E05_QA_DIR` permite regenerar las capturas complementarias [escritorio](retiro-confirmacion.png) y [ancho móvil web](retiro-confirmacion-mobile.png). La aceptación en despliegue y celular físico continúa pendiente.

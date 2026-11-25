@@ -111,7 +111,7 @@ function ApplicationList({ publication }: { publication?: number }) {
         {(waiting || (item.estado === "Aceptada" && !accepted)) && <p role="status">La incorporación al arriendo aún no está confirmada.</p>}
         {recovery[item.id_postulacion] && <p role="alert">{recovery[item.id_postulacion]}</p>}
         {item.estado === "Preseleccionada" && item.operacion?.estado === "Rechazada" && <p>La incorporación no se completó. La postulación sigue preseleccionada.</p>}
-        {accepted && <p>{publication ? "La persona quedó incorporada al arriendo." : <>Tu incorporación quedó confirmada. <Link href="/mi-arriendo">Abrir Mi arriendo</Link></>}</p>}
+        {accepted && <p>{publication ? <>La persona quedó incorporada al arriendo. <Link href={`/mi-arriendo/${item.id_arriendo}/integrantes`}>Gestionar integrantes</Link></> : <>Tu incorporación quedó confirmada. <Link href="/mi-arriendo">Abrir Mi arriendo</Link></>}</p>}
         <p><Link href={`/publicaciones/${item.id_publicacion}`}>Ver publicación</Link></p>
         {(waiting || (item.estado === "Aceptada" && !accepted)) && <Button disabled={pending} onClick={() => void consult(item)}>Consultar estado</Button>}
         {["Pendiente", "Preseleccionada"].includes(item.estado) && <>
