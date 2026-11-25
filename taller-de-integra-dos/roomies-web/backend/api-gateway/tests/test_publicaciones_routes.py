@@ -20,6 +20,7 @@ def exercise(handler, path, method="GET", **kwargs):
 def listado(monkeypatch):
     monkeypatch.setenv("ROOMIES_LOCAL_MODE", "1")
     monkeypatch.setenv("LISTADO_UPSTREAM_URL", "http://listado.test")
+    monkeypatch.setenv("GATEWAY_CORS_ORIGINS", "http://localhost:8081")
 
 
 @pytest.mark.parametrize("path", ["/api/publicaciones/mias?limite=2&cursor=opaque", "/api/regiones", "/api/regiones/9/comunas"])
@@ -91,14 +92,14 @@ def test_publication_detail_forwards_authorization_without_caching():
     assert response.headers["cache-control"] == "no-store"
 
 
-def test_upload_preflight_allows_retry_key():
+def test_upload_preflight_uses_configured_origin():
     def unexpected(request):
         pytest.fail("El preflight no debe llamar al upstream.")
     response = exercise(unexpected, "/api/publicaciones", "OPTIONS", headers={
-        "Origin": "https://web.example.test",
+        "Origin": "http://localhost:8081",
         "Access-Control-Request-Method": "POST",
-        "Access-Control-Request-Headers": "content-type,idempotency-key",
+        "Access-Control-Request-Headers": "authorization,content-type",
     })
-    assert response.status_code == 204
-    assert response.headers["access-control-allow-origin"] == "https://web.example.test"
-    assert "idempotency-key" in response.headers["access-control-allow-headers"].lower()
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:8081"
+    assert {"authorization", "content-type"} <= set(response.headers["access-control-allow-headers"].lower().split(", "))

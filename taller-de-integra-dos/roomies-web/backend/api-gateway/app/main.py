@@ -3,6 +3,7 @@ import logging
 
 import httpx
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
 from .config import Settings
@@ -77,6 +78,14 @@ def create_app(settings: Settings | None = None, *, transport=None):
     if config.local_mode:
         from .local_routes import dispatch
         app.add_api_route("/{path:path}",dispatch,methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(config.cors_origins),
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+        max_age=600,
+    )
     return app
 
 
