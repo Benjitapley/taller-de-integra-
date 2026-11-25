@@ -69,10 +69,16 @@ class Convivencia:
                 if rental is None:
                     rental = c.execute("""INSERT INTO convivencia_mensajeria.arriendo(id_publicacion,cupos_totales,version_capacidad)
                       VALUES(%s,%s,%s) RETURNING *""", (payload["id_publicacion"], reservation["cupos_totales"], payload["version_capacidad"])).fetchone()
+                if rental['finalizado_en'] is not None:
+                    raise ServiceError('PUBLICATION_CLOSED', 'El arriendo ya finalizó.')
+                if c.execute("SELECT 1 FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Inactiva'", (rental['id_arriendo'], payload['id_usuario'])).fetchone():
+                    raise ServiceError('REENTRY_FORBIDDEN', 'Una persona retirada no puede reingresar.')
                 if rental["version_capacidad"] != payload["version_capacidad"] or rental["cupos_totales"] != reservation["cupos_totales"]:
                     raise ServiceError("CAPACITY_VERSION_CONFLICT", "La versión de capacidad no coincide.")
                 c.execute("INSERT INTO convivencia_mensajeria.conversacion(id_arriendo) VALUES(%s) ON CONFLICT(id_arriendo) DO NOTHING", (rental["id_arriendo"],))
                 occupied = c.execute("SELECT count(*) AS total FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND estado='Activa'", (rental["id_arriendo"],)).fetchone()["total"]
+                if not c.execute('SELECT 1 FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s', (rental['id_arriendo'],)).fetchone():
+                    c.execute('UPDATE convivencia_mensajeria.arriendo SET id_responsable=%s WHERE id_arriendo=%s', (payload['id_usuario'], rental['id_arriendo']))
                 if occupied >= rental["cupos_totales"]:
                     raise ServiceError("NO_CAPACITY", "No quedan cupos disponibles.")
                 c.execute("""INSERT INTO convivencia_mensajeria.pertenencia(id_arriendo,id_usuario,id_postulacion,id_operacion)
@@ -137,4 +143,7 @@ class Convivencia:
                 self._incorporate(operation["id_operacion"], operation["payload"])
             except Exception:
                 continue
-        return self.dispatch()
+        from app.departures import dispatch
+        result = self.dispatch()
+        dispatch(self)
+        return result

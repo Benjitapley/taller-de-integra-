@@ -31,7 +31,8 @@ export function crearAlmacenConvivenciaDemo() {
     const recordatorio: Recordatorio = { id: `demo-recordatorio-${contadorIds}`, ...nuevo };
     actualizar({ ...estado, recordatorios: [...estado.recordatorios, recordatorio] });
   }
-  return { suscribir, obtenerEstado, agregarTarea, agregarRecordatorio };
+  function limpiar() { actualizar({ tareas: [], recordatorios: [] }); }
+  return { suscribir, obtenerEstado, agregarTarea, agregarRecordatorio, limpiar };
 }
 
 export type AlmacenConvivenciaDemo = ReturnType<typeof crearAlmacenConvivenciaDemo>;

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
+import AccesoArriendo from "@/components/convivencia/AccesoArriendo";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import OrganizacionCasaCard from "@/components/OrganizacionCasaCard";
 import NuevaTareaSheet from "@/components/convivencia/NuevaTareaSheet";
@@ -40,7 +41,7 @@ export default function DashboardArriendo() {
     return <SinArriendo />;
   }
 
-  return <DashboardActivo />;
+  return <AccesoArriendo><DashboardActivo /></AccesoArriendo>;
 }
 
 function DashboardActivo() {

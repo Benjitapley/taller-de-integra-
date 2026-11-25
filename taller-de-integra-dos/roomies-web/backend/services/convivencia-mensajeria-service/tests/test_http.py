@@ -103,14 +103,17 @@ def test_get_pasa_usuario_autenticado_y_oculta_arriendo_ajeno(http):
     rental = {"id_arriendo": 1, "id_publicacion": 7, "cupos_totales": 2, "version_capacidad": 1, "ocupacion": 1}
     service.repository.mine.return_value = rental
     service.repository.get.return_value = rental
-    assert client.get("/api/arriendos/mio").json() == rental
+    service.repository.publication_id.return_value = 7
+    service.publications.owner.return_value = 1
+    defaults = {'estado': 'Activo', 'id_responsable': None, 'puede_retirar': False, 'id_usuario_actual': None}
+    assert client.get("/api/arriendos/mio").json() == {**rental, **defaults, 'id_usuario_actual': 2}
     result = client.get("/api/arriendos/1")
     assert result.status_code == 200
-    assert result.json() == rental
+    assert result.json() == {**rental, **defaults}
     service.repository.mine.assert_called_once_with(2)
-    service.repository.get.assert_called_once_with(1, 2)
+    service.repository.get.assert_called_once_with(1, 2, owner=False)
     service.repository.get.side_effect = ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
-    assert client.get("/api/arriendos/999").status_code == 404
+    assert client.get("/api/arriendos/999").status_code == 403
 
 
 @pytest.mark.parametrize("status,code", [(409, "USER_ALREADY_ACTIVE"), (503, "DEPENDENCY_UNAVAILABLE")])

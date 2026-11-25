@@ -8,6 +8,7 @@ from backend.service_runtime.settings import service_url
 
 
 INCORPORATION_ERRORS = {
+    'REENTRY_FORBIDDEN': (409, 'Una persona retirada no puede reingresar a este arriendo.'),
     "USER_ALREADY_ACTIVE": (409, "El usuario ya tiene una pertenencia activa."),
     "IDEMPOTENCY_CONFLICT": (409, "La clave de reintento corresponde a otra solicitud."),
     "CAPACITY_VERSION_CONFLICT": (409, "La version de capacidad cambio; consulta Listado."),

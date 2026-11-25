@@ -44,6 +44,84 @@ class Rental(BaseModel):
     cupos_totales: PositiveId
     version_capacidad: PositiveId
     ocupacion: Annotated[int, Field(strict=True, ge=0)]
+    estado: Literal['Activo', 'Finalizado'] = 'Activo'
+    id_responsable: PositiveId | None = None
+    puede_retirar: bool = False
+    id_usuario_actual: PositiveId | None = None
+
+
+class ExpulsionCreate(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id_usuario: PositiveId
+    motivo: Annotated[str, Field(strict=True, min_length=1, max_length=500)]
+    confirmo: Annotated[bool, Field(strict=True)]
+
+    @field_validator('motivo')
+    @classmethod
+    def reason(cls, value):
+        if not value.strip() or '\0' in value:
+            raise ValueError('Escribe un motivo.')
+        return value.strip()
+
+    @field_validator('confirmo')
+    @classmethod
+    def confirmed(cls, value):
+        if value is not True:
+            raise ValueError('Confirma el retiro.')
+        return value
+
+
+class TaskAssignment(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id_asignado: PositiveId | None
+
+
+class TaskCreate(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    titulo: Annotated[str, Field(strict=True, min_length=1, max_length=120)]
+    descripcion: Annotated[str, Field(strict=True, max_length=1000)] | None = None
+    id_asignado: PositiveId | None = None
+
+    @field_validator('descripcion')
+    @classmethod
+    def description(cls, value):
+        if value is not None and '\0' in value:
+            raise ValueError('Descripción inválida.')
+        return value
+
+    @field_validator('titulo')
+    @classmethod
+    def title(cls, value):
+        if not value.strip() or '\0' in value:
+            raise ValueError('Escribe un título.')
+        return value.strip()
+
+
+class TaskState(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    estado: Literal['Completada']
+
+
+class ExpulsionResult(Rental):
+    id_usuario_retirado: PositiveId
+    sincronizacion_pendiente: bool
+
+
+class Task(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id_tarea: PositiveId
+    id_arriendo: PositiveId
+    titulo: str
+    descripcion: str | None
+    estado: Literal['Pendiente', 'Completada']
+    id_creador: PositiveId
+    id_asignado: PositiveId | None
+    fecha_creacion: datetime
+
+
+class TaskPage(BaseModel):
+    items: list[Task]
+    siguiente_cursor: str | None
 
 
 class MessageCreate(BaseModel):

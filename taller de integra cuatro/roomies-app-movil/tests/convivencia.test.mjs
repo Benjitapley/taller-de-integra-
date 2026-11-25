@@ -62,6 +62,18 @@ function cargar(ruta) {
 
 const { crearAlmacenConvivenciaDemo } = cargar(rutas["@/stores/convivenciaDemo"]);
 const datos = cargar(rutas["@/data/convivenciaMock"]);
+test("un retiro vacía los datos compartidos de convivencia sin afectar otra sesión", () => {
+  const privateStore = crearAlmacenConvivenciaDemo();
+  const otherSession = crearAlmacenConvivenciaDemo();
+  let notifications = 0;
+  const unsubscribe = privateStore.suscribir(() => notifications++);
+  privateStore.limpiar();
+  assert.equal(privateStore.obtenerEstado().tareas.length, 0);
+  assert.equal(privateStore.obtenerEstado().recordatorios.length, 0);
+  assert.equal(notifications, 1);
+  assert.ok(otherSession.obtenerEstado().tareas.length > 0);
+  unsubscribe();
+});
 const RootLayout = cargar("../src/app/_layout.tsx").default;
 const ChatContextual = cargar("../src/app/chats/[id].tsx").default;
 const privadas = ["(tabs)", "convivencia/tareas", "arriendo/index", "arriendo/chat", "chats/index", "chats/[id]"];

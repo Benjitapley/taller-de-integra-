@@ -127,8 +127,12 @@ def publication_for_report(
     id: Annotated[int, Path(gt=0, le=9223372036854775807)],
     app=Depends(service),
     authorization: Annotated[str | None, Header()] = None,
+    x_roomies_service: Annotated[str | None, Header()] = None,
 ):
-    verify_report_service(authorization, "listado-applications", "REPORTES_LISTADO_JWT_KEY")
+    if x_roomies_service is not None:
+        internal_service(x_roomies_service)
+    else:
+        verify_report_service(authorization, "listado-applications", "REPORTES_LISTADO_JWT_KEY")
     row = app.repository.report_target(id)
     if row is None:
         return JSONResponse({"codigo": "PUBLICACION_NO_ENCONTRADA"}, status_code=404)
@@ -174,6 +178,32 @@ def internal_service(x_roomies_service:str|None=Header(None)):
 @router.put("/internal/publicaciones/{id}/ocupacion",dependencies=[Depends(internal_service)])
 def occupancy_update(id:int,data:OccupancyUpdate,app=Depends(service)):
     return dto(app.occupancy_update(id,data.ocupacion,data.version_ocupacion),app.occupancy)
+
+
+class DepartureProjection(ReservationProjection):
+    finalizado: bool = Field(strict=True)
+
+
+@router.put('/internal/publicaciones/{id}/retiros', dependencies=[Depends(internal_service)])
+def departure_projection(id: int, data: DepartureProjection, app=Depends(service)):
+    from backend.service_runtime.contracts import RuleViolation
+    if data.finalizado != (data.ocupacion == 0):
+        raise RuleViolation('Un arriendo finalizado no tiene integrantes activos.', 422)
+    with app.repository.transaction():
+        row = app.repository.publication(id, lock=True)
+        if row is None:
+            raise RuleViolation('Publicación no encontrada.', 404)
+        if data.version_ocupacion < row['version_ocupacion']:
+            return {'success': True}
+        app.occupancy_update_locked(row, data.ocupacion, data.version_ocupacion)
+        if data.finalizado:
+            app.repository.close(id)
+            cancelled = app.repository.query("""UPDATE listado_applications.postulacion
+                SET estado='Cancelada',motivo='Cierre de publicación',actualizada_en=clock_timestamp()
+                WHERE id_publicacion=%s AND estado IN ('Pendiente','Preseleccionada') RETURNING *""", (id,), many=True)
+            for application in cancelled:
+                app.repository.event(application)
+    return {'success': True}
 
 
 @router.post("/internal/publicaciones/{id}/reservas",dependencies=[Depends(internal_service)])

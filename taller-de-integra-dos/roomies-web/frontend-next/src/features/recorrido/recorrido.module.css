@@ -85,6 +85,8 @@
 .taskForm label { margin-top: 7px; font-size: 13px; font-weight: 700; }
 .taskForm input, .taskForm textarea, .taskForm select { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--foreground); background: white; }
 .taskForm textarea { height: 50px; resize: vertical; }
+.taskForm input[type="checkbox"] { width: 18px; min-height: 18px; height: 18px; margin-right: 8px; vertical-align: middle; accent-color: var(--primary); }
+.taskList select { display: block; width: 100%; padding: 8px; margin: 6px 0; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--foreground); }
 .assignmentHint { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 .modalActions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 12px; }
 .modalActions button { width: 100%; }

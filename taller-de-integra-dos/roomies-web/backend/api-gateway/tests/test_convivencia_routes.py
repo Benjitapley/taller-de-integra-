@@ -55,6 +55,25 @@ def test_arriendos_are_read_only_and_disabled_without_configuration():
     assert exercise(unexpected, method="POST", path="/internal/incorporaciones", settings=config).status_code == 404
 
 
+@pytest.mark.parametrize('path,method', [
+    ('/api/arriendos/7/expulsiones', 'POST'), ('/api/arriendos/7/integrantes', 'GET'),
+    ('/api/arriendos/7/tareas', 'GET'), ('/api/arriendos/7/tareas', 'POST'),
+    ('/api/tareas/2', 'PATCH'), ('/api/tareas/2/estado', 'PATCH'),
+])
+def test_retiros_y_tareas_van_a_convivencia_sin_credencial_interna(path, method):
+    def handler(request):
+        assert request.url.host == 'convivencia.test'
+        assert request.method == method and request.url.path == path
+        assert request.headers['authorization'] == 'Bearer synthetic'
+        assert 'x-roomies-service' not in request.headers
+        return reply(200, content=b'{}', headers={'Content-Type': 'application/json'})
+    result = exercise(handler, method=method, path=path,
+                      settings=Settings(local_mode=True, convivencia_upstream='http://convivencia.test'),
+                      headers={'Authorization': 'Bearer synthetic', 'X-Roomies-Service': 'untrusted'})
+    assert result.status_code == 200
+    assert result.headers['cache-control'] == 'no-store'
+
+
 def test_convivencia_upstream_environment_and_validation(monkeypatch):
     monkeypatch.setenv("CONVIVENCIA_UPSTREAM_URL", "http://127.0.0.1:8004")
     assert Settings.from_env().convivencia_upstream == "http://127.0.0.1:8004"

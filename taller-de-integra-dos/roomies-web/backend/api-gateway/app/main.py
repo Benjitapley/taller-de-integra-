@@ -19,6 +19,7 @@ class RouteGuard:
         path = scope["path"]
         private = (path.startswith("/api/usuarios/me") or path.rstrip("/") in {"/usuarios/me", "/api/publicaciones/mias", "/api/mis-publicaciones"}
                    or path.startswith("/api/arriendos/")
+                   or path.startswith('/api/tareas/')
                    or path.startswith("/api/conversaciones/") or path == "/api/conversaciones"
                    or path.startswith("/api/postulaciones/")
                    or (path.startswith("/api/publicaciones/") and path.endswith("/detalle"))

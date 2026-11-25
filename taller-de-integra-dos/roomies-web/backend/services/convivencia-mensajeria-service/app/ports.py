@@ -46,6 +46,25 @@ class HttpIdentity:
 
 
 class HttpPublications:
+    def owner(self, publication_id):
+        response = self.request('GET', f'/internal/publicaciones/{publication_id}', None)
+        try:
+            row = response.json()
+            if type(row['id_publicacion']) is not int or row['id_publicacion'] != publication_id or type(row['id_propietario']) is not int or row['id_propietario'] < 1:
+                raise ValueError()
+            return row['id_propietario']
+        except (KeyError, ValueError, TypeError):
+            raise unavailable() from None
+
+    def departure(self, projection):
+        response = self.request('PUT', f"/internal/publicaciones/{projection['id_publicacion']}/retiros", None,
+                                {key: value for key, value in projection.items() if key != 'id_publicacion'})
+        try:
+            if response.status_code != 200 or response.json() != {'success': True}:
+                raise ValueError()
+        except ValueError:
+            raise unavailable() from None
+
     def request(self, method, path, key, payload=None):
         try:
             url = service_url("LISTADO_UPSTREAM_URL", docker_hosts=("listado", "listado-applications"))

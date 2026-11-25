@@ -20,8 +20,8 @@ export async function handleMyArriendo(
     if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error();
     const original = data as Record<string, unknown>;
     // SCRUM-124 returns active membership with occupancy and capacity version.
-    const canonical = original.estado === undefined && Number.isSafeInteger(original.version_capacidad) && Number(original.version_capacidad) > 0;
-    const row = canonical ? { ...original, estado: "Activo", integrantes_activos: original.ocupacion,
+    const canonical = original.integrantes_activos === undefined && Number.isSafeInteger(original.version_capacidad) && Number(original.version_capacidad) > 0;
+    const row = canonical ? { ...original, estado: original.estado ?? "Activo", integrantes_activos: original.ocupacion,
       cupos_disponibles: Number(original.cupos_totales) - Number(original.ocupacion) } : original;
     if (!Number.isSafeInteger(row.id_arriendo) || Number(row.id_arriendo) < 1 ||
         !Number.isSafeInteger(row.id_publicacion) || Number(row.id_publicacion) < 1 ||
@@ -29,6 +29,7 @@ export async function handleMyArriendo(
         !["Activo", "Finalizado"].includes(String(row.estado)) ||
         Number(row.integrantes_activos) + Number(row.cupos_disponibles) !== row.cupos_totales) throw new Error();
     return authReply(200, {
+      ...(Number.isSafeInteger(row.id_usuario_actual) ? { id_usuario_actual: row.id_usuario_actual } : {}),
       id_arriendo: row.id_arriendo, id_publicacion: row.id_publicacion, estado: row.estado,
       cupos_totales: row.cupos_totales, integrantes_activos: row.integrantes_activos,
       cupos_disponibles: row.cupos_disponibles,
@@ -63,14 +64,15 @@ export async function handleArriendoById(
     const data = await response.json();
     if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error();
     const row = data as Record<string, unknown>;
-    const canonical = row.estado === undefined && Number.isSafeInteger(row.version_capacidad) && Number(row.version_capacidad) > 0;
-    const normalized = canonical ? { ...row, estado: "Activo", integrantes_activos: row.ocupacion,
+    const canonical = row.integrantes_activos === undefined && Number.isSafeInteger(row.version_capacidad) && Number(row.version_capacidad) > 0;
+    const normalized = canonical ? { ...row, estado: row.estado ?? "Activo", integrantes_activos: row.ocupacion,
       cupos_disponibles: Number(row.cupos_totales) - Number(row.ocupacion) } : row;
     if (Number(normalized.id_arriendo) !== Number(rentalId) || !Number.isSafeInteger(normalized.id_publicacion) || Number(normalized.id_publicacion) < 1 ||
         !["cupos_totales", "integrantes_activos", "cupos_disponibles"].every(key => Number.isSafeInteger(normalized[key]) && Number(normalized[key]) >= 0) ||
         !["Activo", "Finalizado"].includes(String(normalized.estado)) ||
         Number(normalized.integrantes_activos) + Number(normalized.cupos_disponibles) !== Number(normalized.cupos_totales)) throw new Error();
     return authReply(200, {
+      puede_retirar: normalized.puede_retirar === true,
       id_arriendo: Number(normalized.id_arriendo), id_publicacion: Number(normalized.id_publicacion), estado: normalized.estado,
       cupos_totales: Number(normalized.cupos_totales), integrantes_activos: Number(normalized.integrantes_activos),
       cupos_disponibles: Number(normalized.cupos_disponibles),
