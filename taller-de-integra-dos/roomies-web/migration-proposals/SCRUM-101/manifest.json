@@ -1,0 +1,38 @@
+{
+  "manifest_version": 1,
+  "layout": "private-v1",
+  "server_version_num": 170006,
+  "database": "roomies_scrum101_disposable",
+  "database_comment": "SCRUM-101 disposable private-v1",
+  "connection": "unix-socket",
+  "executor": "dedicated isolated-cluster login superuser",
+  "roles": {
+    "owner": "scrum101_owner",
+    "runtime": [
+      "sql_auth_users",
+      "sql_listado_applications",
+      "sql_match_conexion",
+      "sql_convivencia_mensajeria",
+      "sql_reportes"
+    ]
+  },
+  "steps": [
+    {
+      "id": "000",
+      "entrypoint": "000-preflight.sql",
+      "transaction": "read-only",
+      "requires": [],
+      "preconditions": ["fresh dedicated cluster", "explicitly marked empty test database"],
+      "checks": ["checks/target.sql", "checks/pristine.sql"]
+    },
+    {
+      "id": "010",
+      "entrypoint": "010-provision.sql",
+      "transaction": "atomic",
+      "requires": ["000"],
+      "preconditions": ["same target and executor", "reserved roles absent"],
+      "checks": ["checks/target.sql", "checks/pristine.sql", "checks/provisioned.sql"],
+      "verify": "010-verify.sql"
+    }
+  ]
+}
