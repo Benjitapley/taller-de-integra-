@@ -62,7 +62,10 @@ async def forward_to(request: Request, upstream_url, path):
         return unavailable(503, origin=origin)
     url = httpx.URL(upstream_url).copy_with(
         path=path, query=request.scope["query_string"])
-    headers = filtered(request.scope["headers"], REQUEST_HEADERS)
+    allowed_headers = REQUEST_HEADERS
+    if path == "/api/reportes" and request.method == "POST":
+        allowed_headers = allowed_headers | {b"idempotency-key"}
+    headers = filtered(request.scope["headers"], allowed_headers)
     # Solicitar identidad evita descompresión implícita; a la vuelta se leen bytes raw.
     headers.append((b"accept-encoding", b"identity"))
     receiving = True

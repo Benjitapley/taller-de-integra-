@@ -3,8 +3,9 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import Depends, FastAPI, Path, Query
+from fastapi import Depends, FastAPI, Header, Path, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
@@ -16,7 +17,7 @@ from app.models import AdminReportDetail, AdminReportPage, MAX_ID, Report, Repor
 from app.notifications import NotificationDelivery
 from app.relationships import Relationships
 from app.repository import ReportRepository
-from app.service import Reports
+from app.service import IdempotencyConflict, Reports
 
 
 async def deliver_notifications(stop):
@@ -68,6 +69,11 @@ async def rule_error(request, exc):
     return error(exc.status, exc.message)
 
 
+@app.exception_handler(IdempotencyConflict)
+async def idempotency_error(request, exc):
+    return error(exc.status, exc.message, codigo="CLAVE_IDEMPOTENCIA_REUTILIZADA")
+
+
 @app.exception_handler(DependencyUnavailable)
 @app.exception_handler(Exception)
 async def dependency_error(request, exc):
@@ -93,8 +99,13 @@ def health():
 
 
 @app.post("/api/reportes", status_code=201, response_model=Report)
-def create(data: ReportInput, identity: Annotated[Actor, Depends(confirmed_actor)], service: Annotated[Reports, Depends(reports)]):
-    return service.create(identity.user_id, data)
+def create(
+    data: ReportInput,
+    identity: Annotated[Actor, Depends(confirmed_actor)],
+    service: Annotated[Reports, Depends(reports)],
+    idempotency_key: Annotated[UUID | None, Header()] = None,
+):
+    return service.create(identity.user_id, data, idempotency_key)
 
 
 @app.get("/api/reportes/mios", response_model=ReportPage)

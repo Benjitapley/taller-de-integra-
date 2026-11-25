@@ -11,6 +11,8 @@ ROUTES=[
  (r"/api/admin/reportes",{"GET"},"reportes_upstream"),
  (r"/api/admin/reportes/[1-9][0-9]{0,18}",{"GET","PATCH"},"reportes_upstream"),
  (r"/usuarios/me",{"GET","PATCH"},"upstream"),
+ (r"/api/usuarios/me",{"GET","POST","PATCH"},"upstream"),
+ (r"/api/usuarios/me/foto",{"PUT"},"upstream"),
  (r"/(?:local|api)/v1/sesion/revocar",{"POST"},"upstream"),
  (r"/(?:local|api)/v1/perfil/inicializacion",{"POST"},"upstream"),
  (r"/(?:local|api)/v1/perfil",{"GET","PUT","PATCH"},"upstream"),
@@ -47,12 +49,15 @@ def reply(status,body,origin=None):
 
 def cors_preflight(request: Request, methods: set[str]):
     origin = request.headers.get("origin", "*")
+    allowed_headers = "Authorization, Content-Type, Accept, Accept-Language, x-roomies-service, x-haycupo-csrf"
+    if request.url.path == "/api/reportes":
+        allowed_headers += ", Idempotency-Key"
     return Response(
         status_code=204,
         headers={
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Methods": ", ".join(sorted(methods | {"OPTIONS"})),
-            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Accept-Language, x-roomies-service, x-haycupo-csrf",
+            "Access-Control-Allow-Headers": allowed_headers,
             "Access-Control-Max-Age": "86400",
             "Cache-Control": "no-store",
         },

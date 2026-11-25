@@ -27,6 +27,7 @@ export default function ReportsPanel({ target }: { target?: ReportTarget }) {
   const [sendError, setSendError] = useState("");
   const [sent, setSent] = useState<Report | null>(null);
   const historyRequest = useRef<AbortController | null>(null);
+  const submission = useRef<{ body: string; key: string } | null>(null);
   const targetText = target && ("id_usuario_reportado" in target
     ? `Usuario #${target.id_usuario_reportado}` : `Publicación #${target.id_publicacion_reportada}`);
 
@@ -68,10 +69,18 @@ export default function ReportsPanel({ target }: { target?: ReportTarget }) {
     setSending(true);
     setSendError("");
     try {
+      const body = JSON.stringify({ ...target, categoria, descripcion });
+      if (submission.current?.body !== body) {
+        submission.current = { body, key: crypto.randomUUID() };
+      }
       const response = await fetch("/web-api/reportes", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Haycupo-CSRF": "1" },
-        body: JSON.stringify({ ...target, categoria, descripcion }),
+        headers: {
+          "Content-Type": "application/json",
+          "X-Haycupo-CSRF": "1",
+          "Idempotency-Key": submission.current.key,
+        },
+        body,
       });
       const data = await response.json();
       if (!response.ok) {

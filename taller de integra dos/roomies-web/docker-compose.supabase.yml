@@ -20,6 +20,7 @@ services:
     environment:
       <<: *runtime
       AUTH_USERS_DATABASE_URL: ${AUTH_USERS_DATABASE_URL:?DSN sql_auth_users con verify-full y sslrootcert}
+      ROOMIES_PROFILE_STORAGE_SECRET_KEY: ${ROOMIES_PROFILE_STORAGE_SECRET_KEY:?Clave secreta de Storage para Auth/Users}
       AUTH_NOTIFICATIONS_CURSOR_SECRET: ${AUTH_NOTIFICATIONS_CURSOR_SECRET:-}
       LISTADO_AUTH_JWT_KEY: ${LISTADO_AUTH_JWT_KEY:-}
       CONVIVENCIA_AUTH_JWT_KEY: ${CONVIVENCIA_AUTH_JWT_KEY:-}

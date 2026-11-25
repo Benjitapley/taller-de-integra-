@@ -1,18 +1,21 @@
 import "server-only";
 import { authConfig, authReply, readToken, sessionCookie, upstream, profilePath, type Transport, type WebAuthConfig } from "../auth/gateway";
 import type { Profile } from "../../features/perfil/contracts";
-import { photoLimit, validateProfile } from "../../features/perfil/validation";
+import { photoLimit, profileLimits, validateProfile } from "../../features/perfil/validation";
 
-/** Only existing local image resources; never send the browser to an arbitrary URL. */
-export function profilePhoto(value: unknown): string | null {
-  return typeof value === "string" && /^\/imagenes\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(value) ? value : null;
+export function profilePhoto(value: unknown, storageOrigin?: string): string | null {
+  if (typeof value !== "string") return null;
+  if (/^\/imagenes\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(value)) return value;
+  const prefix = storageOrigin + "/storage/v1/object/public/perfiles/";
+  return storageOrigin?.startsWith("https://") && value.startsWith(prefix) &&
+    /^[0-9a-f-]{36}\/[0-9a-f]{32}\.(?:jpg|png|webp)$/.test(value.slice(prefix.length)) ? value : null;
 }
 function optionalText(value: unknown): string | null {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string") throw new Error("Invalid profile field");
   return value.trim() || null;
 }
-export function normalizeProfile(value: unknown): Profile {
+export function normalizeProfile(value: unknown, storageOrigin?: string): Profile {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid profile");
   const data = value as Record<string, unknown>;
   if (typeof data.nombre !== "string" || !Number.isSafeInteger(data.total_publicaciones) || (data.total_publicaciones as number) < 0) throw new Error("Invalid profile");
@@ -27,7 +30,7 @@ export function normalizeProfile(value: unknown): Profile {
     nombre: data.nombre.trim(), edad: age,
     ocupacion: optionalText(data.ocupacion), ciudad: optionalText(data.ciudad),
     breve_descripcion: optionalText(data.breve_descripcion), sobre_mi: optionalText(data.sobre_mi),
-    foto_perfil: profilePhoto(data.foto_perfil), total_publicaciones: data.total_publicaciones as number,
+    foto_perfil: profilePhoto(data.foto_perfil, storageOrigin), total_publicaciones: data.total_publicaciones as number,
     verificado: typeof data.verificado === "boolean" ? data.verificado : null,
   };
 }
@@ -38,6 +41,7 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
   const expired = (status: number) => authReply(status, { detail: "Tu sesión ha expirado o ya no está disponible. Inicia sesión nuevamente." }, { "Set-Cookie": sessionCookie(config) });
   const token = readToken(request.headers.get("cookie"), config);
   if (!token) return expired(401);
+  let textSaved = false;
   try {
     if (request.method === "PUT") {
       if (request.headers.get("origin") !== config.origin || request.headers.get("x-haycupo-csrf") !== "1" ||
@@ -59,14 +63,36 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
       catch { return authReply(422, { detail: "Formulario no válido." }); }
       const error = validateProfile(form);
       if (error) return authReply(422, { detail: error });
-      const saved = await transport(`${config.backend}${profilePath(config)}`, {
-        method: "PUT", body: form, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
-        headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
-      });
+      const headers = { Accept: "application/json", Authorization: `Bearer ${token}` };
+      const options = { cache: "no-store", redirect: "error" } as const;
+      let saved: Response;
+      if (config.provider === "supabase") {
+        const photo = form.get("foto");
+        if (photo instanceof File && photo.size > 5_000_000) {
+          return authReply(413, { detail: "La fotografía supera los 5 MB." });
+        }
+        const fields = Object.fromEntries(Object.keys(profileLimits).map(key => [key, form.get(key)]));
+        saved = await transport(`${config.backend}${profilePath(config)}`, {
+          ...options, method: "PATCH", body: JSON.stringify(fields), signal: AbortSignal.timeout(10_000),
+          headers: { ...headers, "Content-Type": "application/json" },
+        });
+        if (saved.ok && photo instanceof File && photo.size) {
+          textSaved = true;
+          const photoForm = new FormData();
+          photoForm.set("foto", photo);
+          saved = await transport(`${config.backend}${profilePath(config)}/foto`, {
+            ...options, method: "PUT", body: photoForm, signal: AbortSignal.timeout(15_000), headers,
+          });
+        }
+      } else {
+        saved = await transport(`${config.backend}${profilePath(config)}`, {
+          ...options, method: "PUT", body: form, signal: AbortSignal.timeout(10_000), headers,
+        });
+      }
       if (saved.status === 401) return expired(401);
       if (saved.status === 403) return authReply(403, { code: "FORBIDDEN", detail: "No tienes permiso para guardar estos cambios." });
-      if ([413, 422].includes(saved.status)) return authReply(saved.status, { detail: saved.status === 413 ? "La fotografía supera los 5 MB." : "Revisa los campos y selecciona una imagen válida de hasta 20 megapíxeles." });
-      if (!saved.ok) return authReply(503, { detail: "No se confirmó el guardado. Consulta tu perfil antes de volver a intentar." });
+      if ([413, 422].includes(saved.status)) return authReply(saved.status, { detail: (textSaved ? "Tus datos de texto se guardaron. " : "") + (saved.status === 413 ? "La fotografía supera los 5 MB." : "Revisa los campos y selecciona una imagen válida de hasta 20 megapíxeles.") });
+      if (!saved.ok) return authReply(503, { detail: textSaved ? "Tus datos de texto se guardaron. No se confirmó el guardado de la foto." : "No se confirmó el guardado. Consulta tu perfil antes de volver a intentar." });
       // Saving and reloading are separate: a failed reload must not claim the save failed.
       return authReply(200, { success: true });
     }
@@ -83,8 +109,8 @@ export async function handleProfile(request: Request, config: WebAuthConfig | nu
       const totals = await count.json();
       data = { ...data, total_publicaciones: totals.total_publicaciones };
     }
-    return authReply(200, { ...normalizeProfile(data), ...(config.provider === "supabase" ? { edad_calculada: data.edad_calculada } : {}) });
+    return authReply(200, { ...normalizeProfile(data, config.supabase?.origin), ...(config.provider === "supabase" ? { edad_calculada: data.edad_calculada } : {}) });
   } catch {
-    return request.method === "PUT" ? authReply(503, { detail: "No se confirmó el guardado. Consulta tu perfil antes de volver a intentar." }) : unavailable();
+    return request.method === "PUT" ? authReply(503, { detail: textSaved ? "Tus datos de texto se guardaron. No se confirmó el guardado de la foto." : "No se confirmó el guardado. Consulta tu perfil antes de volver a intentar." }) : unavailable();
   }
 }

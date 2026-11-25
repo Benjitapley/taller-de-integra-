@@ -23,3 +23,5 @@ Reportes toma un bloqueo de fila durante la revisión. Guarda la transición, a�
 3. Mantener habilitada la web de reportes con `WEB_REPORTES_ENABLED=true` y configurar el rol administrativo en Auth/Users.
 
 El ensayo local usa `python -I -B backend/local_stack/run_stack.py --pg-bin "<directorio bin de PostgreSQL>" --reports`. Añadir `--progressive` para probar el esquema heredado.
+
+El ensayo envía dos decisiones incompatibles a un reporte en revisión y verifica una respuesta `200`, una `409` y una sola actuación adicional. También compara los cupos de la publicación y las pertenencias del arriendo antes y después de moderar. La aceptación en el entorno final requiere repetir las comprobaciones sobre la versión desplegada.

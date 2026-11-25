@@ -10,6 +10,7 @@ const positiveId = (value: unknown): value is number => typeof value === "number
 const validText = (value: unknown, limit: number): value is string =>
   typeof value === "string" && value.trim().length > 0 && Array.from(value.trim()).length <= limit && !value.includes("\0");
 const responseFields = ["id_reporte", "tipo", "id_usuario_reportado", "id_publicacion_reportada", "categoria", "descripcion", "estado", "fecha"] as const;
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function publicReport(value: unknown): Report {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
@@ -33,6 +34,7 @@ export async function handleReports(request: Request, config: WebAuthConfig | nu
   if (!token) return expired();
 
   const sending = request.method === "POST";
+  const idempotencyKey = sending ? request.headers.get("Idempotency-Key") : null;
   const query = new URL(request.url).searchParams;
   let path: string;
   let body: Record<string, unknown> | undefined;
@@ -42,6 +44,7 @@ export async function handleReports(request: Request, config: WebAuthConfig | nu
       return authReply(403, { detail: "Origen de solicitud no permitido." });
     }
     if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json" || query.size) return invalid();
+    if (idempotencyKey !== null && !uuid.test(idempotencyKey)) return authReply(422, { detail: "Clave de envío inválida." });
     try {
       const data = await limitedJson(request);
       const { categoria, descripcion, id_usuario_reportado: person, id_publicacion_reportada: listing } = data;
@@ -61,12 +64,14 @@ export async function handleReports(request: Request, config: WebAuthConfig | nu
   }
 
   try {
-    const response = await upstream(config, path, token, body, transport);
+    const headers = idempotencyKey === null ? undefined : { "Idempotency-Key": idempotencyKey };
+    const response = await upstream(config, path, token, body, transport, headers);
     if (response.status === 401) return expired();
     if (response.status === 403) return authReply(403, { detail: sending
       ? "No puedes reportar ese objetivo. Confirma tu correo y comprueba que la publicación sea ajena o que hayas tenido una conexión aceptada o convivencia con esa persona."
       : "Tu cuenta no puede consultar estos reportes." });
     if (response.status === 404) return authReply(404, { detail: sending ? "El objetivo del reporte no está disponible." : "No se encontraron reportes para esta sesión." });
+    if (sending && response.status === 409) return authReply(409, { detail: "La clave de envío ya se usó con otros datos de reporte." });
     if (response.status === 422) return invalid();
     if (response.status === 429) return authReply(429, { detail: "Espera unos minutos antes de volver a intentarlo." });
     if (response.status !== (sending ? 201 : 200)) return unavailable();

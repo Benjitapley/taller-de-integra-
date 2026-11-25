@@ -5,10 +5,12 @@ import socket
 import subprocess
 import sys
 import time
+from io import BytesIO
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
+from PIL import Image
 from testing_identity import IdentityFixture
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -79,10 +81,15 @@ def run_integration(fixture, urls, clean, processes, web=False, baseline=None, p
                     time.sleep(.1)
                 else: raise AssertionError(f"Timeout iniciando {service}")
 
+            def send_request(method, path, person=0, headers=None, **kwargs):
+                outgoing = dict(headers or {})
+                if person is not None:
+                    outgoing["Authorization"] = "Bearer " + people[person]["access_token"]
+                return client.request(method, origins["gateway"] + path, headers=outgoing, **kwargs)
+
             def request(method, path, status=200, person=0, **kwargs):
                 nonlocal checks
-                headers = {"Authorization": "Bearer " + people[person]["access_token"]} if person is not None else {}
-                response = client.request(method, origins["gateway"] + path, headers=headers, **kwargs)
+                response = send_request(method, path, person=person, **kwargs)
                 assert response.status_code == status, f"{method} {path}: {response.status_code}, esperado {status}: {response.text[:300]}"
                 checks += 1
                 return response.json() if response.content else None
@@ -97,8 +104,23 @@ def run_integration(fixture, urls, clean, processes, web=False, baseline=None, p
             request("PUT", "/local/v1/perfil", data={"ocupacion": "Estudiante", "ciudad": "Valdivia", "edad": "99"}, status=422)
             request("PUT", "/local/v1/perfil", data={"ocupacion": "Estudiante", "ciudad": "Valdivia"})
             assert request("GET", "/local/v1/perfil")["ciudad"] == "Valdivia"
-            assert request("GET", "/usuarios/me")["nombre"] == "Persona local 0"
+            original = request("GET", "/usuarios/me")
+            canonical = request("GET", "/api/usuarios/me")
+            assert original["nombre"] == canonical["nombre"] == "Persona local 0"
+            assert canonical["id_usuario"] == business_ids[0]
+            assert request("POST", "/api/usuarios/me", json={"nombre": "Otro nombre", "fecha_nacimiento": "2000-03-01"})["id_usuario"] == business_ids[0]
+            with BytesIO() as avatar:
+                Image.new("RGB", (2, 2), "blue").save(avatar, format="PNG")
+                photo = ("avatar.png", avatar.getvalue(), "image/png")
+            request("PUT", "/api/usuarios/me/foto", person=None, status=401, files={"foto": photo})
+            request("PUT", "/api/usuarios/me/foto", status=422, files={"foto": ("otro.png", b"texto", "image/png")})
+            reference = request("PUT", "/api/usuarios/me/foto", files={"foto": photo})["foto_perfil"]
+            assert request("GET", "/api/usuarios/me")["foto_perfil"] == reference
+            assert request("GET", "/api/usuarios/me", person=1)["foto_perfil"] is None
+            image = client.get(origins["gateway"] + reference)
+            assert image.status_code == 200 and image.content == photo[1]
             assert request("PATCH", "/usuarios/me", json={"ciudad": "Valdivia"})["ciudad"] == "Valdivia"
+            assert request("PATCH", "/api/usuarios/me", json={"ciudad": "Valdivia"})["ciudad"] == "Valdivia"
             request("PATCH", "/usuarios/me", status=422, json={"edad": 99})
             request("PATCH", "/local/v1/perfil", person=1, json={"presupuesto": 300000, "zona_interes": "Centro", "ocupacion": "Estudiante"})
             request("PATCH", "/local/v1/perfil", person=1, status=422, json={"administrator": True})
@@ -179,7 +201,7 @@ def run_integration(fixture, urls, clean, processes, web=False, baseline=None, p
                     })
                 finally:
                     account["email_confirmed_at"] = confirmed_at
-                exercise_reports(report_owner, request, ids, pub, connection)
+                exercise_reports(report_owner, request, send_request, ids, pub, connection)
                 from notificaciones import exercise_notifications
                 exercise_notifications(report_owner, request, client, origins["auth"], notice_keys, ids, common["ROOMIES_INTERNAL_TOKEN"])
             print(f"PASS {checks} comprobaciones HTTP: identidad, perfil, publicaciones, postulaciones, notificaciones, conexiones, admin y revocación", flush=True)

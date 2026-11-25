@@ -2,6 +2,7 @@
 import psycopg
 from psycopg.rows import dict_row
 from app.domain.local_users import User
+from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.settings import database_url, persistence_layout
 
 FIELDS = "id_usuario,supabase_user_id,nombre,fecha_nacimiento,ocupacion,ciudad,breve_descripcion,sobre_mi,foto_perfil,presupuesto,zona_interes"
@@ -41,14 +42,69 @@ class PostgresUsers:
             return User(**row)
 
     def patch(self, subject, changes):
+        with self.connect() as connection:
+            return self._patch(connection, subject, changes)
+
+    def _patch(self, connection, subject, changes):
         if not changes or set(changes) - EDITABLE:
             raise ValueError("Campos no permitidos")
         assignments = ",".join(f"{key}=%s" for key in changes)
+        condition = "id_usuario=(SELECT id_usuario FROM auth_users.identidad WHERE supabase_user_id=%s)" if self.progressive else "supabase_user_id=%s"
+        changed = connection.execute(f"UPDATE {self.table} SET {assignments} WHERE {condition}", (*changes.values(),subject))
+        if changed.rowcount != 1:
+            return None
+        row = connection.execute(self.select + f" WHERE {self.identity_column}=%s", (subject,)).fetchone()
+        return User(**row) if row else None
+
+    def patch_with_photo(self, subject, changes, name, upload, old_key):
+        # Registrar antes de subir: si cae el proceso, el candidato queda para limpieza.
         with self.connect() as connection:
-            condition = "id_usuario=(SELECT id_usuario FROM auth_users.identidad WHERE supabase_user_id=%s)" if self.progressive else "supabase_user_id=%s"
-            connection.execute(f"UPDATE {self.table} SET {assignments} WHERE {condition}", (*changes.values(),subject))
-            row = connection.execute(self.select + f" WHERE {self.identity_column}=%s", (subject,)).fetchone()
-            return User(**row) if row else None
+            connection.execute(
+                "INSERT INTO auth_users.limpieza_foto (objeto, disponible) VALUES (%s, now() + interval '15 minutes')",
+                (name,),
+            )
+        with self.connect() as connection:
+            candidate = connection.execute(
+                "SELECT objeto FROM auth_users.limpieza_foto WHERE objeto=%s FOR UPDATE", (name,),
+            ).fetchone()
+            if candidate is None:
+                raise RuntimeError("La carga de foto expiró.")
+            previous = connection.execute(
+                self.select + f" WHERE {self.identity_column}=%s FOR UPDATE OF u", (subject,),
+            ).fetchone()
+            if previous is None:
+                return None
+            upload()
+            updated = self._patch(connection, subject, changes)
+            if updated is None:
+                raise RuntimeError("No se pudo actualizar la referencia de la foto.")
+            prior = old_key(previous["foto_perfil"])
+            if prior:
+                connection.execute(
+                    "INSERT INTO auth_users.limpieza_foto (objeto) VALUES (%s) ON CONFLICT DO NOTHING", (prior,),
+                )
+            connection.execute("DELETE FROM auth_users.limpieza_foto WHERE objeto=%s", (name,))
+            return updated
+
+    def clean_photos(self, delete):
+        for _ in range(3):
+            with self.connect() as connection:
+                row = connection.execute("""
+                    SELECT objeto FROM auth_users.limpieza_foto WHERE disponible <= now()
+                    ORDER BY disponible, objeto LIMIT 1 FOR UPDATE SKIP LOCKED
+                    """).fetchone()
+                if row is None:
+                    return
+                name = row["objeto"]
+                try:
+                    delete(name)
+                except DependencyUnavailable:
+                    connection.execute(
+                        "UPDATE auth_users.limpieza_foto SET disponible=now()+interval '5 minutes' WHERE objeto=%s",
+                        (name,),
+                    )
+                else:
+                    connection.execute("DELETE FROM auth_users.limpieza_foto WHERE objeto=%s", (name,))
 
     def public_search(self, filters):
         where, params = [], []

@@ -16,7 +16,7 @@ const identity = { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", email_confirmed_a
 const credentials = { correo: "fiction@example.com", contrasena: "Test-password-123" };
 const req = (action, body = {}, overrides = {}) => new Request(`${config.origin}/web-api/auth/${action}`, { method: "POST", headers: { origin: config.origin, "content-type": "application/json", "x-haycupo-csrf": "1", ...overrides }, body: JSON.stringify(body) });
 const ok = data => Response.json(data);
-const defaultTransport = async url => url.includes("/token?") || url.endsWith("/verify") ? ok(session) : url.endsWith("/user") ? ok(identity) : url.endsWith("/api/v1/perfil") ? ok({ nombre: "Ficticio" }) : ok({});
+const defaultTransport = async url => url.includes("/token?") || url.endsWith("/verify") ? ok(session) : url.endsWith("/user") ? ok(identity) : url.endsWith("/api/usuarios/me") ? ok({ nombre: "Ficticio" }) : ok({});
 
 test("proveedor local explícito; remoto, secreto y proveedor desconocido se rechazan", () => {
   assert.equal(config.provider, "supabase");
@@ -157,12 +157,12 @@ test("inicialización usa UUID acreditado, sin consulta ni unión por correo", a
   const calls = [];
   const response = await handleAuth(req("login", credentials), "login", config, async (url, options) => {
     calls.push({ url, options });
-    if (url.endsWith("/api/v1/perfil") && calls.filter(c => c.url === url).length === 1) return new Response("{}", { status: 404 });
-    if (url.endsWith("/api/v1/perfil/inicializacion")) return ok({ id_usuario: 12, inicializado: true });
+    if (url.endsWith("/api/usuarios/me") && options.method === "POST") return ok({ id_usuario: 12, inicializado: true });
+    if (url.endsWith("/api/usuarios/me") && calls.filter(c => c.url === url).length === 1) return new Response("{}", { status: 404 });
     return defaultTransport(url, options);
   });
   assert.equal(response.status, 200);
-  const initialization = calls.find(c => c.url.endsWith("/inicializacion"));
+  const initialization = calls.find(c => c.url.endsWith("/api/usuarios/me") && c.options.method === "POST");
   assert.deepEqual(JSON.parse(initialization.options.body), identity.user_metadata);
   assert.equal(initialization.options.headers.Authorization, `Bearer ${token}`);
   assert.ok(calls.every(c => !c.url.includes(credentials.correo)));

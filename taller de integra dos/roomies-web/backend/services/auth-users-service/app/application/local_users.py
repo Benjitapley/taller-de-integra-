@@ -41,7 +41,7 @@ class Users:
             raise RuleViolation("Perfil no disponible.", 403)
         return user
 
-    def update(self, subject, changes):
+    def update(self, subject, changes, *, persist=None):
         user = self.own(subject)
         limits = {"ocupacion":100,"ciudad":100,"breve_descripcion":255,"sobre_mi":5000,"zona_interes":250,"foto_perfil":255}
         if set(changes) - {*limits, "presupuesto"}:
@@ -56,7 +56,8 @@ class Users:
                 if value is not None and (not isinstance(value, str) or len(value) > limits[key] or "\x00" in value):
                     raise RuleViolation("Campo de perfil inválido.")
                 normalized[key] = (value.strip() or None) if value else None
-        updated = self.repository.patch(subject, normalized) if normalized else user
+        save = persist if persist is not None else self.repository.patch
+        updated = save(subject, normalized) if normalized else user
         if updated is None or updated.supabase_user_id != subject:
             raise RuleViolation("Perfil no disponible.", 404)
         return updated

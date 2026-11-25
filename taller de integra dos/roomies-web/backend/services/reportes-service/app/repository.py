@@ -1,10 +1,12 @@
 import psycopg
 from psycopg.rows import dict_row
 
+from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.settings import database_url
 
 
 FIELDS = "id_reporte,tipo,id_usuario_reportado,id_publicacion_reportada,categoria,descripcion,estado,fecha"
+BY_KEY = f"SELECT {FIELDS} FROM reportes.reporte WHERE id_denunciante=%s AND clave_idempotencia=%s"
 DETAIL = f"""
     SELECT {FIELDS},id_denunciante,COALESCE((
         SELECT jsonb_agg(jsonb_build_object(
@@ -25,14 +27,27 @@ class ReportRepository:
             row_factory=dict_row, connect_timeout=3, prepare_threshold=None,
         )
 
-    def create(self, actor_id, data):
+    def by_key(self, actor_id, key):
         with self.connect() as connection:
-            return connection.execute(
+            return connection.execute(BY_KEY, (actor_id, key)).fetchone()
+
+    def create(self, actor_id, data, key):
+        with self.connect() as connection:
+            created = connection.execute(
                 f"""INSERT INTO reportes.reporte
-                    (id_denunciante,id_usuario_reportado,id_publicacion_reportada,categoria,descripcion)
-                    VALUES (%s,%s,%s,%s,%s) RETURNING {FIELDS}""",
-                (actor_id, data.id_usuario_reportado, data.id_publicacion_reportada, data.categoria, data.descripcion),
+                    (id_denunciante,id_usuario_reportado,id_publicacion_reportada,categoria,descripcion,clave_idempotencia)
+                    VALUES (%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (id_denunciante,clave_idempotencia) DO NOTHING
+                    RETURNING {FIELDS}""",
+                (actor_id, data.id_usuario_reportado, data.id_publicacion_reportada, data.categoria, data.descripcion, key),
             ).fetchone()
+            if created is not None:
+                return created
+            # Una segunda sentencia puede ver el INSERT concurrente tras su commit.
+            existing = connection.execute(BY_KEY, (actor_id, key)).fetchone()
+            if existing is None:
+                raise DependencyUnavailable()
+            return existing
 
     def mine(self, actor_id, limit, before):
         boundary = " AND (fecha,id_reporte)<(%s,%s)" if before else ""

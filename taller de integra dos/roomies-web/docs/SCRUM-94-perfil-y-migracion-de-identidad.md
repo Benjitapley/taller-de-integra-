@@ -2,11 +2,19 @@
 
 ## Contrato de perfil
 
-En modo Supabase, `GET` y `PATCH /usuarios/me` comparten implementación con `/api/v1/perfil` y `/local/v1/perfil`. Tanto la consulta como la edición devuelven el DTO privado de SCRUM-93. `verificado` representa la confirmación del correo en Supabase. Si un perfil heredado carece de fecha de nacimiento utilizable, se devuelve `edad: null` y `edad_calculada: false`.
+El Gateway publica `GET`, `POST` y `PATCH /api/usuarios/me`. La consulta y la edición amplían el DTO privado de SCRUM-93 con `id_usuario`, `fecha_nacimiento`, `presupuesto` y `zona_interes`. Se conservan los alias y sus formatos para la transición. `verificado` representa la confirmación del correo en Supabase. Si un perfil heredado carece de fecha de nacimiento utilizable, se devuelve `edad: null` y `edad_calculada: false`.
 
 La consulta requiere un Bearer válido. La edición JSON, la edición multipart y la inicialización requieren además correo confirmado, conforme a la regla específica de provisión de SCRUM-93. El PATCH conserva campos omitidos, borra valores con nulo o texto en blanco y admite `presupuesto` y `zona_interes`. La inicialización acepta fechas en formato ISO y edades entre 18 y 120 años, y devuelve siempre el ID Roomies que ya esté asociado al UUID.
 
-La web en modo Supabase usa `/api/v1/perfil` para consultar y guardar. Ese alias ya entregaba el DTO de consulta en SCRUM-93 y permite actualizar la web y Auth/Users por separado.
+El BFF usa las rutas canónicas en modo Supabase. Para SCRUM-111, `PUT /api/usuarios/me/foto` recibe únicamente el archivo multipart `foto`, exige sesión y correo confirmado, y devuelve `{"foto_perfil":"<URL pública>"}`. El BFF distingue el guardado de los campos de texto del guardado de la foto.
+
+## Activar Supabase Storage
+
+1. En **Storage** del proyecto autorizado, crear el bucket público `perfiles`, con límite de 5 000 000 bytes y tipos `image/jpeg`, `image/png` e `image/webp`. Revisar que sus políticas no otorguen escritura directa a `anon` ni `authenticated`. El contrato permite lectura pública. La creación se hace desde Storage, mediante el Dashboard o su API.
+2. Aplicar [la migración de limpieza](../backend/services/auth-users-service/migrations/003_profile_photo_cleanup.up.sql) después de aprovisionar el esquema `auth_users` y el rol `sql_auth_users`. Configurar `ROOMIES_PROFILE_STORAGE_SECRET_KEY` con una clave secreta `sb_secret_…` del mismo proyecto, solo en Auth/Users.
+3. Verificar con una cuenta de pruebas confirmada que el PUT devuelve la URL, el GET devuelve la misma referencia y la imagen aparece en **Storage → perfiles** y en el perfil después de volver a iniciar sesión. Reemplazarla y comprobar que la URL cambia y la tarea de limpieza retira el objeto anterior.
+
+Auth/Users valida el contenido y asigna una clave nueva bajo el UUID del usuario. En modo Supabase registra en PostgreSQL la URL pública y la limpieza pendiente. Si falla la actualización de PostgreSQL, la foto previa continúa referenciada y el candidato se recoge por la cola. Las referencias anteriores a `/imagenes/…` siguen siendo legibles mientras se conserve su volumen. En el laboratorio desechable, la foto se guarda en el directorio local de pruebas.
 
 ## Asociación de cuentas existentes
 

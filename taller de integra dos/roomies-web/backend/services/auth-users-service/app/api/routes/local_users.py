@@ -8,15 +8,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from starlette.datastructures import UploadFile
+from starlette.concurrency import run_in_threadpool
 from app.application.local_users import Users, require_confirmed_email
 from app.application.notifications import APPLICATION_TYPE, MAX_ID, notification_page
 from app.domain.local_users import User
 from app.infrastructure.persistence.local_users import PostgresUsers
+from app.infrastructure.profile_storage import MAX_PHOTO_BYTES, ProfileStorage
 from app.infrastructure.security.local_provider import confirmed_email
 from backend.service_runtime.security import access_token, verified_claims
 from backend.service_runtime.notifications import PRODUCERS
 from backend.service_runtime.reporting_security import verify_service_token
 from backend.service_runtime.images import Images
+from backend.service_runtime.contracts import RuleViolation
+from backend.service_runtime.settings import runtime_mode
 
 router = APIRouter()
 
@@ -67,6 +71,7 @@ class InitializedProfile(BaseModel):
 
 @router.post("/local/v1/perfil/inicializacion", response_model=InitializedProfile)
 @router.post("/api/v1/perfil/inicializacion", response_model=InitializedProfile)
+@router.post("/api/usuarios/me", response_model=InitializedProfile)
 def initialize(data: Initialization, who=Depends(identity), service=Depends(users)):
     user = service.initialize(who[0], data.nombre, data.fecha_nacimiento, who[1])
     return InitializedProfile(id_usuario=user.id_usuario)
@@ -106,11 +111,27 @@ class OwnProfile(BaseModel):
         )
 
 
+class CanonicalProfile(OwnProfile):
+    id_usuario: int
+    fecha_nacimiento: date | None
+    presupuesto: int | None
+    zona_interes: str | None
+
+    @classmethod
+    def from_user(cls, user, confirmed):
+        return cls(
+            **OwnProfile.from_user(user, confirmed).model_dump(),
+            id_usuario=user.id_usuario, fecha_nacimiento=user.fecha_nacimiento,
+            presupuesto=user.presupuesto, zona_interes=user.zona_interes,
+        )
+
+
 @router.get("/usuarios/me", response_model=OwnProfile)
 @router.get("/local/v1/perfil", response_model=OwnProfile)
 @router.get("/api/v1/perfil", response_model=OwnProfile)
+@router.get("/api/usuarios/me", response_model=CanonicalProfile)
 def profile(who=Depends(identity), service=Depends(users)):
-    return OwnProfile.from_user(service.own(who[0]), who[1])
+    return CanonicalProfile.from_user(service.own(who[0]), who[1])
 
 
 @router.post("/local/v1/sesion/revocar")
@@ -139,10 +160,56 @@ class OwnProfilePatch(BaseModel):
 @router.patch("/usuarios/me", response_model=OwnProfile)
 @router.patch("/local/v1/perfil", response_model=OwnProfile)
 @router.patch("/api/v1/perfil", response_model=OwnProfile)
+@router.patch("/api/usuarios/me", response_model=CanonicalProfile)
 def patch_profile(data: OwnProfilePatch, who=Depends(identity), service=Depends(users)):
     require_confirmed_email(who[1])
     updated = service.update(who[0], data.model_dump(exclude_unset=True))
-    return OwnProfile.from_user(updated, who[1])
+    return CanonicalProfile.from_user(updated, who[1])
+
+
+class ProfilePhoto(BaseModel):
+    foto_perfil: str
+
+
+def save_profile_photo(data, subject, service, changes):
+    service.own(subject)
+    if not data:
+        raise RuleViolation("Selecciona una fotografía.")
+    if runtime_mode() == "supabase":
+        storage = ProfileStorage()
+        name, reference, content_type = storage.prepare(subject, data)
+
+        def persist(owner, fields):
+            return service.repository.patch_with_photo(
+                owner, fields, name, lambda: storage.upload(name, content_type, data),
+                lambda previous: storage.own_key(owner, previous),
+            )
+
+        return service.update(subject, {**changes, "foto_perfil": reference}, persist=persist)
+
+    images = Images(os.environ.get("ROOMIES_IMAGE_DIR"), "u_")
+    reference = images.save(data)
+    try:
+        return service.update(subject, {**changes, "foto_perfil": reference})
+    except Exception:
+        images.delete(reference)
+        raise
+
+
+@router.put("/api/usuarios/me/foto", response_model=ProfilePhoto)
+async def update_profile_photo(request: Request, who=Depends(identity), service=Depends(users)):
+    require_confirmed_email(who[1])
+    if request.headers.get("content-type", "").partition(";")[0].strip().lower() != "multipart/form-data":
+        raise RuleViolation("Envía la fotografía en un formulario multipart.")
+    async with request.form(max_files=1, max_fields=1) as form:
+        photo = form.get("foto")
+        if len(form.multi_items()) != 1 or not isinstance(photo, UploadFile) or not photo.filename:
+            raise RuleViolation("Envía un solo archivo en el campo foto.")
+        data = await photo.read(MAX_PHOTO_BYTES + 1)
+    if len(data) > MAX_PHOTO_BYTES:
+        raise RuleViolation("La imagen supera 5 MB.", 413)
+    updated = await run_in_threadpool(save_profile_photo, data, who[0], service, {})
+    return ProfilePhoto(foto_perfil=updated.foto_perfil)
 
 
 @router.put("/local/v1/perfil")
@@ -166,17 +233,12 @@ async def update_profile(request: Request, who=Depends(identity), service=Depend
         photo = form.get("foto")
         if photo not in (None, "") and not isinstance(photo, UploadFile):
             raise HTTPException(422, "Envía una fotografía válida.")
-        images = Images(os.environ.get("ROOMIES_IMAGE_DIR"), "u_")
-        reference = None
-        try:
-            if isinstance(photo, UploadFile) and photo.filename:
-                reference = images.save(await photo.read(5 * 1024 * 1024 + 1))
-                if reference:
-                    changes["foto_perfil"] = reference
-            service.update(who[0], changes)
-        except Exception:
-            images.delete(reference)
-            raise
+        if isinstance(photo, UploadFile) and photo.filename:
+            data = await photo.read(5 * 1024 * 1024 + 1)
+            if data:
+                await run_in_threadpool(save_profile_photo, data, who[0], service, changes)
+                return {"success": True}
+        await run_in_threadpool(service.update, who[0], changes)
     return {"success": True}
 
 

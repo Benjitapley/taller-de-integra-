@@ -91,14 +91,14 @@ async function user(config: WebAuthConfig, token: string, transport: Transport) 
   return result;
 }
 async function initialize(config: WebAuthConfig, token: string, identity: Record<string, unknown>, transport: Transport) {
-  const current = await transport(`${config.backend}/api/v1/perfil`, { cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000), headers: { Authorization: `Bearer ${token}` } });
+  const current = await transport(`${config.backend}/api/usuarios/me`, { cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000), headers: { Authorization: `Bearer ${token}` } });
   if (current.ok) return;
   if (current.status !== 404) throw new Error("profile-unavailable");
   const metadata = identity.user_metadata;
   if (!metadata || typeof metadata !== "object") throw new Error("profile-incomplete");
   const data = metadata as Record<string, unknown>;
   if (typeof data.nombre !== "string" || !data.nombre.trim() || data.nombre.length > 200 || typeof data.fecha_nacimiento !== "string") throw new Error("profile-incomplete");
-  const response = await transport(`${config.backend}/api/v1/perfil/inicializacion`, {
+  const response = await transport(`${config.backend}/api/usuarios/me`, {
     method: "POST", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
     headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ nombre: data.nombre, fecha_nacimiento: data.fecha_nacimiento }),

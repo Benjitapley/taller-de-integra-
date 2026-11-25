@@ -32,8 +32,7 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
   } catch { return null; }
 }
 export const cookieName = (config: WebAuthConfig) => config.provider === "supabase" ? (config.secure ? "__Host-roomies_sb_access" : "roomies_sb_dev_access") : (config.secure ? "__Host-haycupo_session" : "haycupo_dev_session");
-// SCRUM-93 ya devuelve el DTO compartido en este alias.
-export const profilePath = (config: WebAuthConfig) => config.provider === "supabase" ? "/api/v1/perfil" : "/api/perfil";
+export const profilePath = (config: WebAuthConfig) => config.provider === "supabase" ? "/api/usuarios/me" : "/api/perfil";
 export function sessionCookie(config: WebAuthConfig, token = "", maxAge = 0) {
   return `${cookieName(config)}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${config.secure ? "; Secure" : ""}`;
 }
@@ -59,11 +58,11 @@ export function authReply(status: number, body: unknown, headers?: HeadersInit) 
 export function authError(status: number, headers?: HeadersInit) {
   return authReply(status, { detail: messages[status] ?? messages[503] }, headers);
 }
-export async function upstream(config: WebAuthConfig, path: string, token: string, body?: unknown, transport: Transport = fetch) {
+export async function upstream(config: WebAuthConfig, path: string, token: string, body?: unknown, transport: Transport = fetch, additionalHeaders: Record<string, string> = {}) {
   return transport(`${config.backend}${path}`, {
     method: body === undefined ? "GET" : "POST", cache: "no-store", redirect: "error",
     signal: AbortSignal.timeout(10_000),
-    headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { ...additionalHeaders, Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }

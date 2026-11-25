@@ -1,7 +1,9 @@
-"""Pruebas de SCRUM-95 únicamente dentro del clúster descartable del runner."""
+"""Pruebas de SCRUM-95 y SCRUM-96 dentro del clúster descartable."""
 import secrets
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 from uuid import uuid4
 
 import psycopg
@@ -24,6 +26,7 @@ def prepare_reports(owner, port):
         for path in (
             "reportes-service/migrations/001_reportes.up.sql",
             "reportes-service/migrations/002_revision.up.sql",
+            "reportes-service/migrations/003_idempotencia.up.sql",
             "match-conexion-service/migrations/001_relacion_aceptada.up.sql",
             "convivencia-mensajeria-service/migrations/001_convivencia_schema.up.sql",
             "convivencia-mensajeria-service/migrations/002_relacion_historica.up.sql",
@@ -58,9 +61,31 @@ def fixture_overlap(owner, publication, first, second):
             )
         connection.execute("""UPDATE convivencia_mensajeria.pertenencia SET estado='Inactiva'
             WHERE id_arriendo=%s AND id_usuario=%s""", (rental, first))
+    return rental
 
 
-def exercise_reports(owner, request, ids, publication, connection):
+def rental_snapshot(owner, rental):
+    with psycopg.connect(owner) as connection:
+        return connection.execute("""
+            SELECT a.cupos_totales,a.version_capacidad,p.id_pertenencia,p.id_usuario,p.estado,p.terminada_en
+            FROM convivencia_mensajeria.arriendo a
+            LEFT JOIN convivencia_mensajeria.pertenencia p USING (id_arriendo)
+            WHERE a.id_arriendo=%s ORDER BY p.id_pertenencia
+            """, (rental,)).fetchall()
+
+
+def simultaneous_requests(send, method, path, payloads, **kwargs):
+    ready = Barrier(2, timeout=5)
+
+    def submit(body):
+        ready.wait()
+        return send(method, path, json=body, **kwargs)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        return list(pool.map(submit, payloads))
+
+
+def exercise_reports(owner, request, send, ids, publication, connection):
     reports = "/api/reportes"
     mine = reports + "/mios"
     reason = {"categoria": "Conducta", "descripcion": "Descripción ficticia."}
@@ -72,14 +97,31 @@ def exercise_reports(owner, request, ids, publication, connection):
     request("POST", reports, status=403, json={**reason, **target})
     request("POST", reports, status=404, json={**reason, "id_publicacion_reportada": 2147483647})
     request("POST", reports, status=403, json={**reason, "id_usuario_reportado": ids[2]})
-    first = request("POST", reports, person=1, status=201, json={**reason, **target})
+    payload = {**reason, **target}
+    keyed = {"Idempotency-Key": str(uuid4())}
+    preflight = send("OPTIONS", reports, person=None, headers={
+        "Origin": "http://127.0.0.1:3000",
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "authorization, idempotency-key",
+    })
+    assert preflight.status_code == 204 and "idempotency-key" in preflight.headers["Access-Control-Allow-Headers"].lower()
+    request("POST", reports, person=1, status=422, json=payload, headers={"Idempotency-Key": "invalida"})
+    initial, repeated = simultaneous_requests(send, "POST", reports, [payload, payload], person=1, headers=keyed)
+    assert initial.status_code == repeated.status_code == 201, (initial.text, repeated.text)
+    first = initial.json()
+    assert repeated.json() == first
     assert first["estado"] == "Pendiente" and first["tipo"] == "Publicacion"
+    replay = request("POST", reports, person=1, status=201, json={**payload, "categoria": " Conducta "}, headers=keyed)
+    assert replay == first
+    conflict = request("POST", reports, person=1, status=409, json={**payload, "descripcion": "Otro texto."}, headers=keyed)
+    assert conflict["codigo"] == "CLAVE_IDEMPOTENCIA_REUTILIZADA"
+    request("POST", reports, status=403, json=payload, headers=keyed)
     assert request("GET", mine)["items"] == []
 
     request("DELETE", f"/conexiones/{connection}", status=204)
     user_report = request("POST", reports, status=201, json={**reason, "id_usuario_reportado": ids[1]})
     assert user_report["tipo"] == "Usuario"
-    fixture_overlap(owner, publication, ids[0], ids[2])
+    rental = fixture_overlap(owner, publication, ids[0], ids[2])
     historical = request("POST", reports, status=201, json={**reason, "id_usuario_reportado": ids[2]})
     assert historical["id_reporte"] != user_report["id_reporte"]
 
@@ -89,8 +131,38 @@ def exercise_reports(owner, request, ids, publication, connection):
     request("GET", mine, person=1, params={"cursor": page["siguiente_cursor"]}, status=422)
     assert request("GET", mine, person=1)["items"] == [first]
     request("GET", "/internal/conexiones/relacion", status=404, params={"a": ids[0], "b": ids[1]})
-    print("PASS reportes por publicación, conexión eliminada y convivencia histórica; permisos y cursor", flush=True)
+    listing_slots = f"/api/publicaciones/{publication}/cupos"
+    slots_before = request("GET", listing_slots)
+    rental_before = rental_snapshot(owner, rental)
+    assert len(rental_before) == 2
     exercise_moderation(owner, request, ids, first)
+    exercise_concurrent_moderation(request, send, user_report["id_reporte"])
+    assert request("GET", listing_slots) == slots_before
+    assert rental_snapshot(owner, rental) == rental_before
+    print("PASS SCRUM-96: decisiones concurrentes, bitácora y cupos/pertenencias conservados", flush=True)
+
+    replay = request("POST", reports, person=1, status=201, json=payload, headers=keyed)
+    assert replay == {**first, "estado": "Resuelto"}
+    second_account = request("POST", reports, person=2, status=201, json=payload, headers=keyed)
+    assert second_account["id_reporte"] != first["id_reporte"]
+    assert request("GET", mine, person=1)["items"] == [replay]
+    assert request("GET", mine, person=2)["items"] == [second_account]
+    print("PASS SCRUM-95: idempotencia concurrente, claves por cuenta, permisos y cursor", flush=True)
+
+
+def exercise_concurrent_moderation(request, send, report_id):
+    url = f"/api/admin/reportes/{report_id}"
+    initial = request("PATCH", url, json={"estado": "En_Revision"})
+    responses = simultaneous_requests(send, "PATCH", url, [{"estado": "Resuelto"}, {"estado": "Descartado"}])
+    assert sorted(response.status_code for response in responses) == [200, 409], [response.text for response in responses]
+    accepted = next(response.json() for response in responses if response.status_code == 200)
+    final = request("GET", url)
+    assert final == accepted
+    assert final["estado"] in {"Resuelto", "Descartado"}
+    assert final["historial"][:1] == initial["historial"]
+    assert len(final["historial"]) == 2
+    assert final["historial"][1]["estado_anterior"] == "En_Revision"
+    assert final["historial"][1]["estado_nuevo"] == final["estado"]
 
 
 def exercise_moderation(owner, request, ids, report):

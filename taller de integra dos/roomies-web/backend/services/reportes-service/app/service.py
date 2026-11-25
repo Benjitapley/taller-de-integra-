@@ -12,6 +12,17 @@ TRANSITIONS = {
 }
 
 
+class IdempotencyConflict(RuleViolation):
+    def __init__(self):
+        super().__init__("La clave de envío ya se usó con otros datos de reporte.", 409)
+
+
+def matching_report(row, data):
+    if any(row[field] != value for field, value in data.model_dump().items()):
+        raise IdempotencyConflict()
+    return row
+
+
 def check_transition(before, after):
     if after not in TRANSITIONS.get(before, ()):
         raise RuleViolation("Transición de estado no permitida. Actualiza el reporte.", 409)
@@ -22,7 +33,11 @@ class Reports:
         self.repository = repository
         self.relationships = relationships
 
-    def create(self, actor_id, data):
+    def create(self, actor_id, data, idempotency_key=None):
+        if idempotency_key is not None:
+            existing = self.repository.by_key(actor_id, idempotency_key)
+            if existing is not None:
+                return matching_report(existing, data)
         if data.id_usuario_reportado is not None:
             if actor_id == data.id_usuario_reportado or not self.relationships.related_users(actor_id, data.id_usuario_reportado):
                 raise RuleViolation("Para reportar a una persona debes haber tenido una conexión aceptada o haber convivido con ella.", 403)
@@ -32,7 +47,7 @@ class Reports:
                 raise RuleViolation("Publicación no encontrada.", 404)
             if owner == actor_id:
                 raise RuleViolation("No puedes reportar tu propia publicación.", 403)
-        return self.repository.create(actor_id, data)
+        return matching_report(self.repository.create(actor_id, data, idempotency_key), data)
 
     def mine(self, actor_id, limit, cursor):
         return self._page(actor_id, limit, cursor, "mis-reportes",

@@ -72,6 +72,16 @@ test("foto solo permite imágenes existentes locales sin URL externa ni credenci
   for(const value of ["https://remote.example.com/avatar.png","//remote.example.com/avatar.png","data:image/png,anything","javascript:alert(1)","/imagenes/../avatar.png","/imagenes/a.svg","/imagenes/a.png?token=secret","/imagenes/a%2f..png",null])assert.equal(profilePhoto(value),null);
   assert.equal(profilePhoto("/imagenes/abc-123.webp"),"/imagenes/abc-123.webp");
 });
+
+test("perfil acepta fotos del bucket perfiles del proyecto configurado", ()=>{
+  const origin = "https://aaaaaaaaaaaaaaaaaaaa.supabase.co";
+  const key = "cc1ec6db-c997-4f16-b7db-40698fbaa221/" + "0".repeat(32) + ".png";
+  const valid = `${origin}/storage/v1/object/public/perfiles/${key}`;
+  assert.equal(profilePhoto(valid, origin), valid);
+  for (const invalid of [valid + "?token=private", valid.replace("perfiles", "publicaciones"), valid.replace("aaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbb")]) {
+    assert.equal(profilePhoto(invalid, origin), null);
+  }
+});
 test("dos usuarios no comparten caché ni pueden elegir el ID consultado",async()=>{
   const transport=async(url,options)=>{
     assert.equal(url,`${config.backend}/api/perfil`);
@@ -93,6 +103,32 @@ const validForm = () => {
   return form;
 };
 const putRequest = (form=validForm(),headers={},cookie="__Host-haycupo_session=header.payload.signature") => new Request(`${config.origin}/web-api/perfil?id_usuario=999`,{method:"PUT",headers:{cookie,Origin:config.origin,"X-Haycupo-CSRF":"1",...headers},body:form});
+
+test("Supabase separa los cambios de perfil de la carga de la foto", async () => {
+  const form = validForm();
+  form.set("foto", new File(["bytes"], "avatar.png", {type:"image/png"}));
+  const request = putRequest(form, {}, "__Host-roomies_sb_access=header.payload.signature");
+  const calls = [];
+  const response = await handleProfile(request, {...config, provider:"supabase"}, async (url, options) => {
+    calls.push([url, options.method]);
+    assert.equal(options.headers.Authorization,"Bearer header.payload.signature");
+    if (options.method === "PATCH") {
+      const body = JSON.parse(options.body);
+      assert.equal(body.ciudad, "Temuco");
+      assert.equal(body.edad, undefined);
+      assert.equal(body.foto, undefined);
+    } else {
+      assert.deepEqual([...options.body.keys()], ["foto"]);
+      assert.equal(options.body.get("foto").name, "avatar.png");
+    }
+    return Response.json({});
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [
+    [config.backend + "/api/usuarios/me", "PATCH"],
+    [config.backend + "/api/usuarios/me/foto", "PUT"],
+  ]);
+});
 test("PUT transmite multipart y Bearer solo al perfil propio sin ID ni credenciales del navegador",async()=>{
   const response=await handleProfile(putRequest(),config,async(url,options)=>{
     assert.equal(url,config.backend+"/api/perfil");
