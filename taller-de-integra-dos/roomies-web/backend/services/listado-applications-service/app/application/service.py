@@ -87,12 +87,16 @@ class Publications:
             self.repository.close(id)
         return self.get(id,actor_id)
 
-    def occupancy_update(self,id,count,version):
+    def occupancy_update(self,id,count,version,finalizado=False):
         with self.repository.transaction():
             row=self.repository.publication(id,lock=True)
             if row is None:
                 raise RuleViolation("Publicación no encontrada.",404)
+            if finalizado and count != 0:
+                raise RuleViolation("Finalizar requiere ocupación cero.",422)
             self.occupancy_update_locked(row,count,version)
+            if finalizado and version >= row["version_ocupacion"]:
+                self.repository.close(id)
         return self.get(id)
 
     def occupancy_update_locked(self,row,count,version):

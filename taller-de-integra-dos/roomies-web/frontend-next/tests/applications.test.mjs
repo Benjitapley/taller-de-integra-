@@ -171,6 +171,11 @@ test("E02 integrantes conserva cursor, permisos y errores sin datos privados", a
     return Response.json({items: [{...member, token: "secret"}], siguiente_cursor: null});
   });
   assert.deepEqual(await result.json(), {items:[member], siguiente_cursor:null});
+  for (const puede_retirar of [true, false]) {
+    const response = await handleRentalMembers(request, "12", config, async () =>
+      Response.json({ items: [member], siguiente_cursor: null, puede_retirar, token: "secret" }));
+    assert.deepEqual(await response.json(), { items: [member], siguiente_cursor: null, puede_retirar });
+  }
   for (const status of [401,403,404,503]) {
     assert.equal((await handleRentalMembers(request,"12",config,async()=>Response.json({detail:"secret"},{status}))).status,status);
   }

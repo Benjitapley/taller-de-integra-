@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/layout/PageHeader";
 import Card from "@/components/ui/Card";
@@ -37,7 +37,13 @@ export default function ChatPreviewPage() {
     }
   }, [messages]);
 
-  async function load() {
+  const revoke = useCallback(() => {
+    generation.current++;
+    setDenied(true); setConversationId(null); setMessages([]); setCursor(null); setDraft("");
+    setCurrentUserName(""); setBusy(false); setOlderBusy(false);
+  }, []);
+
+  const load = useCallback(async () => {
     const requestGeneration = ++generation.current;
     setBusy(true);
     setError("");
@@ -76,15 +82,14 @@ export default function ChatPreviewPage() {
       if (requestGeneration !== generation.current) return;
       const failure = caught as Error & { status?: number };
       if ([403, 404].includes(failure.status ?? 0)) {
-        setDenied(true);
-        setMessages([]);
+        revoke();
       } else {
         setError(failure.message || "No se pudo cargar el chat.");
       }
     } finally {
       if (requestGeneration === generation.current) setBusy(false);
     }
-  }
+  }, [revoke]);
 
   useEffect(() => {
     const requestGeneration = generation;
@@ -99,7 +104,7 @@ export default function ChatPreviewPage() {
       document.removeEventListener("visibilitychange", refresh);
       requestGeneration.current++;
     };
-  }, []);
+  }, [load]);
 
   async function loadOlder() {
     if (conversationId === null || !cursor || olderBusy) return;
@@ -117,9 +122,7 @@ export default function ChatPreviewPage() {
       if (requestGeneration !== generation.current) return;
       const failure = caught as Error & { status?: number };
       if ([403, 404].includes(failure.status ?? 0)) {
-        setDenied(true);
-        setConversationId(null);
-        setMessages([]);
+        revoke();
       } else setError(failure.message || "No se pudieron cargar mensajes anteriores.");
     } finally {
       setOlderBusy(false);
@@ -146,9 +149,7 @@ export default function ChatPreviewPage() {
       if (requestGeneration !== generation.current) return;
       const failure = caught as Error & { status?: number };
       if ([403, 404].includes(failure.status ?? 0)) {
-        setDenied(true);
-        setConversationId(null);
-        setMessages([]);
+        revoke();
       } else {
         setMessages((current) => current.map((message) => message.key === clientId ? { ...message, state: "failed" } : message));
         setError(failure.message || "No se confirmó el envío.");

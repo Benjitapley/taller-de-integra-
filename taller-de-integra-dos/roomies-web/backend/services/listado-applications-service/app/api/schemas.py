@@ -116,3 +116,12 @@ MULTIPART={
         }
     }}}}
 }
+
+
+class OwnerPublication(Publication):
+    id_arriendo: int | None = None
+
+
+class OwnerPublicationPage(BaseModel):
+    items: list[OwnerPublication]
+    siguiente_cursor: str | None

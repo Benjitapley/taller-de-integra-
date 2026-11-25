@@ -109,3 +109,26 @@ def test_identidad_habilitada_y_deshabilitada(transport):
     for enabled in [True, False]:
         transport(lambda request: httpx.Response(200, json={"id_usuario": 2, "habilitado": enabled}))
         assert HttpIdentity().enabled(2) is enabled
+
+
+@pytest.mark.parametrize("owner", [True,0,"1",None])
+def test_propietario_invalido_falla_cerrado(transport, owner):
+    transport(lambda request:httpx.Response(200,json={"id_propietario":owner}))
+    with pytest.raises(ServiceError) as error:
+        HttpPublications().owner(7)
+    assert error.value.status == 503
+
+
+def test_propietario_y_ocupacion_usan_api_interna(transport):
+    calls=[]
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(200,json={"id_propietario":1})
+    transport(handler)
+    port=HttpPublications()
+    assert port.owner(7) == 1
+    port.occupancy({"id_publicacion":7,"ocupacion":0,"version_ocupacion":3,"finalizado":True})
+    import json
+    assert calls[0].url.path == "/internal/publicaciones/7/propietario"
+    assert calls[1].method == "PUT"
+    assert json.loads(calls[1].content) == {"ocupacion":0,"version_ocupacion":3,"finalizado":True}

@@ -32,7 +32,7 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
     const { signal } = controller;
     void fetch("/web-api/arriendos/mio", { credentials: "same-origin", cache: "no-store", signal }).then(async response => {
       if (signal.aborted) return;
-      if (response.status === 404) {
+      if ([401, 403, 404].includes(response.status)) {
         setArriendo(null);
         setLoading(false);
         return;
@@ -41,11 +41,15 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
       const data = await response.json();
       if (!signal.aborted) setArriendo(data);
     }).catch(() => {
-      if (!signal.aborted) setError("No pudimos cargar tu arriendo. Intenta nuevamente.");
+      if (!signal.aborted) { setArriendo(null); setError("No pudimos cargar tu arriendo. Intenta nuevamente."); }
     }).finally(() => {
       if (!signal.aborted) setLoading(false);
     });
-    return () => controller.abort();
+    const refresh = () => { if (document.visibilityState === "visible") setRequestVersion(value => value + 1); };
+    const timer = window.setInterval(refresh, 5000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { controller.abort(); window.clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
   }, [requestVersion, preview]);
 
   const showingPreview = isDevelopment && preview !== "api";
