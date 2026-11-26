@@ -28,6 +28,11 @@ def available(publication, occupancy: OccupancyPort):
 def validate_publication(data):
     limits={"titulo":200,"ubicacion":250,"descripcion":5000}
     normalized=dict(data)
+    data = {"categoria": "ofrezco", "mascota": "no", **data}
+    if "reglas_arrendador" in data and "reglas" in data:
+        raise RuleViolation("Envía un solo campo de reglas.")
+    if isinstance(data.get("tipo_vivienda"), str):
+        data["tipo_vivienda"] = data["tipo_vivienda"].lower()
     for key,limit in limits.items():
         value=data.get(key)
         if not isinstance(value,str) or not value.strip() or len(value)>limit or "\x00" in value:
@@ -52,11 +57,13 @@ def validate_publication(data):
             if str(value) != str(data[key]) or value < 1:
                 raise ValueError()
             normalized[key] = value
-        rules = data.get("reglas", [])
+        canonical_rules = "reglas_arrendador" in data
+        count_limit, length_limit = (20, 300) if canonical_rules else (50, 1000)
+        rules = data.get("reglas_arrendador", data.get("reglas", []))
         if isinstance(rules, str):
             rules = json.loads(rules)
-        if (not isinstance(rules, list) or len(rules) > 50
-                or any(not isinstance(rule, str) or not rule.strip() or len(rule) > 1000 or "\x00" in rule for rule in rules)):
+        if (not isinstance(rules, list) or len(rules) > count_limit
+                or any(not isinstance(rule, str) or not rule.strip() or len(rule) > length_limit or "\x00" in rule for rule in rules)):
             raise ValueError()
         normalized["reglas"] = [rule.strip() for rule in rules]
     except (ValueError, TypeError, KeyError):
@@ -65,6 +72,7 @@ def validate_publication(data):
     if flag not in (True,False,"true","false"):
         raise RuleViolation("Configuración de comentarios inválida.")
     normalized["permitir_comentarios"]=flag in (True,"true")
+    normalized.update({key: data[key] for key in choices})
     return {k:normalized[k] for k in (*limits,*choices,"precio","cupos_totales","permitir_comentarios","id_region","id_comuna","reglas")}
 
 

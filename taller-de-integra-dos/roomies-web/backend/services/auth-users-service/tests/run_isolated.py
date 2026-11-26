@@ -11,7 +11,7 @@ keep = {key: value for key, value in os.environ.items()
 os.environ.clear()
 os.environ.update(keep)
 os.environ["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
-sys.path.insert(0, str(root))
+sys.path[:0] = [str(root), str(root.parents[2])]
 sys.dont_write_bytecode = True
 blocked_calls = []
 
@@ -53,7 +53,8 @@ import pytest
 
 result = pytest.main([str(root / "tests"), "--rootdir", str(root), "--confcutdir", str(root),
                       "--import-mode=importlib", "-q", "-p", "no:cacheprovider", *sys.argv[1:]])
-forbidden = [name for name in sys.modules if name == "backend" or name.startswith("backend.")
+forbidden = [name for name in sys.modules if (name.startswith("backend.")
+             and name != "backend.service_runtime" and not name.startswith("backend.service_runtime."))
              or name.split(".")[0] in {"sqlalchemy", "supabase"}]
 if blocked_calls or forbidden:
     print("FALLO: intento de red real o importación prohibida:", len(blocked_calls), forbidden)

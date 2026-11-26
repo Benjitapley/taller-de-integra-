@@ -105,6 +105,7 @@ def admission_eligibility(id: Annotated[int, Path(gt=0, le=9223372036854775807)]
 
 
 class OwnProfile(BaseModel):
+    id_usuario: int
     nombre: str
     edad: int | None
     ocupacion: str | None
@@ -119,6 +120,7 @@ class OwnProfile(BaseModel):
     def from_user(cls, user: User, confirmed: bool) -> "OwnProfile":
         age = user.age()
         return cls(
+            id_usuario=user.id_usuario,
             nombre=user.nombre,
             edad=age,
             ocupacion=user.ocupacion,
@@ -207,7 +209,7 @@ async def update_profile(request: Request, who=Depends(identity), service=Depend
 
 @router.get("/local/v1/usuarios/publicos")
 @router.get("/api/v1/usuarios/publicos")
-def public_profiles(ids: str | None=None, presupuesto_max: int | None=Query(None,ge=0,le=2147483647), zona: str | None=Query(None,max_length=250), ocupacion: str | None=Query(None,max_length=100), excluir_id: int | None=Query(None,ge=1,le=2147483647), service=Depends(users)):
+def public_profiles(ids: str | None=None, incluir_foto: bool=False, presupuesto_max: int | None=Query(None,ge=0,le=2147483647), zona: str | None=Query(None,max_length=250), ocupacion: str | None=Query(None,max_length=100), excluir_id: int | None=Query(None,ge=1,le=2147483647), service=Depends(users)):
     filters={k:v for k,v in {"presupuesto_max":presupuesto_max,"zona":zona,"ocupacion":ocupacion,"excluir_id":excluir_id}.items() if v is not None}
     if ids is not None:
         try:
@@ -216,7 +218,9 @@ def public_profiles(ids: str | None=None, presupuesto_max: int | None=Query(None
         except ValueError:
             raise HTTPException(422,"Identificadores inválidos.") from None
         filters["ids"]=parsed
-    return [user.public() for user in service.repository.public_search(filters)]
+    users = service.repository.public_search(filters)
+    return [{**user.public(), "foto_perfil": user.foto_perfil} if incluir_foto and ids is not None else user.public()
+            for user in users]
 
 
 class Notification(BaseModel):

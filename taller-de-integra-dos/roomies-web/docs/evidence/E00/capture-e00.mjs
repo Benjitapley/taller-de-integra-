@@ -20,9 +20,11 @@ const mockApi = createServer((_req, res) => {
 });
 await new Promise((ok) => mockApi.listen(apiPort, "127.0.0.1", ok));
 const app = spawn(process.execPath, [resolve(frontend, "node_modules/next/dist/bin/next"), "dev", "--hostname", "127.0.0.1", "--port", String(appPort)], {
-  cwd: frontend, windowsHide: true, stdio: "ignore",
+  cwd: frontend, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
   env: { ...process.env, WEB_AUTH_ENABLED: "true", WEB_AUTH_PROVIDER: "legacy", WEB_AUTH_ORIGIN: origin, WEB_AUTH_FASTAPI_ORIGIN: `http://127.0.0.1:${apiPort}` },
 });
+let appOutput = "";
+for (const stream of [app.stdout, app.stderr]) stream.on("data", (chunk) => { appOutput = (appOutput + chunk.toString()).slice(-3000); });
 const profile = mkdtempSync(join(tmpdir(), "roomies-e00-edge-"));
 const browser = spawn(edge, ["--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, "--window-size=1440,1000", "about:blank"], { windowsHide: true, stdio: "ignore" });
 let ws;
@@ -87,14 +89,32 @@ try {
   await choose("Sin arriendo activo (404)"); await waitText("Aún no tienes un arriendo activo.", "/mi-arriendo"); await capture("01-mi-arriendo-sin-arriendo.png");
   await navigate("/mi-arriendo", "Mi arriendo"); await choose("Cargando"); await waitText("Cargando tu arriendo…", "/mi-arriendo"); await capture("02-mi-arriendo-cargando.png");
   await navigate("/mi-arriendo", "Mi arriendo"); await choose("Error recuperable (503/red)"); await waitText("No pudimos cargar tu arriendo.", "/mi-arriendo"); await capture("03-mi-arriendo-error-reintentable.png");
+  const retryRental = await cdp("Runtime.evaluate", { expression: `(() => { const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='Reintentar'); if(!b) return false; b.click(); return true; })()`, returnByValue: true });
+  if (!retryRental.result.value) throw new Error("No se encontró Reintentar en Mi arriendo.");
+  await waitText("Arriendo #101", "/mi-arriendo");
+  await capture("09-mi-arriendo-activo.png");
   await navigate("/mi-arriendo/chat", "Chat del arriendo"); await waitText("Coordinamos las tareas", "/mi-arriendo/chat"); await capture("04-chat-activo.png");
   await navigate("/mi-arriendo/chat", "Chat del arriendo"); await choose("Error recuperable"); await waitText("No pudimos cargar el chat.", "/mi-arriendo/chat"); await capture("05-chat-error-reintentable.png");
+  const retryChat = await cdp("Runtime.evaluate", { expression: `(() => { const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='Reintentar'); if(!b) return false; b.click(); return true; })()`, returnByValue: true });
+  if (!retryChat.result.value) throw new Error("No se encontró Reintentar en chat.");
+  await waitText("Coordinamos las tareas", "/mi-arriendo/chat");
   await navigate("/mi-arriendo/chat", "Chat del arriendo"); await choose("Acceso retirado (403)"); await waitText("Acceso retirado", "/mi-arriendo/chat"); await capture("06-chat-acceso-retirado-403.png");
-  await navigate("/mi-arriendo/integrantes", "Arrendador responsable"); await capture("07-integrantes-separados-de-postulantes.png");
+  await navigate("/mi-arriendo/integrantes", "Responsable de convivencia"); await capture("07-integrantes-separados-de-postulantes.png");
   await navigate("/mi-arriendo/tareas", "Ordenar la cocina");
   const openTask = await cdp("Runtime.evaluate", { expression: `(() => { const b=[...document.querySelectorAll('button')].find(x=>x.textContent.includes('Nueva tarea')); if(!b) return false; b.click(); return true; })()`, returnByValue: true });
   if (!openTask.result.value) throw new Error("No se encontró el botón Nueva tarea.");
   await waitText("Se creará sin asignado", "/mi-arriendo/tareas"); await capture("08-tarea-formulario-sin-asignado.png");
+  const accessibleForm = await cdp("Runtime.evaluate", { expression: `(() => { const d=document.querySelector('dialog[open]'); const fields=['task-title','task-description','task-assignee'].map(id=>document.getElementById(id)); return { open:!!d?.open, focus:document.activeElement?.getAttribute('aria-label'), labels:fields.map(x=>x?.labels?.length), assignee:document.getElementById('task-assignee')?.value, title:!!d?.getAttribute('aria-labelledby') }; })()`, returnByValue: true });
+  const form = accessibleForm.result.value;
+  if (!form.open || form.focus !== "Cerrar diálogo" || form.labels.some((n) => !n) || form.assignee !== "" || !form.title) throw new Error(`Foco, etiquetas o valor Sin asignar del formulario incorrectos: ${JSON.stringify(form)}`);
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await sleep(300);
+  const closedWithEscape = await cdp("Runtime.evaluate", { expression: `!document.querySelector('dialog[open]')`, returnByValue: true });
+  if (!closedWithEscape.result.value) throw new Error("Escape no cerró el formulario de tarea.");
+  await navigate("/mi-arriendo/tareas", "Organización de la casa"); await choose("Acceso retirado (403)"); await waitText("Acceso retirado", "/mi-arriendo/tareas");
+  const revokedActions = await cdp("Runtime.evaluate", { expression: `(() => ![...document.querySelectorAll('button')].some(x=>x.textContent.includes('Nueva tarea')))()`, returnByValue: true });
+  if (!revokedActions.result.value) throw new Error("Nueva tarea disponible tras retirar acceso.");
   console.log(`Evidencia guardada en ${outDir}`);
 } finally {
   try { ws?.close(); } catch {}

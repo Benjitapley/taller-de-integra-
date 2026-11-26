@@ -100,7 +100,7 @@ def test_get_requiere_sesion(http):
 def test_get_pasa_usuario_autenticado_y_oculta_arriendo_ajeno(http):
     client, service, application = http
     application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2)
-    rental = {"id_arriendo": 1, "id_publicacion": 7, "cupos_totales": 2, "version_capacidad": 1, "ocupacion": 1}
+    rental = {"id_arriendo": 1, "id_publicacion": 7, "cupos_totales": 2, "version_capacidad": 1, "ocupacion": 1, "estado": "Activo", "id_responsable": None}
     service.repository.mine.return_value = rental
     service.repository.get.return_value = rental
     assert client.get("/api/arriendos/mio").json() == rental
@@ -110,6 +110,7 @@ def test_get_pasa_usuario_autenticado_y_oculta_arriendo_ajeno(http):
     service.repository.mine.assert_called_once_with(2)
     service.repository.get.assert_called_once_with(1, 2)
     service.repository.get.side_effect = ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+    service.repository.publication_id.side_effect = ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
     assert client.get("/api/arriendos/999").status_code == 404
 
 
@@ -161,6 +162,7 @@ def test_historial_chat_usa_cursor_anterior_y_oculta_uuid_de_otros(http):
     service.repository.messages.return_value = ([own], None)
     older = client.get("/api/conversaciones/12/mensajes?limite=1&antes=" + cursor)
     assert older.status_code == 200
+    assert older.json()["siguiente_cursor"] is None
     assert service.repository.messages.call_args.args == (12, 2, 23, 1)
 
 
@@ -201,6 +203,7 @@ def test_http_403_de_convivencia_no_expone_conversacion_por_id_directo(http, met
         result = client.post(path, json={"contenido": "No autorizado", "id_cliente": str(uuid4())})
     assert result.status_code == 403
     assert result.headers["Cache-Control"] == "no-store"
+    assert result.json()["codigo"] == "sin_permiso"
     if method == "post":
         service.repository.send_message.assert_called_once()
 
@@ -232,3 +235,107 @@ def test_tareas_contrato_y_permisos_http(http):
     assert client.patch("/api/tareas/17", json={"id_asignado": 99}).status_code == 422
     service.repository._active_member_check.side_effect = ServiceError("TASK_FORBIDDEN", "Retirado.", 403)
     assert client.get("/api/arriendos/4/tareas").status_code == 403
+
+
+def test_expulsion_deriva_actor_y_no_exige_clave_del_mensaje(http):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=1)
+    service.expel.return_value = {"id_usuario": 3, "estado": "Inactiva"}
+    response = client.post("/api/arriendos/4/expulsiones", json={"id_usuario": 3, "motivo": "Retiro de prueba", "confirmacion": True})
+    assert response.status_code == 200
+    service.expel.assert_called_once_with(4, 1, {"id_usuario": 3, "motivo": "Retiro de prueba", "confirmo": True})
+
+
+@pytest.mark.parametrize("changes", [{"confirmacion": False}, {"confirmacion": "true"}, {"motivo": " "}, {"motivo": "x" * 501}, {"id_usuario": True}, {"id_actor": 1}])
+def test_expulsion_rechaza_payload_no_confirmado_o_actor_inyectado(http, changes):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=1)
+    response = client.post("/api/arriendos/4/expulsiones", json={"id_usuario": 3, "motivo": "Prueba", "confirmacion": True, **changes})
+    assert response.status_code == 422
+    service.expel.assert_not_called()
+
+
+@pytest.mark.parametrize("changes", [{"motivo":""},{"motivo":"  "},{"motivo":"x"*501},{"confirmo":False},{"confirmo":"true"},{"id_usuario":True},{"extra":1}])
+def test_retiro_invalido_no_ejecuta_negocio(http, changes):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=1)
+    result = client.post("/api/arriendos/1/expulsiones",json={"id_usuario":2,"motivo":"Incumplimiento","confirmo":True,**changes})
+    assert result.status_code == 422
+    service.expel.assert_not_called()
+
+
+def test_retiro_sin_confirmacion(http):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=1)
+    assert client.post("/api/arriendos/1/expulsiones",json={"id_usuario":2,"motivo":"Incumplimiento"}).status_code == 422
+    service.expel.assert_not_called()
+
+
+@pytest.mark.parametrize("role", ["usuario","admin"])
+def test_retiro_403_del_dominio_sin_privilegio_por_rol(http, role):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=99,role=role)
+    service.expel.side_effect = ServiceError("FORBIDDEN","Solo dueño.",403)
+    result = client.post("/api/arriendos/1/expulsiones",json={"id_usuario":2,"motivo":"Incumplimiento","confirmo":True})
+    assert result.status_code == 403
+    service.expel.assert_called_once_with(1,99,{"id_usuario":2,"motivo":"Incumplimiento","confirmo":True})
+
+
+@pytest.mark.parametrize("role", ["usuario","admin"])
+def test_dominio_verifica_dueno_antes_de_mutar(role):
+    from contextlib import contextmanager
+    from app.service import Convivencia
+    repository=Mock()
+    connection=Mock()
+    connection.execute.return_value.fetchone.return_value={"id_publicacion":7}
+    @contextmanager
+    def transaction():
+        yield connection
+    repository.transaction=transaction
+    publications=Mock()
+    publications.owner.return_value=1
+    instance=Convivencia(repository,Mock(),publications)
+    application=create_app(instance,run_recovery=False)
+    application.dependency_overrides[confirmed_actor]=lambda:SimpleNamespace(user_id=99,role=role)
+    with TestClient(application) as client:
+        response=client.post("/api/arriendos/1/expulsiones",json={"id_usuario":2,"motivo":"Incumplimiento","confirmo":True})
+    assert response.status_code == 403
+    publications.owner.assert_called_once_with(7)
+    assert connection.execute.call_count == 1
+
+
+def test_members_pages_are_bound_to_actor_and_rental(http):
+    from app.main import access_token
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2)
+    application.dependency_overrides[access_token] = lambda: "fixture"
+    service.repository.rental_publication.return_value = 7
+    rows = [{"id_pertenencia": i, "id_usuario": i, "fecha_ingreso": "2026-11-20T12:00:00Z", "activo": True, "es_responsable": i == 1} for i in range(1, 4)]
+    service.repository.members.return_value = rows
+    result = client.get("/api/arriendos/1/integrantes?limite=2")
+    assert result.status_code == 200
+    assert len(result.json()["items"]) == 2
+    cursor = result.json()["siguiente_cursor"]
+    assert cursor
+    assert client.get("/api/arriendos/2/integrantes", params={"cursor": cursor, "limite": 2}).status_code == 422
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=3)
+    assert client.get("/api/arriendos/1/integrantes", params={"cursor": cursor, "limite": 2}).status_code == 422
+    assert client.get("/api/arriendos/1/integrantes?cursor=bad").status_code == 422
+
+
+def test_nonresident_owner_can_read_but_admin_cannot(http):
+    from app.main import access_token
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2, administrator=True)
+    application.dependency_overrides[access_token] = lambda: "fixture"
+    service.repository.rental_publication.return_value = 7
+    service.repository.get.side_effect = ServiceError("NOT_FOUND", "No pertenece", 404)
+    service.publications.owned_by.return_value = False
+    service.repository.members.side_effect = ServiceError("FORBIDDEN", "Sin acceso", 403)
+    assert client.get("/api/arriendos/1/integrantes").status_code == 403
+    service.repository.members.assert_called_with(1, 2, False, 0, 20)
+    service.publications.owned_by.return_value = True
+    service.repository.members.side_effect = None
+    service.repository.members.return_value = []
+    assert client.get("/api/arriendos/1/integrantes").json() == {"items": [], "siguiente_cursor": None, "puede_retirar": True}
+    service.repository.members.assert_called_with(1, 2, True, 0, 20)

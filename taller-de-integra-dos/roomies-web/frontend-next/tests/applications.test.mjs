@@ -97,7 +97,7 @@ test("retiro usa POST propio y Cancelada no se puede enviar como decisión del d
 });
 
 const rentalSource=(await readFile(new URL("../src/lib/recorrido/server.ts",import.meta.url),"utf8")).replace('"../auth/gateway"',JSON.stringify(gateway));
-const {handleMyArriendo}=await import(compile(rentalSource));
+const {handleMyArriendo,handleRentalMembers}=await import(compile(rentalSource));
 test("Mi arriendo adapta el DTO real de la 124 y filtra datos privados",async()=>{
   const native={id_arriendo:12,id_publicacion:7,cupos_totales:3,version_capacidad:1,ocupacion:1,private:"secret"};
   const response=await handleMyArriendo(req("GET"),config,async()=>Response.json(native));
@@ -161,4 +161,23 @@ test("detalle ajeno y conflictos no revelan datos; un ID diferente nunca confirm
     { ...waiting, operacion: { id_operacion: operationKey, estado: "Rechazada" } },
     [waiting],
   ]) assert.equal((await handleApplications(req("GET"), config, async () => Response.json(inconsistent), "8")).status, 503);
+});
+
+test("E02 integrantes conserva cursor, permisos y errores sin datos privados", async () => {
+  const member = {id_usuario: 2, nombre: null, es_responsable: true, activo: true, fecha_ingreso: "2026-11-20T12:00:00Z"};
+  const request = new Request(config.origin + "/web-api/arriendos/12/integrantes?cursor=next", {headers});
+  const result = await handleRentalMembers(request, "12", config, async url => {
+    assert.equal(url, config.backend + "/api/arriendos/12/integrantes?cursor=next");
+    return Response.json({items: [{...member, token: "secret"}], siguiente_cursor: null});
+  });
+  assert.deepEqual(await result.json(), {items:[member], siguiente_cursor:null});
+  for (const puede_retirar of [true, false]) {
+    const response = await handleRentalMembers(request, "12", config, async () =>
+      Response.json({ items: [member], siguiente_cursor: null, puede_retirar, token: "secret" }));
+    assert.deepEqual(await response.json(), { items: [member], siguiente_cursor: null, puede_retirar });
+  }
+  for (const status of [401,403,404,503]) {
+    assert.equal((await handleRentalMembers(request,"12",config,async()=>Response.json({detail:"secret"},{status}))).status,status);
+  }
+  assert.equal((await handleRentalMembers(request,"12",config,async()=>Response.json({items:[member,member],siguiente_cursor:null}))).status,503);
 });

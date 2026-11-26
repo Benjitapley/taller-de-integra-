@@ -3,7 +3,7 @@
 .primary:hover:not(:disabled) { background: var(--primary-hover); }
 .secondary { background: var(--lavender); color: var(--primary); }
 .button:disabled { cursor: not-allowed; }
-.card { background: white; border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 3px 10px #4f40ad08; }
+.card { background: white; border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 3px 10px rgba(76, 53, 151, 0.04); }
 .soft { background: var(--soft); }
 .empty { min-height: 267px; padding: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .iconSquare { display: grid; place-items: center; color: var(--primary); background: var(--lavender); border-radius: 13px; width: 54px; height: 54px; }

@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "test:api": "node --test tests/api-client.test.mjs",
     "test:auth": "node --test tests/auth-validation.test.mjs",
     "test:auth-client": "node --test tests/auth-client.test.mjs",
@@ -18,6 +19,7 @@
     "test:profile-http": "node --test tests/profile-scrum94.http.mjs",
     "test:connections": "node --test tests/connections.test.mjs",
     "test:publications": "node --test tests/publications.test.mjs",
+    "test:publications-browser": "node --test tests/publications-browser.test.mjs",
     "test:admin": "node --test tests/admin.test.mjs",
     "test:reports": "node --test tests/reportes.test.mjs tests/admin-reportes.test.mjs",
     "test:reports-browser": "node --test tests/reportes-browser.test.mjs",
@@ -25,11 +27,16 @@
     "test:private-lists-browser": "node --test tests/private-lists-browser.test.mjs",
     "test:supabase-auth": "node --test tests/supabase-auth.test.mjs",
     "test:applications": "node --test tests/applications.test.mjs",
-    "test:tareas": "node --test tests/tareas.test.mjs",
-    "test:tareas-mobile-browser": "node --test tests/tareas-mobile-browser.test.mjs"
+    "test:tareas": "node --test tests/tareas.test.mjs tests/tareas-contract.test.mjs",
+    "test:tareas-mobile-browser": "node --test tests/tareas-mobile-browser.test.mjs",
+    "test:expulsions": "node --test tests/expulsiones.test.mjs",
+    "test:expulsions-browser": "node --test tests/expulsiones-browser.test.mjs",
+    "test:tasks": "node --test tests/tareas.test.mjs tests/tareas-contract.test.mjs",
+    "test:tasks-browser": "node --test tests/tareas-browser.test.mjs",
+    "test:convivencia-browser": "node --test tests/convivencia-browser.test.mjs"
   },
   "dependencies": {
-    "next": "16.4.3",
+    "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -38,7 +45,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.6",
+    "playwright": "^1.65.1",
     "typescript": "^5"
   }
 }

@@ -1,0 +1,16 @@
+{
+  "fecha": "2026-11-26",
+  "metodo": "psycopg, conexion autenticada, transaccion de solo lectura",
+  "host": "127.0.0.1",
+  "puerto": 5432,
+  "version_servidor": "19.0",
+  "base_conexion_administrativa": "postgres",
+  "autenticacion_correcta": true,
+  "bases_comprobadas": ["roomies_listado", "roomies_listado_test", "roomies_sprint2_disposable"],
+  "roles_existentes": ["sql_auth_users", "sql_listado_applications", "sql_match_conexion"],
+  "esquemas_inspeccionados": ["auth_users", "listado_applications", "haycupo"],
+  "tablas_aplicacion_en_las_bases_comprobadas": [],
+  "migraciones_ejecutadas": false,
+  "datos_modificados": false,
+  "limitacion": "No acredita autenticacion de los roles de servicio, Gateway, persistencia del negocio ni Storage. No contiene credenciales."
+}

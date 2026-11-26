@@ -25,7 +25,7 @@ test("SCRUM-113 en navegador: error, reintento estable, historial y contexto de 
     const reply = (code, data) => { response.statusCode = code; response.end(JSON.stringify(data)); };
     if (url.pathname === "/local/v1/perfil") return reply(200, { nombre: "Cuenta ficticia SCRUM-113" });
     if (url.pathname === "/api/arriendos/mio") return reply(200, { id_arriendo: 7, id_publicacion: 42, estado: "Activo", cupos_totales: 2, integrantes_activos: 2, cupos_disponibles: 0, id_responsable: 1 });
-    if (url.pathname === "/api/arriendos/7/integrantes") return reply(200, { items: [{ id_usuario: 2, nombre: "Integrante ficticio", nota_interna: "PRIVATE_SENTINEL" }], siguiente_cursor: null });
+    if (url.pathname === "/api/arriendos/7/integrantes") return reply(200, { items: [{ id_usuario: 2, nombre: "Integrante ficticio", activo: true, es_responsable: false, fecha_ingreso: "2026-11-20T12:00:00Z", nota_interna: "PRIVATE_SENTINEL" }], siguiente_cursor: null });
     if (url.pathname === "/api/reportes/mios") {
       const cursor = url.searchParams.get("cursor");
       if (cursor && failPage) { failPage = false; return reply(503, {}); }

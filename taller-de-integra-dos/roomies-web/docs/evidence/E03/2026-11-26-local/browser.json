@@ -1,0 +1,41 @@
+{
+  "identity": "fixture GoTrue/JWKS; no Supabase",
+  "cases": [
+    {
+      "name": "dos integrantes: envío, F5 y persistencia compartida",
+      "result": "passed"
+    },
+    {
+      "name": "identidad de emisor por ID, incluso con nombres iguales",
+      "result": "passed"
+    },
+    {
+      "name": "tres páginas: orden, sin duplicados, ingreso y posición de lectura",
+      "result": "passed"
+    },
+    {
+      "name": "límites de texto, sesión obligatoria y respuestas privadas sin caché",
+      "result": "passed"
+    },
+    {
+      "name": "respuesta perdida después del commit: UUID conservado, sin duplicado y conflicto 409",
+      "result": "passed"
+    },
+    {
+      "name": "tercero y dueño no residente: GET/POST denegados en BFF y Gateway",
+      "result": "passed"
+    },
+    {
+      "name": "retiro HTTP por dueño: revocación de lectura/envío y limpieza visual",
+      "result": "passed"
+    },
+    {
+      "name": "cambio de cuenta con respuesta tardía: sin mensajes ni borrador anteriores",
+      "result": "passed"
+    },
+    {
+      "name": "navegador sin excepciones JavaScript",
+      "result": "passed"
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import AccesoArriendo from "@/components/convivencia/AccesoArriendo";
 import OrganizacionCasaCard from "@/components/OrganizacionCasaCard";
 import NuevoRecordatorioSheet from "@/components/convivencia/NuevoRecordatorioSheet";
 import ProximosRecordatorios from "@/components/convivencia/ProximosRecordatorios";
@@ -50,7 +51,7 @@ export default function DashboardArriendo() {
   if (estado === "sin_arriendo") return <SinArriendo />;
   if (estado === "error") return <View style={styles.sinArriendoContenedor}><Text>{mensaje}</Text>
     <Pressable accessibilityRole="button" onPress={() => void cargar()}><Text style={styles.sinArriendoBotonTexto}>Reintentar</Text></Pressable></View>;
-  return idArriendo ? <DashboardActivo idArriendo={idArriendo} /> : null;
+  return idArriendo ? <AccesoArriendo><DashboardActivo idArriendo={idArriendo} /></AccesoArriendo> : null;
 }
 
 function DashboardActivo({ idArriendo }: { idArriendo: number }) {

@@ -22,3 +22,46 @@
 .publicationType > button { width: 100%; margin-top: auto; }
 @media (max-width: 767px) { .typeGrid { grid-template-columns: minmax(0, 1fr); } .publicationForm fieldset { grid-template-columns: minmax(0, 1fr); } .formSection { padding: 18px; } }
 @media (max-width: 480px) { .publicationType { padding: 24px; } .publicationForm fieldset { padding: 13px; } }
+
+.formSection { box-shadow: 0 3px 10px rgba(76, 53, 151, .04); }
+.publicationForm input:not([type="checkbox"]):not([type="file"]), .publicationForm select,
+.editorForm input:not([type="checkbox"]):not([type="file"]), .editorForm select { min-height: 45px; border-radius: 13px; }
+.editorForm input:not([type="checkbox"]), .editorForm select, .editorForm textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 13px; background: white; color: var(--foreground); }
+.publicationForm textarea, .editorForm textarea { border-radius: 13px; resize: vertical; }
+.imageUpload { padding: 18px; border: 1px dashed #b7a9f3; border-radius: 15px; background: var(--soft); }
+.imageGrid { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.thumbnail { display: grid; align-content: start; gap: 6px; width: 130px; overflow-wrap: anywhere; }
+.thumbnail img { border-radius: 11px; object-fit: cover; max-width: 100%; }
+.thumbnail button { background: white; border: 1px solid var(--line); border-radius: 10px; color: var(--primary); padding: 6px; cursor: pointer; }
+.preview { padding: 20px; background: var(--soft); border: 1px solid var(--line); border-radius: 20px; }
+.preview > h3 { margin-top: 0; color: var(--primary); }
+.previewCard { max-width: 600px; border-radius: 20px; border: 1px solid var(--line); overflow: hidden; background: white; }
+.previewCard > img { display: block; width: 100%; height: 230px; object-fit: cover; }
+.noPhoto { display: grid; place-items: center; min-height: 150px; padding: 20px; background: var(--lavender); color: var(--primary); }
+.detailGrid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 23px; align-items: start; }
+.detailCard { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: white; box-shadow: 0 3px 10px rgba(76, 53, 151, .04); }
+.hero { display: block; width: 100%; height: 317px; object-fit: cover; }
+.detailBody { padding: 22px; }
+.detailBody h2 { font-size: 23px; margin: 19px 0 10px; }
+.detailBody h3 { font-size: 16px; margin: 24px 0 12px; }
+.price { display: block; color: var(--primary); font-size: 23px; font-weight: 850; }
+.chips { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.chip, .status { display: inline-block; border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 750; background: var(--lavender); color: var(--primary); }
+.available { background: var(--goodbg); color: var(--good); }
+.closed { background: #eef0f4; color: var(--muted); }
+.capacity { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 15px; margin-top: 17px; background: var(--soft); border-radius: 13px; font-size: 13px; }
+.description { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); font-size: 13px; }
+.author { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.author img { border-radius: 50%; object-fit: cover; }
+.detailAside { display: grid; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: 20px; background: white; }
+.detailAside h3 { margin: 0; font-size: 16px; }
+.breadcrumb { display: block; margin: 9px 0 24px; font-size: 14px; font-weight: 750; }
+@media (max-width: 900px) { .detailGrid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 480px) { .formActions { flex-wrap: wrap; } .hero { height: 230px; } .detailBody, .preview { padding: 16px; } }
+
+.detailBody h1 { font-size: 23px; margin: 19px 0 10px; }
+.editorForm { padding: 24px; }
+.detailBody h2 { font-size: 16px; margin: 24px 0 12px; }
+.detailAside h2 { font-size: 16px; margin: 0; }
+.actionLink { display: grid; place-items: center; min-height: 44px; padding: 10px 20px; border-radius: 14px; background: var(--lavender); color: var(--primary); text-decoration: none; font-size: 13px; font-weight: 750; }
+.authorInitial { display: grid; place-items: center; flex: 0 0 44px; height: 44px; border-radius: 50%; background: var(--lavender); color: var(--primary); font-size: 19px; font-weight: 800; }

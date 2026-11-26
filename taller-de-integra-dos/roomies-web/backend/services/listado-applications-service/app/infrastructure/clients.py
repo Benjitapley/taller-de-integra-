@@ -76,14 +76,31 @@ class UnavailableOccupancy:
 
 class HttpOwners:
     def exists(self, user_id):
+        return any(row.get("id_usuario_PK") == user_id for row in self._profiles({"ids": str(user_id)}))
+
+    def summaries(self, user_ids):
+        if not user_ids:
+            return {}
+        requested = set(user_ids)
+        rows = self._profiles({"ids": ",".join(map(str, user_ids)), "incluir_foto": "true"})
+        return {
+            row["id_usuario_PK"]: {"id_usuario": row["id_usuario_PK"], "nombre": row["nombre"],
+                                   "foto": row.get("foto_perfil") if isinstance(row.get("foto_perfil"), str) else None}
+            for row in rows
+            if type(row.get("id_usuario_PK")) is int and row["id_usuario_PK"] in requested
+            and isinstance(row.get("nombre"), str)
+        }
+
+    def _profiles(self, params):
         url = service_url("AUTH_USERS_UPSTREAM_URL", docker_hosts=("auth-users",))
         try:
             with httpx.Client(timeout=3, trust_env=False, follow_redirects=False) as client:
-                response = client.get(url + "/local/v1/usuarios/publicos", params={"ids": str(user_id)})
+                response = client.get(url + "/local/v1/usuarios/publicos", params=params)
                 response.raise_for_status()
                 rows = response.json()
-                if not isinstance(rows, list): raise ValueError()
-                return any(row.get("id_usuario_PK") == user_id for row in rows)
+                if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+                    raise ValueError()
+                return rows
         except Exception:
             raise DependencyUnavailable() from None
 

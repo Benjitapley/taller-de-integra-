@@ -1,0 +1,5 @@
+{
+  "frontend-next/src/lib/auth/gateway.ts": "290df4efd0620b22fb3dcc3c1f0b91a95756683afd40ccd6e32bd7f330ab5ff2",
+  "frontend-next/tests/supabase-auth.test.mjs": "958c0a449b21d991311822403901d055e2559e9e486a93744c388e15e09e6e2f",
+  "backend/local_stack/e03_preflight.py": "d3864d3556549511205a4910f1423e2e3f2bd50492c4a422eae1bad69fabf8af"
+}

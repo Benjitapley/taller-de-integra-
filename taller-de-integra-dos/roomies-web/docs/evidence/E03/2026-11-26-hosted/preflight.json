@@ -1,0 +1,68 @@
+{
+  "date": "2026-11-26T21:16:48.789145+00:00",
+  "head_base": "f422d84ca3f2bd96e6a785812c04b042ff07af55",
+  "supabase_origin": "https://erefnpvdjondjpcyjrpb.supabase.co",
+  "gateway": "https://roomies-gateway-test.inf.uct.cl",
+  "business_mutations": false,
+  "actors": [
+    {
+      "alias": "actor-1",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/usuarios/me",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/local/v1/perfil",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/arriendos/mio",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversaciones",
+          "status": 503
+        }
+      ],
+      "supabase_login_status": 200,
+      "email_confirmed": true,
+      "active_rental_has_conversation": false
+    },
+    {
+      "alias": "actor-2",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/usuarios/me",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/local/v1/perfil",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/arriendos/mio",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversaciones",
+          "status": 503
+        }
+      ],
+      "supabase_login_status": 200,
+      "email_confirmed": true,
+      "active_rental_has_conversation": false
+    }
+  ],
+  "gateway_health_status": 200,
+  "same_active_rental": false,
+  "chat_acceptance_ready": false
+}

@@ -70,6 +70,14 @@ def main():
             connection.execute("CREATE DATABASE roomies_sprint2_disposable")
         os.environ["PUBLICATIONS_TEST_ADMIN_DSN"] = admin.rsplit("/", 1)[0] + "/roomies_sprint2_disposable"
         os.environ["LISTADO_DATABASE_URL"] = f"postgresql://sql_listado_applications@127.0.0.1:{port}/roomies_sprint2_disposable"
+        with psycopg.connect(os.environ["PUBLICATIONS_TEST_ADMIN_DSN"], connect_timeout=5) as connection:
+            database, address, actual_port, version = connection.execute(
+                "SELECT current_database(), host(inet_server_addr()), inet_server_port(), version()"
+            ).fetchone()
+            assert (database, address, actual_port) == ("roomies_sprint2_disposable", "127.0.0.1", port), (database, address, actual_port)
+        print(f"Servidor SQL verificado: {version}", flush=True)
+        print(f"PUBLICATIONS_TEST_ADMIN_DSN={os.environ['PUBLICATIONS_TEST_ADMIN_DSN']}", flush=True)
+        print(f"LISTADO_DATABASE_URL={os.environ['LISTADO_DATABASE_URL']}", flush=True)
         # Ports are injected fakes; accidental external Python sockets fail.
         original_connect, original_resolve = socket.socket.connect, socket.getaddrinfo
 

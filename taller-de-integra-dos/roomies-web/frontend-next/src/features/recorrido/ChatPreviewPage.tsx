@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/layout/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import type { ConversacionDto, MensajeDto } from "@/features/recorrido/types";
+import type { ConversacionDto, MensajeServicioDto } from "@/features/recorrido/types";
 import styles from "./ChatPreviewPage.module.css";
 
-type ChatMessage = MensajeDto & { key: string; state?: "sending" | "failed" };
-type ChatPage = { items: MensajeDto[]; siguiente_cursor: string | null };
+type ChatMessage = MensajeServicioDto & { key: string; state?: "sending" | "failed" };
+type ChatPage = { items: MensajeServicioDto[]; siguiente_cursor: string | null };
 
 export default function ChatPreviewPage() {
   const [conversationId, setConversationId] = useState<number | null>(null);
@@ -21,8 +21,10 @@ export default function ChatPreviewPage() {
   const [olderBusy, setOlderBusy] = useState(false);
   const [denied, setDenied] = useState(false);
   const [currentUserName, setCurrentUserName] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const messageList = useRef<HTMLDivElement>(null);
   const generation = useRef(0);
+  const requests = useRef<AbortController | null>(null);
   const scrollAnchor = useRef<{ height: number; top: number } | null>(null);
   const followLatest = useRef(true);
 
@@ -37,35 +39,54 @@ export default function ChatPreviewPage() {
     }
   }, [messages]);
 
-  async function load() {
-    const requestGeneration = ++generation.current;
-    setBusy(true);
-    setError("");
-    setDenied(false);
+  const clearChat = useCallback(() => {
+    generation.current++;
+    requests.current?.abort();
+    requests.current = null;
     setMessages([]);
     setConversationId(null);
     setCursor(null);
     setDraft("");
+    setCurrentUserName("");
+    setCurrentUserId(null);
+    setOlderBusy(false);
+    scrollAnchor.current = null;
+    followLatest.current = true;
+  }, []);
+
+  const load = useCallback(async () => {
+    clearChat();
+    const requestGeneration = generation.current;
+    const controller = new AbortController();
+    requests.current = controller;
+    const signal = controller.signal;
+    setBusy(true);
+    setError("");
+    setDenied(false);
 
     try {
-      const rentalResponse = await fetch("/web-api/arriendos/mio", { cache: "no-store" });
+      const rentalResponse = await fetch("/web-api/arriendos/mio", { cache: "no-store", signal });
       if (!rentalResponse.ok) throw Object.assign(Error("No tienes acceso al arriendo."), { status: rentalResponse.status });
       const rental = await rentalResponse.json();
 
       const [conversationResponse, sessionResponse] = await Promise.all([
-        fetch("/web-api/conversaciones", { cache: "no-store" }),
-        fetch("/web-api/auth/sesion", { cache: "no-store" }),
+        fetch("/web-api/conversaciones", { cache: "no-store", signal }),
+        fetch("/web-api/auth/sesion", { cache: "no-store", signal }),
       ]);
       if (!conversationResponse.ok) throw Object.assign(Error("No se pudo cargar la conversación."), { status: conversationResponse.status });
       const conversationData = await conversationResponse.json();
+      if (!sessionResponse.ok) throw Object.assign(Error("Inicia sesión nuevamente."), { status: sessionResponse.status });
       if (sessionResponse.ok) {
         const session = await sessionResponse.json();
-        if (requestGeneration === generation.current) setCurrentUserName(session.user?.nombre ?? "");
+        if (requestGeneration === generation.current) {
+          setCurrentUserName(session.user?.nombre ?? "");
+          setCurrentUserId(Number.isSafeInteger(session.user?.id_usuario) && session.user.id_usuario > 0 ? session.user.id_usuario : null);
+        }
       }
       const conversation = (conversationData.items as ConversacionDto[]).find((item) => item.id_arriendo === rental.id_arriendo);
       if (!conversation) throw Error("Todavía no hay conversación disponible.");
 
-      const response = await fetch(`/web-api/conversaciones/${conversation.id_conversacion}/mensajes?limite=20`, { cache: "no-store" });
+      const response = await fetch(`/web-api/conversaciones/${conversation.id_conversacion}/mensajes?limite=20`, { cache: "no-store", signal });
       if (!response.ok) throw Object.assign(Error("No se pudieron cargar los mensajes."), { status: response.status });
       const page: ChatPage = await response.json();
       if (requestGeneration !== generation.current) return;
@@ -75,16 +96,17 @@ export default function ChatPreviewPage() {
     } catch (caught) {
       if (requestGeneration !== generation.current) return;
       const failure = caught as Error & { status?: number };
-      if ([403, 404].includes(failure.status ?? 0)) {
+      if ([401, 403, 404].includes(failure.status ?? 0)) {
+        clearChat();
+        setBusy(false);
         setDenied(true);
-        setMessages([]);
       } else {
         setError(failure.message || "No se pudo cargar el chat.");
       }
     } finally {
       if (requestGeneration === generation.current) setBusy(false);
     }
-  }
+  }, [clearChat]);
 
   useEffect(() => {
     const requestGeneration = generation;
@@ -92,21 +114,33 @@ export default function ChatPreviewPage() {
     const refresh = () => {
       if (document.visibilityState === "visible") queueMicrotask(() => void load());
     };
+    const sessionChange = (event: Event) => {
+      const phase = (event as CustomEvent<string>).detail;
+      if (phase === "complete") { void load(); return; }
+      clearChat();
+      setBusy(true);
+    };
+    const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("roomies-session") : null;
+    if (channel) channel.onmessage = (event: MessageEvent) => sessionChange(new CustomEvent("roomies:session-change", { detail: event.data }));
+    window.addEventListener("roomies:session-change", sessionChange);
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("roomies:session-change", sessionChange);
+      channel?.close();
+      requests.current?.abort();
       requestGeneration.current++;
     };
-  }, []);
+  }, [clearChat, load]);
 
   async function loadOlder() {
     if (conversationId === null || !cursor || olderBusy) return;
     const requestGeneration = generation.current;
     setOlderBusy(true);
     try {
-      const response = await fetch(`/web-api/conversaciones/${conversationId}/mensajes?limite=20&antes=${encodeURIComponent(cursor)}`, { cache: "no-store" });
+      const response = await fetch(`/web-api/conversaciones/${conversationId}/mensajes?limite=20&antes=${encodeURIComponent(cursor)}`, { cache: "no-store", signal: requests.current?.signal });
       if (!response.ok) throw Object.assign(Error("No se pudieron cargar mensajes anteriores."), { status: response.status });
       const page: ChatPage = await response.json();
       if (requestGeneration !== generation.current) return;
@@ -116,13 +150,12 @@ export default function ChatPreviewPage() {
     } catch (caught) {
       if (requestGeneration !== generation.current) return;
       const failure = caught as Error & { status?: number };
-      if ([403, 404].includes(failure.status ?? 0)) {
+      if ([401, 403, 404].includes(failure.status ?? 0)) {
+        clearChat();
         setDenied(true);
-        setConversationId(null);
-        setMessages([]);
       } else setError(failure.message || "No se pudieron cargar mensajes anteriores.");
     } finally {
-      setOlderBusy(false);
+      if (requestGeneration === generation.current) setOlderBusy(false);
     }
   }
 
@@ -137,18 +170,18 @@ export default function ChatPreviewPage() {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Haycupo-CSRF": "1" },
         body: JSON.stringify({ contenido: content, id_cliente: clientId }),
+        signal: requests.current?.signal,
       });
       if (!response.ok) throw Object.assign(Error("No se confirmó el envío. Puedes reintentar el mismo mensaje."), { status: response.status });
-      const saved: MensajeDto = await response.json();
+      const saved: MensajeServicioDto = await response.json();
       if (requestGeneration !== generation.current) return;
       setMessages((current) => current.map((message) => message.key === clientId ? { ...saved, key: clientId } : message));
     } catch (caught) {
       if (requestGeneration !== generation.current) return;
       const failure = caught as Error & { status?: number };
-      if ([403, 404].includes(failure.status ?? 0)) {
+      if ([401, 403, 404].includes(failure.status ?? 0)) {
+        clearChat();
         setDenied(true);
-        setConversationId(null);
-        setMessages([]);
       } else {
         setMessages((current) => current.map((message) => message.key === clientId ? { ...message, state: "failed" } : message));
         setError(failure.message || "No se confirmó el envío.");
@@ -188,7 +221,7 @@ export default function ChatPreviewPage() {
         }}>
           {cursor ? <Button className={styles.olderButton} variant="secondary" disabled={olderBusy} onClick={() => void loadOlder()}>{olderBusy ? "Cargando…" : "Cargar mensajes anteriores"}</Button> : null}
           {!messages.length ? <p className={styles.emptyState}>Aún no hay mensajes. Puedes iniciar la conversación.</p> : messages.map((message) => {
-            const own = message.nombre_remitente === currentUserName || message.nombre_remitente === "Tú" || message.id_remitente === 0;
+            const own = message.id_remitente === currentUserId || message.id_remitente === 0;
             return <article className={`${styles.messageRow} ${own ? styles.ownMessage : ""}`} key={message.key}>
               {!own ? <span className={styles.memberAvatar} aria-hidden="true">{message.nombre_remitente.trim().charAt(0).toLocaleUpperCase("es-CL")}</span> : null}
               <div className={styles.messageBubble}>

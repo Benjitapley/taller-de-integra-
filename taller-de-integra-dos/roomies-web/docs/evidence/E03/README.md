@@ -1,5 +1,9 @@
 # Evidencia visual S3R-E03
 
+Última comprobación en destino: [Supabase real y bloqueo de despliegue en Kubero](2026-11-26-hosted/README.md). Dos cuentas autenticadas correctamente; aceptación del chat pendiente por servicios ausentes/HTTP 503.
+
+Estado actual: [validación integrada del 26/11](validacion-2026-11-26.md), con navegador, BFF, Gateway, servicios y PostgreSQL reales locales. Usa una fixture explícita de identidad. Las capturas nuevas están en [2026-11-26-local](2026-11-26-local/). El contenido restante conserva el ensayo visual anterior.
+
 ## Vista local
 
 `chat-demo-local.png` muestra la vista web actual en `/mi-arriendo/chat`, con mensajes de muestra servidos por una API sintética local. La conversación adapta el patrón de burbujas, compositor inferior, contenedores redondeados y colores violeta de `n_m_chat_convivencia_04.png`; la pantalla web `n_w_chat_convivencia_02.png` es el dashboard del arriendo, no una pantalla de conversación.
@@ -37,4 +41,4 @@ GET /web-api/auth/sesion, GET /web-api/conversaciones/7/mensajes?limite=20
   HTTP 200 en desarrollo local con API sintética
 ```
 
-La aceptación funcional completa sigue pendiente de ejecutar con la migración aplicada, Gateway y servicio reales, y dos cuentas integrantes. La suite PostgreSQL requiere `pg_ctl`/`initdb`, no disponibles en este entorno. Ver [SCRUM-120](../../SCRUM-120.md) para los límites de aceptación y validación de persistencia.
+El bloqueo histórico por ausencia de `pg_ctl`/`initdb` ya fue superado en el ensayo del 26/11. La aceptación final con Supabase real y PostgreSQL Kubero sigue pendiente; ver [SCRUM-120](../../SCRUM-120.md).

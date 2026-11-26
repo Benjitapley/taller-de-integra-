@@ -35,13 +35,14 @@ class PostgresRepository:
                 UPDATE convivencia_mensajeria.incorporacion i SET ultimo_intento=clock_timestamp()
                 FROM picked p WHERE i.id_operacion=p.id_operacion RETURNING i.id_operacion,i.payload""").fetchall()
 
-    def get(self, rental_id, user_id):
+    def get(self, rental_id, user_id, owner=False):
         with self.transaction() as c:
-            row = c.execute("""SELECT a.id_arriendo,a.id_publicacion,a.cupos_totales,a.version_capacidad,
+            row = c.execute("""SELECT a.id_arriendo,a.id_publicacion,a.cupos_totales,a.version_capacidad,a.estado,
                 (SELECT count(*) FROM convivencia_mensajeria.pertenencia p WHERE p.id_arriendo=a.id_arriendo AND p.estado='Activa') AS ocupacion
+                ,(SELECT CASE WHEN p.estado='Activa' THEN p.id_usuario ELSE NULL END FROM convivencia_mensajeria.pertenencia p WHERE p.id_arriendo=a.id_arriendo ORDER BY p.id_pertenencia LIMIT 1) AS id_responsable
                 FROM convivencia_mensajeria.arriendo a
-                WHERE a.id_arriendo=%s AND EXISTS (SELECT 1 FROM convivencia_mensajeria.pertenencia p
-                  WHERE p.id_arriendo=a.id_arriendo AND p.id_usuario=%s AND p.estado='Activa')""", (rental_id, user_id)).fetchone()
+                WHERE a.id_arriendo=%s AND (%s OR EXISTS (SELECT 1 FROM convivencia_mensajeria.pertenencia p
+                  WHERE p.id_arriendo=a.id_arriendo AND p.id_usuario=%s AND p.estado='Activa'))""", (rental_id, owner, user_id)).fetchone()
             if row is None:
                 raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
             return row
@@ -94,15 +95,20 @@ class PostgresRepository:
 
     def messages(self, conversation_id, user_id, before_id, limit):
         with self.transaction() as c:
-            _, membership = self._authorize_conversation(c, conversation_id, user_id)
-            query = """SELECT id_mensaje,id_conversacion,id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio
-                FROM convivencia_mensajeria.mensaje
+            _, membership = self._authorize_conversation(c, conversation_id, user_id, lock=True)
+            query = """SELECT id_mensaje,id_conversacion,id_emisor AS id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio
+                FROM convivencia_mensajeria.mensajes
                 WHERE id_conversacion=%s AND fecha_envio >= %s"""
             params = [conversation_id, membership["creada_en"]]
             if before_id is not None:
-                query += " AND id_mensaje < %s"
-                params.append(before_id)
-            query += " ORDER BY id_mensaje DESC LIMIT %s"
+                anchor = c.execute("""SELECT fecha_envio,id_mensaje FROM convivencia_mensajeria.mensajes
+                    WHERE id_conversacion=%s AND id_mensaje=%s AND fecha_envio >= %s""",
+                    (conversation_id, before_id, membership["creada_en"])).fetchone()
+                if anchor is None:
+                    raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422)
+                query += " AND (fecha_envio,id_mensaje) < (%s,%s)"
+                params.extend([anchor["fecha_envio"], anchor["id_mensaje"]])
+            query += " ORDER BY fecha_envio DESC,id_mensaje DESC LIMIT %s"
             params.append(limit + 1)
             rows = c.execute(query, params).fetchall()
             has_older = len(rows) > limit
@@ -113,17 +119,17 @@ class PostgresRepository:
     def send_message(self, conversation_id, user_id, display_name, content, client_id):
         with self.transaction() as c:
             self._authorize_conversation(c, conversation_id, user_id, lock=True)
-            row = c.execute("""INSERT INTO convivencia_mensajeria.mensaje
-                (id_conversacion,id_remitente,nombre_remitente,contenido,id_cliente)
+            row = c.execute("""INSERT INTO convivencia_mensajeria.mensajes
+                (id_conversacion,id_emisor,nombre_remitente,contenido,id_cliente)
                 VALUES(%s,%s,%s,%s,%s)
-                ON CONFLICT(id_conversacion,id_remitente,id_cliente) DO NOTHING
-                RETURNING id_mensaje,id_conversacion,id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio""",
+                ON CONFLICT(id_conversacion,id_emisor,id_cliente) DO NOTHING
+                RETURNING id_mensaje,id_conversacion,id_emisor AS id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio""",
                 (conversation_id, user_id, display_name, content, client_id)).fetchone()
             if row is not None:
                 return row
-            row = c.execute("""SELECT id_mensaje,id_conversacion,id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio
-                FROM convivencia_mensajeria.mensaje
-                WHERE id_conversacion=%s AND id_remitente=%s AND id_cliente=%s""",
+            row = c.execute("""SELECT id_mensaje,id_conversacion,id_emisor AS id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio
+                FROM convivencia_mensajeria.mensajes
+                WHERE id_conversacion=%s AND id_emisor=%s AND id_cliente=%s""",
                 (conversation_id, user_id, client_id)).fetchone()
             if row is None:
                 raise ServiceError("MESSAGE_RETRY_CONFLICT", "No se pudo confirmar el reintento.", 409)
@@ -169,17 +175,18 @@ class PostgresRepository:
                 ORDER BY id_usuario LIMIT %s""", (rental_id, after_id, limit + 1)).fetchall()
             return rows[:limit], rows[limit - 1]["id_usuario"] if len(rows) > limit else None
 
-    def list_tasks(self, rental_id, user_id, state, before_id, limit):
+    def list_tasks(self, rental_id, user_id, state, before_id, limit, assigned=None):
         with self.transaction() as c:
             self._active_member(c, rental_id, user_id)
-            params = [rental_id, state]
+            params = [rental_id, state, state, assigned, assigned]
             before = ""
             if before_id is not None:
                 before = " AND id_tarea < %s"
                 params.append(before_id)
             params.append(limit + 1)
             rows = c.execute("""SELECT id_tarea,id_arriendo,titulo,descripcion,estado,id_creador,id_asignado,fecha_creacion
-                FROM convivencia_mensajeria.tarea WHERE id_arriendo=%s AND estado=%s""" + before +
+                FROM convivencia_mensajeria.tarea WHERE id_arriendo=%s AND (%s::text IS NULL OR estado=%s)
+                AND (%s::bigint IS NULL OR id_asignado=%s)""" + before +
                 " ORDER BY id_tarea DESC LIMIT %s", params).fetchall()
             page = rows[:limit]
             return page, page[-1]["id_tarea"] if len(rows) > limit else None
@@ -205,10 +212,11 @@ class PostgresRepository:
         rental_id = self.task_rental(task_id)
         with self.transaction() as c:
             self._active_member(c, rental_id, user_id)
-            self._validate_assignee(c, rental_id, assignee)
+            if assignee is not None:
+                self._validate_assignee(c, rental_id, assignee)
             task = self._task(c, task_id)
             if task["estado"] != "Pendiente":
-                raise ServiceError("TASK_NOT_PENDING", "Solo se reasignan tareas pendientes.", 422)
+                raise ServiceError("TASK_NOT_PENDING", "Solo se reasignan tareas pendientes.", 409)
             return c.execute("""UPDATE convivencia_mensajeria.tarea SET id_asignado=%s WHERE id_tarea=%s
                 RETURNING id_tarea,id_arriendo,titulo,descripcion,estado,id_creador,id_asignado,fecha_creacion""",
                 (assignee, task_id)).fetchone()
@@ -226,3 +234,20 @@ class PostgresRepository:
                 SET estado='Completada',fecha_completada=clock_timestamp() WHERE id_tarea=%s
                 RETURNING id_tarea,id_arriendo,titulo,descripcion,estado,id_creador,id_asignado,fecha_creacion""",
                 (task_id,)).fetchone()
+
+    def rental_publication(self, rental_id):
+        with self.transaction() as c:
+            row = c.execute("SELECT id_publicacion FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
+            if row is None:
+                raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+            return row["id_publicacion"]
+
+    def members(self, rental_id, user_id, owner=False, after=0, limit=20):
+        with self.transaction() as c:
+            if not owner and not c.execute("SELECT 1 FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa'", (rental_id, user_id)).fetchone():
+                raise ServiceError("FORBIDDEN", "No tienes acceso al arriendo.", 403)
+            return c.execute("""SELECT id_pertenencia,id_usuario,creada_en AS fecha_ingreso,
+                estado='Activa' AS activo,
+                id_pertenencia=(SELECT min(first.id_pertenencia) FROM convivencia_mensajeria.pertenencia first WHERE first.id_arriendo=%s) AS es_responsable FROM convivencia_mensajeria.pertenencia
+                WHERE id_arriendo=%s AND id_pertenencia>%s AND estado='Activa'
+                ORDER BY id_pertenencia LIMIT %s""", (rental_id, rental_id, after, limit + 1)).fetchall()

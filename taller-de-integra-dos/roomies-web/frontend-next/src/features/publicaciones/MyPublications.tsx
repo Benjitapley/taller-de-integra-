@@ -6,6 +6,8 @@ import PageHeader from "@/components/layout/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 
+import { publicationError, type PublicationError } from "./validation";
+import PublicationErrorNotice from "./PublicationErrorNotice";
 import { type Publication } from "./contracts";
 import { useCursorList } from "../lists/useCursorList";
 import ListProgress from "../lists/ListProgress";
@@ -18,45 +20,64 @@ const formatPrice = (value: number | string | undefined) => new Intl.NumberForma
 }).format(Number(value ?? 0));
 
 export default function MyPublications() {
-  const list = useCursorList<Publication>("/web-api/mis-publicaciones?limite=20", publicationId);
+  const [status, setStatus] = useState("");
+  const [closing, setClosing] = useState<number | null>(null);
+  const query = new URLSearchParams({ limite: "20", ...(status ? { estado: status } : {}) });
+  const list = useCursorList<Publication>("/web-api/mis-publicaciones?" + query, publicationId);
   const { items, setItems, loading } = list;
-  const [error, setError] = useState("");
+  const [error, setError] = useState<PublicationError | null>(null);
 
   async function close(id: number) {
-    setError("");
+    if (closing !== null || !window.confirm("¿Cerrar este aviso? Se cancelarán las postulaciones pendientes y se conservarán sus imágenes e integrantes.")) return;
+    setError(null);
+    setClosing(id);
     try {
-    const response = await fetch(`/web-api/publicaciones/${id}/cerrar`, {
-      method: "PATCH",
-      credentials: "same-origin",
-      headers: { "X-Haycupo-CSRF": "1" },
-    });
+      const response = await fetch(`/web-api/publicaciones/${id}/cerrar`, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "X-Haycupo-CSRF": "1" },
+        signal: AbortSignal.timeout(15_000),
+      });
 
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      setError(payload?.detail || "No se pudo cerrar la publicación.");
-      return;
+      const saved = await response.json().catch(() => null);
+      if (!response.ok || saved?.id_publicacion !== id || saved.estado !== "Cerrada") {
+        setError(publicationError(response.ok ? 503 : response.status, saved));
+        return;
+      }
+
+      setItems(current => status && status !== saved.estado
+        ? current.filter(item => item.id_publicacion !== id)
+        : current.map(item => item.id_publicacion === id ? { ...item, ...saved } : item));
+    } catch {
+      setError(publicationError(503, null));
+    } finally {
+      setClosing(null);
     }
-
-    const saved = await response.json();
-    setItems(current => current.map(item => item.id_publicacion === id ? { ...item, estado: saved.estado, cupos_disponibles: saved.cupos_disponibles } : item));
-    } catch { setError("No se pudo confirmar el cierre. Actualiza el listado."); }
   }
 
   return <main>
     <PageHeader title="Mis publicaciones" description="Administra tus publicaciones y edita el contenido cuando lo necesites." />
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, gap: 12, flexWrap: "wrap" }}>
+      <label>Estado
+        <select value={status} disabled={closing !== null} onChange={event => { setError(null); setStatus(event.target.value); }}>
+          <option value="">Todos los estados</option>
+          <option value="Disponible">Disponible</option>
+          <option value="Activa">Activa</option>
+          <option value="Cerrada">Cerrada</option>
+        </select>
+      </label>
       <Link href="/publicar" style={{ textDecoration: "none", display: "inline-block", background: "#382384", color: "#fff", padding: "12px 16px", borderRadius: 8, fontWeight: 700 }}>Crear publicación</Link>
     </div>
 
-    {error && <Card><p role="alert">{error}</p><Button disabled={loading} onClick={() => { setError(""); void list.load(); }}>Actualizar listado</Button></Card>}
-    {list.loaded && !loading && !list.error && items.length === 0 ? <Card><p>Aún no tienes publicaciones creadas.</p><Link href="/publicar">Crear la primera</Link></Card> : null}
+    {error && <Card><PublicationErrorNotice error={error} /><Button disabled={loading} onClick={() => { setError(null); void list.load(); }}>Actualizar listado</Button></Card>}
+    {list.loaded && !loading && !list.error && items.length === 0 ? <Card><p>{status ? "No tienes publicaciones en este estado." : "Aún no tienes publicaciones creadas."}</p>{!status && <Link href="/publicar">Crear la primera</Link>}</Card> : null}
 
     {items.length > 0 ? <div style={{ display: "grid", gap: 16 }}>
       {items.map((item) => <Card key={item.id_publicacion}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
             <h2 style={{ margin: "0 0 8px" }}>{item.titulo}</h2>
-            <p style={{ margin: 0, color: "#4b5563" }}>{item.ubicacion || "Sin ubicación"}</p>
+            <p style={{ margin: 0, color: "#4b5563" }}>{[item.comuna?.nombre, item.region?.nombre].filter(Boolean).join(", ") || item.ubicacion || "Sin ubicación"}</p>
           </div>
           <span style={{ padding: "6px 10px", borderRadius: 999, background: "#eef2ff", color: "#3730a3", fontWeight: 700 }}>
             {item.estado || "Disponible"}
@@ -72,7 +93,7 @@ export default function MyPublications() {
           {item.id_arriendo ? <Link href={`/mi-arriendo/${item.id_arriendo}`}>Ver integrantes del arriendo</Link> : null}
           {item.tipo === "Arrendador" && <Link href={`/postulantes/${item.id_publicacion}`}>Ver postulantes</Link>}
           <Link href={`/editar-publicacion?id=${item.id_publicacion}`} style={{ display: "inline-block", textDecoration: "none", padding: "10px 14px", borderRadius: 8, background: "#e5e7eb", color: "#111827", fontWeight: 700 }}>Editar</Link>
-          <Button variant="secondary" disabled={item.estado === "Cerrada"} onClick={() => void close(item.id_publicacion)}>Cerrar publicación</Button>
+          <Button variant="secondary" disabled={item.estado === "Cerrada" || closing !== null} onClick={() => void close(item.id_publicacion)}>{closing === item.id_publicacion ? "Cerrando…" : "Cerrar publicación"}</Button>
         </div>
       </Card>)}
     </div> : null}

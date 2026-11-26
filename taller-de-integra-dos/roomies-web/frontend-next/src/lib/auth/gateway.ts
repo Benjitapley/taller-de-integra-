@@ -32,7 +32,9 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
     if (provider === "supabase") {
       const identity = new URL(env.WEB_SUPABASE_ORIGIN ?? "");
       const key = env.WEB_SUPABASE_PUBLISHABLE_KEY ?? "";
-      const real = env.ROOMIES_RUNTIME_MODE === "supabase" && env.ROOMIES_LOCAL_MODE !== "1" && /^[a-z0-9]{20}$/.test(env.ROOMIES_SUPABASE_PROJECT_REF ?? "") && identity.origin === `https://${env.ROOMIES_SUPABASE_PROJECT_REF}.supabase.co`;
+      const hostedIdentity = (env.ROOMIES_RUNTIME_MODE === "supabase" && env.ROOMIES_LOCAL_MODE !== "1") ||
+        (env.ROOMIES_RUNTIME_MODE === "local-postgres" && env.ROOMIES_LOCAL_MODE === "1" && env.NODE_ENV !== "production");
+      const real = hostedIdentity && /^[a-z0-9]{20}$/.test(env.ROOMIES_SUPABASE_PROJECT_REF ?? "") && identity.origin === `https://${env.ROOMIES_SUPABASE_PROJECT_REF}.supabase.co`;
       const disposable = env.ROOMIES_LOCAL_MODE === "1" && (!env.ROOMIES_RUNTIME_MODE || env.ROOMIES_RUNTIME_MODE === "disposable") && ["127.0.0.1", "localhost", "[::1]", "host.docker.internal", "supabase-auth"].includes(identity.hostname);
       if (!(real || disposable) ||
           !["http:", "https:"].includes(identity.protocol) || identity.username || identity.password || identity.pathname !== "/" || identity.search || identity.hash || !key || key.length > 4096 || key.startsWith("sb_secret_") || /[\r\n]/.test(key)) return null;
@@ -100,7 +102,10 @@ export async function getSession(config: WebAuthConfig | null, token: string, tr
     if (config.provider === "supabase") {
       try { remaining = Math.max(0, Math.floor(JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).exp - Date.now() / 1000)); } catch { return authError(401); }
     }
-    return authReply(200, { authenticated: true, user: { nombre: profile.nombre }, ...(remaining === undefined ? {} : { expires_in: remaining }) });
+    const userId = profile.id_usuario ?? profile.id_usuario_PK;
+    return authReply(200, { authenticated: true, user: { nombre: profile.nombre,
+      ...(Number.isSafeInteger(userId) && userId > 0 ? { id_usuario: userId } : {}),
+    }, ...(remaining === undefined ? {} : { expires_in: remaining }) });
   } catch { return authError(503); }
 }
 const actions = ["registro", "verificar", "reenviar-codigo", "login", "logout", "sesion", "renovar", "confirmar", "recuperar", "recuperacion-callback", "cambiar-contrasena", "recuperacion-estado"];

@@ -12,7 +12,7 @@ const source = (await readFile(new URL("../src/lib/publicaciones/server.ts", imp
   .replace('"../auth/gateway"', JSON.stringify(moduleURL(gateway)))
   .replace('"../../features/publicaciones/validation"', JSON.stringify(validation));
 const { handleCreatePublication, handleSavePublication, handlePublicationRequest } = await import(moduleURL(source));
-const { validatePublicationForm } = await import(validation);
+const { validatePublicationForm, publicationError } = await import(validation);
 const { publicationPage, appendPublications, publicImageURL } = await import(moduleURL(await readFile(new URL("../src/features/publicaciones/contracts.ts", import.meta.url), "utf8")));
 
 test("propias valida cursores, límites y páginas antes de devolver resultados", async () => {
@@ -31,10 +31,10 @@ const cookie = "__Host-haycupo_session=header.payload.signature";
 function validForm() {
   const form = new FormData();
   for (const [key, value] of Object.entries({
-    titulo: "Habitación disponible", categoria: "ofrezco", ubicacion: "Temuco centro",
+    titulo: "Habitación disponible",
     precio: "150000", tipo: "Arrendador", cupos_totales: "2",
-    tipo_vivienda: "habitacion", descripcion: "Descripción de prueba",
-    mascota: "no", permitir_comentarios: "false", id_region: "9", id_comuna: "91101",
+    tipo_vivienda: "Habitacion", descripcion: "Descripción de prueba",
+    mascota: "no", id_region: "9", id_comuna: "91101",
   })) form.set(key, value);
   return form;
 }
@@ -244,4 +244,97 @@ test("adaptador recorre tres páginas sin duplicar avisos y conserva ocupación 
   assert.equal(rows[0].precio, 999999999999);
   for (const url of ["data:image/png,a", "blob:local", "file:///photo.png", "https://user:secret@example.com/a"]) assert.equal(publicImageURL(url), null);
   assert.throws(() => publicationPage([item(1)]));
+});
+
+
+test("BFF conserva el DTO canónico y filtra los campos privados anidados", async () => {
+  const form = validForm();
+  form.delete("ubicacion");
+  form.delete("categoria");
+  form.delete("mascota");
+  form.set("reglas_arrendador", '["Sin humo"]');
+  const result = await handleCreatePublication(request(form), config, async (_, options) => {
+    assert.equal(options.body.get("reglas_arrendador"), '["Sin humo"]');
+    return Response.json({
+      id_publicacion: 42, fecha_publicacion: "2026-11-24T18:00:00Z",
+      region: { id: 9, nombre: "La Araucanía", private: "discard" },
+      comuna: { id: 9101, nombre: "Temuco" },
+      autor: { id_usuario: 52, nombre: "Autora", foto: null, correo: "discard" },
+    }, { status: 201 });
+  });
+  assert.equal(result.status, 201);
+  assert.deepEqual(await result.json(), {
+    id_publicacion: 42, fecha_publicacion: "2026-11-24T18:00:00Z",
+    region: { id: 9, nombre: "La Araucanía" },
+    comuna: { id: 9101, nombre: "Temuco" },
+    autor: { id_usuario: 52, nombre: "Autora", foto: null },
+  });
+  form.set("reglas_arrendador", JSON.stringify(["x".repeat(301)]));
+  assert.equal((await handleCreatePublication(request(form), config, () => assert.fail("No se debe llamar a Listado"))).status, 422);
+});
+
+test("Mis publicaciones conserva filtro de estado y cursor", async () => {
+  const req = params => new Request(config.origin + "/web-api/mis-publicaciones?" + params, { headers: { cookie } });
+  const result = await handlePublicationRequest(req("estado=Cerrada&cursor=siguiente"), "mine", undefined, config, async url => {
+    const query = new URL(url).searchParams;
+    assert.equal(query.get("estado"), "Cerrada");
+    assert.equal(query.get("cursor"), "siguiente");
+    return Response.json({ items: [{ id_publicacion: 42, estado: "Cerrada", id_arriendo: 10 }], siguiente_cursor: null });
+  });
+  assert.deepEqual((await result.json()).items, [{ id_publicacion: 42, estado: "Cerrada", id_arriendo: 10 }]);
+  for (const params of ["estado=archivada", "estado=Cerrada&estado=Activa"]) {
+    assert.equal((await handlePublicationRequest(req(params), "mine", undefined, config, () => assert.fail("No se debe llamar a Listado"))).status, 422);
+  }
+});
+
+
+test("errores canónicos conservan código, mensaje y detalles en crear, editar, leer y cerrar", async () => {
+  for (const [status, codigo] of [[401, "no_autenticado"], [403, "correo_no_verificado"], [403, "sin_permiso"],
+    [409, "estado_invalido"], [409, "configuracion_bloqueada"], [409, "sin_cupos"], [409, "publicacion_cerrada"],
+    [413, "archivo_muy_grande"], [415, "tipo_archivo_no_permitido"], [422, "validacion"], [503, "dependencia_no_disponible"]]) {
+    const body = { codigo, mensaje: `Mensaje ${codigo}`, ...(status === 422 ? { detalles: [{ campo: "id_comuna", mensaje: "No pertenece a la región." }] } : {}) };
+    const upstream = async () => Response.json({ ...body, private: "discard" }, { status });
+    const create = await handleCreatePublication(request(), config, upstream);
+    assert.equal(create.status, status);
+    assert.deepEqual(await create.json(), body);
+    assert.equal(create.headers.has("Set-Cookie"), status === 401);
+    const editRequest = new Request(`${config.origin}/web-api/publicaciones/42`, { method: "PUT", body: validForm(), headers: { cookie, Origin: config.origin, "X-Haycupo-CSRF": "1" } });
+    assert.deepEqual(await (await handleSavePublication(editRequest, config, upstream, "42")).json(), body);
+    for (const operation of ["edit", "close", "mine"]) {
+      const req = new Request(`${config.origin}/web-api/publicaciones/42`, { method: operation === "close" ? "PATCH" : "GET", headers: { cookie, Origin: config.origin, "X-Haycupo-CSRF": "1" } });
+      assert.deepEqual(await (await handlePublicationRequest(req, operation, "42", config, upstream)).json(), body);
+    }
+  }
+  assert.equal(publicationError(409, { codigo: "configuracion_bloqueada" }).mensaje, "Las reglas solo se pueden editar mientras el aviso esté Disponible.");
+  assert.deepEqual(publicationError(422, { codigo: "validacion", mensaje: "Revisa", detalles: [{ campo: "precio", mensaje: "Entero" }, { campo: "bad token", mensaje: "discard" }, null] }), { codigo: "validacion", mensaje: "Revisa", detalles: [{ campo: "precio", mensaje: "Entero" }] });
+});
+
+test("multipart de edición conserva archivos, IDs y boundary generado por el transporte", async () => {
+  const form = validForm();
+  const bytes = new Uint8Array([137, 80, 78, 71, 13, 10]);
+  form.set("imagenes_conservar", "[12,15]");
+  form.append("imagenes", new File([bytes], "nueva.png", { type: "image/png" }));
+  const req = new Request(`${config.origin}/web-api/publicaciones/42`, { method: "PUT", body: form, headers: { cookie, Origin: config.origin, "X-Haycupo-CSRF": "1" } });
+  const response = await handleSavePublication(req, config, async (url, options) => {
+    assert.equal(new Headers(options.headers).has("Content-Type"), false);
+    const wire = new Request(url, options);
+    assert.match(wire.headers.get("Content-Type"), /^multipart\/form-data; boundary=/);
+    const received = await wire.formData();
+    assert.equal(received.get("imagenes_conservar"), "[12,15]");
+    assert.equal(received.get("tipo_vivienda"), "Habitacion");
+    assert.deepEqual(new Uint8Array(await received.get("imagenes").arrayBuffer()), bytes);
+    return Response.json({ id_publicacion: 42, imagenes: [{ id_imagen: 12, url: "https://images.example.test/12.png" }] });
+  }, "42");
+  assert.equal(response.status, 200);
+});
+
+test("solo se envían campos y enumeraciones del contrato Sprint 3 v2", () => {
+  for (const field of ["categoria", "ubicacion", "permitir_comentarios", "cupos_min", "cupos_disponibles", "ids_atributos_evaluables"]) {
+    const form = validForm(); form.set(field, "1");
+    assert.match(validatePublicationForm(form), /no permitidos/);
+  }
+  const form = validForm(); form.set("tipo", "Compartida");
+  assert.match(validatePublicationForm(form), /arrendador/);
+  form.set("tipo", "Arrendador"); form.set("tipo_vivienda", "habitacion");
+  assert.match(validatePublicationForm(form), /vivienda/);
 });

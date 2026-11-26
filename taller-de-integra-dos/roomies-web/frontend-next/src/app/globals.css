@@ -1,10 +1,19 @@
 :root {
   color-scheme: light;
   --primary: #563bdd;
-  --primary-hover: #4930c7;
+  --primary-hover: #735cf1;
   --primary-secondary: #735cf1;
   --foreground: #25243a;
-  --muted: #69647e;
+  --muted: #817d96;
+  --faint: #aba6bb;
+  --goodbg: #e1f7eb;
+  --good: #21925d;
+  --bg: #fcfbff;
+  --p: #563bdd;
+  --p2: #735cf1;
+  --lav: #f0ebff;
+  --lav2: #f9f7ff;
+  --ink: #25243a;
   --lavender: #f0ebff;
   --soft: #f9f7ff;
   --line: #e9e5f3;
@@ -23,3 +32,6 @@ h1, h2, h3 { line-height: 1.25; }
 .journey-status-negative { background: #fee2e2; color: #991b1b; }
 .journey-status-neutral { background: #eef0f4; color: #4b5563; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+
+[hidden] { display: none !important; }
+input::placeholder, textarea::placeholder { color: var(--faint); opacity: 1; }
