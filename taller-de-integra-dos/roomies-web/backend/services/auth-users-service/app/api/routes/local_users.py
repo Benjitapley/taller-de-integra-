@@ -105,6 +105,7 @@ def admission_eligibility(id: Annotated[int, Path(gt=0, le=9223372036854775807)]
 
 
 class OwnProfile(BaseModel):
+    id_usuario: int
     nombre: str
     edad: int | None
     ocupacion: str | None
@@ -119,6 +120,7 @@ class OwnProfile(BaseModel):
     def from_user(cls, user: User, confirmed: bool) -> "OwnProfile":
         age = user.age()
         return cls(
+            id_usuario=user.id_usuario,
             nombre=user.nombre,
             edad=age,
             ocupacion=user.ocupacion,

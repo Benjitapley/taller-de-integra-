@@ -21,6 +21,7 @@ export default function ChatPreviewPage() {
   const [olderBusy, setOlderBusy] = useState(false);
   const [denied, setDenied] = useState(false);
   const [currentUserName, setCurrentUserName] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const messageList = useRef<HTMLDivElement>(null);
   const generation = useRef(0);
   const requests = useRef<AbortController | null>(null);
@@ -47,6 +48,7 @@ export default function ChatPreviewPage() {
     setCursor(null);
     setDraft("");
     setCurrentUserName("");
+    setCurrentUserId(null);
     setOlderBusy(false);
     scrollAnchor.current = null;
     followLatest.current = true;
@@ -76,7 +78,10 @@ export default function ChatPreviewPage() {
       if (!sessionResponse.ok) throw Object.assign(Error("Inicia sesión nuevamente."), { status: sessionResponse.status });
       if (sessionResponse.ok) {
         const session = await sessionResponse.json();
-        if (requestGeneration === generation.current) setCurrentUserName(session.user?.nombre ?? "");
+        if (requestGeneration === generation.current) {
+          setCurrentUserName(session.user?.nombre ?? "");
+          setCurrentUserId(Number.isSafeInteger(session.user?.id_usuario) && session.user.id_usuario > 0 ? session.user.id_usuario : null);
+        }
       }
       const conversation = (conversationData.items as ConversacionDto[]).find((item) => item.id_arriendo === rental.id_arriendo);
       if (!conversation) throw Error("Todavía no hay conversación disponible.");
@@ -216,7 +221,7 @@ export default function ChatPreviewPage() {
         }}>
           {cursor ? <Button className={styles.olderButton} variant="secondary" disabled={olderBusy} onClick={() => void loadOlder()}>{olderBusy ? "Cargando…" : "Cargar mensajes anteriores"}</Button> : null}
           {!messages.length ? <p className={styles.emptyState}>Aún no hay mensajes. Puedes iniciar la conversación.</p> : messages.map((message) => {
-            const own = message.nombre_remitente === currentUserName || message.nombre_remitente === "Tú" || message.id_remitente === 0;
+            const own = message.id_remitente === currentUserId || message.id_remitente === 0;
             return <article className={`${styles.messageRow} ${own ? styles.ownMessage : ""}`} key={message.key}>
               {!own ? <span className={styles.memberAvatar} aria-hidden="true">{message.nombre_remitente.trim().charAt(0).toLocaleUpperCase("es-CL")}</span> : null}
               <div className={styles.messageBubble}>
