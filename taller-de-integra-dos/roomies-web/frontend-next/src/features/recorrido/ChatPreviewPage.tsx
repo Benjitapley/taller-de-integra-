@@ -9,7 +9,7 @@ import type { ConversacionDto, EstadoRecurso, MensajeDto } from "@/features/reco
 
 type ChatData = { conversation: ConversacionDto; messages: MensajeDto[] };
 type ReviewState = "ready" | "empty" | "loading" | "error" | "forbidden";
-const isDevelopment = process.env.NODE_ENV === "development";
+const isDevelopment = process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_ROOMIES_VISUAL_REVIEW === "true";
 const sample: ChatData = {
   conversation: { id_conversacion: 1, id_arriendo: 1, fecha_creacion: "2026-11-20T12:00:00.000Z" },
   messages: [

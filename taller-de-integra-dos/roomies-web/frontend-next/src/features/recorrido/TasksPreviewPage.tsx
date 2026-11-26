@@ -8,7 +8,7 @@ import { TasksView } from "@/features/recorrido/ConvivenciaViews";
 import type { EstadoRecurso, IntegranteArriendoDto, TareaDto } from "@/features/recorrido/types";
 
 type ReviewState = "ready" | "empty" | "loading" | "error" | "forbidden";
-const isDevelopment = process.env.NODE_ENV === "development";
+const isDevelopment = process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_ROOMIES_VISUAL_REVIEW === "true";
 const unavailable: EstadoRecurso<TareaDto[]> = { status: "error", message: "Las tareas aún no están disponibles. La API de convivencia no está conectada en este entorno." };
 const sampleTasks: TareaDto[] = [{ id_tarea: 1, id_arriendo: 1, titulo: "Ordenar la cocina (muestra)", descripcion: "Después de la cena", estado: "Pendiente", id_creador: 1, id_asignado: null, fecha_creacion: "2026-11-22T12:00:00.000Z" }];
 function stateForPreview(state: ReviewState): EstadoRecurso<TareaDto[]> {

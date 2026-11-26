@@ -23,11 +23,13 @@ def exercise(handler, method="GET", path="/", settings=None, **kwargs):
     return asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("path", ["/api/arriendos/mio", "/api/arriendos/7"])
+@pytest.mark.parametrize("path", ["/api/arriendos/mio", "/api/arriendos/7", "/api/arriendos/7/integrantes?activos=true&cursor=next"])
 def test_arriendos_use_dedicated_upstream_and_forward_only_public_auth(path):
     def handler(request):
         assert request.url.host == "convivencia.test"
-        assert request.url.path == path
+        assert request.url.path == path.split("?", 1)[0]
+        if "?" in path:
+            assert request.url.query.decode() == path.split("?", 1)[1]
         assert request.headers["authorization"] == "Bearer synthetic"
         assert "x-roomies-service" not in request.headers
         return reply(200, content=b'{}', headers={"Content-Type": "application/json"})
