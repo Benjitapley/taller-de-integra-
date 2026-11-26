@@ -40,6 +40,12 @@ interface FormularioPublicacionProps {
   borradorListo?: boolean;
   borradorRecuperado?: boolean;
   onDescartarBorrador?: () => void;
+  /** Título de la pantalla; por defecto el del origen ("Crear publicación"...). */
+  tituloPantalla?: string;
+  /** Total de pasos que muestra el encabezado (3 al crear, 2 al editar). */
+  totalPasos?: number;
+  /** Texto del botón final; por defecto "Continuar". */
+  textoBoton?: string;
 }
 
 const soloDigitos = (texto: string) => texto.replace(/\D/g, "");
@@ -59,6 +65,9 @@ export const FormularioPublicacion: React.FC<
   borradorListo = true,
   borradorRecuperado = false,
   onDescartarBorrador,
+  tituloPantalla,
+  totalPasos,
+  textoBoton = "Continuar",
 }) => {
   const textos = textosFormularioPorOrigen[valores.tipo];
   const scrollRef = useRef<ScrollView>(null);
@@ -108,9 +117,9 @@ export const FormularioPublicacion: React.FC<
         keyboardDismissMode="on-drag"
       >
         <View style={styles.encabezado}>
-          <Text style={styles.titulo}>{textos.tituloPantalla}</Text>
+          <Text style={styles.titulo}>{tituloPantalla ?? textos.tituloPantalla}</Text>
           <View style={styles.paso}>
-            <PasoPublicacion paso={1} etiqueta="Información" />
+            <PasoPublicacion paso={1} etiqueta="Información" total={totalPasos} />
           </View>
         </View>
 
@@ -182,7 +191,7 @@ export const FormularioPublicacion: React.FC<
           />
 
           <CustomInput
-            etiqueta="Capacidad total"
+            etiqueta="Cupos totales"
             icono="people-outline"
             mostrarIconoInterior={false}
             value={valores.cupos}
@@ -225,8 +234,9 @@ export const FormularioPublicacion: React.FC<
 
           {valores.tipo === "Arrendador" && (
             <View style={styles.reglas}>
+              <Text style={styles.etiquetaReglas}>Reglas del arrendador (opcional)</Text>
               <CustomInput
-                etiqueta="Reglas de la casa (opcional)"
+                etiqueta="Agregar una regla"
                 icono="list-outline"
                 mostrarIconoInterior={false}
                 value={reglaNueva}
@@ -236,7 +246,7 @@ export const FormularioPublicacion: React.FC<
                 }}
                 placeholder="Ej: No fumar dentro de la casa"
                 maxLength={MAX_CARACTERES_REGLA}
-                ayuda={`${valores.reglas.length} de ${MAX_REGLAS_ARRENDADOR} reglas. Escribe una y toca «Agregar regla».`}
+                ayuda={`${valores.reglas.length} de ${MAX_REGLAS_ARRENDADOR} reglas.`}
                 returnKeyType="done"
                 onSubmitEditing={agregarRegla}
                 error={errorRegla ?? errores.reglas}
@@ -289,7 +299,7 @@ export const FormularioPublicacion: React.FC<
           )}
         </View>
         <CustomButton
-          titulo="Continuar"
+          titulo={textoBoton}
           iconoDerecho="arrow-forward"
           onPress={onContinuar}
         />
@@ -351,6 +361,12 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   reglas: {
+    marginBottom: 8,
+  },
+  etiquetaReglas: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.primary,
     marginBottom: 8,
   },
   botonRegla: {

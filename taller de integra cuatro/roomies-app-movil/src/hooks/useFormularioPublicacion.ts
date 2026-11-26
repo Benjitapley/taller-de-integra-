@@ -56,7 +56,7 @@ export function validarFormularioPublicacion(valores: FormularioPublicacionValor
 
   const cupos = valores.cupos.trim();
   if (!cupos) {
-    errores.cupos = "Ingresa la capacidad total.";
+    errores.cupos = "Ingresa los cupos totales.";
   } else if (!SOLO_DIGITOS.test(cupos) || Number(cupos) < 1 || Number(cupos) > MAX_CUPOS_TOTALES) {
     errores.cupos = `Ingresa un entero entre 1 y ${MAX_CUPOS_TOTALES.toLocaleString("es-CL")}.`;
   }
@@ -88,12 +88,19 @@ export function validarFormularioPublicacion(valores: FormularioPublicacionValor
   return errores;
 }
 
-export function useFormularioPublicacion(tipo: TipoPublicacion) {
+// `valoresIniciales` activa el modo edición (M4S3-C02): el formulario parte de los datos
+// de la publicación y NO lee ni guarda el borrador de creación (sin usuario, el
+// borrador queda desactivado y el formulario se considera listo desde el inicio).
+export function useFormularioPublicacion(
+  tipo: TipoPublicacion,
+  valoresIniciales?: FormularioPublicacionValores,
+) {
   const { sesion } = useAuth();
-  const idUsuario = sesion?.user.id ?? null;
+  const enEdicion = valoresIniciales !== undefined;
+  const idUsuario = enEdicion ? null : (sesion?.user.id ?? null);
 
-  const [valores, setValores] = useState<FormularioPublicacionValores>(() =>
-    formularioPublicacionInicialConOrigen(tipo),
+  const [valores, setValores] = useState<FormularioPublicacionValores>(
+    () => valoresIniciales ?? formularioPublicacionInicialConOrigen(tipo),
   );
   const [errores, setErrores] = useState<ErroresFormularioPublicacion>({});
   // El borrador guardado se aplica una sola vez y, hasta entonces, no se guarda nada
@@ -158,7 +165,7 @@ export function useFormularioPublicacion(tipo: TipoPublicacion) {
   async function descartarBorrador() {
     if (idUsuario) await descartarBorradorPersistido(idUsuario);
     huboCambios.current = false;
-    setValores(formularioPublicacionInicialConOrigen(tipo));
+    setValores(valoresIniciales ?? formularioPublicacionInicialConOrigen(tipo));
     setErrores({});
     setBorradorRecuperado(false);
   }

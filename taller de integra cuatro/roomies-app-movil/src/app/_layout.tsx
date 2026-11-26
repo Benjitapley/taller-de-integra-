@@ -62,6 +62,9 @@ function NavegacionPrincipal() {
         <Stack.Screen name="arriendo/chat" options={{ headerShown: false }} />
         <Stack.Screen name="chats/index" options={{ headerShown: true, title: "Chats", headerTintColor: "#4F46E5" }} />
         <Stack.Screen name="chats/[id]" options={{ headerShown: true, title: "Chat", headerTintColor: "#4F46E5" }} />
+        <Stack.Screen name="publicaciones/index" options={{ headerShown: true, title: "Mis publicaciones", headerTintColor: "#4F46E5" }} />
+        <Stack.Screen name="publicaciones/[id]/index" options={{ headerShown: true, title: "Mi publicación", headerTintColor: "#4F46E5" }} />
+        <Stack.Screen name="publicaciones/[id]/editar" options={{ headerShown: true, title: "Editar publicación", headerTintColor: "#4F46E5" }} />
       </Stack.Protected>
     </Stack>
   );

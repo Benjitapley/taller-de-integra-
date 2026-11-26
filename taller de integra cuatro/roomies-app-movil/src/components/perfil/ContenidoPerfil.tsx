@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 import { CustomButton } from "@/components/CustomButton";
 import type { EstadoPerfilPropio } from "@/hooks/usePerfilPropio";
@@ -29,6 +30,22 @@ function ResumenPersonal({ perfil }: { perfil: PerfilPropioVista }) {
         <Dato icono="briefcase-outline" valor={perfil.ocupacion ?? NO_DISPONIBLE} />
       </View>
       <Text style={styles.texto}>{perfil.breveDescripcion ?? "Descripción breve no disponible."}</Text>
+    </View>
+  );
+}
+
+function AccesoMisPublicaciones() {
+  const router = useRouter();
+  return (
+    <View style={styles.tarjeta}>
+      <Text style={styles.titulo}>Mis publicaciones</Text>
+      <Text style={styles.textoSecundario}>Revisa, edita o cierra los avisos que publicaste.</Text>
+      <CustomButton
+        titulo="Ver mis publicaciones"
+        variante="contorno"
+        iconoIzquierdo="home-outline"
+        onPress={() => router.push("/publicaciones")}
+      />
     </View>
   );
 }
@@ -112,10 +129,7 @@ export function ContenidoPerfil({ estado, onReintentar }: {
         ))}
       </View>
       <Text style={styles.textoSecundario}>Estadísticas no disponibles.</Text>
-      <View style={styles.tarjeta}>
-        <Text style={styles.titulo}>Publicaciones activas</Text>
-        <Text style={styles.textoSecundario}>No disponibles por el momento.</Text>
-      </View>
+      <AccesoMisPublicaciones />
       <View style={styles.tarjeta}>
         <Text style={styles.titulo}>Evaluaciones recibidas</Text>
         <Text style={styles.textoSecundario}>Reputación y evaluaciones no disponibles por el momento.</Text>

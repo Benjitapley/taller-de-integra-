@@ -8,6 +8,10 @@ export const LIMITE_FOTOS_POR_ORIGEN: Record<TipoPublicacion, number> = {
 export const TAMANO_MAX_FOTO_BYTES = 5_000_000;
 export const TAMANO_MAX_FOTO_MB = TAMANO_MAX_FOTO_BYTES / 1_000_000;
 
+// se rechazan fotos de más de 20 megapíxeles decodificados.
+export const MAX_MEGAPIXELES_FOTO = 20;
+export const MAX_PIXELES_FOTO = MAX_MEGAPIXELES_FOTO * 1_000_000;
+
 export const MIMES_FOTO_PERMITIDOS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 export const EXTENSIONES_FOTO_PERMITIDAS = ['jpg', 'jpeg', 'png', 'webp'];
 

@@ -5,7 +5,12 @@ import { Image, type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text,
 import { Ionicons } from "@expo/vector-icons";
 import { CustomButton } from "@/components/CustomButton";
 import { PasoPublicacion } from "@/components/publicaciones/PasoPublicacion";
-import { LIMITE_FOTOS_POR_ORIGEN, TAMANO_MAX_FOTO_MB, lugarFotosPorOrigen } from "@/constants/fotosPublicacion";
+import {
+  LIMITE_FOTOS_POR_ORIGEN,
+  MAX_MEGAPIXELES_FOTO,
+  TAMANO_MAX_FOTO_MB,
+  lugarFotosPorOrigen,
+} from "@/constants/fotosPublicacion";
 import { paletaPublicacion, textosFormularioPorOrigen } from "@/constants/origenPublicacion";
 import { useAuth } from "@/hooks/useAuth";
 import { colors } from "@/theme/colors";
@@ -146,6 +151,7 @@ export default function Fotos() {
       const nuevas: string[] = [];
       let formatoInvalido = false;
       let muyPesada = false;
+      let resolucionAlta = false;
       let sobraron = false;
 
       for (const asset of resultado.assets) {
@@ -154,6 +160,8 @@ export default function Fotos() {
           formatoInvalido = true;
         } else if (motivo === "tamano") {
           muyPesada = true;
+        } else if (motivo === "resolucion") {
+          resolucionAlta = true;
         } else if (fotos.includes(asset.uri) || nuevas.includes(asset.uri)) {
           // Misma foto elegida dos veces: se ignora sin molestar al usuario.
         } else if (nuevas.length >= restantes) {
@@ -168,6 +176,7 @@ export default function Fotos() {
       const avisos: string[] = [];
       if (formatoInvalido) avisos.push("Solo se aceptan fotos JPG, PNG o WEBP.");
       if (muyPesada) avisos.push(`Cada foto debe pesar máximo ${TAMANO_MAX_FOTO_MB} MB.`);
+      if (resolucionAlta) avisos.push(`Cada foto debe tener como máximo ${MAX_MEGAPIXELES_FOTO} megapíxeles.`);
       if (sobraron) avisos.push(`Solo puedes subir hasta ${limite} fotos.`);
       if (avisos.length > 0) setError(avisos.join(" "));
     } catch {
