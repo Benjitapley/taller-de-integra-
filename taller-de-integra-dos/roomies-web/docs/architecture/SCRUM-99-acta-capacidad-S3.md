@@ -60,7 +60,7 @@ Los siguientes hitos son fechas del backlog.
 |---|---|---|---|
 | 17/11 | B01: acta real de capacidad, decisión y encargado TI4 identificado. | Parra y cada integrante; encargado TI4 | **Sin confirmar**; no retrofechar. |
 | 21/11 | B04: operación real por servicio y datos de destino; dependencias A02/C02/F01/A03 disponibles. | Parra coordina la recepción | **Pendiente**; verificar dependencias por servicio. |
-| 24/11 | Primera prueba cruzada E04 en teléfono físico; tarea creada en web y completada en móvil. | Gabriel con TI4 | **Pendiente**. |
+| 24/11 | Primera prueba cruzada E04 en teléfono físico; tarea creada en web y completada en móvil. | Gabriel con TI4 | Cliente Expo local conectado al contrato y comprobado con tipos/lint/prueba aislada; **prueba física y Gateway compartido pendientes**. |
 | 25/11 | Candidato preliminar, SHA, imágenes, migraciones, contrato y versión móvil identificados. | Parra | **Pendiente**. |
 | 26/11 | Validaciones A06/C06/D06/E06 y B06 candidato final aprobado. | Responsables por paquete | **Pendiente**; no cerrar por solo disponer de health. |
 | 27/11–01/12 | Cierre, defectos, restauración, evidencia, documentación y ensayo; sin nuevas funciones. | Equipo | **Planificado, no ejecutado**. |
@@ -72,12 +72,12 @@ Los siguientes hitos son fechas del backlog.
 |---|---|---|
 | Coordinación TI2 | Gabriel Yamaguchi según backlog; confirmación de recepción **pendiente** | — |
 | Encargado TI4 / interlocutor nominal | **SIN CONFIRMAR** | — |
-| Quién entrega build Expo y versión | **SIN CONFIRMAR** | — |
+| Quién entrega build Expo y versión | **SIN CONFIRMAR**; árbol móvil local conectado a tareas API con Expo SDK 57, sin build entregada ni versión instalada confirmada | `src/app/convivencia/tareas.tsx` del árbol TI4 local; no es entrega Expo |
 | Quién ejecuta prueba en celular físico | **SIN CONFIRMAR** | — |
 | Fecha de entrega y canal | **SIN CONFIRMAR** | — |
 | Contrato/API versionado recibido por TI4 | **SIN CONFIRMAR** | — |
 | URL y SHA del Gateway/servicios contra los que se prueba | **SIN CONFIRMAR** | — |
-| Evidencia de flujo conjunto web/Expo | **SIN CONFIRMAR** | — |
+| Evidencia de flujo conjunto web/Expo | **SIN CONFIRMAR**; dependencia E04/E06/B06 abierta el 24/11 | `docs/SCRUM-121.md`; no se ejecutó prueba física |
 
 Actualización E04, revisión local del **25/11/2026**: no se recibió confirmación
 nominal de quién entrega ni quién prueba Expo. La pantalla móvil de tareas

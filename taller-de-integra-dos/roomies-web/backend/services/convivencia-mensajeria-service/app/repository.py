@@ -137,6 +137,104 @@ class PostgresRepository:
                 raise ServiceError("MESSAGE_IDEMPOTENCY_CONFLICT", "El UUID ya fue usado con otro contenido.", 409)
             return row
 
+    @staticmethod
+    def _active_member(c, rental_id, user_id):
+        rental = c.execute("SELECT id_arriendo FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
+        if rental is None:
+            raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+        member = c.execute("""SELECT id_usuario FROM convivencia_mensajeria.pertenencia
+            WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa' FOR SHARE""", (rental_id, user_id)).fetchone()
+        if member is None:
+            raise ServiceError("TASK_FORBIDDEN", "No perteneces a este arriendo.", 403)
+
+    @staticmethod
+    def _task(c, task_id):
+        task = c.execute("""SELECT id_tarea,id_arriendo,titulo,descripcion,estado,id_creador,id_asignado,fecha_creacion
+            FROM convivencia_mensajeria.tarea WHERE id_tarea=%s FOR UPDATE""", (task_id,)).fetchone()
+        if task is None:
+            raise ServiceError("TASK_NOT_FOUND", "Tarea no encontrada.", 404)
+        return task
+
+    def task_rental(self, task_id):
+        with self.transaction() as c:
+            row = c.execute("SELECT id_arriendo FROM convivencia_mensajeria.tarea WHERE id_tarea=%s", (task_id,)).fetchone()
+            if row is None:
+                raise ServiceError("TASK_NOT_FOUND", "Tarea no encontrada.", 404)
+            return row["id_arriendo"]
+
+    def _active_member_check(self, rental_id, user_id):
+        with self.transaction() as c:
+            self._active_member(c, rental_id, user_id)
+
+    def active_members(self, rental_id, user_id, after_id, limit):
+        with self.transaction() as c:
+            self._active_member(c, rental_id, user_id)
+            rows = c.execute("""SELECT id_usuario,creada_en AS fecha_ingreso
+                FROM convivencia_mensajeria.pertenencia
+                WHERE id_arriendo=%s AND estado='Activa' AND id_usuario>%s
+                ORDER BY id_usuario LIMIT %s""", (rental_id, after_id, limit + 1)).fetchall()
+            return rows[:limit], rows[limit - 1]["id_usuario"] if len(rows) > limit else None
+
+    def list_tasks(self, rental_id, user_id, state, before_id, limit, assigned=None):
+        with self.transaction() as c:
+            self._active_member(c, rental_id, user_id)
+            params = [rental_id, state, state, assigned, assigned]
+            before = ""
+            if before_id is not None:
+                before = " AND id_tarea < %s"
+                params.append(before_id)
+            params.append(limit + 1)
+            rows = c.execute("""SELECT id_tarea,id_arriendo,titulo,descripcion,estado,id_creador,id_asignado,fecha_creacion
+                FROM convivencia_mensajeria.tarea WHERE id_arriendo=%s AND (%s::text IS NULL OR estado=%s)
+                AND (%s::bigint IS NULL OR id_asignado=%s)""" + before +
+                " ORDER BY id_tarea DESC LIMIT %s", params).fetchall()
+            page = rows[:limit]
+            return page, page[-1]["id_tarea"] if len(rows) > limit else None
+
+    def create_task(self, rental_id, user_id, title, description, assignee):
+        with self.transaction() as c:
+            self._active_member(c, rental_id, user_id)
+            if assignee is not None:
+                self._validate_assignee(c, rental_id, assignee)
+            return c.execute("""INSERT INTO convivencia_mensajeria.tarea
+                (id_arriendo,titulo,descripcion,id_creador,id_asignado) VALUES(%s,%s,%s,%s,%s)
+                RETURNING id_tarea,id_arriendo,titulo,descripcion,estado,id_creador,id_asignado,fecha_creacion""",
+                (rental_id, title, description, user_id, assignee)).fetchone()
+
+    @staticmethod
+    def _validate_assignee(c, rental_id, assignee):
+        member = c.execute("""SELECT id_usuario FROM convivencia_mensajeria.pertenencia
+            WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa' FOR SHARE""", (rental_id, assignee)).fetchone()
+        if member is None:
+            raise ServiceError("INVALID_ASSIGNEE", "El asignado debe ser un integrante activo.", 422)
+
+    def reassign_task(self, task_id, user_id, assignee):
+        rental_id = self.task_rental(task_id)
+        with self.transaction() as c:
+            self._active_member(c, rental_id, user_id)
+            if assignee is not None:
+                self._validate_assignee(c, rental_id, assignee)
+            task = self._task(c, task_id)
+            if task["estado"] != "Pendiente":
+                raise ServiceError("TASK_NOT_PENDING", "Solo se reasignan tareas pendientes.", 409)
+            return c.execute("""UPDATE convivencia_mensajeria.tarea SET id_asignado=%s WHERE id_tarea=%s
+                RETURNING id_tarea,id_arriendo,titulo,descripcion,estado,id_creador,id_asignado,fecha_creacion""",
+                (assignee, task_id)).fetchone()
+
+    def complete_task(self, task_id, user_id):
+        rental_id = self.task_rental(task_id)
+        with self.transaction() as c:
+            self._active_member(c, rental_id, user_id)
+            task = self._task(c, task_id)
+            if task["id_asignado"] != user_id:
+                raise ServiceError("TASK_FORBIDDEN", "Solo el asignado puede completar la tarea.", 403)
+            if task["estado"] != "Pendiente":
+                raise ServiceError("TASK_NOT_PENDING", "La tarea ya no está pendiente.", 422)
+            return c.execute("""UPDATE convivencia_mensajeria.tarea
+                SET estado='Completada',fecha_completada=clock_timestamp() WHERE id_tarea=%s
+                RETURNING id_tarea,id_arriendo,titulo,descripcion,estado,id_creador,id_asignado,fecha_creacion""",
+                (task_id,)).fetchone()
+
     def rental_publication(self, rental_id):
         with self.transaction() as c:
             row = c.execute("SELECT id_publicacion FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
@@ -153,38 +251,3 @@ class PostgresRepository:
                 id_pertenencia=(SELECT min(first.id_pertenencia) FROM convivencia_mensajeria.pertenencia first WHERE first.id_arriendo=%s) AS es_responsable FROM convivencia_mensajeria.pertenencia
                 WHERE id_arriendo=%s AND id_pertenencia>%s AND estado='Activa'
                 ORDER BY id_pertenencia LIMIT %s""", (rental_id, rental_id, after, limit + 1)).fetchall()
-
-    @staticmethod
-    def _task_member(c, rental_id, user_id):
-        c.execute("SELECT id_arriendo FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s FOR UPDATE", (rental_id,))
-        if not c.execute("SELECT 1 FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa'", (rental_id,user_id)).fetchone():
-            raise ServiceError("FORBIDDEN", "Las tareas requieren pertenencia activa.", 403)
-
-    def tasks(self, rental_id, user_id, before=0, limit=20, state=None, assigned=None):
-        with self.transaction() as c:
-            self._task_member(c,rental_id,user_id)
-            return c.execute("SELECT * FROM convivencia_mensajeria.tarea WHERE id_arriendo=%s AND id_tarea>%s AND (%s::text IS NULL OR estado=%s) AND (%s::bigint IS NULL OR id_asignado=%s) ORDER BY id_tarea LIMIT %s", (rental_id,before,state,state,assigned,assigned,limit+1)).fetchall()
-
-    def create_task(self, rental_id, user_id, data):
-        with self.transaction() as c:
-            self._task_member(c,rental_id,user_id)
-            if data["id_asignado"] is not None:
-                self._task_member(c,rental_id,data["id_asignado"])
-            return c.execute("INSERT INTO convivencia_mensajeria.tarea(id_arriendo,id_creador,titulo,descripcion,id_asignado) VALUES(%s,%s,%s,%s,%s) RETURNING *", (rental_id,user_id,data["titulo"],data["descripcion"],data["id_asignado"])).fetchone()
-
-    def update_task(self, task_id, user_id, assigned=None, complete=False):
-        with self.transaction() as c:
-            row = c.execute("SELECT id_arriendo FROM convivencia_mensajeria.tarea WHERE id_tarea=%s", (task_id,)).fetchone()
-            if row is None:
-                raise ServiceError("NOT_FOUND", "Tarea no encontrada.",404)
-            self._task_member(c,row["id_arriendo"],user_id)
-            task = c.execute("SELECT * FROM convivencia_mensajeria.tarea WHERE id_tarea=%s FOR UPDATE", (task_id,)).fetchone()
-            if complete:
-                if task["id_asignado"] != user_id:
-                    raise ServiceError("FORBIDDEN", "Solo el asignado activo puede completar la tarea.",403)
-                return c.execute("UPDATE convivencia_mensajeria.tarea SET estado='Completada' WHERE id_tarea=%s RETURNING *", (task_id,)).fetchone()
-            if task["estado"] != "Pendiente":
-                raise ServiceError("TASK_COMPLETED", "La tarea ya está completada.",409)
-            if assigned is not None:
-                self._task_member(c,task["id_arriendo"],assigned)
-            return c.execute("UPDATE convivencia_mensajeria.tarea SET id_asignado=%s WHERE id_tarea=%s RETURNING *", (assigned,task_id)).fetchone()

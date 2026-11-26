@@ -53,7 +53,8 @@ def main():
 
     started = False
     try:
-        result = command("initdb", "-D", data, "-U", "convivencia_test_admin", "--encoding=UTF8",
+        # Simula también el nombre del grantor administrado, siempre en loopback.
+        result = command("initdb", "-D", data, "-U", "supabase_admin", "--encoding=UTF8",
                          "--locale=C", "--auth-local=trust", "--auth-host=trust")
         if result.returncode:
             raise SystemExit("No se pudo inicializar PostgreSQL efímero (sin credenciales reales).")
@@ -64,7 +65,7 @@ def main():
         if result.returncode:
             raise SystemExit("No se pudo iniciar PostgreSQL efímero en loopback.")
         import psycopg
-        admin = f"postgresql://convivencia_test_admin@127.0.0.1:{port}/postgres"
+        admin = f"postgresql://supabase_admin@127.0.0.1:{port}/postgres"
         with psycopg.connect(admin, autocommit=True, connect_timeout=5) as connection:
             connection.execute("CREATE DATABASE roomies_sprint2_disposable")
             connection.execute("CREATE ROLE sql_convivencia_mensajeria LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS")

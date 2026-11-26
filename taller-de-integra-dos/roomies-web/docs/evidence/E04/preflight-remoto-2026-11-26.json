@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-11-26T22:04:21.527953+00:00",
+  "gateway": "https://roomies-gateway-test.inf.uct.cl",
+  "web": "https://taller-de-integra-frontend-next.vercel.app",
+  "accounts": [
+    {
+      "account": "A",
+      "supabase_login": 200,
+      "confirmed": true,
+      "/api/usuarios/me": 503,
+      "/api/arriendos/mio": 503,
+      "/api/conversaciones": 503,
+      "web_bff_login": 503
+    },
+    {
+      "account": "B",
+      "supabase_login": 200,
+      "confirmed": true,
+      "/api/usuarios/me": 503,
+      "/api/arriendos/mio": 503,
+      "/api/conversaciones": 503,
+      "web_bff_login": 503
+    }
+  ],
+  "/health": 200,
+  "/api/usuarios/me": 503,
+  "/api/arriendos/mio": 503
+}

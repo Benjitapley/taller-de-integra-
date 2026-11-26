@@ -1,0 +1,13 @@
+{
+  "certificate_url": "https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt",
+  "certificate_sha256": "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7",
+  "certificate_expires": "2031-04-26T10:56:53+00:00",
+  "connected": true,
+  "role": "sql_convivencia_mensajeria",
+  "task_count": 0,
+  "cross_domain_read_denied": true,
+  "client_tls": true,
+  "client_tls_mode": "verify-full",
+  "postgres_backend_tls": false,
+  "postgres_backend_tls_version": null
+}

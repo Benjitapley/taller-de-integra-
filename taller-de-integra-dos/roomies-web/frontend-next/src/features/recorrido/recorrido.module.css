@@ -68,7 +68,12 @@
 .composer textarea::placeholder, .taskForm input::placeholder, .taskForm textarea::placeholder { color: #736e88; }
 .composer textarea:disabled, .taskForm input:disabled, .taskForm textarea:disabled, .taskForm select:disabled { background: var(--soft); }
 .formFooter { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.formFooter small { color: var(--muted); font-size: 12px; }
+.formFooter small, .formFooter span { color: var(--muted); font-size: 12px; }
+.taskList li { align-items: flex-start; }
+.taskList li p { margin: 4px 0; color: var(--muted); }
+.taskControls { display: grid; justify-items: end; gap: 8px; }
+.taskControls label { display: grid; gap: 6px; font-size: 12px; }
+.taskControls select { min-height: 40px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: white; }
 
 .taskBoard { padding: 22px; max-width: 980px; }
 .taskBoard h2 { color: var(--primary); font-size: 20px; }
@@ -98,3 +103,5 @@
 
 .removeDialog { width: 100%; display: grid; gap: 16px; }
 .removeDialog textarea { display: block; width: 100%; min-height: 110px; border: 1px solid #cfc0fb; border-radius: 12px; padding: 12px; font: inherit; resize: vertical; }
+
+@media (max-width: 640px) { .facts, .overviewGrid { grid-template-columns: 1fr; } }

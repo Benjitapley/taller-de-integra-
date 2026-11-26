@@ -208,6 +208,35 @@ def test_http_403_de_convivencia_no_expone_conversacion_por_id_directo(http, met
         service.repository.send_message.assert_called_once()
 
 
+def test_tareas_contrato_y_permisos_http(http):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=2, display_name="Integrante")
+    row = {"id_tarea": 17, "id_arriendo": 4, "titulo": "Aseo", "descripcion": "Cocina",
+           "estado": "Pendiente", "id_creador": 2, "id_asignado": 2,
+           "fecha_creacion": "2026-11-24T12:00:00Z"}
+    service.repository.list_tasks.return_value = ([row], None)
+    service.repository.create_task.return_value = row
+    service.repository.reassign_task.return_value = {**row, "id_asignado": 3}
+    service.repository.complete_task.return_value = {**row, "estado": "Completada"}
+    listed = client.get("/api/arriendos/4/tareas?estado=Pendiente&limite=20")
+    assert listed.status_code == 200
+    assert listed.json()["id_usuario_actual"] == 2
+    assert listed.json()["items"][0]["id_tarea"] == 17
+    assert client.post("/api/arriendos/4/tareas", json={"titulo": "Aseo", "descripcion": "Cocina", "id_asignado": 2}).status_code == 201
+    assert client.patch("/api/tareas/17", json={"id_asignado": 3}).status_code == 200
+    assert client.patch("/api/tareas/17/estado", json={"estado": "Completada"}).status_code == 200
+    assert client.patch("/api/tareas/17/estado", json={"estado": "Pendiente"}).status_code == 422
+    service.repository.complete_task.assert_called_once_with(17, 2)
+
+    service.repository.complete_task.side_effect = ServiceError("TASK_FORBIDDEN", "Solo asignado.", 403)
+    denied = client.patch("/api/tareas/17/estado", json={"estado": "Completada"})
+    assert denied.status_code == 403
+    service.repository.reassign_task.side_effect = ServiceError("INVALID_ASSIGNEE", "Asignado inactivo.", 422)
+    assert client.patch("/api/tareas/17", json={"id_asignado": 99}).status_code == 422
+    service.repository._active_member_check.side_effect = ServiceError("TASK_FORBIDDEN", "Retirado.", 403)
+    assert client.get("/api/arriendos/4/tareas").status_code == 403
+
+
 def test_expulsion_deriva_actor_y_no_exige_clave_del_mensaje(http):
     client, service, application = http
     application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=1)

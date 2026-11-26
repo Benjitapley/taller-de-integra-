@@ -27,9 +27,11 @@
     "test:private-lists-browser": "node --test tests/private-lists-browser.test.mjs",
     "test:supabase-auth": "node --test tests/supabase-auth.test.mjs",
     "test:applications": "node --test tests/applications.test.mjs",
+    "test:tareas": "node --test tests/tareas.test.mjs tests/tareas-contract.test.mjs",
+    "test:tareas-mobile-browser": "node --test tests/tareas-mobile-browser.test.mjs",
     "test:expulsions": "node --test tests/expulsiones.test.mjs",
     "test:expulsions-browser": "node --test tests/expulsiones-browser.test.mjs",
-    "test:tasks": "node --test tests/tareas.test.mjs",
+    "test:tasks": "node --test tests/tareas.test.mjs tests/tareas-contract.test.mjs",
     "test:tasks-browser": "node --test tests/tareas-browser.test.mjs",
     "test:convivencia-browser": "node --test tests/convivencia-browser.test.mjs"
   },

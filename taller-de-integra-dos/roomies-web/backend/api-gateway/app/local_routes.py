@@ -2,8 +2,8 @@
 import asyncio
 import re
 from fastapi import Request
-from starlette.responses import JSONResponse
-from app.proxy import forward_to,bounded_body,BodyTooLarge
+from starlette.responses import JSONResponse, Response
+from .proxy import forward_to,bounded_body,BodyTooLarge
 
 ROUTES=[
  (r"/api/arriendos/[1-9][0-9]*/expulsiones",{"POST"},"convivencia_upstream"),
@@ -37,9 +37,6 @@ ROUTES=[
  (r"/api/postulaciones/[1-9][0-9]*",{"GET"},"listado_upstream"),
  (r"/api/postulaciones/[1-9][0-9]*/estado",{"PATCH"},"listado_upstream"),
  (r"/api/postulaciones/[1-9][0-9]*/retiro",{"POST"},"listado_upstream"),
- (r"/api/arriendos/mio",{"GET"},"convivencia_upstream"),
- (r"/api/arriendos/[1-9][0-9]*",{"GET"},"convivencia_upstream"),
- (r"/api/arriendos/[1-9][0-9]*/expulsiones",{"POST"},"convivencia_upstream"),
  (r"/api/conversaciones",{"GET"},"convivencia_upstream"),
  (r"/api/conversaciones/[1-9][0-9]*",{"GET"},"convivencia_upstream"),
  (r"/api/conversaciones/[1-9][0-9]*/mensajes",{"GET","POST"},"convivencia_upstream"),

@@ -38,22 +38,22 @@ def test_doble_click_concurrente_libera_una_plaza(service,ports,repository):
         audit = c.execute("SELECT * FROM convivencia_mensajeria.retiro").fetchone()
         assert audit["id_actor"] == 1 and audit["fecha"] is not None and audit["motivo"] == REASON["motivo"]
     with pytest.raises(ServiceError): repository.mine(2)
-    for action in [lambda:repository.messages(1,2,None,20),lambda:repository.send_message(1,2,"Test","Texto",uuid4()),lambda:repository.tasks(1,2)]:
+    for action in [lambda:repository.messages(1,2,None,20),lambda:repository.send_message(1,2,"Test","Texto",uuid4()),lambda:repository.list_tasks(1,2,None,None,20)]:
         with pytest.raises(ServiceError) as error: action()
         assert error.value.status == 403
 
 
 def test_pendientes_reasignables_completadas_intactas(service,ports,repository):
     setup(service,ports)
-    pending = repository.create_task(1,3,{"titulo":"Aseo","descripcion":None,"id_asignado":2})
-    completed = repository.create_task(1,3,{"titulo":"Compra","descripcion":None,"id_asignado":2})
-    repository.update_task(completed["id_tarea"],2,complete=True)
+    pending = repository.create_task(1,3,"Aseo",None,2)
+    completed = repository.create_task(1,3,"Compra",None,2)
+    repository.complete_task(completed["id_tarea"],2)
     service.expel(1,1,REASON)
-    rows = {task["id_tarea"]:task for task in repository.tasks(1,3)}
+    rows = {task["id_tarea"]:task for task in repository.list_tasks(1,3,None,None,20)[0]}
     assert rows[pending["id_tarea"]]["id_asignado"] is None
     assert rows[completed["id_tarea"]]["id_asignado"] == 2
     assert rows[completed["id_tarea"]]["estado"] == "Completada"
-    assert repository.update_task(pending["id_tarea"],3,assigned=3)["id_asignado"] == 3
+    assert repository.reassign_task(pending["id_tarea"],3,3)["id_asignado"] == 3
     assert all(not member["es_responsable"] for member in repository.members(1,3))
 
 

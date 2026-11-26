@@ -85,6 +85,30 @@ class MessagePage(BaseModel):
     siguiente_cursor: str | None
 
 
+class TaskState(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    estado: Literal["Completada"]
+
+
+class Task(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_tarea: PositiveId
+    id_arriendo: PositiveId
+    titulo: str
+    descripcion: str | None
+    estado: Literal["Pendiente", "Completada"]
+    id_creador: PositiveId
+    id_asignado: PositiveId | None
+    fecha_creacion: datetime
+
+
+class TaskPage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    items: list[Task]
+    siguiente_cursor: str | None
+    id_usuario_actual: PositiveId
+
+
 class ErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     detail: str

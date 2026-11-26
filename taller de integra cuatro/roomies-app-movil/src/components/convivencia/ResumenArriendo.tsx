@@ -11,14 +11,13 @@ type Props = {
 export default function ResumenArriendo({ info, cantidadIntegrantes }: Props) {
   return (
     <View style={styles.tarjeta}>
-      <Ionicons name="home" size={18} color="#4F46E5" />
+      <View style={styles.icono}><Ionicons name="home-outline" size={22} color="#5139E8" /></View>
       <View style={{ flex: 1 }}>
         <Text style={styles.titulo}>Nuestro lugar</Text>
-        <Text style={styles.texto}>
-          {info.direccion} · {info.numeroDepto} · {cantidadIntegrantes} integrantes
-        </Text>
+        <Text style={styles.texto}>{info.direccion}</Text>
+        <Text style={styles.texto}>{info.numeroDepto} · {cantidadIntegrantes} integrantes</Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+      <Ionicons name="chevron-forward" size={20} color="#5139E8" />
     </View>
   );
 }
@@ -28,10 +27,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F5F3FF",
-    borderRadius: 12,
+    backgroundColor: "#F7F5FF",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E8E2FA",
     padding: 14,
   },
-  titulo: { fontSize: 13, fontWeight: "700", color: "#111827" },
+  icono: { width: 38, height: 38, backgroundColor: "#EEE9FF", borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  titulo: { fontSize: 14, fontWeight: "700", color: "#5139E8" },
   texto: { fontSize: 12, color: "#6B7280", marginTop: 2 },
 });
