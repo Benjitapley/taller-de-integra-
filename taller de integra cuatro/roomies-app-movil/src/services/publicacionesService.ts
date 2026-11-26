@@ -1,3 +1,4 @@
+import { adaptarPublicacionPropia } from "@/adapters/publicacionPropiaAdapter";
 import { ENVIAR_ENLACE_REFERENCIA } from "@/constants/camposPublicacion";
 import {
   CAMPOS_API_PUBLICACION,
@@ -27,6 +28,7 @@ import type {
   TipoVivienda,
   Publicacion,
 } from "@/types/Publicacion";
+import type { PublicacionPropia } from "@/types/PublicacionPropia";
 
 // Las banderas ENVIAR_* viven en constants/camposPublicacion.ts: también las usan
 // el formulario y la vista previa.
@@ -379,4 +381,216 @@ export async function obtenerPublicacionPorId(id: string | number): Promise<Publ
   const numero = Number(id);
   if (!Number.isSafeInteger(numero) || numero < 1) return null;
   return publicacionesMock.find((publicacion) => publicacion.idPublicacion === numero) ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// M4S3-C02: Mis publicaciones, edición y cierre
+// ---------------------------------------------------------------------------
+// GET /api/publicaciones/mias · GET /api/publicaciones/{id} ·
+// PUT /api/publicaciones/{id} (multipart) · PATCH /api/publicaciones/{id}/cerrar.
+// La forma de la respuesta se interpreta solo en adapters/publicacionPropiaAdapter.ts.
+// Igual que la creación: nunca lanzan; devuelven datos o el `ErrorHttp` tal cual.
+
+const respuestaIlegible = (error: string, estadoHttp: number): ErrorHttp => ({
+  exito: false,
+  codigo: "respuesta_invalida",
+  error,
+  estadoHttp,
+});
+
+const idValido = (id: number) => Number.isSafeInteger(id) && id >= 1;
+
+const publicacionNoValida = (): ErrorHttp => ({
+  exito: false,
+  codigo: "peticion_invalida",
+  error: "La publicación no es válida.",
+});
+
+export interface PaginaPublicacionesPropias {
+  items: PublicacionPropia[];
+  /** null cuando no hay más páginas. El cursor es opaco: se devuelve tal cual. */
+  siguienteCursor: string | null;
+}
+
+export type ResultadoMisPublicaciones =
+  | { exito: true; datos: PaginaPublicacionesPropias; estadoHttp: number }
+  | ErrorHttp;
+
+/**
+ * Una página de mis publicaciones (todos los estados, incluidas las cerradas). El
+ * servicio todavía no filtra por estado: el filtro se aplica en el cliente (hook).
+ */
+export async function listarMisPublicaciones(
+  opciones: { cursor?: string | null; limite?: number } = {},
+  solicitar: SolicitarJson = solicitarJson,
+): Promise<ResultadoMisPublicaciones> {
+  const limite = opciones.limite ?? 20;
+  if (!Number.isInteger(limite) || limite < 1 || limite > 100) {
+    return { exito: false, codigo: "peticion_invalida", error: "El tamaño de página no es válido." };
+  }
+  const parametros = new URLSearchParams({ limite: String(limite) });
+  if (opciones.cursor) parametros.set("cursor", opciones.cursor);
+
+  const resultado = await solicitar(`/api/publicaciones/mias?${parametros.toString()}`);
+  if (!resultado.exito) return resultado;
+
+  const cuerpo = resultado.datos as { items?: unknown; siguiente_cursor?: unknown } | null;
+  const cursor = cuerpo?.siguiente_cursor;
+  if (
+    typeof cuerpo !== "object" || cuerpo === null ||
+    !Array.isArray(cuerpo.items) ||
+    !(cursor === null || (typeof cursor === "string" && cursor.length > 0))
+  ) {
+    return respuestaIlegible("El servicio devolvió una lista que no pudimos interpretar.", resultado.estadoHttp);
+  }
+
+  const items: PublicacionPropia[] = [];
+  for (const crudo of cuerpo.items) {
+    const publicacion = adaptarPublicacionPropia(crudo);
+    if (!publicacion) {
+      return respuestaIlegible("El servicio devolvió una publicación que no pudimos interpretar.", resultado.estadoHttp);
+    }
+    items.push(publicacion);
+  }
+  return { exito: true, datos: { items, siguienteCursor: cursor }, estadoHttp: resultado.estadoHttp };
+}
+
+export type ResultadoPublicacionPropia =
+  | { exito: true; datos: PublicacionPropia; estadoHttp: number }
+  | ErrorHttp;
+
+function leerPublicacionPropia(
+  resultado: { datos: unknown; estadoHttp: number },
+  idEsperado: number,
+): ResultadoPublicacionPropia {
+  const publicacion = adaptarPublicacionPropia(resultado.datos);
+  if (!publicacion || publicacion.idPublicacion !== idEsperado) {
+    return respuestaIlegible("El servicio devolvió una publicación que no pudimos interpretar.", resultado.estadoHttp);
+  }
+  return { exito: true, datos: publicacion, estadoHttp: resultado.estadoHttp };
+}
+
+/** Detalle completo para editar. Con sesión: el dueño puede recibir campos extra (id_arriendo). */
+export async function consultarPublicacionPropia(
+  id: number,
+  solicitar: SolicitarJson = solicitarJson,
+): Promise<ResultadoPublicacionPropia> {
+  if (!idValido(id)) return publicacionNoValida();
+  const resultado = await solicitar(`/api/publicaciones/${id}`);
+  if (!resultado.exito) return resultado;
+  return leerPublicacionPropia(resultado, id);
+}
+
+export interface OpcionesEdicion {
+  /** `id_imagen` de las fotos que se conservan, en el orden deseado (puede ir vacío). */
+  idsConservados: number[];
+  /** Fotos nuevas (URIs locales). Conservadas + nuevas: máximo 5. */
+  nuevasUris: string[];
+  /**
+   * Idempotency-Key de ESTA edición: se reutiliza al reintentar el mismo cambio y se
+   * cambia si cambia el contenido (otro cuerpo con la misma clave responde 409).
+   */
+  claveIdempotencia: string;
+}
+
+export type ResultadoEdicionPublicacion =
+  | { exito: true; idPublicacion: number; publicacion: PublicacionPropia | null; estadoHttp: number }
+  | ErrorHttp;
+
+/**
+ * Edita una publicación de arrendador (PUT multipart). El tipo no cambia. Siempre se
+ * envía `imagenes_conservar` explícito: omitirlo conservaría todas las vigentes y
+ * quitar una foto nunca llegaría al servidor. Las reglas de capacidad y de reglas
+ * congeladas las decide la API (409).
+ */
+export async function editarPublicacion(
+  id: number,
+  valores: FormularioPublicacionValores,
+  opciones: OpcionesEdicion,
+  enviar: EnviarFormulario = solicitarFormulario,
+): Promise<ResultadoEdicionPublicacion> {
+  if (!idValido(id)) return publicacionNoValida();
+
+  const conservados = opciones.idsConservados;
+  if (
+    conservados.some((valor) => !idValido(valor)) ||
+    new Set(conservados).size !== conservados.length
+  ) {
+    return { exito: false, codigo: "peticion_invalida", error: "Las fotos conservadas no son válidas." };
+  }
+  if (conservados.length + opciones.nuevasUris.length > MAX_IMAGENES_ARRENDADOR) {
+    return {
+      exito: false,
+      codigo: "peticion_invalida",
+      error: `Puedes tener hasta ${MAX_IMAGENES_ARRENDADOR} fotos.`,
+    };
+  }
+
+  let solicitud: SolicitudCreacionPublicacion;
+  try {
+    solicitud = armarSolicitudCreacion(valores);
+  } catch (error) {
+    if (error instanceof PayloadPublicacionInvalidoError) {
+      return {
+        exito: false,
+        codigo: "peticion_invalida",
+        error: "Revisa los datos de la publicación antes de guardarla.",
+      };
+    }
+    throw error;
+  }
+  if (solicitud.origen !== "Arrendador") {
+    return {
+      exito: false,
+      codigo: "peticion_invalida",
+      error: "Solo se pueden editar publicaciones de arrendador.",
+    };
+  }
+
+  const formulario = cuerpoAFormulario(solicitud.cuerpo);
+  // Listado conserva las reglas guardadas cuando el PUT no trae el campo. Si la persona
+  // quitó todas, hay que enviarlas vacías: omitirlas dejaría las anteriores.
+  if (!(CAMPO_REGLAS_LISTADO in solicitud.cuerpo)) formulario.append(CAMPO_REGLAS_LISTADO, "[]");
+  formulario.append("imagenes_conservar", JSON.stringify(conservados));
+  adjuntarImagenes(formulario, opciones.nuevasUris);
+
+  const resultado = await enviar(`/api/publicaciones/${id}`, {
+    metodo: "PUT",
+    cuerpo: formulario,
+    headers: { "Idempotency-Key": opciones.claveIdempotencia },
+  });
+  if (!resultado.exito) return resultado;
+
+  // Solo 200 confirma el cambio; cualquier otro 2xx no se toma como guardado.
+  if (resultado.estadoHttp !== 200) {
+    return respuestaIlegible("El servicio no confirmó los cambios de la publicación.", resultado.estadoHttp);
+  }
+  const confirmada = leerPublicacionPropia(resultado, id);
+  if (!confirmada.exito) return confirmada;
+  return {
+    exito: true,
+    idPublicacion: id,
+    publicacion: confirmada.datos,
+    estadoHttp: resultado.estadoHttp,
+  };
+}
+
+export type ResultadoCierrePublicacion = ResultadoPublicacionPropia;
+
+/**
+ * Cierra la publicación (PATCH). Es idempotente: cerrar una cerrada responde igual.
+ * Éxito solo si la respuesta confirma estado Cerrada.
+ */
+export async function cerrarPublicacion(
+  id: number,
+  solicitar: SolicitarJson = solicitarJson,
+): Promise<ResultadoCierrePublicacion> {
+  if (!idValido(id)) return publicacionNoValida();
+  const resultado = await solicitar(`/api/publicaciones/${id}/cerrar`, { metodo: "PATCH" });
+  if (!resultado.exito) return resultado;
+  const cerrada = leerPublicacionPropia(resultado, id);
+  if (cerrada.exito && cerrada.datos.estado !== "Cerrada") {
+    return respuestaIlegible("El servicio no confirmó el cierre de la publicación.", resultado.estadoHttp);
+  }
+  return cerrada;
 }
