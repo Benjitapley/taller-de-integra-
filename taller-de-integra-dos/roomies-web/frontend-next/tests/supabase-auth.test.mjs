@@ -18,6 +18,15 @@ const req = (action, body = {}, overrides = {}) => new Request(`${config.origin}
 const ok = data => Response.json(data);
 const defaultTransport = async url => url.includes("/token?") || url.endsWith("/verify") ? ok(session) : url.endsWith("/user") ? ok(identity) : url.endsWith("/local/v1/perfil") ? ok({ nombre: "Ficticio" }) : ok({});
 
+test("PostgreSQL local admite identidad alojada solo del proyecto explícito", () => {
+  const hybrid = { ...env, ROOMIES_RUNTIME_MODE: "local-postgres", ROOMIES_SUPABASE_PROJECT_REF: "a".repeat(20), WEB_SUPABASE_ORIGIN: `https://${"a".repeat(20)}.supabase.co` };
+  assert.equal(authConfig(hybrid).provider, "supabase");
+  assert.equal(authConfig(hybrid).localSignupAutoconfirm, false);
+  for (const override of [{ ROOMIES_LOCAL_MODE: "0" }, { NODE_ENV: "production" }, { WEB_SUPABASE_ORIGIN: "https://other.supabase.co" }]) {
+    assert.equal(authConfig({ ...hybrid, ...override }), null);
+  }
+});
+
 test("proveedor local explícito; remoto, secreto y proveedor desconocido se rechazan", () => {
   assert.equal(config.provider, "supabase");
   assert.equal(config.profileContract, "local-v1");

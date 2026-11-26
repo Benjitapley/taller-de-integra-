@@ -24,6 +24,8 @@ def runtime_mode():
         return mode
     if mode == "disposable" and os.environ.get("ROOMIES_LOCAL_MODE") == "1":
         return mode
+    if mode == "local-postgres" and os.environ.get("ROOMIES_LOCAL_MODE") == "1":
+        return mode
     raise DependencyUnavailable("Selecciona un único entorno de persistencia explícito.")
 
 
@@ -35,7 +37,8 @@ def project_ref():
 
 
 def auth_provider_url():
-    if runtime_mode() == "supabase":
+    mode = runtime_mode()
+    if mode == "supabase" or (mode == "local-postgres" and os.environ.get("ROOMIES_AUTH_PROVIDER_URL", "").startswith("https://")):
         expected = f"https://{project_ref()}.supabase.co"
         if os.environ.get("ROOMIES_AUTH_PROVIDER_URL", "").rstrip("/") != expected:
             raise DependencyUnavailable("Auth debe pertenecer al proyecto Supabase seleccionado.")
@@ -62,6 +65,13 @@ def database_url(variable, role):
                      len(pairs) == len(query) and set(query) == {"sslmode", "sslrootcert"} and
                      query["sslmode"] == "verify-full" and bool(query["sslrootcert"]) and
                      not any(c in query["sslrootcert"] for c in "\r\n\x00"))
+        elif mode == "local-postgres":
+            name = os.environ.get("ROOMIES_LOCAL_DATABASE", "roomies_local")
+            valid = (bool(re.fullmatch(r"roomies_[a-z0-9_]{1,48}", name)) and
+                     parsed.scheme == "postgresql" and parsed.hostname == "127.0.0.1" and
+                     parsed.port == 5432 and unquote(parsed.username or "") == role and
+                     bool(parsed.password) and parsed.path == "/" + name and
+                     not parsed.query and not parsed.fragment)
         else:
             valid = (parsed.scheme in {"postgresql", "postgres"} and
                  parsed.username == role and parsed.path == "/roomies_sprint2_disposable" and

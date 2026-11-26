@@ -1,5 +1,5 @@
 """Incorporación con reserva firme, respuesta durable y compensación por outbox."""
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from psycopg.types.json import Jsonb
 
@@ -9,6 +9,49 @@ from app.models import Incorporation, Reservation, ServiceError, unavailable
 class Convivencia:
     def __init__(self, repository, identity, publications):
         self.repository, self.identity, self.publications = repository, identity, publications
+
+    def expel(self, rental_id, actor_id, user_id, reason):
+        with self.repository.transaction() as c:
+            rental = c.execute("SELECT id_publicacion FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
+        if rental is None:
+            raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+        # El dueño se resuelve en Listado; ser administrador o residente no basta.
+        if self.publications.owner(rental["id_publicacion"]) != actor_id:
+            raise ServiceError("EXPULSION_FORBIDDEN", "Solo el dueño puede retirar integrantes.", 403)
+        with self.repository.transaction() as c:
+            rental = c.execute("SELECT * FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s FOR UPDATE", (rental_id,)).fetchone()
+            previous = c.execute("SELECT motivo,respuesta FROM convivencia_mensajeria.expulsion WHERE id_arriendo=%s AND id_usuario=%s", (rental_id, user_id)).fetchone()
+            if previous:
+                if previous["motivo"] != reason:
+                    raise ServiceError("EXPULSION_CONFLICT", "El retiro ya fue registrado con otro motivo.", 409)
+                return previous["respuesta"]
+            member = c.execute("SELECT id_pertenencia FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa' FOR UPDATE", (rental_id, user_id)).fetchone()
+            if member is None:
+                raise ServiceError("MEMBER_NOT_FOUND", "Integrante activo no encontrado.", 404)
+            c.execute("UPDATE convivencia_mensajeria.pertenencia SET estado='Inactiva' WHERE id_pertenencia=%s", (member["id_pertenencia"],))
+            occupied = c.execute("SELECT count(*) AS total FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND estado='Activa'", (rental_id,)).fetchone()["total"]
+            version = c.execute("UPDATE convivencia_mensajeria.arriendo SET version_ocupacion=version_ocupacion+1 WHERE id_arriendo=%s RETURNING version_ocupacion", (rental_id,)).fetchone()["version_ocupacion"]
+            key = uuid4()
+            response = {"id_expulsion": str(key), "id_arriendo": rental_id, "id_usuario": user_id, "estado": "Inactiva"}
+            c.execute("INSERT INTO convivencia_mensajeria.expulsion(id_expulsion,id_arriendo,id_usuario,id_actor,motivo,respuesta) VALUES(%s,%s,%s,%s,%s,%s)", (key, rental_id, user_id, actor_id, reason, Jsonb(response)))
+            projection = {"id_arriendo": rental_id, "ocupacion": occupied, "version_ocupacion": version}
+            c.execute("INSERT INTO convivencia_mensajeria.expulsion_outbox(id_expulsion,id_publicacion,proyeccion) VALUES(%s,%s,%s)", (key, rental["id_publicacion"], Jsonb(projection)))
+        # Revocación local ya confirmada; una caída remota conserva la outbox.
+        self.dispatch_expulsions()
+        return response
+
+    def dispatch_expulsions(self):
+        delivered = 0
+        with self.repository.transaction() as c:
+            events = c.execute("SELECT * FROM convivencia_mensajeria.expulsion_outbox WHERE NOT enviado ORDER BY id_expulsion LIMIT 20 FOR UPDATE SKIP LOCKED").fetchall()
+            for event in events:
+                try:
+                    self.publications.expulsion_occupancy(event["id_publicacion"], event["proyeccion"])
+                except Exception:
+                    continue
+                c.execute("UPDATE convivencia_mensajeria.expulsion_outbox SET enviado=true WHERE id_expulsion=%s", (event["id_expulsion"],))
+                delivered += 1
+        return delivered
 
     def incorporate(self, key: UUID, payload: dict):
         result = self._incorporate(key, payload)
@@ -137,4 +180,4 @@ class Convivencia:
                 self._incorporate(operation["id_operacion"], operation["payload"])
             except Exception:
                 continue
-        return self.dispatch()
+        return self.dispatch() + self.dispatch_expulsions()

@@ -46,6 +46,19 @@ class HttpIdentity:
 
 
 class HttpPublications:
+    def owner(self, publication_id):
+        response = self.request("GET", f"/internal/convivencia/publicaciones/{publication_id}", None)
+        try:
+            value = response.json()["id_propietario"]
+            if type(value) is not int or value < 1:
+                raise ValueError()
+            return value
+        except (KeyError, ValueError, TypeError):
+            raise unavailable() from None
+
+    def expulsion_occupancy(self, publication_id, projection):
+        self.request("PUT", f"/internal/convivencia/publicaciones/{publication_id}/ocupacion", None, projection)
+
     def request(self, method, path, key, payload=None):
         try:
             url = service_url("LISTADO_UPSTREAM_URL", docker_hosts=("listado", "listado-applications"))

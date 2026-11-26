@@ -71,6 +71,7 @@ def test_arriendos_upstream_errors_also_disable_caching(status):
 
 
 @pytest.mark.parametrize("method,path,query", [
+    ("POST", "/api/arriendos/4/expulsiones", b""),
     ("GET", "/api/conversaciones", b""),
     ("GET", "/api/conversaciones/12", b""),
     ("GET", "/api/conversaciones/12/mensajes", b"limite=20&antes=abc"),

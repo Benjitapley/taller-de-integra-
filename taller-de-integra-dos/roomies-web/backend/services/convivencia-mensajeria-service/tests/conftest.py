@@ -53,6 +53,17 @@ class Publications:
         self.confirm_down = False
         self.release_down = False
         self.confirmations = []
+        self.owner_id = 1
+        self.expulsion_down = False
+        self.expulsion_updates = []
+
+    def owner(self, publication_id):
+        return self.owner_id
+
+    def expulsion_occupancy(self, publication_id, projection):
+        if self.expulsion_down:
+            raise TimeoutError("synthetic unavailable occupancy")
+        self.expulsion_updates.append((publication_id, projection))
 
     def reserve(self, key, payload):
         with self.lock:

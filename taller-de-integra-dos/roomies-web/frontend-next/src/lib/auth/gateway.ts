@@ -32,7 +32,9 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig 
     if (provider === "supabase") {
       const identity = new URL(env.WEB_SUPABASE_ORIGIN ?? "");
       const key = env.WEB_SUPABASE_PUBLISHABLE_KEY ?? "";
-      const real = env.ROOMIES_RUNTIME_MODE === "supabase" && env.ROOMIES_LOCAL_MODE !== "1" && /^[a-z0-9]{20}$/.test(env.ROOMIES_SUPABASE_PROJECT_REF ?? "") && identity.origin === `https://${env.ROOMIES_SUPABASE_PROJECT_REF}.supabase.co`;
+      const hostedIdentity = (env.ROOMIES_RUNTIME_MODE === "supabase" && env.ROOMIES_LOCAL_MODE !== "1") ||
+        (env.ROOMIES_RUNTIME_MODE === "local-postgres" && env.ROOMIES_LOCAL_MODE === "1" && env.NODE_ENV !== "production");
+      const real = hostedIdentity && /^[a-z0-9]{20}$/.test(env.ROOMIES_SUPABASE_PROJECT_REF ?? "") && identity.origin === `https://${env.ROOMIES_SUPABASE_PROJECT_REF}.supabase.co`;
       const disposable = env.ROOMIES_LOCAL_MODE === "1" && (!env.ROOMIES_RUNTIME_MODE || env.ROOMIES_RUNTIME_MODE === "disposable") && ["127.0.0.1", "localhost", "[::1]", "host.docker.internal", "supabase-auth"].includes(identity.hostname);
       if (!(real || disposable) ||
           !["http:", "https:"].includes(identity.protocol) || identity.username || identity.password || identity.pathname !== "/" || identity.search || identity.hash || !key || key.length > 4096 || key.startsWith("sb_secret_") || /[\r\n]/.test(key)) return null;

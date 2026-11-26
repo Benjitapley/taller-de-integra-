@@ -59,6 +59,27 @@ class MessageCreate(BaseModel):
         return value
 
 
+class Expulsion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_usuario: PositiveId
+    motivo: Annotated[str, Field(strict=True, min_length=1, max_length=500)]
+    confirmacion: Annotated[bool, Field(strict=True)]
+
+    @field_validator("motivo")
+    @classmethod
+    def non_blank_reason(cls, value):
+        if not value.strip():
+            raise ValueError("El motivo no puede estar vacío.")
+        return value
+
+    @field_validator("confirmacion")
+    @classmethod
+    def confirmed(cls, value):
+        if value is not True:
+            raise ValueError("Se requiere confirmación explícita.")
+        return value
+
+
 class Conversation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id_conversacion: PositiveId
@@ -74,7 +95,7 @@ class Message(BaseModel):
     nombre_remitente: str
     contenido: Annotated[str, Field(min_length=1, max_length=2000)]
     fecha_envio: datetime
-    id_cliente: UUID | None = None
+    id_cliente: UUID | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class MessagePage(BaseModel):
@@ -87,12 +108,15 @@ class ErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     detail: str
     code: str
+    codigo: str | None = None
 
 
 class ServiceError(Exception):
     def __init__(self, code, detail, status=409):
         self.status = status
         self.body = {"detail": detail, "code": code}
+        if status == 403:
+            self.body["codigo"] = "sin_permiso"
         super().__init__(detail)
 
 
