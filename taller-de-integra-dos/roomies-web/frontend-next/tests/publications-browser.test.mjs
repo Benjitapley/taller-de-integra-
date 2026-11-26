@@ -16,10 +16,10 @@ test("S3R-E01: cursor, errores canónicos, fotos recuperables, edición y cierre
   const isolated = await mkdtemp(join(project, ".proxy-test-publications-"));
   let next, browser, linked = false;
   const requests = [], errors = [];
-  const fixture = { id_publicacion: 42, titulo: "Aviso E01 con fotografías", descripcion: "Descripción que debe conservarse", precio: 999999999999,
-    tipo: "Arrendador", tipo_vivienda: "Habitacion", mascota: "no", estado: "Disponible", cupos_totales: 3, cupos_disponibles: 2,
+  const fixture = { id_publicacion: 42, titulo: "Aviso E01 con fotografías", descripcion: "Descripción que debe conservarse", precio: 230000,
+    tipo: "Arrendador", tipo_vivienda: "Habitacion", mascota: "no", estado: "Disponible", cupos_totales: 2, cupos_disponibles: 2,
     id_arriendo: null, region: { id: 9, nombre: "La Araucanía" }, comuna: { id: 9101, nombre: "Temuco" },
-    imagenes: [12, 15].map(id_imagen => ({ id_imagen, url: `https://images.example.test/${id_imagen}.png`, orden: id_imagen === 12 ? 0 : 1 })),
+    imagenes: [12, 15, 17].map((id_imagen, orden) => ({ id_imagen, url: `https://images.example.test/${id_imagen}.png`, orden })),
     autor: { id_usuario: 1, nombre: "Equipo E01", foto: null }, reglas_arrendador: ["Sin humo"], fecha_publicacion: "2026-11-26T12:00:00Z" };
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfN8AAAAASUVORK5CYII=", "base64");
   let startupLog = "";
@@ -88,6 +88,7 @@ test("S3R-E01: cursor, errores canónicos, fotos recuperables, edición y cierre
     if (url.origin !== base) return route.abort();
     if (url.pathname !== "/api/publicaciones") return route.continue();
     requests.push(url);
+    if (url.searchParams.get("consulta") === "sin coincidencias E01") return route.fulfill({ json: { items: [], siguiente_cursor: null } });
     const filtered = url.searchParams.has("cupos_disponibles");
     const more = url.searchParams.has("cursor");
     if (more && failNextPage) {
@@ -138,6 +139,13 @@ test("S3R-E01: cursor, errores canónicos, fotos recuperables, edición y cierre
     }
   };
   await screenshot("catalogo");
+  await page.getByRole("textbox", { name: "Buscar por título, comuna o descripción", exact: true }).fill("sin coincidencias E01");
+  await page.getByRole("button", { name: "Buscar", exact: true }).click();
+  await page.getByRole("heading", { name: "No hay publicaciones para estos filtros", exact: true }).waitFor();
+  assert.equal(await title("Nueva página uno filtrada").count(), 0);
+  assert.equal(await page.getByRole("button", { name: "Cargar más", exact: true }).count(), 0);
+  assert.equal(requests.at(-1).searchParams.has("cursor"), false);
+  assert.equal(await page.getByRole("tabpanel").getByRole("alert").count(), 0);
   const mutations = [];
   let failure = 409;
   await context.route("**/web-api/publicaciones**", async route => {
@@ -150,12 +158,14 @@ test("S3R-E01: cursor, errores canónicos, fotos recuperables, edición y cierre
     }
     const data = await new Response(req.postDataBuffer(), { headers: { "Content-Type": req.headers()["content-type"] } }).formData();
     mutations.push({ method: req.method(), path: url.pathname, key: req.headers()["idempotency-key"], title: data.get("titulo"),
-      price: data.get("precio"), retained: data.get("imagenes_conservar"), files: await Promise.all(data.getAll("imagenes").map(async file => ({ name: file.name, bytes: Buffer.from(await file.arrayBuffer()).toString("base64") }))) });
+      price: data.get("precio"), capacity: data.get("cupos_totales"), retained: data.get("imagenes_conservar"), files: await Promise.all(data.getAll("imagenes").map(async file => ({ name: file.name, bytes: Buffer.from(await file.arrayBuffer()).toString("base64") }))) });
     if (failure === "network") return route.abort("failed");
     if (failure) return route.fulfill({ status: failure, json: { codigo: failure === 409 ? "configuracion_bloqueada" : failure === 422 ? "validacion" : "dependencia_no_disponible",
       mensaje: failure === 409 ? "Las reglas están bloqueadas." : failure === 422 ? "Comuna inválida." : "Storage temporalmente no disponible.",
       ...(failure === 422 ? { detalles: [{ campo: "id_comuna", mensaje: "La comuna no pertenece a la región." }] } : {}) } });
-    fixture.imagenes = [{ id_imagen: 12, url: "https://images.example.test/12.png", orden: 0 }, { id_imagen: 16, url: "https://images.example.test/16.png", orden: 1 }];
+    fixture.precio = Number(data.get("precio"));
+    fixture.cupos_totales = Number(data.get("cupos_totales"));
+    if (req.method() === "PUT") fixture.imagenes = [{ id_imagen: 12, url: "https://images.example.test/12.png", orden: 0 }, { id_imagen: 16, url: "https://images.example.test/16.png", orden: 1 }];
     return route.fulfill({ status: req.method() === "POST" ? 201 : 200, json: fixture });
   });
   await page.goto(base + "/publicar");
@@ -163,11 +173,19 @@ test("S3R-E01: cursor, errores canónicos, fotos recuperables, edición y cierre
   await page.getByLabel("Título", { exact: true }).fill("Título conservado ante fallos");
   await page.getByLabel("Tipo de vivienda").selectOption("Habitacion");
   await page.getByLabel("Comuna de La Araucanía").selectOption("9101");
-  await page.getByLabel("Precio del arriendo (CLP)", { exact: true }).fill("999999999999");
-  await page.getByLabel("Capacidad total", { exact: true }).fill("3");
+  const priceInput = page.getByLabel("Precio del arriendo (CLP)", { exact: true });
+  await page.getByLabel("Capacidad total", { exact: true }).fill("2");
   await page.getByLabel("Descripción", { exact: true }).fill("Descripción que debe conservarse");
   await page.getByLabel("Regla 1", { exact: true }).fill("Sin humo");
-  await page.locator('input[type="file"]').setInputFiles({ name: "equipo.png", mimeType: "image/png", buffer: png });
+  await page.locator('input[type="file"]').setInputFiles(["equipo.png", "pieza.png", "entrada.png"].map(name => ({ name, mimeType: "image/png", buffer: png })));
+  for (const invalid of ["100.5", "-1", "1000000000000"]) {
+    await priceInput.fill(invalid);
+    await page.getByRole("button", { name: "Publicar ahora", exact: true }).click();
+    assert.equal(await priceInput.evaluate(input => input.validity.valid), false);
+    assert.equal(mutations.length, 0, "Un precio inválido no debe enviar ni confirmar una publicación");
+    assert.equal(await page.locator('input[type="file"]').evaluate(input => input.files.length), 3);
+  }
+  await priceInput.fill("230000");
   await page.getByRole("button", { name: "Publicar ahora", exact: true }).click();
   await page.getByRole("alert").filter({ hasText: "Las reglas están bloqueadas." }).waitFor();
   assert.equal(await page.getByLabel("Título", { exact: true }).inputValue(), "Título conservado ante fallos");
@@ -182,15 +200,26 @@ test("S3R-E01: cursor, errores canónicos, fotos recuperables, edición y cierre
   assert.deepEqual(mutations[0], mutations[1]);
   assert.deepEqual(mutations[1], mutations[2]);
   assert.equal(mutations[0].files[0].bytes, png.toString("base64"));
-  assert.equal(mutations[0].price, "999999999999");
+  assert.equal(mutations[0].price, "230000");
+  assert.equal(mutations[0].capacity, "2");
+  assert.equal(mutations[0].files.length, 3);
   await screenshot("crear-error-recuperable");
   failure = 422;
   await page.getByRole("button", { name: "Publicar ahora", exact: true }).click();
   await page.getByRole("alert").filter({ hasText: "Comuna: La comuna no pertenece a la región." }).waitFor();
+  failure = 0;
+  await page.getByRole("button", { name: "Publicar ahora", exact: true }).click();
+  await page.waitForURL("**/publicaciones/42");
+  await page.getByRole("heading", { name: fixture.titulo, exact: true }).waitFor();
+  assert.deepEqual(mutations.at(-1), mutations[0]);
+  assert.equal(await page.getByRole("img", { name: "Fotografía de la publicación", exact: true }).count(), 3);
   await page.goto(base + "/editar-publicacion?id=42");
   await page.getByLabel("Título", { exact: true }).waitFor();
-  assert.equal(await page.getByLabel("Precio del arriendo (CLP)", { exact: true }).inputValue(), "999999999999");
+  assert.equal(await priceInput.inputValue(), "230000");
+  await priceInput.fill("245000");
   await page.getByRole("checkbox", { name: "Conservar imagen", exact: true }).nth(1).uncheck();
+  await page.getByRole("checkbox", { name: "Conservar imagen", exact: true }).nth(2).uncheck();
+  assert.equal(mutations.at(-1).method, "POST", "Quitar vistas previas no debe guardar cambios remotos");
   await page.locator('input[type="file"]').setInputFiles({ name: "nueva.png", mimeType: "image/png", buffer: png });
   failure = 503;
   await page.getByRole("button", { name: "Guardar cambios", exact: true }).click();
@@ -198,6 +227,8 @@ test("S3R-E01: cursor, errores canónicos, fotos recuperables, edición y cierre
   const failedEdit = mutations.at(-1);
   assert.equal(failedEdit.retained, "[12]");
   assert.equal(failedEdit.files[0].name, "nueva.png");
+  assert.equal(failedEdit.files.length, 1);
+  assert.equal(failedEdit.price, "245000");
   assert.equal(await page.getByRole("checkbox", { name: "Conservar imagen", exact: true }).nth(0).isChecked(), true);
   assert.equal(await page.getByRole("checkbox", { name: "Conservar imagen", exact: true }).nth(1).isChecked(), false);
   failure = 409;
@@ -210,6 +241,11 @@ test("S3R-E01: cursor, errores canónicos, fotos recuperables, edición y cierre
   assert.deepEqual(mutations.at(-1), failedEdit);
   await page.goto(base + "/publicaciones/42");
   await page.getByRole("heading", { name: fixture.titulo, exact: true }).waitFor();
+  await page.reload();
+  await page.getByRole("heading", { name: fixture.titulo, exact: true }).waitFor();
+  assert.equal(fixture.precio, 245000);
+  assert.equal(await page.getByText("245.000 CLP", { exact: true }).count(), 2);
+  assert.equal(await page.getByRole("img", { name: "Fotografía de la publicación", exact: true }).count(), 2);
   await screenshot("detalle");
   let confirmations = 0;
   page.on("dialog", async dialog => { confirmations++; if (confirmations === 1) await dialog.dismiss(); else await dialog.accept(); });
@@ -224,6 +260,6 @@ test("S3R-E01: cursor, errores canónicos, fotos recuperables, edición y cierre
   assert.equal(await page.getByText("Este aviso está cerrado y no recibe postulaciones.", { exact: true }).isVisible(), true);
   assert.equal(await page.getByRole("img", { name: "Fotografía de la publicación", exact: true }).count(), 2);
   assert.deepEqual(errors, []);
-  t.diagnostic("409/422/503 y red: datos, archivos, IDs y clave preservados; editar y cerrar reflejan DTO sintético. No acredita Storage/Gateway reales.");
+  t.diagnostic("Filtro vacío, precios inválidos sin envío, crear con tres imágenes, editar 230000→245000 conservando una y agregando otra, recarga y cierre: HTTP sintético. No acredita fotos del equipo, Storage/Gateway reales ni reinicio del backend.");
   for (const url of requests) t.diagnostic(`GET ${url.pathname}${url.search}`);
 });

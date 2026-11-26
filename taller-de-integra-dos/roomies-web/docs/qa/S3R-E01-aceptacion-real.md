@@ -14,15 +14,42 @@ servicios del equipo.
 | Frontend `.env.local` | No existe |
 | Variables activas de servicios | No se encontró `.env`, `.env.local` o `.env.roomies` en las ubicaciones auditadas de web/backend |
 | Gateway real | URL no configurada; `API_GATEWAY_URL`, `FASTAPI_ORIGIN` y `WEB_AUTH_FASTAPI_ORIGIN` ausentes del proceso |
-| PostgreSQL `127.0.0.1:5432` | TCP disponible; servicio Windows `postgresql-x64-19` en ejecución |
-| `LISTADO_DATABASE_URL` | Ausente; sin verificar autenticación, base, rol ni migraciones |
+| PostgreSQL `127.0.0.1:5432` | Conexión autenticada verificada mediante psycopg; servidor 19.0; consultas de solo lectura |
+| `LISTADO_DATABASE_URL` | Sin configuración activa; autenticación administrativa comprobada, pendiente credencial del rol de servicio y migraciones |
 | `PUBLICATIONS_TEST_ADMIN_DSN` | Ausente; no se ejecutó pytest contra `5432` |
 | Storage compartido | Sin configuración activa de proyecto/credencial backend; `.env.example` contiene placeholders |
 | Cuentas de prueba | No configuradas para esta ejecución |
 | Contenedores | Docker no disponible en PATH; no se reinició ningún servicio ajeno |
 
-La comprobación TCP no demuestra una conexión autenticada ni que el Gateway use
-esa base de datos. Tampoco demuestra conectividad o persistencia de Storage.
+La conexión autenticada no demuestra que el Gateway use esa base de datos ni
+conectividad o persistencia de Storage. Las bases `roomies_listado`,
+`roomies_listado_test` y `roomies_sprint2_disposable` existen; ninguna contiene
+tablas en los esquemas `auth_users`, `listado_applications` o `haycupo` al
+inspeccionarlas. Existen los roles `sql_auth_users`, `sql_listado_applications` y
+`sql_match_conexion`; no se modificaron ni se asumieron sus contraseñas.
+Resultado SQL sanitizado: [inspección de solo lectura](S3R-E01-postgres-solo-lectura.json).
+
+## Avance adicional de esta revisión
+
+Se amplió el recorrido de navegador con HTTP sintético: filtro sin resultados sin
+filas antiguas ni cursor, precios inválidos sin envío, creación con tres imágenes,
+precio 230000 y capacidad 2; edición conservando una imagen, quitando dos y
+agregando otra con precio 245000; recarga con entero exacto y cierre con dos
+imágenes. El PNG de la prueba sigue siendo un fixture, no una foto del equipo.
+La prueba dirigida pasó; salida en
+[comprobaciones adicionales](S3R-E01-comprobaciones-adicionales.txt).
+Después pasó la [regresión completa](S3R-E01-regresion-adicional.txt):
+157 aprobadas, 0 fallidas y 0 omitidas. ESLint del test modificado: salida 0.
+
+El bootstrap SQL contiene una condición explícita que exige
+`current_database() = 'roomies_sprint2_disposable'`, además de crear los roles de
+servicio sin comprobar existencia. Como esos roles ya existen, no se debe aplicar
+el bootstrap completo sin adaptar el aprovisionamiento. No se alteró ese guard ni
+se ejecutó bootstrap, migración o TRUNCATE en las bases existentes.
+
+La conexión SQL se ejecutó usando la credencial proporcionada únicamente en
+memoria del proceso. No se creó ningún archivo de entorno ni se guardó el comando
+con credenciales como evidencia. [Lista actualizada](S3R-E01-pendientes.md).
 
 ## Variables que consume realmente el código
 

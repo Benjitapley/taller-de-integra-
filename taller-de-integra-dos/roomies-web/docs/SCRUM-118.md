@@ -11,10 +11,15 @@ de ESLint, fuera de esta actualización de Next. Los registros de 16.4.3 siguien
 se conservan como evidencia histórica, no como estado de la dependencia actual.
 
 La [auditoría de aceptación real](qa/S3R-E01-aceptacion-real.md) confirma que
-PostgreSQL escucha en `127.0.0.1:5432`, pero faltan DSN, Gateway, configuración
+PostgreSQL acepta autenticación en `127.0.0.1:5432` (verificación posterior de
+solo lectura), pero faltan DSN activos de servicio, Gateway, configuración
 activa de Storage e identidad de las cuentas de prueba. Se informó este bloqueo
 antes de ejecutar pruebas contra datos compartidos. No se inició ni reinició un
 servicio real y no se ejecutaron migraciones ni pruebas destructivas contra 5432.
+
+La [lista actualizada](qa/S3R-E01-pendientes.md) registra la comprobación SQL
+sanitizada y la ampliación del recorrido local con tres imágenes, precio
+230000→245000, filtro vacío y rechazo de precios inválidos sin envío.
 
 Las tres suites omitidas previamente requieren rutas de Playwright, no PostgreSQL.
 Se habilitan en la regresión local posterior al parche; usan dobles HTTP y no

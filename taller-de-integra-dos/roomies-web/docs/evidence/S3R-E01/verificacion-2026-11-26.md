@@ -50,8 +50,10 @@ y [build](next-16.4.6-build.txt).
 presenta el parche como una auditoría de seguridad completa.
 
 La [auditoría real](../../qa/S3R-E01-aceptacion-real.md) documenta el bloqueo por
-configuración ausente. No hay una corrida autenticada contra 5432, Gateway o
-Storage compartidos, ni un reinicio real que acreditar. El SHA del commit de la
+configuración ausente. Posteriormente se verificó una conexión autenticada de
+solo lectura contra PostgreSQL 19.0 en 5432, documentada en
+[la lista actualizada](../../qa/S3R-E01-pendientes.md). No hay una corrida integrada
+contra Gateway/Storage compartidos ni un reinicio real que acreditar. El SHA del commit de la
 entrega se obtiene de la rama `SCRUM-118`; el SHA desplegado sigue pendiente.
 
 ## Registro histórico anterior al parche

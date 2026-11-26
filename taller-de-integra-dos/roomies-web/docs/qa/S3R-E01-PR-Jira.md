@@ -35,8 +35,11 @@ Evidencia: [verificación local](../evidence/S3R-E01/verificacion-2026-11-26.md)
 ### Aceptación externa pendiente
 
 No existe configuración activa del Gateway/Storage compartidos ni DSN de Listado
-y administrador de pruebas para `127.0.0.1:5432`. PostgreSQL escucha, pero eso no
-acredita autenticación, migraciones ni que el Gateway use esa base.
+y administrador de pruebas para `127.0.0.1:5432`. Se verificó autenticación
+administrativa real y existencia de bases/roles mediante consultas de solo lectura;
+las bases aún no tienen tablas de aplicación. No acredita credenciales de los
+roles de servicio, migraciones ni que el Gateway use esa base. Ver
+[avance adicional y pendientes](S3R-E01-pendientes.md).
 
 Falta crear/editar/cerrar con tres fotos reales, comprobar otra cuenta y reinicio,
 recorrer más de dos páginas reales y verificar 422/409 con datos de servicios
