@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useActiveRental } from "@/features/convivencia/useActiveRental";
 import Link from "next/link";
 import ReportMembers from "@/features/reportes/ReportMembers";
 import PageHeader from "@/components/layout/PageHeader";
@@ -13,44 +14,18 @@ import type { MiArriendoVista } from "@/features/recorrido/types";
 import styles from "@/features/recorrido/recorrido.module.css";
 
 type PreviewState = "api" | "loading" | "empty" | "error" | "active";
-const isDevelopment = process.env.NODE_ENV === "development";
+const isDevelopment = process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_ROOMIES_VISUAL_REVIEW === "true";
 const previewRental: MiArriendoVista = {
   id_arriendo: 101, id_publicacion: 42, estado: "Activo", cupos_totales: 4,
   integrantes_activos: 3, cupos_disponibles: 1, id_responsable: 7,
 };
 
 export default function MyArriendoPage({ canReport = false }: { canReport?: boolean }) {
-  const [arriendo, setArriendo] = useState<MiArriendoVista | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [requestVersion, setRequestVersion] = useState(0);
+  const { rental: arriendo, status, retry: retryRental } = useActiveRental();
+  const loading = status === "loading";
+  const error = status === "error" ? "No pudimos cargar tu arriendo. Intenta nuevamente." :
+    status === "denied" ? "No tienes acceso a este arriendo. Inicia sesión nuevamente." : "";
   const [preview, setPreview] = useState<PreviewState>("api");
-
-  useEffect(() => {
-    if (isDevelopment && preview !== "api") return;
-    const controller = new AbortController();
-    const { signal } = controller;
-    void fetch("/web-api/arriendos/mio", { credentials: "same-origin", cache: "no-store", signal }).then(async response => {
-      if (signal.aborted) return;
-      if ([401, 403, 404].includes(response.status)) {
-        setArriendo(null);
-        setLoading(false);
-        return;
-      }
-      if (!response.ok) throw new Error();
-      const data = await response.json();
-      if (!signal.aborted) setArriendo(data);
-    }).catch(() => {
-      if (!signal.aborted) { setArriendo(null); setError("No pudimos cargar tu arriendo. Intenta nuevamente."); }
-    }).finally(() => {
-      if (!signal.aborted) setLoading(false);
-    });
-    const refresh = () => { if (document.visibilityState === "visible") setRequestVersion(value => value + 1); };
-    const timer = window.setInterval(refresh, 5000);
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    return () => { controller.abort(); window.clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
-  }, [requestVersion, preview]);
 
   const showingPreview = isDevelopment && preview !== "api";
   const visibleLoading = showingPreview ? preview === "loading" : loading;
@@ -59,10 +34,8 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
   const visibleEmpty = showingPreview ? preview === "empty" : !loading && !error && !arriendo;
 
   function retry() {
-    if (showingPreview) { setPreview("active"); return; }
-    setLoading(true);
-    setError("");
-    setRequestVersion(value => value + 1);
+    if (showingPreview) setPreview("api");
+    retryRental();
   }
 
   return <main>
@@ -74,7 +47,7 @@ export default function MyArriendoPage({ canReport = false }: { canReport?: bool
     ]} /> : null}
     {visibleLoading ? <Card><p role="status">Cargando tu arriendo…</p></Card> : null}
     {!visibleLoading && visibleError ? <Card><p role="alert">{showingPreview ? "No pudimos cargar tu arriendo. Intenta nuevamente." : error}</p><Button onClick={retry}>Reintentar</Button></Card> : null}
-    {visibleEmpty ? <Card><p>Aún no tienes un arriendo activo.</p><Link href="/mis-postulaciones">Ver mis postulaciones</Link></Card> : null}
+    {visibleEmpty ? <Card><h2>Sin arriendo activo</h2><p>Aún no tienes un arriendo activo.</p><Link href="/mis-postulaciones">Ver mis postulaciones</Link></Card> : null}
     {!visibleLoading && !visibleError && visibleArriendo ? <>
       <div className={styles.dashboardLayout}>
         <div className={styles.dashboardMain}>

@@ -112,3 +112,27 @@ test("BFF consulta solo el historial propio y filtra campos privados", async () 
   });
   assert.deepEqual(await response.json(), { items: [report], siguiente_cursor: null });
 });
+
+
+test("integrantes funciona sin Reportes y conserva errores y cursor sin inventar datos", async () => {
+  process.env.WEB_REPORTES_ENABLED = "false";
+  const request = new Request(config.origin + "/web-api/arriendos/7/integrantes?activos=true&limite=100&cursor=next", { headers });
+  for (const status of [403, 404, 503]) {
+    const response = await handleReportMembers(request, "7", config, async () => new Response(null, { status }));
+    assert.equal(response.status, status);
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+    assert.equal("items" in await response.json(), false);
+  }
+  const response = await handleReportMembers(request, "7", config, async (url, options) => {
+    assert.equal(new URL(url).searchParams.get("limite"), "100");
+    assert.equal(new URL(url).searchParams.get("activos"), "true");
+    assert.equal(new URL(url).searchParams.get("cursor"), "next");
+    assert.equal(options.cache, "no-store");
+    return Response.json({ items: [], siguiente_cursor: null });
+  });
+  assert.equal(response.status, 200);
+  for (const query of ["limite=0", "limite=101", "limite=1&limite=2", "activos=1"]) {
+    const invalid = new Request(config.origin + "/web-api/arriendos/7/integrantes?" + query, { headers });
+    assert.equal((await handleReportMembers(invalid, "7", config, async () => { throw new Error("No debe consultar"); })).status, 422);
+  }
+});

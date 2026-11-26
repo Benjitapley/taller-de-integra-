@@ -7,12 +7,12 @@ from app.proxy import forward_to,bounded_body,BodyTooLarge
 
 ROUTES=[
  (r"/api/arriendos/[1-9][0-9]*/expulsiones",{"POST"},"convivencia_upstream"),
- (r"/api/arriendos/[1-9][0-9]*/integrantes",{"GET"},"convivencia_upstream"),
  (r"/api/arriendos/[1-9][0-9]*/tareas",{"GET","POST"},"convivencia_upstream"),
  (r"/api/tareas/[1-9][0-9]*(?:/estado)?",{"PATCH"},"convivencia_upstream"),
  (r"/api/usuarios/me",{"POST","GET","PATCH"},"upstream"),
  (r"/api/usuarios/me/foto",{"PUT"},"upstream"),
  (r"/api/arriendos/(?:mio|[1-9][0-9]*)",{"GET"},"convivencia_upstream"),
+ (r"/api/arriendos/[1-9][0-9]*/integrantes",{"GET"},"convivencia_upstream"),
  (r"/api/reportes",{"POST"},"reportes_upstream"),
  (r"/api/reportes/mios",{"GET"},"reportes_upstream"),
  (r"/api/admin/reportes",{"GET"},"reportes_upstream"),

@@ -103,13 +103,15 @@ export async function handleReportMembers(request: Request, rental: string, conf
   if (!token) return authReply(401, { detail: "Inicia sesión nuevamente." });
   const query = new URL(request.url).searchParams;
   if (!/^[1-9][0-9]*$/.test(rental) || !Number.isSafeInteger(Number(rental)) ||
-      [...query.keys()].some(key => !["cursor", "activos"].includes(key) || query.getAll(key).length !== 1) ||
+      [...query.keys()].some(key => !["cursor", "activos", "limite"].includes(key) || query.getAll(key).length !== 1) ||
+      (query.has("limite") && !/^(?:[1-9]|[1-9][0-9]|100)$/.test(query.get("limite")!)) ||
       (query.has("activos") && !["true", "false"].includes(query.get("activos")!))) return invalid();
   const cursor = query.get("cursor");
   if (cursor !== null && !/^[A-Za-z0-9_.-]{1,2048}$/.test(cursor)) return invalid();
   try {
     const canonicalQuery = new URLSearchParams();
     if (cursor) canonicalQuery.set("cursor", cursor);
+    if (query.has("limite")) canonicalQuery.set("limite", query.get("limite")!);
     if (query.has("activos")) canonicalQuery.set("activos", query.get("activos")!);
     const response = await upstream(config, `/api/arriendos/${rental}/integrantes${canonicalQuery.size ? "?" + canonicalQuery : ""}`, token, undefined, transport);
     if (response.status === 401) return authReply(401, { detail: "Inicia sesión nuevamente." }, { "Set-Cookie": sessionCookie(config) });
@@ -118,7 +120,7 @@ export async function handleReportMembers(request: Request, rental: string, conf
     if (response.status === 422) return invalid();
     if (!response.ok) return unavailable();
     const page = await response.json();
-    if (!Array.isArray(page?.items) || page.items.length > 20 || (page.siguiente_cursor !== null &&
+    if (!Array.isArray(page?.items) || page.items.length > Number(query.get("limite") ?? 20) || (page.siguiente_cursor !== null &&
         (typeof page.siguiente_cursor !== "string" || !/^[A-Za-z0-9_.-]{1,2048}$/.test(page.siguiente_cursor)))) return unavailable();
     const items = page.items.map((member: Record<string, unknown>) => {
       if (!member || !positiveId(member.id_usuario) || typeof member.activo !== "boolean" || typeof member.es_responsable !== "boolean" ||
