@@ -46,9 +46,29 @@ La copia de Auth 001 bajo `upstream/` permite usar el montaje existente, que sol
 
 El ensayo cubre el adaptador básico y el ampliado. SCRUM-102 debe confirmar las rutas y la configuración efectiva del adaptador en Kubero, incluido el modo SSL. Las políticas representan al rol del servicio. La autorización de cada usuario se comprueba en la API. `perfil_comun` y `foto_limpieza` conservan la semántica de SCRUM-111. La conciliación de UUID, geografía y referencias a archivos queda para los datos autorizados. El alcance de 020–022 es Auth. Los permisos de `PUBLIC` observados en las bases estándar requieren un paso de endurecimiento separado.
 
-## Pendientes para 030–070
+## Ensayo futuro de Listado/Applications (030–034)
 
-- 030–041: definir tablas base de Listado y Match y encadenar sus ampliaciones, catálogos, índices y triggers históricos. Acordar tratamiento de precios, ocupación, fechas e historial.
+El destino es `private-v1`. Fijar `ROOMIES_PERSISTENCE_LAYOUT=private-v1` en la futura configuración del servicio. Los SQL usan nombres privados fijos y rechazan la presencia de `haycupo`. Antes de ejecutar, verificar contenedor, socket, marca, digest, rama y huellas de los archivos montados. Usar los mismos argumentos de psql y el mecanismo efímero de Auth. Ejecutar cada archivo por separado, con salida 0 obligatoria antes de pasar al siguiente. No usar una transacción exterior. Los includes de Auth solo verifican su catálogo, propietarios, políticas y permisos.
+
+| Orden | Archivo | Efecto |
+|---|---|---|
+| 030 | `030-listado-base.sql` | Esquema, cuatro tablas base y tres identidades, bajo `scrum101_owner`. |
+| 031 | `031-listado-contract.sql` | Conversión validada de CLP, catálogo, geografía, reglas y ocupación. |
+| 032 | `032-listado-images.sql` | Metadatos, índice único parcial, journal y cola de limpieza. |
+| 033 | `033-listado-cut.sql` | Seed histórico de 16 regiones y 346 comunas. La comprobación compara huellas del contenido ordenado, incluidos IDs, nombres y pares. |
+| 034 | `034-listado-admissions-acl.sql` | Admisión, reservas, capacidad, ACL mínimas y RLS. Comprueba el resultado antes de confirmar. |
+| Verificación | `034-listado-verify.sql` | Catálogo, seed, propietarios, permisos efectivos y aislamiento de Auth y Listado en solo lectura. |
+| Comportamiento | `tests/listado-behavior.sql` | Opt-in con datos sintéticos, roles efectivos y rollback. Distingue 42501, 23505, 23503 y 23514. Las identidades pueden avanzar aunque las filas se reviertan. |
+
+El manifiesto fija revisión y SHA-256 normalizado a LF de cada fuente. La suite estática verifica las fuentes históricas y la igualdad del seed derivado. Los wrappers tienen una sola transacción y delimitan el cambio de rol al DDL y los permisos propios de Listado. `checks/listado-cut.sql` es un auxiliar compartido por carga, verificador y pruebas. Los runtimes permanecen sin acceso hasta 034 y el servicio necesita el esquema completo para leer publicaciones y postulaciones.
+
+El índice histórico incluye filas con `object_path` presente. PostgreSQL considera distintos los valores NULL por defecto, por lo que dos filas con la misma ruta y `bucket NULL` pueden coexistir. La carga histórica deberá conciliar esos metadatos antes de adoptar un check adicional o cambiar la unicidad. 032 conserva la URL y no mueve archivos. Las relaciones con Auth y Convivencia son lógicas y se concilian fuera del DDL.
+
+Antes de importar datos, decidir cómo preservar fechas, precios sin redondeo, catálogos, IDs, ocupación y reservas, y el tratamiento de eventos y objetos en vuelo. Las pruebas SQL sintéticas no cubren el almacenamiento real, el tráfico HTTP ni la concurrencia entre sesiones. Mantener pendiente el endurecimiento de `PUBLIC` en bases estándar. Ante un error del ensayo, inspeccionar el catálogo en solo lectura antes de decidir cómo continuar.
+
+## Pendientes para 040–070
+
+- 040–041: definir la tabla base de Match y encadenar el historial y su trigger. Acordar el tratamiento de aceptaciones históricas.
 - 050–062: incorporar las series de Convivencia y Reportes, conservando su orden y dependencias. Resolver si se aplica RLS adicional en Convivencia.
 - 070: cerrar la matriz de ACL y RLS por objeto y probar con logins de ensayo. Después se podrán ensayar carga sintética y recuperación aislada. Origen autorizado, reconciliación de identidad y archivos, y corte en Kubero pertenecen a fases posteriores.
 

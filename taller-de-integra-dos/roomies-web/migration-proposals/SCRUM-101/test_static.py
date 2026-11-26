@@ -95,7 +95,7 @@ class PhaseContract(unittest.TestCase):
                 self.assertNotRegex(body, r"(?im)^\s*CREATE\s+(TABLE|SCHEMA)\b")
 
     def test_auth_dependencies_and_transaction_order(self):
-        steps = MANIFEST["steps"][2:]
+        steps = [step for step in MANIFEST["steps"] if step["id"] in {"020", "021", "022"}]
         self.assertEqual([step["id"] for step in steps], ["020", "021", "022"])
         self.assertEqual([step["requires"] for step in steps], [["010"], ["020"], ["021"]])
         for step in steps:
@@ -136,13 +136,89 @@ class PhaseContract(unittest.TestCase):
         self.assertNotRegex(acl, r"\b(?:anon|authenticated|PUBLIC)\b")
 
     def test_auth_behavior_is_opt_in_and_rolls_back(self):
-        step = MANIFEST["steps"][-1]
+        step = next(step for step in MANIFEST["steps"] if step["id"] == "022")
         body = read(step["behavior"])
         self.assertTrue(body.startswith("\\set ON_ERROR_STOP on\nBEGIN;\n"))
         self.assertTrue(body.endswith("ROLLBACK;\n"))
         self.assertNotIn("COMMIT;", body)
         for path in includes(step["behavior"]):
             self.assertTrue((ROOT / "tests" / path).is_file())
+
+
+class ListadoContract(unittest.TestCase):
+    steps = [step for step in MANIFEST["steps"] if step.get("layout") == "private-v1"]
+
+    def test_listado_order_scope_and_atomicity(self):
+        self.assertEqual([step["id"] for step in self.steps], ["030", "031", "032", "033", "034"])
+        self.assertEqual([step["requires"] for step in self.steps], [["022"], ["030"], ["031"], ["032"], ["033"]])
+        for step in self.steps:
+            name = step["entrypoint"]
+            body = read(name)
+            self.assertEqual(includes(name), step["includes"])
+            self.assertTrue(body.startswith("\\set ON_ERROR_STOP on\nBEGIN;\n"))
+            self.assertTrue(body.endswith("COMMIT;\n"))
+            self.assertEqual(re.findall(r"(?m)^(BEGIN|COMMIT|ROLLBACK);$", body), ["BEGIN", "COMMIT"])
+            scope = body.split("SET LOCAL ROLE scrum101_owner;", 1)
+            self.assertEqual(len(scope), 2)
+            self.assertIn("checks/target.sql", scope[0])
+            self.assertIn("checks/provisioned.sql", scope[0])
+            self.assertIn("checks/auth-permissions.sql", scope[0])
+            self.assertIn("checks/listado-base.sql", scope[0])
+            self.assertNotRegex(scope[1], r"\b(auth_users|haycupo)\.")
+            for path in step["includes"]:
+                self.assertTrue((ROOT / path).is_file())
+        acl = read(self.steps[-1]["entrypoint"])
+        self.assertLess(acl.index("RESET ROLE;"), acl.index("checks/listado-permissions.sql"))
+
+    def test_listado_source_fingerprints_and_cut_contents(self):
+        for step in self.steps:
+            source = step["source"]
+            body = read(source["path"])
+            self.assertEqual(hashlib.sha256(body.encode()).hexdigest(), source["sha256_lf"])
+            self.assertEqual(source["revision"], "b992c5e")
+        seed = read(self.steps[3]["source"]["path"])
+        self.assertIn(seed[seed.index("INSERT INTO"):seed.rindex("COMMIT;")], read("033-listado-cut.sql"))
+        counts = []
+        for section in seed.split(" VALUES\n")[1:]:
+            rows = []
+            for keys, name in re.findall(r"(?m)^\((\d+(?:,\d+)?),'((?:[^']|'')*)'\),?$", section):
+                rows.append((int(keys.split(",")[0]), keys.replace(",", chr(31)) + chr(31) + name.replace("''", "'")))
+            counts.append(len(rows))
+            digest = hashlib.sha256("\n".join(payload for _, payload in sorted(rows)).encode()).hexdigest()
+            self.assertIn(digest, read("checks/listado-cut.sql"))
+        self.assertEqual(counts, [16, 346])
+
+    def test_listado_grants_match_verifier_and_policies(self):
+        acl = read("034-listado-admissions-acl.sql")
+        grants = re.findall(r"GRANT (SELECT|INSERT|UPDATE|DELETE)(?: \(([^)]+)\))? ON listado_applications\.(\w+) TO sql_listado_applications;", acl)
+        policies = re.findall(r"CREATE POLICY runtime_\w+ ON listado_applications\.(\w+) FOR (\w+)", acl)
+        self.assertEqual(policies, [(table, action) for action, _, table in grants])
+        expected = []
+        verifier = read("checks/listado-permissions.sql")
+        for table, selected, inserted, updated, deleted in re.findall(r"\('(\w+)', '([^']*)', '([^']*)', '([^']*)', (true|false)\)", verifier):
+            for action, columns in zip(("SELECT", "INSERT", "UPDATE"), (selected, inserted, updated)):
+                if columns:
+                    expected.append((action, columns, table))
+            if deleted == "true":
+                expected.append(("DELETE", "", table))
+        self.assertEqual([(a, c.replace(" ", ""), t) for a, c, t in grants], expected)
+        self.assertNotRegex(acl, r"(?im)^GRANT\s+(?:ALL|CREATE)\b|WITH GRANT OPTION")
+
+    def test_listado_verifier_and_behavior_boundaries(self):
+        verify = read(self.steps[-1]["verify"])
+        behavior_path = self.steps[-1]["behavior"]
+        behavior = read(behavior_path)
+        self.assertTrue(verify.startswith("\\set ON_ERROR_STOP on\nBEGIN TRANSACTION READ ONLY;"))
+        self.assertTrue(behavior.startswith("\\set ON_ERROR_STOP on\nBEGIN;"))
+        for body in (verify, behavior):
+            self.assertTrue(body.endswith("ROLLBACK;\n"))
+            self.assertNotIn("COMMIT;", body)
+            self.assertNotRegex(body, r"(?im)^\s*(CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE)\s")
+        for include in includes(behavior_path):
+            self.assertTrue((ROOT / "tests" / include).is_file())
+        for state in ("42501", "23505", "23503", "23514"):
+            self.assertIn(f"WHEN SQLSTATE '{state}'", behavior)
+        self.assertIn("SET LOCAL ROLE sql_listado_applications;", behavior)
 
 
 if __name__ == "__main__":

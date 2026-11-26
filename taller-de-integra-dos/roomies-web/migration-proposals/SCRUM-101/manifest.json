@@ -65,6 +65,122 @@
       "includes": ["checks/target.sql", "checks/provisioned.sql", "checks/auth-base.sql", "checks/auth-shape.sql", "checks/auth-permissions.sql"],
       "verify": "022-auth-verify.sql",
       "behavior": "tests/auth-behavior.sql"
+    },
+    {
+      "id": "030",
+      "entrypoint": "030-listado-base.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "requires": [
+        "022"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-base.sql"
+      ],
+      "source": {
+        "path": "../../backend/local_stack/bootstrap.sql",
+        "revision": "b992c5e",
+        "sha256_lf": "6d373a274ce5efc004f5d096d4c21ccad0d66f0ce80404881b09566959ce8538"
+      }
+    },
+    {
+      "id": "031",
+      "entrypoint": "031-listado-contract.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "requires": [
+        "030"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-base.sql"
+      ],
+      "source": {
+        "path": "../../backend/services/listado-applications-service/migrations/001_publicaciones_contract.up.sql",
+        "revision": "b992c5e",
+        "sha256_lf": "7d14d805fbabe92ef38192b5726236451d75b3874a6daadce427e204d4f93c74"
+      }
+    },
+    {
+      "id": "032",
+      "entrypoint": "032-listado-images.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "requires": [
+        "031"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-base.sql"
+      ],
+      "source": {
+        "path": "../../backend/services/listado-applications-service/migrations/002_publication_images.sql",
+        "revision": "b992c5e",
+        "sha256_lf": "c5f01cea0a4658d3b216410742700b27c512496d2eca3e7361a28efc89348b76"
+      }
+    },
+    {
+      "id": "033",
+      "entrypoint": "033-listado-cut.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "requires": [
+        "032"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-base.sql",
+        "checks/listado-cut.sql"
+      ],
+      "source": {
+        "path": "../../backend/services/listado-applications-service/migrations/003_catalogo_cut.up.sql",
+        "revision": "b992c5e",
+        "sha256_lf": "3f722e773aad6a634d2db28c03b0a3134c9a7802bd5f0823933322363ba9434b"
+      }
+    },
+    {
+      "id": "034",
+      "entrypoint": "034-listado-admissions-acl.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "requires": [
+        "033"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-base.sql",
+        "checks/listado-shape.sql",
+        "checks/listado-cut.sql",
+        "checks/listado-permissions.sql"
+      ],
+      "source": {
+        "path": "../../backend/services/listado-applications-service/migrations/004_acceptance_operations.sql",
+        "revision": "b992c5e",
+        "sha256_lf": "ef034925577ea79216271a47e1b41767f305f8f8b1a8ff65133d00f4d13d9de7"
+      },
+      "verify": "034-listado-verify.sql",
+      "behavior": "tests/listado-behavior.sql"
     }
   ]
 }
