@@ -20,7 +20,7 @@ from fastapi import Header, HTTPException
 import psycopg
 import uvicorn
 
-from app.main import create_app, confirmed_actor
+from app.main import create_app, confirmed_actor, access_token
 from .test_tareas_sql import rental  # fixture SQL compartida, no datos remotos
 
 
@@ -58,6 +58,7 @@ def test_bff_gateway_sql_y_adaptador_movil_cruzados(service, rental, migrated_da
         return SimpleNamespace(user_id=actors[authorization])
 
     application.dependency_overrides[confirmed_actor] = fixture_actor
+    application.dependency_overrides[access_token] = lambda: "e04.fixture.token"
     # Nombre distinto para no colisionar con el paquete app de Convivencia.
     package = root / "backend/api-gateway/app"
     spec = importlib.util.spec_from_file_location("e04_fixture_gateway", package / "__init__.py",

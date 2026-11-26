@@ -33,7 +33,7 @@ test("E05 owner confirmation, double click, hidden action and active revocation"
    await new Promise(resolve=>setTimeout(resolve,300)); removed=true;
    return reply(200,{id_arriendo:1,id_usuario:2,estado:"Finalizado",integrantes_activos:0,cupos_disponibles:2});
   }
-  if(path === "/api/arriendos/1/tareas") return revoked ? reply(403,{}) : reply(200,{items:[{id_tarea:1,id_arriendo:1,id_creador:2,id_asignado:2,titulo:"Tarea privada",descripcion:null,estado:"Pendiente",fecha_creacion:"2026-11-24T12:00:00Z"}],siguiente_cursor:null});
+  if(path === "/api/arriendos/1/tareas") return revoked ? reply(403,{}) : reply(200,{items:[{id_tarea:1,id_arriendo:1,id_creador:2,id_asignado:2,titulo:"Tarea privada",descripcion:null,estado:"Pendiente",fecha_creacion:"2026-11-24T12:00:00Z"}],siguiente_cursor:null,id_usuario_actual:2});
   return reply(404,{});
  });
  await new Promise(resolve=>upstream.listen(0,"127.0.0.1",resolve));

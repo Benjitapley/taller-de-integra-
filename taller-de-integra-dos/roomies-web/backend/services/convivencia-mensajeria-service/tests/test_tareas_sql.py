@@ -47,7 +47,7 @@ def test_tarea_creada_reasignada_y_completada_persiste_en_otra_conexion(reposito
     with psycopg.connect(migrated_database) as connection:
         assert connection.execute("SELECT estado,fecha_completada IS NOT NULL FROM convivencia_mensajeria.tarea WHERE id_tarea=%s",
             (task["id_tarea"],)).fetchone() == ("Completada", True)
-    status(422, lambda: repository.reassign_task(task["id_tarea"], 2, 2))
+    status(409, lambda: repository.reassign_task(task["id_tarea"], 2, 2))
 
 
 def test_filtro_sql_antes_del_limite_y_tres_paginas_sin_duplicados(repository, rental):

@@ -35,11 +35,11 @@ test("E04 tasks: save failures, permissions, pagination, filters and persisted r
    const after=Number(url.searchParams.get("cursor")||0), state=url.searchParams.get("estado");
    if(after && failMore) { failMore=false; return reply(503,{}); }
    const rows=tasks.filter(t=>t.id_tarea>after&&(!state||t.estado===state)),page=rows.slice(0,20);
-   return reply(200,{items:page,siguiente_cursor:rows.length>20?String(page.at(-1).id_tarea):null});
+   return reply(200,{items:page,siguiente_cursor:rows.length>20?String(page.at(-1).id_tarea):null,id_usuario_actual:2});
   }
   if(path.startsWith("/api/tareas/")) {
    let body=""; for await (const chunk of request) body+=chunk;
-   if(patchStatus) return reply(patchStatus,{});
+   if(patchStatus) return reply(patchStatus,{detail:"Completar requiere ser el asignado activo."});
    const task=tasks.find(t=>t.id_tarea===Number(path.split("/")[3]));
    Object.assign(task,JSON.parse(body)); return reply(200,task);
   }
@@ -73,7 +73,7 @@ test("E04 tasks: save failures, permissions, pagination, filters and persisted r
   await page.goto(base+"/mi-arriendo/tareas");
   const item = id => page.locator("li").filter({has:page.getByText(`Tarea ${id}`,{exact:true})});
   await item(1).waitFor();
-  assert.equal(await item(1).getByRole("button",{name:"Completar",exact:true}).count(),1);
+  assert.equal(await item(1).getByRole("button",{name:"Completar",exact:true}).count(),1, await page.evaluate(async () => ({ session: await (await fetch('/web-api/auth/sesion')).json(), body: document.body.innerText })));
   assert.equal(await item(2).getByRole("button",{name:"Completar",exact:true}).count(),0);
   assert.equal(await item(3).getByRole("button",{name:"Completar",exact:true}).count(),0);
   // A failed PATCH must leave both the controlled select and status unchanged.
