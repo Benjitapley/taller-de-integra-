@@ -1,0 +1,70 @@
+S3R-E01 - Verificación del 25 de noviembre de 2026 (America/Santiago)
+
+Alcance: pruebas y evidencias. Sin cambios de lógica de negocio, componentes ni estilos.
+
+FRONTEND
+Configuración: node:test + Playwright. Se agregó playwright como dependencia de desarrollo
+y el script test:publications-browser. La prueba falla si faltan navegador o dependencias;
+no se omite silenciosamente.
+
+Desde frontend-next:
+  npm.cmd ci
+  npx.cmd playwright install chromium
+  npm.cmd run test:publications-browser
+
+En esta máquina se utilizó el Chromium ya instalado:
+  $env:REPORTS_BROWSER_PATH='C:/Users/gabri/AppData/Local/ms-playwright/chromium-1255/chrome-win64/chrome.exe'
+  npm.cmd run test:publications-browser
+
+Salida: browser.txt. Next se ejecuta en una copia temporal con puerto libre.
+Playwright intercepta /api/publicaciones y registra las URLs reales del navegador.
+La página inicial entrega cursor_p2; Cargar más lo envía y añade la página 2.
+Cambiar Cupos exactos a 2 y pulsar Buscar genera una petición sin cursor;
+se verifica que desaparecen ambas publicaciones anteriores y aparece la nueva página 1.
+La autenticación y los catálogos usan un servidor HTTP local simulado.
+No se utiliza PostgreSQL en esta prueba.
+Verificación adicional: npm.cmd run test:publications -> 20 aprobadas, 0 fallidas.
+ESLint del archivo de navegador -> código de salida 0.
+
+POSTGRESQL
+El servicio Windows postgresql-x64-19 ya estaba Running y pg_isready confirmó:
+  127.0.0.1:5432 - accepting connections
+No había .env/.env.test ni credenciales de pruebas configuradas para ese servicio.
+Se solicitó al usuario la conexión; no se modificó su autenticación ni sus bases.
+
+La ejecución adjunta usa PostgreSQL 19 real, local y TEMPORAL, levantado por
+tests/run_isolated.py con los binarios de C:/Program Files/PostgreSQL/19/bin.
+No es una ejecución contra el servicio Windows de puerto 5432.
+El runner verifica current_database(), host(inet_server_addr()) e inet_server_port()
+antes de ejecutar pytest e imprime ambos DSN, sin contraseñas.
+PUBLICATIONS_TEST_ADMIN_DSN y LISTADO_DATABASE_URL apuntan al mismo host, puerto y base.
+El puerto es dinámico: el valor exacto de esta ejecución está en postgres.txt.
+El runner limpia el entorno; no carga dotenv ni usa las conexiones Supabase de ejemplo.
+DATABASE_URL no es la variable utilizada por estas pruebas.
+No se inicia docker-compose.local.yml: su host roomies-db corresponde a la red Docker.
+Las llamadas de servicio usan TestClient y dobles explícitos; no requieren puertos HTTP
+8000/8002/8004 activos. El almacenamiento y Convivencia están simulados; SQL es real.
+
+Desde backend/services/listado-applications-service:
+  $env:PYTHONIOENCODING='utf-8'
+  python tests/run_isolated.py -vv -rA
+
+Salida completa: postgres.txt.
+Faltaba python-multipart en Python: se instaló la versión 0.0.34 para esta ejecución.
+El requirements.txt del servicio declara 0.0.32; no se cambió ese archivo.
+
+Casos solicitados:
+1. tests/test_contract.py::test_mas_de_dos_paginas_fechas_empatadas_y_cuenta
+   Siete publicaciones propias, límite 2, cuatro páginas, sin duplicados ni omisiones.
+3. tests/test_contract.py::test_filtro_cupos_exactos_con_confirmacion_retiro_y_cursor
+   cupos_disponibles=2 excluye valores 1 y 3; distingue el filtro mínimo y vincula cursor.
+4. tests/test_contract.py::test_catalogo_valida_comuna_con_catalogo_persistido
+   Región 9/comuna 9112 -> 200; región 8 con la misma comuna -> 422.
+5. tests/test_admissions.py::test_e01_http_409_al_reducir_capacidad_con_incorporacion_pendiente
+   Nuevo caso: incorporación persistida Pendiente (202), ocupación 0 y capacidad 3;
+   PUT multipart intenta reducirla a 2 -> 409 con mensaje de incorporación pendiente.
+   Verifica que la capacidad sigue en 3 y la postulación sigue Preseleccionada.
+
+Limitación pendiente: repetir contra el servicio Windows 127.0.0.1:5432 requiere
+credenciales locales y una base de pruebas preparada. Estas evidencias acreditan
+PostgreSQL real temporal; no acreditan la ejecución sobre ese servicio concreto.

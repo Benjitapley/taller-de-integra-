@@ -22,14 +22,12 @@ def filtered(headers, allowed):
             if name.lower() in allowed and name.lower() not in blocked]
 
 
-def unavailable(status, origin=None):
+def unavailable(status):
     messages = {408: "Tiempo de recepción agotado.", 413: "Solicitud demasiado grande.",
                 415: "Codificación de solicitud no admitida.",
                 502: "Error de comunicación con el servicio.",
                 503: "Servicio no configurado.", 504: "Tiempo de espera agotado."}
     headers = {"Cache-Control": "no-store"}
-    if origin:
-        headers["Access-Control-Allow-Origin"] = origin
     return JSONResponse({"detail": messages[status]}, status_code=status, headers=headers)
 
 
@@ -53,14 +51,13 @@ async def forward(request: Request):
 
 
 async def forward_to(request: Request, upstream_url, path):
-    origin = request.headers.get("origin")
     settings = request.app.state.settings
     encodings = [value.strip().lower() for name, value in request.scope["headers"]
                  if name.lower() == b"content-encoding"]
     if encodings and encodings != [b"identity"]:
-        return unavailable(415, origin=origin)
+        return unavailable(415)
     if not upstream_url:
-        return unavailable(503, origin=origin)
+        return unavailable(503)
     url = httpx.URL(upstream_url).copy_with(
         path=path, query=request.scope["query_string"])
     headers = filtered(request.scope["headers"], REQUEST_HEADERS)
@@ -92,21 +89,19 @@ async def forward_to(request: Request, upstream_url, path):
                         and "content-encoding" not in response.headers):
                     # Connection no puede hacer que bytes codificados pierdan
                     # silenciosamente la cabecera necesaria para interpretarlos.
-                    return unavailable(502, origin=origin)
+                    return unavailable(502)
                 if upstream.status_code >= 200 and upstream.status_code not in {204, 304}:
                     response.headers["Content-Length"] = str(len(body))
-                if origin:
-                    response.headers["Access-Control-Allow-Origin"] = origin
                 return response
             finally:
                 # Cerrar también tras cancelación; margen de limpieza máximo 1 s.
                 with anyio.move_on_after(1, shield=True):
                     await upstream.aclose()
     except BodyTooLarge:
-        return unavailable(413 if receiving else 502, origin=origin)
+        return unavailable(413 if receiving else 502)
     except TimeoutError:
-        return unavailable(408 if receiving else 504, origin=origin)
+        return unavailable(408 if receiving else 504)
     except httpx.TimeoutException:
-        return unavailable(504, origin=origin)
+        return unavailable(504)
     except httpx.RequestError:
-        return unavailable(502, origin=origin)
+        return unavailable(502)

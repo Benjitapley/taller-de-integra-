@@ -61,9 +61,10 @@ def actor(token: str = Depends(access_token)):
             raise HTTPException(response.status_code, "La cuenta no está habilitada para esta operación.")
         response.raise_for_status()
         value = response.json()
-        if value["subject"] != str(subject) or type(value["user_id"]) is not int or value["user_id"] < 1 or type(value["email_confirmed"]) is not bool or type(value["administrator"]) is not bool:
+        display_name = value.get("nombre")
+        if value["subject"] != str(subject) or type(value["user_id"]) is not int or value["user_id"] < 1 or type(value["email_confirmed"]) is not bool or type(value["administrator"]) is not bool or (display_name is not None and (not isinstance(display_name, str) or not display_name.strip())):
             raise ValueError()
-        return Actor(subject, value["user_id"], value["email_confirmed"], value["administrator"])
+        return Actor(subject, value["user_id"], value["email_confirmed"], value["administrator"], display_name)
     except HTTPException:
         raise
     except Exception:

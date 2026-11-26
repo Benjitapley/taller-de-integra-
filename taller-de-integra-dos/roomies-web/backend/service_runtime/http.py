@@ -16,6 +16,8 @@ class RequestLimits:
         import asyncio
         limit = (26_000_000 if scope["method"] in {"POST", "PUT"}
                  and re.fullmatch(r"/api/publicaciones(?:/[1-9][0-9]*)?", scope["path"])
+                 else 16_384 if scope["method"] == "POST"
+                 and re.fullmatch(r"/api/conversaciones/[1-9][0-9]*/mensajes", scope["path"])
                  else 6 * 1024 * 1024)
         body=bytearray()
         try:

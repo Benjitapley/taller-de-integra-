@@ -12,7 +12,10 @@ export function useActiveRental() {
   useEffect(() => {
     let controller: AbortController | undefined;
     let live = true;
+    let checking = false;
     async function load() {
+      if (checking) return;
+      checking = true;
       controller?.abort();
       controller = new AbortController();
       const signal = controller.signal;
@@ -36,16 +39,20 @@ export function useActiveRental() {
         setStatus("ready");
       } catch {
         if (live && !signal.aborted) { setRental(null); setStatus("error"); }
+      } finally {
+        checking = false;
       }
     }
-    const focus = () => { void load(); };
+    const focus = () => { if (document.visibilityState === "visible") void load(); };
     void load();
     window.addEventListener("focus", focus);
-    const interval = window.setInterval(focus, 15_000);
+    document.addEventListener("visibilitychange", focus);
+    const interval = window.setInterval(focus, 5_000);
     return () => {
       live = false;
       controller?.abort();
       window.removeEventListener("focus", focus);
+      document.removeEventListener("visibilitychange", focus);
       window.clearInterval(interval);
     };
   }, [version]);

@@ -14,6 +14,7 @@ class Settings:
     convivencia_upstream: str | None = None
     reportes_upstream: str | None = None
     local_mode: bool = False
+    cors_origins: tuple[str, ...] = ()
     connect_timeout: float = 3.0
     read_timeout: float = 10.0
     write_timeout: float = 10.0
@@ -24,6 +25,27 @@ class Settings:
     max_response_bytes: int = 2_097_152
 
     def __post_init__(self):
+        if not isinstance(self.cors_origins, tuple):
+            raise ValueError("Configuración CORS inválida.")
+        for origin in self.cors_origins:
+            if not isinstance(origin, str):
+                raise ValueError("Configuración CORS inválida.") from None
+            try:
+                url = urlsplit(origin)
+                valid = (origin != "" and "*" not in origin
+                         and origin == origin.strip()
+                         and not any(c.isspace() or ord(c) < 32 for c in origin)
+                         and "?" not in origin and "#" not in origin
+                         and url.scheme in {"http", "https"} and bool(url.hostname)
+                         and url.username is None and url.password is None
+                         and url.path == "" and not url.query and not url.fragment
+                         and not url.netloc.endswith(":"))
+                url.port
+                httpx.URL(origin)
+            except (ValueError, httpx.InvalidURL):
+                valid = False
+            if not valid:
+                raise ValueError("Configuración CORS inválida.") from None
         for configured in (self.listado_upstream,self.match_upstream,self.convivencia_upstream,self.reportes_upstream):
             if configured is not None:
                 Settings(upstream=configured)
@@ -52,6 +74,9 @@ class Settings:
     @classmethod
     def from_env(cls):
         try:
+            cors_origins = tuple(dict.fromkeys(
+                origin.strip() for origin in os.environ.get("GATEWAY_CORS_ORIGINS", "").split(",")
+                if origin.strip()))
             return cls(
                 upstream=os.environ.get("AUTH_USERS_UPSTREAM_URL") or None,
                 listado_upstream=os.environ.get("LISTADO_UPSTREAM_URL") or None,
@@ -59,6 +84,7 @@ class Settings:
                 convivencia_upstream=os.environ.get("CONVIVENCIA_UPSTREAM_URL") or None,
                 reportes_upstream=os.environ.get("REPORTES_UPSTREAM_URL") or None,
                 local_mode=os.environ.get("ROOMIES_LOCAL_MODE")=="1" or os.environ.get("ROOMIES_RUNTIME_MODE")=="supabase",
+                cors_origins=cors_origins,
                 **{f"{kind}_timeout": float(os.environ.get(f"GATEWAY_{kind.upper()}_TIMEOUT", default))
                    for kind, default in (("connect", "3"), ("read", "10"), ("write", "10"),
                                          ("pool", "3"), ("client_body", "5"), ("total", "15"))},

@@ -79,6 +79,15 @@ Los siguientes hitos son fechas del backlog.
 | URL y SHA del Gateway/servicios contra los que se prueba | **SIN CONFIRMAR** | — |
 | Evidencia de flujo conjunto web/Expo | **SIN CONFIRMAR** | — |
 
+Actualización E04, revisión local del **25/11/2026**: no se recibió confirmación
+nominal de quién entrega ni quién prueba Expo. La pantalla móvil de tareas
+inspeccionada utiliza datos demo. La primera prueba física prevista para el 24/11
+no tiene resultado acreditado; tampoco consta escalamiento realizado ese día.
+La dependencia TI4 y el bloqueo de E06/B06 permanecen **abiertos**. Gabriel
+Yamaguchi coordina según backlog; no se atribuye disponibilidad a TI4 por silencio.
+Ver [evidencia y recorrido pendiente E04](../evidence/E04/README.md).
+Este registro no constituye comunicación externa ni confirmación de recepción.
+
 ## 6. Cierre documental
 
 - **Preparó el borrador:** documentación de SCRUM-99, no acuerdo formal.

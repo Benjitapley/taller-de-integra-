@@ -128,6 +128,6 @@ export async function handleReportMembers(request: Request, rental: string, conf
       return { id_usuario: member.id_usuario, nombre: typeof member.nombre === "string" && member.nombre.length <= 200 ? member.nombre : null,
         es_responsable: member.es_responsable, fecha_ingreso: member.fecha_ingreso, activo: member.activo };
     });
-    return authReply(200, { items, siguiente_cursor: page.siguiente_cursor });
+    return authReply(200, { items, siguiente_cursor: page.siguiente_cursor, ...(typeof page.puede_retirar === "boolean" ? { puede_retirar: page.puede_retirar } : {}) });
   } catch { return unavailable(); }
 }

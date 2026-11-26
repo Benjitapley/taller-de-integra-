@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import { validatePublicationForm } from "./validation";
 import LocationFields from "./LocationFields";
 import ImageFields from "./ImageFields";
+import PublicationRules, { setPublicationRules } from "./PublicationRules";
 import styles from "./publicaciones.module.css";
 
 type PublicationKind = "Arrendador";
@@ -15,22 +16,27 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
   const operation = useRef<string | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [preview, setPreview] = useState<FormData | null>(null);
+  const resetSubmission = () => { operation.current = null; setPreview(null); };
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
     const form = new FormData(event.currentTarget);
     form.set("tipo", kind);
-    form.delete("confirmo_origen");
-    form.delete("cupos_min");
-    form.delete("cupos_disponibles");
-    form.set("categoria", "ofrezco");
-    form.set("permitir_comentarios", "false");
+    if (!String(form.get("ubicacion") ?? "").trim()) form.delete("ubicacion");
+    setPublicationRules(form);
     const validationError = validatePublicationForm(form);
     if (validationError) { setMessage(validationError); return; }
 
-    setPending(true);
     setMessage("");
+    if ((event.nativeEvent as SubmitEvent).submitter?.getAttribute("name") === "preview") {
+      const selected = event.currentTarget.querySelector<HTMLSelectElement>("select[data-publication-commune]");
+      if (selected?.value) form.set("nombre_comuna", selected.selectedOptions[0].text);
+      setPreview(form);
+      return;
+    }
+    setPending(true);
     try {
       const response = await fetch("/web-api/publicaciones", {
         method: "POST",
@@ -51,7 +57,12 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
         setMessage(detail);
         return;
       }
-      router.push("/inicio");
+      const saved = await response.json();
+      if (!Number.isSafeInteger(saved?.id_publicacion) || saved.id_publicacion < 1) {
+        setMessage("No se pudo confirmar el aviso guardado. Revisa Mis publicaciones.");
+        return;
+      }
+      router.push("/publicaciones/" + saved.id_publicacion);
     } catch {
       setMessage("No se pudo confirmar la publicación. Revisa tus publicaciones antes de volver a intentarlo.");
     } finally {
@@ -63,13 +74,12 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
     <button className={styles.backButton} type="button" onClick={onBack}>← Cambiar tipo de publicación</button>
     <h2>Publicar un arriendo</h2>
     <p>Ofrece un espacio que arriendas y recibe postulaciones individuales. Tú podrás revisar y decidir sobre cada solicitud.</p>
-    <form className={styles.publicationForm} onSubmit={submit} onChange={() => { operation.current = null; }} aria-busy={pending}>
+    <form className={styles.publicationForm} onSubmit={submit} onChange={resetSubmission} aria-busy={pending}>
       <fieldset disabled={pending}>
         <legend>Detalles de la publicación</legend>
         <label className={styles.fullField}>Título
           <input name="titulo" required maxLength={200} placeholder="Ej.: Habitación cerca del centro" />
         </label>
-        <input type="hidden" name="categoria" value="ofrezco" />
         <label>Tipo de vivienda
           <select name="tipo_vivienda" defaultValue="" required>
             <option value="" disabled>Selecciona una opción</option><option value="casa">Casa</option>
@@ -77,8 +87,8 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
           </select>
         </label>
         <LocationFields />
-        <label>Dirección o sector
-          <input name="ubicacion" required maxLength={250} placeholder="Región y comuna del lugar" />
+        <label>Dirección o sector (opcional)
+          <input name="ubicacion" maxLength={250} />
         </label>
           <label>Precio del arriendo (CLP)
           <input name="precio" type="number" min="0" max="999999999999" step="1" required />
@@ -92,9 +102,17 @@ export default function PublicationForm({ kind, onBack }: { kind: PublicationKin
         <label className={styles.fullField}>Descripción
           <textarea name="descripcion" rows={5} maxLength={5000} required placeholder="Describe el espacio, sus características y las reglas que deben conocer los postulantes." />
         </label>
-        <div className={styles.fullField}><ImageFields /></div>
+        <div className={styles.fullField}><PublicationRules /></div>
+        <div className={styles.fullField}><ImageFields onRemoveFile={resetSubmission} /></div>
+        {preview && <section className={styles.fullField} aria-label="Vista previa del aviso" aria-live="polite">
+          <h3>{String(preview.get("titulo"))}</h3>
+          <p>{[preview.get("ubicacion"), preview.get("nombre_comuna")].filter(Boolean).join(" · ")}</p>
+          <p>{new Intl.NumberFormat("es-CL").format(Number(preview.get("precio")))} CLP · Capacidad total {String(preview.get("cupos_totales"))}</p>
+          <p>{String(preview.get("descripcion"))}</p>
+        </section>}
         <div className={styles.formActions}>
           <Button type="submit">{pending ? "Publicando…" : "Publicar ahora"}</Button>
+          <Button type="submit" variant="secondary" name="preview">Vista previa</Button>
           <Button type="button" variant="secondary" onClick={onBack}>Cancelar</Button>
         </div>
       </fieldset>

@@ -79,7 +79,8 @@ def initialize(data: Initialization, who=Depends(identity), service=Depends(user
 def internal_identity(request: Request, who=Depends(identity), service=Depends(users)):
     user=service.own(who[0])
     return {"subject":str(who[0]),"user_id":user.id_usuario,"email_confirmed":who[1],
-            "administrator":who[1] and has_admin_role(getattr(request.state,"verified_provider_user",{}))}
+            "administrator":who[1] and has_admin_role(getattr(request.state,"verified_provider_user",{})),
+            "nombre":user.nombre}
 
 
 def admission_service(x_roomies_service: Annotated[str | None, Header()] = None):
@@ -206,7 +207,7 @@ async def update_profile(request: Request, who=Depends(identity), service=Depend
 
 @router.get("/local/v1/usuarios/publicos")
 @router.get("/api/v1/usuarios/publicos")
-def public_profiles(ids: str | None=None, presupuesto_max: int | None=Query(None,ge=0,le=2147483647), zona: str | None=Query(None,max_length=250), ocupacion: str | None=Query(None,max_length=100), excluir_id: int | None=Query(None,ge=1,le=2147483647), service=Depends(users)):
+def public_profiles(ids: str | None=None, incluir_foto: bool=False, presupuesto_max: int | None=Query(None,ge=0,le=2147483647), zona: str | None=Query(None,max_length=250), ocupacion: str | None=Query(None,max_length=100), excluir_id: int | None=Query(None,ge=1,le=2147483647), service=Depends(users)):
     filters={k:v for k,v in {"presupuesto_max":presupuesto_max,"zona":zona,"ocupacion":ocupacion,"excluir_id":excluir_id}.items() if v is not None}
     if ids is not None:
         try:
@@ -215,7 +216,9 @@ def public_profiles(ids: str | None=None, presupuesto_max: int | None=Query(None
         except ValueError:
             raise HTTPException(422,"Identificadores inválidos.") from None
         filters["ids"]=parsed
-    return [user.public() for user in service.repository.public_search(filters)]
+    users = service.repository.public_search(filters)
+    return [{**user.public(), "foto_perfil": user.foto_perfil} if incluir_foto and ids is not None else user.public()
+            for user in users]
 
 
 class Notification(BaseModel):

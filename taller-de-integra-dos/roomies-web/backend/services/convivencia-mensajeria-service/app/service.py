@@ -69,8 +69,13 @@ class Convivencia:
                 if rental is None:
                     rental = c.execute("""INSERT INTO convivencia_mensajeria.arriendo(id_publicacion,cupos_totales,version_capacidad)
                       VALUES(%s,%s,%s) RETURNING *""", (payload["id_publicacion"], reservation["cupos_totales"], payload["version_capacidad"])).fetchone()
+                if c.execute("SELECT 1 FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Inactiva'", (rental["id_arriendo"],payload["id_usuario"])).fetchone():
+                    raise ServiceError("REENTRY_FORBIDDEN", "No se permite reingresar al arriendo.")
+                if rental["estado"] == "Finalizado":
+                    raise ServiceError("RENTAL_FINALIZED", "El arriendo ha finalizado.")
                 if rental["version_capacidad"] != payload["version_capacidad"] or rental["cupos_totales"] != reservation["cupos_totales"]:
                     raise ServiceError("CAPACITY_VERSION_CONFLICT", "La versión de capacidad no coincide.")
+                c.execute("INSERT INTO convivencia_mensajeria.conversacion(id_arriendo) VALUES(%s) ON CONFLICT(id_arriendo) DO NOTHING", (rental["id_arriendo"],))
                 occupied = c.execute("SELECT count(*) AS total FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND estado='Activa'", (rental["id_arriendo"],)).fetchone()["total"]
                 if occupied >= rental["cupos_totales"]:
                     raise ServiceError("NO_CAPACITY", "No quedan cupos disponibles.")
@@ -136,4 +141,52 @@ class Convivencia:
                 self._incorporate(operation["id_operacion"], operation["payload"])
             except Exception:
                 continue
+        self.dispatch_departures()
         return self.dispatch()
+
+
+    def expel(self, rental_id, actor_id, data):
+        from uuid import uuid4
+        from app.models import Expulsion
+        data = Expulsion.model_validate(data).model_dump()
+        with self.repository.transaction() as c:
+            row = c.execute("SELECT * FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
+            if row is None:
+                raise ServiceError("RENTAL_NOT_FOUND", "Arriendo no encontrado.", 404)
+            if self.publications.owner(row["id_publicacion"]) != actor_id:
+                raise ServiceError("FORBIDDEN", "Solo el dueño del aviso puede retirar integrantes.", 403)
+            c.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", (f"publicacion:{row['id_publicacion']}",))
+            row = c.execute("SELECT * FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s FOR UPDATE", (rental_id,)).fetchone()
+            previous = c.execute("SELECT respuesta FROM convivencia_mensajeria.retiro WHERE id_arriendo=%s AND id_usuario=%s", (rental_id,data["id_usuario"])).fetchone()
+            if previous:
+                return previous["respuesta"]
+            member = c.execute("SELECT * FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa' FOR UPDATE", (rental_id,data["id_usuario"])).fetchone()
+            if member is None:
+                raise ServiceError("MEMBER_NOT_FOUND", "Integrante activo no encontrado.", 404)
+            c.execute("UPDATE convivencia_mensajeria.pertenencia SET estado='Inactiva' WHERE id_pertenencia=%s", (member["id_pertenencia"],))
+            c.execute("UPDATE convivencia_mensajeria.tarea SET id_asignado=NULL WHERE id_arriendo=%s AND id_asignado=%s AND estado='Pendiente'", (rental_id,data["id_usuario"]))
+            count = c.execute("SELECT count(*) AS n FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND estado='Activa'", (rental_id,)).fetchone()["n"]
+            version = c.execute("UPDATE convivencia_mensajeria.arriendo SET version_ocupacion=version_ocupacion+1,estado=%s WHERE id_arriendo=%s RETURNING version_ocupacion", ('Finalizado' if count == 0 else 'Activo',rental_id)).fetchone()["version_ocupacion"]
+            key = uuid4()
+            body = {"id_arriendo":rental_id,"id_usuario":data["id_usuario"],"estado":"Finalizado" if count == 0 else "Activo", "integrantes_activos":count,"cupos_disponibles":row["cupos_totales"]-count}
+            c.execute("INSERT INTO convivencia_mensajeria.retiro(id_retiro,id_arriendo,id_usuario,id_actor,motivo,respuesta) VALUES(%s,%s,%s,%s,%s,%s)", (key,rental_id,data["id_usuario"],actor_id,data["motivo"],Jsonb(body)))
+            projection = {"id_publicacion":row["id_publicacion"],"ocupacion":count,"version_ocupacion":version,"finalizado":count == 0}
+            notice = {"tipo":"expulsion","event_key":f"expulsion:{key}","id_usuario":data["id_usuario"],"referencia_id":rental_id}
+            for action,payload in (("Ocupacion",projection),("Notificar",notice)):
+                c.execute("INSERT INTO convivencia_mensajeria.retiro_outbox(id_retiro,accion,payload) VALUES(%s,%s,%s)", (key,action,Jsonb(payload)))
+        return body
+
+    def dispatch_departures(self):
+        from backend.service_runtime.notifications import send_notification
+        with self.repository.transaction() as c:
+            events = c.execute("SELECT * FROM convivencia_mensajeria.retiro_outbox WHERE NOT enviado ORDER BY ultimo_intento NULLS FIRST,id_retiro,accion LIMIT 20 FOR UPDATE SKIP LOCKED").fetchall()
+            for event in events:
+                c.execute("UPDATE convivencia_mensajeria.retiro_outbox SET ultimo_intento=clock_timestamp() WHERE id_retiro=%s AND accion=%s", (event["id_retiro"],event["accion"]))
+                try:
+                    if event["accion"] == "Ocupacion":
+                        self.publications.occupancy(event["payload"])
+                    else:
+                        send_notification(event["payload"])
+                except Exception:
+                    continue
+                c.execute("UPDATE convivencia_mensajeria.retiro_outbox SET enviado=true WHERE id_retiro=%s AND accion=%s", (event["id_retiro"],event["accion"]))

@@ -58,7 +58,7 @@ try:
             checks = {"auth": [("haycupo.usuario", "id_usuario"), ("auth_users.identidad", "supabase_user_id")] if progressive else [("auth_users.usuario", "supabase_user_id")],
                       "listado": [("haycupo.publicacion" if progressive else "listado_applications.publicacion", "version_capacidad"), ("listado_applications.postulacion", "id_postulacion"), ("listado_applications.admision_operacion", "id_operacion"), ("listado_applications.admision_reserva", "id_operacion")],
                       "match": [("haycupo.conexion" if progressive else "match_conexion.conexion", "id_conexion")],
-                      "convivencia": [("convivencia_mensajeria.arriendo", "id_arriendo"), ("convivencia_mensajeria.pertenencia", "id_pertenencia"), ("convivencia_mensajeria.incorporacion", "id_operacion"), ("convivencia_mensajeria.outbox", "id_outbox")],
+                      "convivencia": [("convivencia_mensajeria.arriendo", "id_arriendo"), ("convivencia_mensajeria.pertenencia", "id_pertenencia"), ("convivencia_mensajeria.incorporacion", "id_operacion"), ("convivencia_mensajeria.outbox", "id_outbox"), ("convivencia_mensajeria.conversacion", "id_conversacion"), ("convivencia_mensajeria.mensaje", "id_mensaje")],
                       "reportes": [("reportes.reporte", "id_reporte"), ("reportes.operacion_envio", "clave")]}
             with psycopg.connect(database_url(variable, role), prepare_threshold=None, connect_timeout=5) as connection:
                 connection.read_only = True

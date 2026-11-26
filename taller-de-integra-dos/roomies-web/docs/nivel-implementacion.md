@@ -57,7 +57,7 @@ Finalizadas o en revisión: 18/34 = 52,9 %. Las revisiones no se cuentan como ac
 | [SCRUM-119](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-119) | Conectar Mi arriendo e integrantes | En revisión |
 | [SCRUM-120](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-120) | Implementar chat de convivencia persistido en web | En curso |
 | [SCRUM-121](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-121) | Conectar tareas compartidas y prueba cruzada | Por hacer |
-| [SCRUM-122](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-122) | Conectar retiro por arrendador y revocar la experiencia activa | Por hacer |
+| [SCRUM-122](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-122) | Conectar retiro por arrendador y revocar la experiencia activa | Implementado; aceptacion SQL/integrada pendiente ([evidencia](SCRUM-122.md)) |
 | [SCRUM-123](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-123) | Coordinar aceptación móvil y verificar todas las paginaciones | Por hacer |
 | [SCRUM-124](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-124) | Implementar ingreso, pertenencia y consulta de arriendo | Finalizado |
 | [SCRUM-125](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-125) | Persistir chat de convivencia con paginación y autorización | Finalizado |

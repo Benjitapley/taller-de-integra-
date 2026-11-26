@@ -10,6 +10,22 @@ class PublicationImage(BaseModel):
     orden:int
 
 
+class PublicationLocation(BaseModel):
+    id: int
+    nombre: str
+
+
+class PublicationAuthor(BaseModel):
+    id_usuario: int
+    nombre: str
+    foto: str | None
+
+
+class PublicationApplication(BaseModel):
+    id_postulacion: int
+    estado: str
+
+
 class Publication(BaseModel):
     id_publicacion:int
     id:int=Field(deprecated=True,description="Alias temporal de id_publicacion.")
@@ -31,10 +47,20 @@ class Publication(BaseModel):
     fecha_publicacion:datetime
     id_region:int|None=Field(description="CUT de región; null solo en datos heredados pendientes de conciliación.")
     id_comuna:int|None
-    reglas:list[str]
+    reglas:list[str] = Field(deprecated=True, description="Alias de transición; el detalle también expone reglas_arrendador.")
+    region: PublicationLocation | None
+    comuna: PublicationLocation | None
+    autor: PublicationAuthor | None
+
+
+class OwnedPublication(Publication):
+    id_arriendo: int | None
 
 
 class PublicationDetail(Publication):
+    reglas_arrendador: list[str]
+    mi_postulacion: PublicationApplication | None = None
+    id_arriendo: int | None = None
     id_propietario: int | None = Field(
         default=None, description="ID del propietario, presente con una sesión activa y correo confirmado."
     )
@@ -47,6 +73,10 @@ class PublicationSaved(Publication):
 class PublicationPage(BaseModel):
     items:list[Publication]
     siguiente_cursor:str|None
+
+
+class OwnedPublicationPage(PublicationPage):
+    items: list[OwnedPublication]
 
 
 class Region(BaseModel):
@@ -66,22 +96,32 @@ MULTIPART={
                    "schema":{"type":"string","format":"uuid"}}],
     "requestBody":{"required":True,"content":{"multipart/form-data":{"schema":{
         "type":"object",
-        "required":["titulo","descripcion","ubicacion","precio","tipo","categoria","tipo_vivienda","mascota","cupos_totales","id_region","id_comuna"],
+        "required":["titulo","descripcion","precio","tipo","tipo_vivienda","cupos_totales","id_region","id_comuna"],
         "properties":{
             "titulo":{"type":"string","minLength":1,"maxLength":200},
             "descripcion":{"type":"string","minLength":1,"maxLength":5000},
-            "ubicacion":{"type":"string","minLength":1,"maxLength":250},
+            "ubicacion":{"type":"string","minLength":1,"maxLength":250,"deprecated":True,"description":"Texto de ubicación de clientes existentes. Si se omite se deriva del catálogo."},
             "precio":{"type":"integer","minimum":0,"maximum":999999999999,"description":"Pesos enteros CLP; se valida antes de guardar."},
             "tipo":{"type":"string","enum":["Arrendador"]},
-            "categoria":{"type":"string","enum":["ofrezco"]},
+            "categoria":{"type":"string","enum":["ofrezco"],"default":"ofrezco","deprecated":True},
             "tipo_vivienda":{"type":"string","enum":["casa","departamento","habitacion"]},
-            "mascota":{"type":"string","enum":["si","no"]},
+            "mascota":{"type":"string","enum":["si","no"],"default":"no"},
             "cupos_totales":{"type":"integer","minimum":1,"maximum":2147483647},
             "id_region":{"type":"integer","minimum":1},"id_comuna":{"type":"integer","minimum":1},
-            "reglas":{"type":"string","description":"Lista JSON de hasta 50 reglas textuales, 1-1000 caracteres por regla."},
+            "reglas_arrendador":{"type":"string","description":"Lista JSON de hasta 20 reglas textuales, 1-300 caracteres por regla."},
+            "reglas":{"type":"string","deprecated":True,"description":"Alias de transición. No se admite junto con reglas_arrendador."},
             "permitir_comentarios":{"type":"boolean","default":False,"deprecated":True},
             "imagenes":{"type":"array","maxItems":5,"items":{"type":"string","format":"binary"},"description":"JPEG/PNG/WebP; máximo 5 000 000 bytes y 20 megapíxeles decodificados cada archivo. Hasta 5 imágenes totales al sumar conservadas."},
             "imagenes_conservar":{"type":"string","description":"Solo edición: lista JSON de IDs propios, en el orden deseado. Omitir conserva las vigentes; [] las quita."}
         }
     }}}}
 }
+
+
+class OwnerPublication(Publication):
+    id_arriendo: int | None = None
+
+
+class OwnerPublicationPage(BaseModel):
+    items: list[OwnerPublication]
+    siguiente_cursor: str | None

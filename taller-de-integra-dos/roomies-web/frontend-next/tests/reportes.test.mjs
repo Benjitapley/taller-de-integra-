@@ -92,9 +92,11 @@ test("integrantes solo se consultan con sesión y la respuesta elimina datos aje
   const response = await handleReportMembers(request, "7", config, async (url, options) => {
     assert.equal(url, config.backend + "/api/arriendos/7/integrantes?cursor=next");
     assert.equal(options.headers.Authorization, "Bearer fixture.token.signed");
-    return Response.json({ items: [{ id_usuario: 2, nombre: "Integrante", activo: true, es_responsable: false, fecha_ingreso: "2026-11-20T12:00:00Z", nota_interna: "SECRET", email: "private" }], siguiente_cursor: null });
+    return Response.json({ items: [{ id_usuario: 2, nombre: "Integrante", es_responsable: false, fecha_ingreso: "2026-11-20T12:00:00.000Z", activo: true, nota_interna: "SECRET", email: "private" }], siguiente_cursor: null });
   });
-  assert.deepEqual(await response.json(), { items: [{ id_usuario: 2, nombre: "Integrante", activo: true, es_responsable: false, fecha_ingreso: "2026-11-20T12:00:00Z" }], siguiente_cursor: null });
+  assert.deepEqual(await response.json(), { items: [{ id_usuario: 2, nombre: "Integrante", es_responsable: false, fecha_ingreso: "2026-11-20T12:00:00.000Z", activo: true }], siguiente_cursor: null });
+  process.env.WEB_REPORTES_ENABLED = "false";
+  assert.equal((await handleReportMembers(request, "7", config, async () => Response.json({ items: [], siguiente_cursor: null }))).status, 200);
   assert.equal((await handleReportMembers(new Request(request.url), "7", config)).status, 401);
   assert.equal((await handleReportMembers(request, "7", config, async () => new Response(null, { status: 403 }))).status, 403);
   assert.equal((await handleReportMembers(request, "../7", config)).status, 422);
