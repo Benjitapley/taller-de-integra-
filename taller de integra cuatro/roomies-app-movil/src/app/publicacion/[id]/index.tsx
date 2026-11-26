@@ -8,7 +8,8 @@ import { usuariosMock } from '@/mocks';
 import { obtenerPublicacionPorId } from '@/services/publicacionesService';
 import type { Publicacion } from '@/types/Publicacion';
 import { useAuth } from '@/hooks/useAuth';
-import { postularAPublicacion } from '@/services/postulacionesService';
+import { postularConVerificacion } from '@/services/postulacionesService';
+import { mensajeDePostulacion } from '@/types/erroresServidor';
 import { TITULO_PUBLICACION, configPorEstado, configPorOrigen, ctaPorOrigen, estiloPorTipo, paletaPublicacion } from '@/constants/origenPublicacion';
 
 const MI_POSTULACION_LISTA = true;
@@ -108,7 +109,9 @@ function DetallePublicacion({ id }: { id: string }) {
         postulandoRef.current = true;
         setPostulando(true);
 
-        const resultado = await postularAPublicacion(Number(id));
+        // Ante un corte o tiempo agotado consulta "mis postulaciones" antes de dar error:
+        // si el intento anterior sí llegó, no se pide una segunda postulación.
+        const resultado = await postularConVerificacion(Number(id));
 
         postulandoRef.current = false;
         setPostulando(false);
@@ -168,25 +171,18 @@ function DetallePublicacion({ id }: { id: string }) {
             return;
         }
 
-        // El backend usa 409 (ya postulaste, sin cupos o publicación cerrada) y 403
-        // (publicación propia o correo sin confirmar). El cliente HTTP los reduce a un
-        // mensaje genérico, así que aquí se explican con las reglas conocidas.
-        if (resultado.estadoHttp === 409) {
+        // Los 409 y el 403 del contrato (4.2) traen un `codigo` distinto cada uno
+        // (postulacion_duplicada, sin_cupos, publicacion_cerrada, reingreso_no_permitido,
+        // estado_invalido, ya_pertenece_a_arriendo, sin_permiso, correo_no_verificado):
+        // el mensaje sale de ese código, no de adivinar por el estado HTTP.
+        if (resultado.codigo === 'red' || resultado.codigo === 'tiempo_agotado') {
             Alert.alert(
-                'No se pudo postular',
-                'Ya tienes una postulación vigente a esta publicación, o ya no tiene cupos disponibles.',
+                'Revisa tu postulación',
+                'No pudimos confirmar el resultado y es posible que tu postulación se haya enviado. Revisa Mis postulaciones antes de intentarlo otra vez.',
             );
             return;
         }
-        if (resultado.estadoHttp === 403) {
-            Alert.alert(
-                'No se pudo postular',
-                'Para postular debes tener el correo confirmado y la publicación no puede ser tuya.',
-            );
-            return;
-        }
-
-        Alert.alert('No se pudo postular', resultado.error);
+        Alert.alert('No se pudo postular', mensajeDePostulacion(resultado));
     };
 
     const accionPrincipal = () => {

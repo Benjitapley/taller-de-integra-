@@ -1,13 +1,15 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { pasosPorEstadoPostulacion, type MarcadorPaso } from '@/constants/estadoPostulacion';
+import { pasosDePostulacion, type MarcadorPaso } from '@/constants/estadoPostulacion';
 import { paletaPublicacion } from '@/constants/origenPublicacion';
 import { colors } from '@/theme/colors';
 import type { EstadoPostulacion } from '@/types/Postulacion';
 
 interface LineaEstadoPostulacionProps {
   estado: EstadoPostulacion;
+  /** Motivo de la cancelación, para decir quién la originó. */
+  motivo?: string;
 }
 
 const TEXTO_MARCADOR: Record<MarcadorPaso, string> = {
@@ -49,9 +51,9 @@ function Marcador({ tipo }: { tipo: MarcadorPaso }) {
 
 // Línea de estado de la postulación. Solo muestra el estado que
 // recibe, no hay ningún control que lo cambie.
-export const LineaEstadoPostulacion: React.FC<LineaEstadoPostulacionProps> = ({ estado }) => (
+export const LineaEstadoPostulacion: React.FC<LineaEstadoPostulacionProps> = ({ estado, motivo }) => (
   <View style={styles.contenedor}>
-    {pasosPorEstadoPostulacion[estado].map((paso, indice) => (
+    {pasosDePostulacion(estado, motivo).map((paso, indice) => (
       <View
         key={paso.titulo}
         style={[styles.fila, indice > 0 && styles.filaSiguiente]}

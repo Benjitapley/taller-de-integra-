@@ -5,18 +5,22 @@ import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { CustomButton } from '@/components/CustomButton';
 import { LineaEstadoPostulacion } from '@/components/postulaciones/LineaEstadoPostulacion';
 import { PostulacionCard } from '@/components/postulaciones/PostulacionCard';
-import { chatPorEstadoPostulacion } from '@/constants/estadoPostulacion';
 import { paletaPublicacion } from '@/constants/origenPublicacion';
 import { useAuth } from '@/hooks/useAuth';
+import { useDetallePostulacion } from '@/hooks/useDetallePostulacion';
 import { useMisPostulaciones } from '@/hooks/useMisPostulaciones';
+import { puedeRetirarse } from '@/services/postulacionesService';
 import { colors } from '@/theme/colors';
+import { mensajeDeRetiro } from '@/types/erroresServidor';
+import { type Postulacion } from '@/types/Postulacion';
 
 // M4-C11: postulaciones reales (GET /api/postulaciones/mias).
 // - /postulaciones                   -> listado de mis postulaciones.
 // - /postulaciones?idPublicacion=4   -> "Mi postulación" de esa publicación (a
 //   donde lleva "Ver mi postulación" del detalle y cada tarjeta del listado).
-// Solo muestra el estado que recibe del backend: no hay ninguna acción que lo
-// cambie, ni forma de forzar una aceptación desde la app.
+// Muestra el estado que recibe del backend. La única acción es retirar una
+// postulación Pendiente o Preseleccionada (M4S3-C03); la aceptación o el rechazo
+// los decide siempre el arrendador, y la app nunca los fuerza.
 
 // `sesion_no_disponible` es un fallo pasajero: solo ofrece reintentar, no cerrar sesión.
 const ERRORES_DE_SESION = ['sin_sesion', 'no_autorizado'];
@@ -46,7 +50,69 @@ export default function MiPostulacion() {
   const router = useRouter();
   const { estaAutenticado, cerrarSesion } = useAuth();
   const { idPublicacion } = useLocalSearchParams<{ idPublicacion?: string }>();
-  const { estado, postulaciones, error, reintentar } = useMisPostulaciones();
+  const {
+    estado,
+    postulaciones,
+    error,
+    reintentar,
+    hayMas,
+    cargandoMas,
+    errorMas,
+    cargarMas,
+    idRetirando,
+    retirar,
+  } = useMisPostulaciones();
+
+  // Si hubo varias postulaciones a la misma publicación (p. ej. una cancelada y
+  // otra nueva), el backend las entrega de la más reciente a la más antigua.
+  const postulacionEnLista = idPublicacion
+    ? postulaciones.find((p) => p.idPublicacion === Number(idPublicacion))
+    : undefined;
+  // GET /api/postulaciones/{id}: estado más reciente de esa postulación. Los hooks
+  // se llaman antes de cualquier retorno anticipado de la pantalla.
+  const detallePostulacion = useDetallePostulacion(
+    postulacionEnLista?.idPostulacion,
+    postulacionEnLista?.estado,
+  );
+
+  // Confirma, retira y explica el resultado. El POST no se repite solo: si la
+  // respuesta fue ambigua el servicio ya consultó el estado, y si no se pudo
+  // confirmar se avisa que se puede reintentar sin riesgo.
+  const confirmarRetiro = (postulacion: Postulacion) => {
+    Alert.alert(
+      'Retirar postulación',
+      'Se cancelará tu postulación y el arrendador dejará de verla como abierta. Podrás volver a postular después.',
+      [
+        { text: 'Conservar', style: 'cancel' },
+        {
+          text: 'Retirar',
+          style: 'destructive',
+          onPress: async () => {
+            const resultado = await retirar(postulacion.idPostulacion);
+            if (!resultado) return;
+            if (resultado.exito) {
+              Alert.alert('Postulación retirada', 'Tu postulación quedó cancelada.');
+              return;
+            }
+            if (resultado.codigo === 'sin_sesion' || resultado.codigo === 'no_autorizado') {
+              Alert.alert('Inicia sesión', resultado.error);
+              return;
+            }
+            const ambiguo =
+              resultado.codigo === 'red' ||
+              resultado.codigo === 'tiempo_agotado' ||
+              resultado.codigo === 'respuesta_invalida';
+            Alert.alert(
+              'No se pudo retirar',
+              ambiguo
+                ? 'No pudimos confirmar el retiro. Revisamos el estado y tu postulación sigue abierta: puedes intentarlo otra vez.'
+                : mensajeDeRetiro(resultado),
+            );
+          },
+        },
+      ],
+    );
+  };
 
   // /login solo existe sin sesión (Stack.Protected en app/_layout.tsx): con una sesión
   // que el servicio rechazó se cierra la sesión y el guard lleva solo al login.
@@ -145,30 +211,53 @@ export default function MiPostulacion() {
           showsVerticalScrollIndicator={false}
         >
           {postulaciones.map((postulacion) => (
-            <Pressable
-              key={postulacion.idPostulacion}
-              style={styles.tarjetaListado}
-              accessibilityRole="button"
-              accessibilityLabel={`Ver postulación a ${postulacion.tituloPublicacion ?? 'la publicación'}`}
-              onPress={() =>
-                router.push({
-                  pathname: '/postulaciones',
-                  params: { idPublicacion: String(postulacion.idPublicacion) },
-                } as Href)
-              }
-            >
-              <PostulacionCard postulacion={postulacion} />
-            </Pressable>
+            <View key={postulacion.idPostulacion} style={styles.tarjetaListado}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Ver postulación a ${postulacion.tituloPublicacion ?? 'la publicación'}`}
+                onPress={() =>
+                  router.push({
+                    pathname: '/postulaciones',
+                    params: { idPublicacion: String(postulacion.idPublicacion) },
+                  } as Href)
+                }
+              >
+                <PostulacionCard postulacion={postulacion} />
+              </Pressable>
+              {puedeRetirarse(postulacion.estado) ? (
+                <View style={styles.accionTarjeta}>
+                  <CustomButton
+                    titulo={idRetirando === postulacion.idPostulacion ? 'Retirando…' : 'Retirar postulación'}
+                    variante="contorno"
+                    deshabilitado={idRetirando !== null}
+                    onPress={() => confirmarRetiro(postulacion)}
+                  />
+                </View>
+              ) : null}
+            </View>
           ))}
+
+          {errorMas ? (
+            <Text style={styles.errorMas}>{errorMas.error}</Text>
+          ) : null}
+          {hayMas ? (
+            <View style={styles.accionTarjeta}>
+              <CustomButton
+                titulo={cargandoMas ? 'Cargando…' : errorMas ? 'Reintentar' : 'Ver más postulaciones'}
+                variante="contorno"
+                deshabilitado={cargandoMas}
+                onPress={() => void cargarMas()}
+              />
+            </View>
+          ) : null}
         </ScrollView>
       </>
     );
   }
 
   // --- Detalle: "Mi postulación" de una publicación ------------------------
-  // Si hubo varias postulaciones a la misma publicación (p. ej. una cancelada y
-  // otra nueva), el backend las entrega de la más reciente a la más antigua.
-  const postulacion = postulaciones.find((p) => p.idPublicacion === Number(idPublicacion));
+  // El detalle del servidor manda sobre la fila de la lista cuando ya llegó.
+  const postulacion = detallePostulacion ?? postulacionEnLista;
 
   if (!postulacion) {
     return (
@@ -186,7 +275,7 @@ export default function MiPostulacion() {
     );
   }
 
-  const chat = chatPorEstadoPostulacion[postulacion.estado];
+  const irAMiArriendo = () => router.push('/arriendo' as Href);
 
   return (
     <>
@@ -199,7 +288,7 @@ export default function MiPostulacion() {
         <PostulacionCard postulacion={postulacion} />
 
         <Text style={styles.seccionTitulo}>Estado de la postulación</Text>
-        <LineaEstadoPostulacion estado={postulacion.estado} />
+        <LineaEstadoPostulacion estado={postulacion.estado} motivo={postulacion.motivo} />
 
         {postulacion.motivo ? (
           <View style={styles.motivo}>
@@ -208,14 +297,20 @@ export default function MiPostulacion() {
           </View>
         ) : null}
 
-        {chat ? (
-          <View style={styles.chat}>
-            <View style={styles.chatCabecera}>
-              <Ionicons name="chatbubble-outline" size={18} color={colors.primary} />
-              <Text style={styles.chatTitulo}>Chat con arrendador</Text>
-            </View>
-            <Text style={styles.chatTexto}>{chat.texto}</Text>
-            {chat.nota ? <Text style={styles.chatNota}>{chat.nota}</Text> : null}
+        {postulacion.estado === 'Aceptada' ? (
+          <View style={styles.accion}>
+            <CustomButton titulo="Ir a Mi arriendo" onPress={irAMiArriendo} />
+          </View>
+        ) : null}
+
+        {puedeRetirarse(postulacion.estado) ? (
+          <View style={styles.accion}>
+            <CustomButton
+              titulo={idRetirando === postulacion.idPostulacion ? 'Retirando…' : 'Retirar postulación'}
+              variante="contorno"
+              deshabilitado={idRetirando !== null}
+              onPress={() => confirmarRetiro(postulacion)}
+            />
           </View>
         ) : null}
 
@@ -262,35 +357,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 12,
   },
-  chat: {
-    backgroundColor: paletaPublicacion.fondoSuave,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E4E0FA',
-    padding: 16,
-    marginTop: 20,
-  },
-  chatCabecera: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  chatTitulo: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  chatTexto: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: paletaPublicacion.textoSecundario,
-  },
-  chatNota: {
-    fontSize: 12,
-    color: paletaPublicacion.textoSecundario,
-    marginTop: 8,
-  },
   accion: {
     marginTop: 20,
   },
@@ -321,6 +387,15 @@ const styles = StyleSheet.create({
   },
   tarjetaListado: {
     marginBottom: 12,
+  },
+  accionTarjeta: {
+    marginTop: 8,
+  },
+  errorMas: {
+    fontSize: 13,
+    color: '#B91C1C',
+    textAlign: 'center',
+    marginBottom: 8,
   },
   motivo: {
     backgroundColor: '#FFFFFF',
