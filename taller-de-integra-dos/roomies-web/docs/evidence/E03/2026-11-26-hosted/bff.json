@@ -1,0 +1,15 @@
+{
+  "web": "http://127.0.0.1:3000",
+  "actors": [
+    {
+      "actor": "actor-1",
+      "bff_login_status": 503,
+      "session_cookies_issued": false
+    },
+    {
+      "actor": "actor-2",
+      "bff_login_status": 503,
+      "session_cookies_issued": false
+    }
+  ]
+}

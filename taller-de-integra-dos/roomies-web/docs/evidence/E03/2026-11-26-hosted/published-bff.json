@@ -1,0 +1,15 @@
+{
+  "web": "https://taller-de-integra-frontend-next.vercel.app",
+  "actors": [
+    {
+      "alias": "actor-1",
+      "status": 503,
+      "session_cookie_issued": false
+    },
+    {
+      "alias": "actor-2",
+      "status": 503,
+      "session_cookie_issued": false
+    }
+  ]
+}
