@@ -181,6 +181,289 @@
       },
       "verify": "034-listado-verify.sql",
       "behavior": "tests/listado-behavior.sql"
+    },
+    {
+      "id": "040",
+      "entrypoint": "040-match-base.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "requires": [
+        "034"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-shape.sql",
+        "checks/listado-cut.sql",
+        "checks/listado-permissions.sql",
+        "checks/match-base.sql",
+        "checks/match-base.sql"
+      ],
+      "source": {
+        "path": "../../backend/local_stack/bootstrap.sql",
+        "revision": "9dc8f10",
+        "sha256_lf": "6d373a274ce5efc004f5d096d4c21ccad0d66f0ce80404881b09566959ce8538"
+      },
+      "contract": {
+        "path": "../../backend/services/match-conexion-service/app/infrastructure/repository.py",
+        "revision": "9dc8f10",
+        "sha256_lf": "ef6a4e7f26ffda73bceaf5f00d70075f5d1ecea156e031679ec13d2619ced13c"
+      }
+    },
+    {
+      "id": "041",
+      "entrypoint": "041-match-history-acl.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "requires": [
+        "040"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-shape.sql",
+        "checks/listado-cut.sql",
+        "checks/listado-permissions.sql",
+        "checks/match-base.sql",
+        "checks/match-base.sql",
+        "checks/match-shape.sql",
+        "checks/match-permissions.sql"
+      ],
+      "source": {
+        "path": "../../backend/services/match-conexion-service/migrations/001_relacion_aceptada.up.sql",
+        "revision": "9dc8f10",
+        "sha256_lf": "4cba65a61ab234d5bd6a8beaace8980e3e8b38ed0ffe62833c8ba4da3e7714cb"
+      },
+      "verify": "041-match-verify.sql",
+      "behavior": "tests/match-behavior.sql"
+    },
+    {
+      "id": "050",
+      "entrypoint": "050-convivencia-base.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "status": "prepared-not-executed",
+      "requires": [
+        "041"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-shape.sql",
+        "checks/listado-cut.sql",
+        "checks/listado-permissions.sql",
+        "checks/match-base.sql",
+        "checks/match-shape.sql",
+        "checks/match-permissions.sql",
+        "checks/convivencia-target.sql",
+        "checks/convivencia-shape.sql",
+        "checks/convivencia-shape.sql"
+      ],
+      "sources": [
+        {
+          "path": "../../backend/services/convivencia-mensajeria-service/migrations/001_convivencia_schema.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "f7a2becd7ad8234f3807f763c0197e32e32358aad47c1d233b4be8e6c38df11f"
+        }
+      ],
+      "verify": "050-convivencia-verify.sql"
+    },
+    {
+      "id": "051",
+      "entrypoint": "051-convivencia-history.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "status": "prepared-not-executed",
+      "requires": [
+        "050"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-shape.sql",
+        "checks/listado-cut.sql",
+        "checks/listado-permissions.sql",
+        "checks/match-base.sql",
+        "checks/match-shape.sql",
+        "checks/match-permissions.sql",
+        "checks/convivencia-target.sql",
+        "checks/convivencia-shape.sql",
+        "checks/convivencia-shape.sql"
+      ],
+      "sources": [
+        {
+          "path": "../../backend/services/convivencia-mensajeria-service/migrations/002_relacion_historica.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "fb4c87d489a335b1e4bcc3d5638b10211b4ed779f46b1f0190275a093efce0c2"
+        },
+        {
+          "path": "../../backend/services/convivencia-mensajeria-service/migrations/003_incorporacion_ocupacion.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "23f4bd082fb417c1929524ad1a2b1a32933016df13d7f32165ccb95681aa27ed"
+        }
+      ],
+      "verify": "051-convivencia-verify.sql"
+    },
+    {
+      "id": "052",
+      "entrypoint": "052-convivencia-messaging.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "status": "prepared-not-executed",
+      "requires": [
+        "051"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-shape.sql",
+        "checks/listado-cut.sql",
+        "checks/listado-permissions.sql",
+        "checks/match-base.sql",
+        "checks/match-shape.sql",
+        "checks/match-permissions.sql",
+        "checks/convivencia-target.sql",
+        "checks/convivencia-shape.sql",
+        "checks/convivencia-shape.sql"
+      ],
+      "sources": [
+        {
+          "path": "../../backend/services/convivencia-mensajeria-service/migrations/004_mensajeria.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "79e9039384daabb70b3e333a76727440ee527f7bb7d8381e7029bd2f426f4f76"
+        }
+      ],
+      "verify": "052-convivencia-verify.sql"
+    },
+    {
+      "id": "053",
+      "entrypoint": "053-convivencia-acl-rls.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "status": "prepared-not-executed",
+      "requires": [
+        "052"
+      ],
+      "includes": [
+        "checks/target.sql",
+        "checks/provisioned.sql",
+        "checks/auth-base.sql",
+        "checks/auth-shape.sql",
+        "checks/auth-permissions.sql",
+        "checks/listado-shape.sql",
+        "checks/listado-cut.sql",
+        "checks/listado-permissions.sql",
+        "checks/match-base.sql",
+        "checks/match-shape.sql",
+        "checks/match-permissions.sql",
+        "checks/convivencia-target.sql",
+        "checks/convivencia-shape.sql",
+        "checks/convivencia-permissions.sql"
+      ],
+      "verify": "053-convivencia-verify.sql",
+      "behavior": "tests/convivencia-behavior.sql",
+      "concurrency": "tests/convivencia-concurrency.md"
+    },
+    {
+      "id": "060",
+      "entrypoint": "060-reportes-base.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "status": "prepared-not-executed",
+      "requires": [
+        "053"
+      ],
+      "includes": [
+        "checks/reportes-prior.sql",
+        "checks/reportes-catalog.sql"
+      ],
+      "sources": [
+        {
+          "path": "../../backend/services/reportes-service/migrations/001_reportes.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "92c4ac639e6c20833ca4ca016e92eca1949b3e4210d84a4902296f516b798a00"
+        },
+        {
+          "path": "../../backend/services/reportes-service/migrations/002_revision.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "ad12fa79cc7fda1401ad6657e369e258a09b153143ea7e3bf72d0105e314fb61"
+        }
+      ],
+      "verify": "060-reportes-verify.sql"
+    },
+    {
+      "id": "061",
+      "entrypoint": "061-reportes-review-idempotency.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "status": "prepared-not-executed",
+      "requires": [
+        "060"
+      ],
+      "includes": [
+        "checks/reportes-prior.sql",
+        "checks/reportes-catalog.sql"
+      ],
+      "sources": [
+        {
+          "path": "../../backend/services/reportes-service/migrations/002_revision.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "ad12fa79cc7fda1401ad6657e369e258a09b153143ea7e3bf72d0105e314fb61"
+        },
+        {
+          "path": "../../backend/services/reportes-service/migrations/003_envio_idempotente.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "5d76c10320751312206443d95165f77bfd49cc1007bf326a9012de99ef847194"
+        }
+      ],
+      "verify": "061-reportes-verify.sql"
+    },
+    {
+      "id": "062",
+      "entrypoint": "062-reportes-acl-rls.sql",
+      "layout": "private-v1",
+      "transaction": "atomic",
+      "status": "prepared-not-executed",
+      "requires": [
+        "061"
+      ],
+      "includes": [
+        "checks/reportes-prior.sql",
+        "checks/reportes-catalog.sql"
+      ],
+      "sources": [
+        {
+          "path": "../../backend/services/reportes-service/migrations/001_reportes.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "92c4ac639e6c20833ca4ca016e92eca1949b3e4210d84a4902296f516b798a00"
+        },
+        {
+          "path": "../../backend/services/reportes-service/migrations/002_revision.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "ad12fa79cc7fda1401ad6657e369e258a09b153143ea7e3bf72d0105e314fb61"
+        },
+        {
+          "path": "../../backend/services/reportes-service/migrations/003_envio_idempotente.up.sql",
+          "revision": "9dc8f10",
+          "sha256_lf": "5d76c10320751312206443d95165f77bfd49cc1007bf326a9012de99ef847194"
+        }
+      ],
+      "verify": "062-reportes-verify.sql"
     }
   ]
 }
