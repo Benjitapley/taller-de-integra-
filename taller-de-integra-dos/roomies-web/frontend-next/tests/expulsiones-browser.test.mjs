@@ -13,9 +13,11 @@ test("E05 owner confirmation, double click, hidden action and active revocation"
  const { chromium } = createRequire(import.meta.url)(process.env.REPORTS_PLAYWRIGHT_PATH);
  const project = fileURLToPath(new URL("../",import.meta.url));
  const isolated = await mkdtemp(join(project,".proxy-test-lists-e05-"));
- let next, browser, linked = false, removed = false, revoked = false, posts = 0;
+ let next, browser, linked = false, revoked = false, posts = 0;
+ const removed = new Set();
  const member = {id_usuario:2,nombre:"Integrante de prueba",fecha_ingreso:"2026-11-24T12:00:00Z",activo:true,es_responsable:true};
- const rental = {id_arriendo:1,id_publicacion:7,cupos_totales:2,version_capacidad:1,ocupacion:1};
+ const other = {...member,id_usuario:3,nombre:"Otra integrante",es_responsable:false};
+ const rental = {id_arriendo:1,id_publicacion:7,cupos_totales:2,version_capacidad:1,ocupacion:2};
  const upstream = createServer(async (request,response) => {
   response.setHeader("Content-Type","application/json");
   const reply = (status,data) => { response.statusCode=status; response.end(JSON.stringify(data)); };
@@ -24,16 +26,18 @@ test("E05 owner confirmation, double click, hidden action and active revocation"
   if(path === "/local/v1/perfil") return reply(200,{nombre: owner ? "Due?o de prueba" : "Integrante de prueba"});
   if(path === "/api/arriendos/mio") return revoked ? reply(404,{}) : reply(200,rental);
   if(path === "/api/arriendos/1") return reply(200,rental);
-  if(path === "/api/arriendos/1/integrantes") return reply(200,{items:removed?[]:[member],siguiente_cursor:null,puede_retirar:owner});
+  if(path === "/api/arriendos/1/integrantes") return reply(200,{items:[member,other].filter(m=>!removed.has(m.id_usuario)),siguiente_cursor:null,puede_retirar:owner});
   if(path === "/api/arriendos/1/expulsiones") {
    posts++;
    let body=""; for await (const chunk of request) body+=chunk;
    const input=JSON.parse(body);
    assert.equal(input.confirmo,true); assert.equal(input.motivo,"Incumplimiento");
-   await new Promise(resolve=>setTimeout(resolve,300)); removed=true;
-   return reply(200,{id_arriendo:1,id_usuario:2,estado:"Finalizado",integrantes_activos:0,cupos_disponibles:2});
+   await new Promise(resolve=>setTimeout(resolve,300)); removed.add(input.id_usuario);
+   return reply(200,{id_arriendo:1,id_usuario:input.id_usuario,estado:removed.size===2?"Finalizado":"Activo",integrantes_activos:2-removed.size,cupos_disponibles:removed.size});
   }
   if(path === "/api/arriendos/1/tareas") return revoked ? reply(403,{}) : reply(200,{items:[{id_tarea:1,id_arriendo:1,id_creador:2,id_asignado:2,titulo:"Tarea privada",descripcion:null,estado:"Pendiente",fecha_creacion:"2026-11-24T12:00:00Z"}],siguiente_cursor:null});
+  if(path === "/api/conversaciones") return reply(200,{items:[{id_conversacion:1,id_arriendo:1,fecha_creacion:"2026-11-24T12:00:00Z"}]});
+  if(path === "/api/conversaciones/1/mensajes") return revoked ? reply(403,{}) : reply(200,{items:[{id_mensaje:1,id_conversacion:1,id_remitente:3,nombre_remitente:"Otra integrante",contenido:"Mensaje privado",fecha_envio:"2026-11-24T12:00:00Z"}],siguiente_cursor:null});
   return reply(404,{});
  });
  await new Promise(resolve=>upstream.listen(0,"127.0.0.1",resolve));
@@ -71,10 +75,16 @@ test("E05 owner confirmation, double click, hidden action and active revocation"
   const evidence=join(project,"../docs/evidence/E05"); await mkdir(evidence,{recursive:true});
   await page.screenshot({path:join(evidence,"01-confirmacion-retiro.png"),fullPage:true});
   await confirm.click({clickCount:2});
-  await page.getByRole("status").filter({hasText:"El arriendo finaliz"}).waitFor();
+  await page.getByRole("status").filter({hasText:"Cupos disponibles: 1"}).waitFor();
   assert.equal(posts,1);
+  await page.getByRole("button",{name:"Retirar a Otra integrante"}).click();
+  await page.getByLabel("Motivo del retiro").fill("Incumplimiento");
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button",{name:"Confirmar retiro",exact:true}).click();
+  await page.getByRole("status").filter({hasText:"El arriendo finaliz"}).waitFor();
+  assert.equal(posts,2);
   await ctx.addCookies([{name:"roomies_sb_dev_access",value:token("resident"),url:base,httpOnly:true,sameSite:"Strict"}]);
-  removed=false;
+  removed.clear();
   await page.goto(base+"/mi-arriendo/1/integrantes");
   await page.getByRole("heading",{name:"Otros integrantes residentes"}).waitFor();
   assert.equal(await page.getByRole("button",{name:/Retirar a/}).count(),0);
@@ -84,6 +94,23 @@ test("E05 owner confirmation, double click, hidden action and active revocation"
   await page.getByRole("heading",{name:"Acceso no disponible"}).waitFor({timeout:12000});
   assert.equal(await page.getByText("Tarea privada",{exact:true}).count(),0);
   await page.screenshot({path:join(evidence,"02-acceso-revocado.png"),fullPage:true});
+  revoked=false;
+  await page.goto(base+"/mi-arriendo/chat");
+  await page.getByText("Mensaje privado",{exact:true}).waitFor();
+  await page.getByLabel("Escribe un mensaje").fill("Borrador privado");
+  revoked=true;
+  await page.getByRole("heading",{name:"Acceso no disponible"}).waitFor({timeout:12000});
+  assert.equal(await page.getByText("Mensaje privado",{exact:true}).count(),0);
+  assert.equal(await page.getByLabel("Escribe un mensaje").count(),0);
+  await page.screenshot({path:join(evidence,"03-chat-revocado.png"),fullPage:true});
+  await page.reload();
+  await page.getByRole("heading",{name:"Acceso no disponible"}).waitFor();
+  revoked=false;
+  await page.goto(base+"/mi-arriendo");
+  await page.getByRole("link",{name:/Chat del arriendo/}).waitFor();
+  revoked=true;
+  await page.getByText("Aún no tienes un arriendo activo.",{exact:true}).waitFor({timeout:12000});
+  assert.equal(await page.getByRole("link",{name:/Chat del arriendo|Ver tareas|Abrir tareas/}).count(),0);
   } finally {
     await browser?.close();
     if (next?.exitCode === null) {

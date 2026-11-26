@@ -41,6 +41,7 @@ class FaultProxy:
             def log_message(self, *_): pass
             def do_GET(self): self.forward()
             def do_POST(self): self.forward()
+            def do_PATCH(self): self.forward()
             def do_PUT(self): self.forward()
             def do_DELETE(self): self.forward()
 
@@ -222,6 +223,7 @@ def main():
     parser.add_argument("--pg-bin", type=Path)
     parser.add_argument("--web", action="store_true", help="Comprobar SCRUM-112 también con Next y BFF reales aislados")
     parser.add_argument("--reports",action="store_true",help="Incluir Reportes y el recorrido SCRUM-114 con SQL real")
+    parser.add_argument("--departures", action="store_true", help="Validar E05: retiro, revocación y cierre con servicios y SQL reales")
     args = parser.parse_args()
     if args.reports and not args.web: parser.error("--reports requiere --web")
     candidates = [args.pg_bin] if args.pg_bin else []
@@ -278,10 +280,12 @@ def main():
         service_names=("auth","listado","convivencia","gateway",*(["reportes"] if args.reports else []))
         origins = {name: f"http://127.0.0.1:{port()}" for name in service_names}
         admin_key = "sb_secret_disposable_c03_only_000000000000"
-        with IdentityFixture(admin_key=admin_key) as identity, FaultProxy(origins["convivencia"], lambda method, path: path == "/internal/incorporaciones") as admission_proxy, FaultProxy(origins["listado"], lambda method, path: method in {"PUT", "DELETE"} and "/reservas/" in path) as callbacks, httpx.Client(timeout=20, trust_env=False) as client:
+        with IdentityFixture(admin_key=admin_key) as identity, FaultProxy(origins["convivencia"], lambda method, path: path == "/internal/incorporaciones") as admission_proxy, FaultProxy(origins["listado"], lambda method, path: method in {"PUT", "DELETE"} and ("/reservas/" in path or (args.departures and path.endswith("/ocupacion")))) as callbacks, httpx.Client(timeout=20, trust_env=False) as client:
             allowed = [pg_port, identity.server.server_port, admission_proxy.server.server_port, callbacks.server.server_port, *[int(value.rsplit(":", 1)[1]) for value in origins.values()]]
             common = {**clean, "ROOMIES_LOCAL_MODE": "1", "ROOMIES_RUNTIME_MODE": "disposable", "ROOMIES_PERSISTENCE_LAYOUT": "private-v1", "ROOMIES_TEST_RUNNER": "disposable-only", "ROOMIES_ALLOWED_PORTS": json.dumps(allowed), "ROOMIES_AUTH_PROVIDER_URL": identity.origin, "ROOMIES_AUTH_PUBLISHABLE_KEY": identity.publishable_key, "ROOMIES_INTERNAL_TOKEN": "synthetic-c03-service-key-000000000000", "ROOMIES_CURSOR_SECRET": "synthetic-c03-cursor-key-000000000000", "AUTH_USERS_UPSTREAM_URL": origins["auth"], "LISTADO_UPSTREAM_URL": origins["listado"], "CONVIVENCIA_UPSTREAM_URL": admission_proxy.origin}
             roles = {"auth": "sql_auth_users", "listado": "sql_listado_applications", "convivencia": "sql_convivencia_mensajeria"}
+            if args.departures:
+                common["CONVIVENCIA_AUTH_JWT_KEY"] = "synthetic-e05-notification-key-000000000000"
             variables = {"auth": "AUTH_USERS_DATABASE_URL", "listado": "LISTADO_DATABASE_URL", "convivencia": "CONVIVENCIA_DATABASE_URL"}
             if args.reports:
                 common.update(REPORTES_UPSTREAM_URL=origins["reportes"],REPORTES_CURSOR_SECRET="synthetic-reportes-cursor-key-000000000000",REPORTES_LISTADO_JWT_KEY="synthetic-reportes-listado-key-000000000000")
@@ -319,12 +323,19 @@ def main():
                 person["business_id"] = response.json()["id_usuario"]
                 people.append(person)
             with psycopg.connect(admin, autocommit=True) as database:
-                scenarios(client, origins["gateway"], people, database, admission_proxy, callbacks, lambda: (stop("listado"), start("listado")))
+                if args.departures:
+                    sys.path.insert(0, str(Path(__file__).resolve().parent))
+                    from e05 import exercise_departures
+                    exercise_departures(client, origins["gateway"], people, database, identity, callbacks,
+                                        lambda name: (stop(name), start(name)), common["ROOMIES_INTERNAL_TOKEN"])
+                else:
+                    scenarios(client, origins["gateway"], people, database, admission_proxy, callbacks, lambda: (stop("listado"), start("listado")))
                 if args.web:
                     sys.path.insert(0,str(Path(__file__).resolve().parent))
                     from web112 import exercise
                     exercise(ROOT,clean,identity,origins["gateway"],database,people,port(),reports=args.reports)
-            print(f"PASS C03: {len(service_names)} servicios separados y SQL real; Auth externo simulado explícitamente", flush=True)
+            scope = "E05" if args.departures else "C03"
+            print(f"PASS {scope}: {len(service_names)} servicios separados y SQL real; Auth externo simulado explícitamente", flush=True)
     finally:
         for name in reversed(list(processes)): stop(name)
         for log in logs: log.close()
