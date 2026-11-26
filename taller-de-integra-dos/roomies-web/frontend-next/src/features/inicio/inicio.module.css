@@ -33,3 +33,15 @@
   .publicationImage { width: 100px; height: 100px; flex-basis: 100px; }
 }
 @media (max-width: 480px) { .filterGrid { grid-template-columns: minmax(0, 1fr); } .publicationImage { width: 76px; height: 76px; flex-basis: 76px; } }
+
+.searchRow { display: flex; align-items: center; gap: 8px; padding-right: 8px; border: 1px solid var(--line); border-radius: 15px; background: white; }
+.searchRow .search { flex: 1; border: 0; }
+.filterBar { display: flex; justify-content: space-between; align-items: center; padding: 9px 18px; background: var(--soft); border: 1px solid var(--line); border-radius: 15px; color: var(--primary); font-size: 13px; font-weight: 700; }
+.listingGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px; }
+.listingCard { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: white; box-shadow: 0 3px 10px rgba(76, 53, 151, .04); }
+.listingCard .publicationImage { display: block; width: 100%; height: 150px; border-radius: 0; object-fit: cover; }
+.listingCard .publicationDetails { padding: 14px; }
+.listingCard h3 { font-size: 15px; margin: 10px 0; }
+.listingCard h3 a { color: var(--foreground); text-decoration: none; }
+.listingCard p, .listingCard small { font-size: 12px; color: var(--muted); }
+.listingCard strong { font-size: 17px; }

@@ -35,6 +35,6 @@ export default function PostulateButton({ id }: { id: number }) {
       }
     } finally { busy.current = false; setPending(false); }
   }
-  return <div><Button disabled={pending || submitted} onClick={() => void apply()}>{pending ? "Enviando…" : "Postular individualmente"}</Button>
+  return <div><Button disabled={pending || submitted} onClick={() => void apply()}>{pending ? "Enviando…" : "Postular al arriendo"}</Button>
     {message && <p role="status">{message}</p>}<p><Link href="/mis-postulaciones">Mis postulaciones</Link></p></div>;
 }

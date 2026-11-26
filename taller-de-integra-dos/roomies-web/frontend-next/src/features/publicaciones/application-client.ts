@@ -13,7 +13,7 @@ export async function applicationRequest<T>(path: string, options: RequestInit =
     signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
   });
   const value = await response.json().catch(() => null);
-  if (!response.ok) throw new ApplicationRequestError(response.status, value?.detail ?? "No se pudo completar la solicitud.");
+  if (!response.ok) throw new ApplicationRequestError(response.status, value?.mensaje ?? value?.detail ?? "No se pudo completar la solicitud.");
   if (!value || typeof value !== "object") throw new Error("Respuesta inesperada.");
   return value as T;
 }

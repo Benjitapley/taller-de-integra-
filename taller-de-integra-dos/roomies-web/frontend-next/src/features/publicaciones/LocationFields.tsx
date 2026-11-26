@@ -61,10 +61,13 @@ export function CatalogLocationFilters({ regionId, communeId, onChange }: {
   onChange: (region: string, commune: string) => void;
 }) {
   const { region, communes, error, retryLoad } = useAraucaniaCatalog();
+  useEffect(() => {
+    if (region && regionId !== String(region.id_region)) onChange(String(region.id_region), "");
+  }, [region, regionId, onChange]);
   return <>
     <label>Región para buscar
-      <select value={regionId} disabled={!region} onChange={event => onChange(event.target.value, "")}>
-        <option value="">Todas las regiones</option>
+      <select value={region?.id_region ?? ""} disabled={!region} onChange={event => onChange(event.target.value, "")}>
+        {!region && <option value="">Cargando La Araucanía…</option>}
         {region && <option value={region.id_region}>{region.nombre}</option>}
       </select>
     </label>

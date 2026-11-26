@@ -1,8 +1,14 @@
 import "server-only";
 import { authConfig, authReply, readToken, sessionCookie, type Transport, type WebAuthConfig } from "../auth/gateway";
-import { publicationBodyLimit, validatePublicationForm } from "../../features/publicaciones/validation";
+import { publicationBodyLimit, validatePublicationForm, publicationError } from "../../features/publicaciones/validation";
 
-const unavailable = () => authReply(503, { detail: "No se pudo confirmar la publicación. Comprueba tus publicaciones antes de volver a intentarlo." });
+const replyError = (status: number, mensaje?: string, headers?: HeadersInit) =>
+  authReply(status, publicationError(status, mensaje ? { mensaje } : null), headers);
+const unavailable = () => replyError(503);
+async function upstreamError(response: Response, headers?: HeadersInit) {
+  const body: unknown = await response.json().catch(() => null);
+  return authReply(response.status, publicationError(response.status, body), headers);
+}
 
 async function readForm(request: Request): Promise<FormData | null> {
   const reader = request.body?.getReader();
@@ -28,15 +34,6 @@ async function readForm(request: Request): Promise<FormData | null> {
   }
 }
 
-function upstreamDetail(value: unknown): string | null {
-  if (!value || typeof value !== "object" || !("detail" in value)) return null;
-  const detail = value.detail;
-  if (typeof detail === "string") return detail.slice(0, 500);
-  if (!Array.isArray(detail)) return null;
-  const messages = detail.flatMap((item) => item && typeof item.msg === "string" ? [item.msg] : []);
-  return messages.length ? messages.join("; ").slice(0, 500) : null;
-}
-
 export async function handleSavePublication(
   request: Request,
   config: WebAuthConfig | null = authConfig(),
@@ -44,30 +41,30 @@ export async function handleSavePublication(
   publicationId?: string,
 ): Promise<Response> {
   const method = publicationId === undefined ? "POST" : "PUT";
-  if (request.method !== method) return authReply(405, { detail: "Método no permitido." }, { Allow: method });
-  if (publicationId !== undefined && !/^[1-9]\d{0,9}$/.test(publicationId)) return authReply(400, { detail: "Identificador inválido." });
+  if (request.method !== method) return replyError(405, undefined, { Allow: method });
+  if (publicationId !== undefined && !/^[1-9]\d{0,9}$/.test(publicationId)) return replyError(400, "Identificador inválido.");
   if (!config) return unavailable();
-  const expired = () => authReply(401, { detail: "Tu sesión ha expirado o ya no está disponible. Inicia sesión nuevamente." }, { "Set-Cookie": sessionCookie(config) });
+  const expired = () => replyError(401, undefined, { "Set-Cookie": sessionCookie(config) });
   const token = readToken(request.headers.get("cookie"), config);
   if (!token) return expired();
   if (request.headers.get("origin") !== config.origin || request.headers.get("x-haycupo-csrf") !== "1" ||
       (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin")) {
-    return authReply(403, { code: "CSRF_REJECTED", detail: "Origen de solicitud no permitido." });
+    return replyError(403, "Origen de solicitud no permitido.");
   }
   if (!request.headers.get("content-type")?.startsWith("multipart/form-data;")) {
-    return authReply(422, { detail: "Envía el formulario de publicación completo." });
+    return replyError(422, "Envía el formulario de publicación completo.");
   }
 
   let form: FormData | null;
   try {
     form = await readForm(request);
   } catch (error) {
-    if (error instanceof RangeError) return authReply(413, { detail: "El formulario supera el tamaño permitido de 26 MB." });
-    return authReply(422, { detail: "El formulario no es válido." });
+    if (error instanceof RangeError) return replyError(413, "El formulario supera el tamaño permitido de 26 MB.");
+    return replyError(422, "El formulario no es válido.");
   }
-  if (!form) return authReply(422, { detail: "El formulario no es válido." });
+  if (!form) return replyError(422, "El formulario no es válido.");
   const validationError = validatePublicationForm(form);
-  if (validationError) return authReply(422, { detail: validationError });
+  if (validationError) return replyError(422, validationError);
   const images = form.getAll("imagenes").filter(image => typeof image !== "string" && (image.name !== "" || image.size > 0));
   form.delete("imagenes");
   for (const image of images) form.append("imagenes", image);
@@ -82,13 +79,8 @@ export async function handleSavePublication(
       headers: { Accept: "application/json", Authorization: `Bearer ${token}`,
         ...(request.headers.has("Idempotency-Key") ? { "Idempotency-Key": request.headers.get("Idempotency-Key")! } : {}) },
     });
-    if (saved.status === 401) return expired();
-    if (saved.status === 403) return authReply(403, { detail: "No tienes permiso para crear publicaciones." });
-    if (saved.status === 413) return authReply(413, { detail: "La imagen debe pesar como máximo 5 MB." });
-    if ([409, 415, 422].includes(saved.status)) {
-      let payload: unknown;
-      try { payload = await saved.json(); } catch { payload = null; }
-      return authReply(saved.status, { detail: upstreamDetail(payload) ?? "Revisa los campos y selecciona imágenes válidas." });
+    if ([401, 403, 404, 409, 413, 415, 422, 429, 503].includes(saved.status)) {
+      return upstreamError(saved, saved.status === 401 ? { "Set-Cookie": sessionCookie(config) } : undefined);
     }
     if (!saved.ok) return unavailable();
     const result: unknown = await saved.json();
@@ -136,28 +128,29 @@ export async function handlePublicationRequest(
 ): Promise<Response> {
   if (!config) return unavailable();
   const token = readToken(request.headers.get("cookie"), config);
-  const expired = () => authReply(401, { detail: "Inicia sesión nuevamente." }, { "Set-Cookie": sessionCookie(config) });
+  const expired = () => replyError(401, undefined, { "Set-Cookie": sessionCookie(config) });
   if (!token) return expired();
-  if (operation !== "mine" && (!id || !/^[1-9]\d{0,9}$/.test(id))) return authReply(400, { detail: "Identificador inválido." });
+  if (operation !== "mine" && (!id || !/^[1-9]\d{0,9}$/.test(id))) return replyError(400, "Identificador inválido.");
   const method = operation === "close" ? "PATCH" : "GET";
-  if (request.method !== method) return authReply(405, { detail: "Método no permitido." }, { Allow: method });
+  if (request.method !== method) return replyError(405, undefined, { Allow: method });
   if (method !== "GET" && (request.headers.get("origin") !== config.origin || request.headers.get("x-haycupo-csrf") !== "1" ||
-      (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin"))) return authReply(403, { detail: "Origen de solicitud no permitido." });
+      (request.headers.has("sec-fetch-site") && request.headers.get("sec-fetch-site") !== "same-origin"))) return replyError(403, "Origen de solicitud no permitido.");
   const query = new URLSearchParams();
   if (operation === "mine") {
     const supplied = new URL(request.url).searchParams;
     if (["limite", "cursor", "estado"].some(key => supplied.getAll(key).length > 1) ||
         (supplied.has("estado") && !["Disponible", "Activa", "Cerrada"].includes(supplied.get("estado")!)) ||
         (supplied.has("limite") && !/^(?:[1-9]\d?|100)$/.test(supplied.get("limite")!)) ||
-        (supplied.has("cursor") && !/^[A-Za-z0-9_+./=-]{1,1024}$/.test(supplied.get("cursor")!))) return authReply(422, { detail: "Paginación inválida." });
+        (supplied.has("cursor") && !/^[A-Za-z0-9_+./=-]{1,1024}$/.test(supplied.get("cursor")!))) return replyError(422, "Paginación inválida.");
     for (const key of ["limite", "cursor", "estado"]) if (supplied.has(key)) query.set(key, supplied.get(key)!);
   }
   const path = operation === "mine" ? `/api/publicaciones/mias${query.size ? `?${query}` : ""}` : `/api/publicaciones/${id}${operation === "close" ? "/cerrar" : ""}`;
   try {
     const response = await transport(`${config.backend}${path}`, { method, cache: "no-store", redirect: "error",
       signal: AbortSignal.timeout(10_000), headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });
-    if (response.status === 401) return expired();
-    if ([403, 404, 409, 422].includes(response.status)) return authReply(response.status, { detail: "La publicación no está disponible para esta operación." });
+    if ([401, 403, 404, 409, 413, 415, 422, 429, 503].includes(response.status)) {
+      return upstreamError(response, response.status === 401 ? { "Set-Cookie": sessionCookie(config) } : undefined);
+    }
     if (!response.ok) return unavailable();
     const body: unknown = await response.json();
     if (operation === "mine") {

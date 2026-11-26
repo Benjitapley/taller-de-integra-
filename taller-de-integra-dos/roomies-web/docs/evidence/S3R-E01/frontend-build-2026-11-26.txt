@@ -1,0 +1,90 @@
+
+> frontend-next@0.1.0 build
+> next build
+
+▲ Next.js 16.4.3 (Turbopack)
+npm.cmd : ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+En línea: 2 Carácter: 35
++ $env:NEXT_TELEMETRY_DISABLED='1'; npm.cmd run build 2>&1 | Tee-Object ...
++                                   ~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (⚠ Warning: Next...not be correct.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+ We detected multiple lockfiles and selected the directory of C:\taller-de-integra-\package-lock.json as the root
+directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if
+it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles:
+   * C:\taller-de-integra-\taller-de-integra-dos\roomies-web\frontend-next\package-lock.json
+
+✓ Running next.config.ts took 195ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.1s
+  Running TypeScript ...
+⚠ Your version of Next.js is affected by a known security vulnerability. This command is continuing after the upgrade
+reminder.
+Reference: https://registry.npmjs.org/-/npm/v1/security/advisories/bulk
+  Finished TypeScript in 9.9s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/4) ...
+  Generating static pages using 11 workers (1/4)
+  Generating static pages using 11 workers (2/4)
+  Generating static pages using 11 workers (3/4)
+✓ Generating static pages using 11 workers (4/4) in 996ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /admin
+├ ƒ /admin/reportes
+├ ƒ /admin/reportes/[id]
+├ ƒ /auth/[[...path]]
+├ ƒ /crear
+├ ƒ /editar-publicacion
+├ ƒ /inicio
+├ ƒ /mi-arriendo
+├ ƒ /mi-arriendo/[id]
+├ ƒ /mi-arriendo/[id]/integrantes
+├ ƒ /mi-arriendo/chat
+├ ƒ /mi-arriendo/integrantes
+├ ƒ /mi-arriendo/tareas
+├ ƒ /mis-conexiones
+├ ƒ /mis-postulaciones
+├ ƒ /mis-publicaciones
+├ ƒ /mis-reportes
+├ ƒ /perfil
+├ ƒ /postulantes/[id]
+├ ƒ /publicaciones/[id]
+├ ƒ /publicar
+├ ƒ /recuperar-contrasena
+├ ƒ /registro
+├ ○ /renovar-sesion
+├ ƒ /restablecer-contrasena
+├ ƒ /verificar
+├ ƒ /web-api/admin
+├ ƒ /web-api/admin/reportes
+├ ƒ /web-api/admin/reportes/[id]
+├ ƒ /web-api/arriendos/[id]
+├ ƒ /web-api/arriendos/[id]/integrantes
+├ ƒ /web-api/arriendos/mio
+├ ƒ /web-api/auth/[action]
+├ ƒ /web-api/conexiones
+├ ƒ /web-api/conexiones/personas
+├ ƒ /web-api/conversaciones
+├ ƒ /web-api/conversaciones/[id]/mensajes
+├ ƒ /web-api/mis-publicaciones
+├ ƒ /web-api/perfil
+├ ƒ /web-api/perfil/foto
+├ ƒ /web-api/postulaciones
+├ ƒ /web-api/postulaciones/[id]
+├ ƒ /web-api/publicaciones
+├ ƒ /web-api/publicaciones/[id]
+├ ƒ /web-api/publicaciones/[id]/cerrar
+└ ƒ /web-api/reportes
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

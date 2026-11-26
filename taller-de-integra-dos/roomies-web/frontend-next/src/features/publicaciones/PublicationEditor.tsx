@@ -6,9 +6,12 @@ import PageHeader from "@/components/layout/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 
+import styles from "./publicaciones.module.css";
+import PublicationErrorNotice from "./PublicationErrorNotice";
+import PublicationPreview, { emptySelection } from "./PublicationPreview";
 import LocationFields from "./LocationFields";
 import ImageFields, { type PublicationImage } from "./ImageFields";
-import { validatePublicationForm } from "./validation";
+import { validatePublicationForm, publicationError, type PublicationError } from "./validation";
 import PublicationRules, { setPublicationRules } from "./PublicationRules";
 
 type Publication = {
@@ -22,15 +25,12 @@ type Publication = {
   comuna?: { id: number; nombre: string } | null;
   estado?: string;
   titulo: string;
-  categoria?: string;
   tipo_vivienda?: string;
-  ubicacion?: string;
   precio?: number | string;
   cupos_totales?: number | string;
   mascota?: string;
   descripcion?: string;
-  tipo?: "Arrendador" | "Compartida";
-  permitir_comentarios?: boolean;
+  tipo?: "Arrendador";
 };
 
 export default function EditPublication() {
@@ -43,7 +43,9 @@ function PublicationEditor({ id }: { id: string }) {
   const router = useRouter();
   const operation = useRef<string | null>(null);
   const [publication, setPublication] = useState<Publication | null>(null);
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState<PublicationError | null>(null);
+  const [preview, setPreview] = useState<FormData | null>(null);
+  const [selection, setSelection] = useState(emptySelection);
   const [pending, setPending] = useState(false);
   const [loading, setLoading] = useState(Boolean(id));
 
@@ -51,37 +53,42 @@ function PublicationEditor({ id }: { id: string }) {
     const controller = new AbortController();
     fetch(`/web-api/publicaciones/${id}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error("No se pudo cargar la publicación para editar.");
+        if (!response.ok) {
+          if (!controller.signal.aborted) setError(publicationError(response.status, await response.json().catch(() => null)));
+          return;
+        }
         const data = await response.json();
         if (!controller.signal.aborted) {
           setPublication(data);
+          setSelection({ retained: data.imagenes ?? [], files: [] });
+          const form = new FormData();
+          for (const name of ["titulo", "precio", "descripcion", "cupos_totales"]) form.set(name, String(data[name] ?? ""));
+          form.set("nombre_comuna", data.comuna?.nombre ?? "");
+          setPreview(form);
         }
       }).catch(() => {
-        if (!controller.signal.aborted) setMessage("No se pudo cargar la publicación para editar.");
+        if (!controller.signal.aborted) setError(publicationError(503, null));
       }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id]);
 
   const rules = publication?.reglas_arrendador ?? publication?.reglas ?? [];
-  const rulesLocked = publication?.estado === "Activa" || publication?.estado === "Cerrada";
+  const rulesLocked = publication?.estado !== "Disponible";
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!id || pending) return;
 
     const form = new FormData(event.currentTarget);
-    if (!publication?.tipo) { setMessage("No se pudo determinar el tipo original. Recarga la publicación."); return; }
+    if (publication?.tipo !== "Arrendador") { setError(publicationError(422, { mensaje: "Solo se pueden editar publicaciones de Arrendador en este release." })); return; }
     form.set("tipo", publication.tipo);
-    form.set("permitir_comentarios", publication.permitir_comentarios ? "true" : "false");
-    const location = String(form.get("ubicacion") ?? "").trim();
-    if (!location || location === publication.ubicacion) form.delete("ubicacion");
     if (rulesLocked) form.delete("reglas_texto");
     else setPublicationRules(form, rules);
 
     const invalid = validatePublicationForm(form);
-    if (invalid) { setMessage(invalid); return; }
+    if (invalid) { setError(publicationError(422, { mensaje: invalid })); return; }
     setPending(true);
-    setMessage("");
+    setError(null);
 
     try {
       const response = await fetch(`/web-api/publicaciones/${id}`, {
@@ -94,17 +101,17 @@ function PublicationEditor({ id }: { id: string }) {
 
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        setMessage(payload?.detail || "No se pudo guardar la publicación.");
+        setError(publicationError(response.status, payload));
         return;
       }
       if (payload?.id_publicacion !== Number(id)) {
-        setMessage("No se pudo confirmar el aviso guardado. Revisa Mis publicaciones.");
+        setError(publicationError(503, null));
         return;
       }
       setPublication(payload);
       router.push("/mis-publicaciones");
     } catch {
-      setMessage("No se pudo actualizar la publicación.");
+      setError(publicationError(503, null));
     } finally {
       setPending(false);
     }
@@ -120,53 +127,57 @@ function PublicationEditor({ id }: { id: string }) {
     <PageHeader title="Editar publicación" description="Actualiza los datos de tu publicación." />
     <Card>
       {loading ? <p>Cargando publicación…</p> : null}
-      {!loading && !publication ? <p role="alert">{message || "No se pudo cargar esta publicación."}</p> : null}
-      {!loading && publication ? <form onSubmit={onSubmit} onChange={() => { operation.current = null; }} aria-busy={pending} style={{ display: "grid", gap: 16 }}>
+      {!loading && !publication ? <PublicationErrorNotice error={error} /> : null}
+      {!loading && publication ? <form onSubmit={onSubmit} onChange={event => {
+        operation.current = null;
+        const form = new FormData(event.currentTarget);
+        const commune = event.currentTarget.querySelector<HTMLSelectElement>("select[data-publication-commune]");
+        form.set("nombre_comuna", commune?.value ? commune.selectedOptions[0].text : publication.comuna?.nombre ?? "");
+        setPreview(form);
+      }} className={styles.editorForm} aria-busy={pending} style={{ display: "grid", gap: 16 }}>
         <fieldset disabled={pending} style={{ display: "grid", gap: 16, border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           <label style={{ display: "grid", gap: 8 }}>
             <span>Título</span>
-            <input name="titulo" required maxLength={200} defaultValue={publication.titulo} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }} />
+            <input name="titulo" required maxLength={200} defaultValue={publication.titulo} />
           </label>
           <label style={{ display: "grid", gap: 8 }}>
             <span>Tipo de vivienda</span>
-            <select name="tipo_vivienda" required defaultValue={publication.tipo_vivienda || "departamento"} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}>
-              <option value="departamento">Departamento</option>
-              <option value="casa">Casa</option>
-              <option value="habitacion">Habitación</option>
+            <select name="tipo_vivienda" required defaultValue={publication.tipo_vivienda ? publication.tipo_vivienda[0].toUpperCase() + publication.tipo_vivienda.slice(1).toLowerCase() : "Departamento"}>
+              <option value="Departamento">Departamento</option>
+              <option value="Casa">Casa</option>
+              <option value="Habitacion">Habitación</option>
             </select>
           </label>
           <LocationFields initialRegion={publication.region?.id ?? publication.id_region} initialCommune={publication.comuna?.id ?? publication.id_comuna} />
           <label style={{ display: "grid", gap: 8 }}>
-            <span>Dirección o sector (opcional)</span>
-            <input name="ubicacion" maxLength={250} defaultValue={publication.ubicacion || ""} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }} />
-          </label>
-          <label style={{ display: "grid", gap: 8 }}>
             <span>Precio del arriendo (CLP)</span>
-            <input name="precio" type="number" min="0" max="999999999999" step="1" required defaultValue={publication.precio ?? 0} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }} />
+            <input name="precio" type="number" min="0" max="999999999999" step="1" required defaultValue={publication.precio ?? 0} />
           </label>
           <label style={{ display: "grid", gap: 8 }}>
             <span>Capacidad total</span>
-            <input name="cupos_totales" type="number" min="1" max="2147483647" required defaultValue={publication.cupos_totales ?? 1} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }} />
+            <input name="cupos_totales" type="number" min="1" max="2147483647" required defaultValue={publication.cupos_totales ?? 1} />
           </label>
           <label style={{ display: "grid", gap: 8 }}>
             <span>Mascotas</span>
-            <select name="mascota" defaultValue={publication.mascota || "no"} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}>
+            <select name="mascota" defaultValue={publication.mascota || "no"}>
               <option value="si">Sí</option>
               <option value="no">No</option>
             </select>
           </label>
-          <ImageFields images={publication.imagenes} onRemoveFile={() => { operation.current = null; }} />
+          <ImageFields images={publication.imagenes} onRemoveFile={() => { operation.current = null; }} onSelectionChange={setSelection} />
         </div>
 
         <label style={{ display: "grid", gap: 8 }}>
           <span>Descripción</span>
-          <textarea name="descripcion" rows={6} required maxLength={5000} defaultValue={publication.descripcion || ""} style={{ padding: 10, borderRadius: 8, border: "1px solid #d1d5db", resize: "vertical" }} />
+          <textarea name="descripcion" rows={6} required maxLength={5000} defaultValue={publication.descripcion || ""} />
         </label>
 
-        <PublicationRules key={id} rules={rules} locked={rulesLocked} />
+        <PublicationRules key={id} rules={rules} locked={rulesLocked} onRulesChange={() => { operation.current = null; }} />
 
-        {message ? <p role="alert" style={{ color: "#b91c1c", margin: 0 }}>{message}</p> : null}
+        <PublicationPreview form={preview} selection={selection} />
+        <PublicationErrorNotice error={error} />
+        {pending && <div role="status"><progress aria-label="Subiendo cambios y fotografías" /><p>Enviando los cambios y las fotografías…</p></div>}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>
           <Button type="button" variant="secondary" onClick={() => router.push("/mis-publicaciones")}>Cancelar</Button>

@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "test:api": "node --test tests/api-client.test.mjs",
     "test:auth": "node --test tests/auth-validation.test.mjs",
     "test:auth-client": "node --test tests/auth-client.test.mjs",
@@ -28,7 +29,7 @@
     "test:applications": "node --test tests/applications.test.mjs"
   },
   "dependencies": {
-    "next": "16.4.3",
+    "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -37,7 +38,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.6",
     "playwright": "^1.65.1",
     "typescript": "^5"
   }

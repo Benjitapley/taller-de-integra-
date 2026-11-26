@@ -6,7 +6,7 @@ import styles from "./ui.module.css";
 export default function Tabs<T extends string>({ items, value, onChange, children, label }: { items: readonly { value: T; label: string }[]; value: T; onChange: (value: T) => void; children: ReactNode; label: string }) {
   const id = useId();
   return <>
-    <div className={styles.tabs} role="tablist" aria-label={label}>
+    <div className={styles.tabs} style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }} role="tablist" aria-label={label}>
       {items.map((item, index) => <button key={item.value} type="button" role="tab" id={`${id}-${item.value}`} aria-selected={value === item.value} aria-controls={`${id}-panel`} tabIndex={value === item.value ? 0 : -1} onClick={() => onChange(item.value)} onKeyDown={(event) => {
         let next = index;
         if (event.key === "ArrowRight") next = (index + 1) % items.length;
