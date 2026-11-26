@@ -132,3 +132,22 @@ def test_propietario_y_ocupacion_usan_api_interna(transport):
     assert calls[0].url.path == "/internal/publicaciones/7/propietario"
     assert calls[1].method == "PUT"
     assert json.loads(calls[1].content) == {"ocupacion":0,"version_ocupacion":3,"finalizado":True}
+
+
+@pytest.mark.parametrize("actor,expected", [(1, True), (2, False)])
+def test_acceso_del_dueno_no_depende_del_dto_publico(transport, actor, expected):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        # El detalle público canónico ya no expone id_propietario.
+        if request.url.path == "/api/publicaciones/7":
+            return httpx.Response(200, json={"id_publicacion": 7})
+        assert request.url.path == "/internal/publicaciones/7/propietario"
+        assert "X-Roomies-Service" in request.headers
+        assert "Authorization" not in request.headers
+        return httpx.Response(200, json={"id_propietario": 1})
+
+    transport(handler)
+    assert HttpPublications().owned_by(7, actor, "user-token") is expected
+    assert len(calls) == 1

@@ -1,11 +1,12 @@
 # S3R-E05 - Retiro por arrendador y revocacion de experiencia activa
 
-Implementacion desarrollada; aceptacion integrada pendiente de PostgreSQL y despliegue. Responsable: Gabriel Yamaguchi. [Jira SCRUM-122](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-122). No se modifico el estado remoto de Jira ni se creo un PR.
+Implementacion y aceptacion local verificadas el 26/11/2026 con PostgreSQL 19 y Gateway/Auth-Users/Listado/Convivencia reales. Queda la verificacion del candidato desplegado en E06/B06. Responsable: Gabriel Yamaguchi. [Jira SCRUM-122](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-122). No se modifico el estado remoto de Jira ni se creo un PR.
 
 ## Comportamiento
 
 - Mis publicaciones incluye el ID de arriendo confirmado de las postulaciones propias, permitiendo abrir el detalle y sus integrantes sin confundir ID de aviso con ID de arriendo.
 - Integrantes recibe `puede_retirar` del servidor. Solo el propietario puede ver la accion. El servidor verifica propiedad por API de Listado; admin no obtiene permiso por rol.
+- Se corrigio una incompatibilidad con el detalle canonico de publicaciones: ya no expone `id_propietario`. El detalle de arriendo y sus integrantes verifican al actor autenticado contra `/internal/publicaciones/{id}/propietario`, con credencial interna. Antes, el propietario recibia 403 y no podia abrir la gestion de retiro. La prueba integrada reproduce el contrato real y cubre la regresion.
 - `POST /api/arriendos/{id}/expulsiones` recibe `{id_usuario, motivo, confirmo:true}`. Motivo estricto de 1 a 500 caracteres, rechaza blancos y exige confirmacion booleana verdadera. El BFF valida sesion, origen y CSRF; el Gateway permite exclusivamente los metodos contratados.
 - Un bloqueo por publicacion y fila de arriendo serializa retiros y admisiones. Una clave unica arriendo/usuario conserva la respuesta del primer retiro; reintentos y doble clic no vuelven a descontar ocupacion ni generan otra notificacion. El formulario tambien bloquea envios simultaneos.
 - En la misma transaccion: inactiva pertenencia, registra actor/motivo/fecha, deja tareas Pendiente sin asignado, conserva Completadas, incrementa version y registra proyeccion/notificacion en outbox. El responsable se calcula desde la primera pertenencia; tras retirarlo queda null, sin relevo.
@@ -17,7 +18,7 @@ Implementacion desarrollada; aceptacion integrada pendiente de PostgreSQL y desp
 
 ## Dependencias encontradas y cambios necesarios
 
-F03 no estaba implementado y E04 conservaba una vista previa con tareas locales. Para que E05 tenga efectos reales se agregaron la transaccion y outbox de retiro, un esquema de tareas y los comandos de crear/asignar/completar con pertenencia activa, BFF y consumo web. Las tareas pendientes quedan efectivamente reasignables. Esto no acredita la totalidad de C05/E04 ni sus filtros, aceptacion con dispositivos o despliegue.
+Durante la implementacion inicial de E05, F03 no estaba implementado y E04 conservaba una vista previa con tareas locales. Se agregaron la transaccion y outbox de retiro, un esquema de tareas y los comandos de crear/asignar/completar con pertenencia activa, BFF y consumo web. La rama actual incorpora ademas la integracion de E04. Las tareas pendientes quedan efectivamente reasignables y se verificaron con SQL y servicios reales. Esto no acredita la aceptacion cruzada con dispositivos ni el despliegue.
 
 ## Referencias visuales y contrato
 
@@ -27,11 +28,13 @@ Se inspecciono `n_w_chat_convivencia_02.png` del paquete Roomies_mockups_TI4_COM
 
 ## Puesta en marcha
 
-1. Aplicar en el entorno elegido, como migrador, Convivencia 001-006 en orden. Las nuevas migraciones son [005_retiro](../backend/services/convivencia-mensajeria-service/migrations/005_retiro.up.sql) y [006_tareas_reasignables](../backend/services/convivencia-mensajeria-service/migrations/006_tareas_reasignables.up.sql). No se aplicaron sobre una base del usuario.
+1. Aplicar en el entorno elegido, como migrador, todas las migraciones `*.up.sql` de Convivencia en orden por nombre. Tras integrar `dev-web`, el conjunto incluye las migraciones de compatibilidad hasta [007_expulsiones](../backend/services/convivencia-mensajeria-service/migrations/007_expulsiones.up.sql), ademas de [005_retiro](../backend/services/convivencia-mensajeria-service/migrations/005_retiro.up.sql) y [006_tareas_reasignables](../backend/services/convivencia-mensajeria-service/migrations/006_tareas_reasignables.up.sql). Se verifico sobre una base efimera; no se aplicaron sobre una base del usuario.
 2. Desplegar juntos Listado, Convivencia y Gateway; mantener la configuracion de transporte compartido existente. El overlay local sigue requiriendo `ROOMIES_LOCAL_MODE=1`; no habilita por si mismo un despliegue productivo.
 3. Configurar el mismo `ROOMIES_INTERNAL_TOKEN` de transporte y una clave exclusiva de avisos `CONVIVENCIA_AUTH_JWT_KEY` en Convivencia y Auth/Users. El [overlay](../docker-compose.convivencia.yml) usa `ROOMIES_CONVIVENCIA_AUTH_JWT_KEY`; no incluir claves reales en evidencia.
-4. Ejecutar la suite PostgreSQL desechable y el recorrido contra Gateway real con propietario, integrante y admin ajeno. Verificar retiro concurrente con mensaje/tarea, recuperacion tras caida y cierre persistido. La suite SQL esta preparada pero no ejecutada en este equipo por fallo de initdb.
+4. Ejecutar la suite PostgreSQL desechable y el recorrido contra Gateway real con propietario, integrante y admin ajeno. Verificar retiro concurrente con mensaje/tarea, recuperacion tras caida y cierre persistido. Ambos recorridos locales pasaron el 26/11; el fallo anterior de initdb ya no se reproduce. Comandos y limites en la evidencia.
 
 ## Evidencia
 
-Ver [comandos, resultados, entorno y capturas](evidence/E05/README.md). La prueba de navegador usa Next/BFF/React reales con HTTP sintetico local; demuestra el cliente, no la transaccion PostgreSQL. No declarar E05 aceptado completamente hasta verificar las migraciones y las cinco pruebas SQL, ademas del entorno integrado.
+Ver [comandos, resultados, entorno y capturas](evidence/E05/README.md). Tras integrar `dev-web` en `99577b4`: Convivencia, 123 pruebas aprobadas sin omisiones; Gateway, 191; BFF y navegador, 17. Typecheck, lint y build aislado: exit 0 con Next 16.4.6. El recorrido `run_c03.py --departures` verifica los cuatro procesos y SQL reales, incluyendo concurrencia, outbox y persistencia tras reinicios. La prueba de navegador cubre Next/BFF/React con HTTP sintetico; las dos capas se prueban por separado. El proveedor externo de identidad es ficticio en las pruebas locales.
+
+La aceptacion local de E05 esta cubierta. Aplicar las migraciones y repetir el recorrido en el candidato desplegado sigue siendo necesario para E06/B06; no se presenta esta evidencia como una prueba de Kubero ni de Expo.

@@ -108,12 +108,7 @@ class HttpPublications:
                      {k: payload[k] for k in ("ocupacion", "version_ocupacion", "finalizado")})
 
     def owned_by(self, publication_id, user_id, token):
-        try:
-            url = service_url("LISTADO_UPSTREAM_URL", docker_hosts=("listado", "listado-applications"))
-            with httpx.Client(timeout=3, trust_env=False, follow_redirects=False) as client:
-                response = client.get(f"{url}/api/publicaciones/{publication_id}", headers={"Authorization": "Bearer " + token})
-            response.raise_for_status()
-            value = response.json()
-            return type(value.get("id_propietario")) is int and value["id_propietario"] == user_id
-        except Exception:
-            raise unavailable() from None
+        # user_id viene de confirmed_actor, nunca del payload del cliente.
+        # El DTO público puede omitir id_propietario; la API interna es la
+        # autoridad compartida con expel y autentica al servicio llamante.
+        return self.owner(publication_id) == user_id
