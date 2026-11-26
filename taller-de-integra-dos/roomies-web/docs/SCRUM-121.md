@@ -1,6 +1,8 @@
 # S3R-E04 · Tareas compartidas y prueba cruzada
 
-**Corte:** 24/11/2026, entorno local de desarrollo. **Jira:** [SCRUM-121](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-121). **Rama:** `SCRUM-121-Conectar-tareas-compartidas-y-prueba-cruzada`. **SHA base:** `6c859136405866d270d7bbb0511c9ca0fc5b519d`; los cambios de esta tarea están sin commit, por lo que ese SHA no los identifica. **PR:** pendiente.
+**Actualización:** 26/11/2026, entorno local de desarrollo. **Jira:** [SCRUM-121](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-121). **Rama:** `SCRUM-121-Conectar-tareas-compartidas-y-prueba-cruzada`. **HEAD de partida:** `593de79789c412f5c26c9922537f2fe003c439a9`; la ampliación de pruebas y las correcciones de esta revisión están sin commit. **PR:** pendiente.
+
+La validación vigente está en [E04: resultados del 26/11](E04-validacion-local-2026-11-26.md): 79 pruebas del servicio con PostgreSQL efímero, recorrido BFF/Gateway/SQL/adaptador móvil, prueba de pantalla en navegador, build web y comprobaciones móviles aprobadas. Se corrigieron la invalidación de respuestas en móvil y el guard del rol administrado de Supabase. Las migraciones 001–005 ya están aplicadas en Supabase y su conexión SQL dedicada fue verificada; faltan imágenes/despliegue, DSN de Auth/Listado y aceptación con celular físico. Los resultados del 24/11 que siguen se conservan como antecedente.
 
 ## Implementado en código
 
@@ -10,7 +12,7 @@
 - La API de integrantes de Convivencia expone IDs activos y fechas de ingreso; aún no hay fuente de nombres para otros miembros, por lo que la web usa «Integrante #ID» cuando `nombre` es nulo.
 - El cliente Expo local consulta el mismo Gateway para conocer el arriendo actual y listar tareas por estado con cursor. Permite completar solo las asignadas al usuario actual y vuelve a consultar tras el PATCH. Un fallo deja la tarea sin cambios visibles y muestra el error. El dashboard Arriendo vuelve a mostrar cuatro tarjetas compactas de tareas pendientes, inspiradas en el mockup y alimentadas por la API; el contrato no incluye fecha, por lo que muestra estado/asignación. Se ajustaron además las tarjetas de lugar y recordatorios al color y disposición del mockup. La lista ya no repite el título de la cabecera.
 
-## Validación local sanitizada
+## Antecedente de validación local sanitizada (24/11)
 
 Entorno: Windows PowerShell, Python 3.14, Node 24, Next 16.4.3. Se instaló PyJWT/cryptography en una carpeta temporal para ejecutar la prueba HTTP, sin modificar el entorno de despliegue.
 
@@ -42,10 +44,10 @@ git diff --check
 # exit 0; advertencia de normalización LF/CRLF de Git
 ```
 
-La prueba HTTP nueva comprueba rutas, validación estricta, 403 de actor no asignado/retirado y 422 de asignado inválido usando repositorio simulado. La prueba del BFF comprueba sesión, CSRF, respuesta 403 y que un PATCH 503 no devuelve una tarea completada. La prueba móvil comprueba las rutas/contrato y el rechazo de respuestas inválidas y PATCH fallido con transporte simulado. Falta ejecutar la migración y esos casos contra PostgreSQL y cuentas reales; no se atribuye a estas pruebas una demostración de persistencia o de permisos integrados.
+Las pruebas del 24/11 usaban repositorio/transporte simulados y no acreditaban persistencia integrada. El 26/11 se ejecutaron la migración y los casos de tareas contra PostgreSQL efímero y se añadió el recorrido integrado BFF/Gateway/SQL/adaptador móvil. Véanse los [resultados actuales y sus límites](E04-validacion-local-2026-11-26.md). Las cuentas reales y la aceptación desplegada siguen pendientes.
 
 ## Dependencia TI4 y aceptación pendiente
 
-El árbol móvil local en `taller de integra cuatro/roomies-app-movil` ya implementa el cliente de tareas de E04 sobre la API, pero conserva otros datos simulados del dashboard fuera de E04. Se comprobó con Expo SDK 57, TypeScript, lint y prueba del adaptador. El SHA base `6c859136405866d270d7bbb0511c9ca0fc5b519d` **no** identifica estos cambios sin commit ni una versión instalada en celular. `EXPO_PUBLIC_API_URL` no contiene una URL utilizable en el entorno local revisado; tampoco se detectó `adb` instalado. No se verificó Gateway desplegado, cuentas de prueba ni dispositivo físico. La asignación de quién entrega/prueba Expo sigue pendiente de confirmación por el encargado TI4; B01 conserva esa dependencia abierta.
+El cliente móvil local implementa E04 sobre la API y conserva datos simulados del dashboard fuera de E04. La revisión del 26/11 valida TypeScript, lint, adaptador y los casos de pantalla descritos en el informe, con hosts RN/Router simulados. No identifica una versión instalada en celular ni valida Supabase. Falta configurar/verificar la URL compartida del Gateway, la entrega en dispositivo físico y el responsable TI4 en B01; no se detectó `adb` disponible en PATH.
 
-Para aceptar E04 falta: migrar/desplegar Convivencia y Gateway; identificar sus SHA/URL y la versión Expo; ejecutar en el mismo Gateway creación web → lectura/completado en celular físico → lectura persistida en web; registrar dispositivo, cuentas sanitizadas, comandos/resultados, 403 no asignado y retirado, 422 asignado inválido y fallo de PATCH visible sin cambio. Si TI4 no entrega cliente compatible el 24, escalar el bloqueo E06/B06 ese día. Hasta entonces, estado **implementado localmente, aceptación cruzada pendiente**. No se declara cumplimiento completo de FR-71 a 74/149.
+Para aceptar E04 falta: desplegar Convivencia y Gateway con Auth funcional (las migraciones de Convivencia ya están aplicadas); identificar sus SHA/URL y la versión Expo; ejecutar en el mismo Gateway creación en la interfaz web → lectura/completado en celular físico → lectura persistida en web; registrar dispositivo, cuentas sanitizadas, comandos/resultados, 403 no asignado y retirado, 422 asignado inválido y fallo de PATCH visible sin cambio. Registrar el bloqueo en E06/B06 si sigue pendiente la entrega TI4 prevista para el 24. Estado: **implementado, migrado en Supabase y validado localmente; aceptación desplegada/física pendiente**. No se declara cumplimiento completo de FR-71 a 74/149.

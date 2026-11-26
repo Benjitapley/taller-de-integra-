@@ -3,7 +3,7 @@ import asyncio
 import re
 from fastapi import Request
 from starlette.responses import JSONResponse, Response
-from app.proxy import forward_to,bounded_body,BodyTooLarge
+from .proxy import forward_to,bounded_body,BodyTooLarge
 
 ROUTES=[
  (r"/api/usuarios/me",{"POST","GET","PATCH"},"upstream"),

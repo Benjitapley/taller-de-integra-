@@ -1,9 +1,12 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useAuth } from "@/hooks/useAuth";
 import { completarTarea, listarTareas, obtenerArriendoActual, type EstadoTarea, type PaginaTareas } from "@/services/tareasService";
 
 export default function TareasConvivencia() {
+  const { sesion } = useAuth();
+  const actor = sesion?.user.id;
   const [arriendo, setArriendo] = useState<number | null>(null);
   const [estado, setEstado] = useState<EstadoTarea>("Pendiente");
   const [pagina, setPagina] = useState<PaginaTareas | null>(null);
@@ -12,6 +15,7 @@ export default function TareasConvivencia() {
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const peticion = useRef(0);
+  const contexto = useRef(0);
 
   const cargar = useCallback(async (filtro: EstadoTarea, idArriendo?: number, cursor?: string) => {
     const actual = ++peticion.current;
@@ -28,7 +32,7 @@ export default function TareasConvivencia() {
     const resultado = await listarTareas(id, filtro, cursor);
     if (actual !== peticion.current) return;
     if (!resultado.exito) {
-      if (resultado.estadoHttp === 403 || resultado.estadoHttp === 404) { setPagina(null); setArriendo(null); }
+      if ([401, 403, 404].includes(resultado.estadoHttp ?? 0)) { setPagina(null); setArriendo(null); }
       setError(resultado.error); setCargando(false);
       return;
     }
@@ -38,10 +42,14 @@ export default function TareasConvivencia() {
   }, []);
 
   useFocusEffect(useCallback(() => {
-    void cargar(estado);
+    contexto.current++;
+    setPagina(null); setArriendo(null); setMensaje(""); setGuardando(false);
+    if (actor) void cargar(estado);
+    else { setCargando(false); setError("Inicia sesión nuevamente."); }
     const referencia = peticion;
-    return () => { referencia.current++; };
-  }, [cargar, estado]));
+    const contextoActual = contexto;
+    return () => { referencia.current++; contextoActual.current++; };
+  }, [cargar, estado, actor]));
 
   function filtrar(nuevo: EstadoTarea) {
     if (nuevo === estado) return;
@@ -49,23 +57,28 @@ export default function TareasConvivencia() {
   }
 
   async function completar(id: number) {
-    if (guardando || !arriendo) return;
+    if (guardando || cargando || !arriendo) return;
+    const actual = contexto.current;
     setGuardando(true); setError(""); setMensaje("");
     const resultado = await completarTarea(id);
+    if (actual !== contexto.current) return;
     if (!resultado.exito) {
-      setError(resultado.error);
+      if (resultado.estadoHttp === 401) { setPagina(null); setArriendo(null); }
+      // Un 403 puede ser una baja reciente: volver a comprobar la pertenencia.
+      if (resultado.estadoHttp === 403) await cargar(estado);
+      if (actual === contexto.current) setError(resultado.error);
     } else {
       setMensaje("Tarea completada y guardada.");
       await cargar(estado, arriendo);
     }
-    setGuardando(false);
+    if (actual === contexto.current) setGuardando(false);
   }
 
   return <ScrollView style={styles.pantalla} contentContainerStyle={styles.contenedor}>
     <Text style={styles.subtitulo}>Organiza las tareas con los integrantes de tu arriendo.</Text>
     <View style={styles.filtros}>
       {(["Pendiente", "Completada"] as const).map(opcion => <Pressable key={opcion}
-        accessibilityRole="button" accessibilityState={{ selected: estado === opcion }}
+        accessibilityRole="button" accessibilityState={{ selected: estado === opcion }} disabled={guardando}
         style={[styles.filtro, estado === opcion && styles.filtroActivo]} onPress={() => filtrar(opcion)}>
         <Text style={[styles.filtroTexto, estado === opcion && styles.filtroTextoActivo]}>{opcion === "Pendiente" ? "Pendientes" : "Completadas"}</Text>
       </Pressable>)}
@@ -80,7 +93,7 @@ export default function TareasConvivencia() {
         <View style={styles.fila}><Text style={styles.nombre}>{tarea.titulo}</Text><Text style={styles.estado}>{tarea.estado}</Text></View>
         {tarea.descripcion ? <Text style={styles.descripcion}>{tarea.descripcion}</Text> : null}
         <Text style={styles.asignado}>{tarea.id_asignado === null ? "Sin asignar" : propia ? "Asignada a ti" : `Asignada a integrante #${tarea.id_asignado}`}</Text>
-        {propia ? <Pressable accessibilityRole="button" disabled={guardando} style={[styles.boton, guardando && styles.botonInactivo]}
+        {propia ? <Pressable accessibilityRole="button" disabled={guardando || cargando} style={[styles.boton, (guardando || cargando) && styles.botonInactivo]}
           onPress={() => void completar(tarea.id_tarea)}><Text style={styles.botonTexto}>{guardando ? "Guardando…" : "Completar tarea"}</Text></Pressable> : null}
       </View>;
     })}
