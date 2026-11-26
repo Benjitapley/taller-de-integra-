@@ -10,6 +10,21 @@ REF = "a" * 20
 HOST = f"db.{REF}.supabase.co"
 DSN = f"postgresql://sql_auth_users:fictional@{HOST}:5432/postgres?sslmode=verify-full&sslrootcert=system"
 
+
+def test_local_postgres_keeps_hosted_identity_separate(monkeypatch):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "local-postgres")
+    monkeypatch.setenv("ROOMIES_LOCAL_MODE", "1")
+    monkeypatch.setenv("ROOMIES_SUPABASE_PROJECT_REF", REF)
+    monkeypatch.setenv("ROOMIES_AUTH_PROVIDER_URL", f"https://{REF}.supabase.co")
+    dsn = "postgresql://sql_auth_users:fictional@127.0.0.1:5432/roomies_local"
+    monkeypatch.setenv("AUTH_USERS_DATABASE_URL", dsn)
+    assert database_url("AUTH_USERS_DATABASE_URL", "sql_auth_users") == dsn
+    assert auth_provider_url() == f"https://{REF}.supabase.co"
+    for wrong in (dsn.replace("127.0.0.1", "remote.example.com"), dsn.replace("5432", "6543"), dsn.replace("sql_auth_users", "postgres"), dsn.replace("roomies_local", "postgres")):
+        monkeypatch.setenv("AUTH_USERS_DATABASE_URL", wrong)
+        with pytest.raises(DependencyUnavailable):
+            database_url("AUTH_USERS_DATABASE_URL", "sql_auth_users")
+
 @pytest.fixture
 def real(monkeypatch):
     for name in ("DB_SSLMODE", "ROOMIES_DEPLOYMENT_ENV", "ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB"):

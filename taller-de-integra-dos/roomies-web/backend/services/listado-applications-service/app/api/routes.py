@@ -215,6 +215,20 @@ def occupancy_update(id:int,data:OccupancyUpdate,app=Depends(service)):
     return dto(app.occupancy_update(id,data.ocupacion,data.version_ocupacion,data.finalizado),app.occupancy)
 
 
+@router.get("/internal/convivencia/publicaciones/{id}",dependencies=[Depends(internal_service)])
+def publication_for_convivencia(id: int, app=Depends(service)):
+    row = app.repository.report_target(id)
+    if row is None:
+        raise HTTPException(404, "Publicación no encontrada.")
+    return row
+
+
+@router.put("/internal/convivencia/publicaciones/{id}/ocupacion",dependencies=[Depends(internal_service)])
+def expulsion_occupancy(id: int, data: ReservationProjection, app=Depends(service)):
+    app.occupancy_update(id, data.ocupacion, data.version_ocupacion, data.ocupacion == 0)
+    return {"actualizado": True}
+
+
 @router.post("/internal/publicaciones/{id}/reservas",dependencies=[Depends(internal_service)])
 def reserve(id:int,data:ReservationRequest,idempotency_key:str=Header(),app=Depends(service)):
     return Admissions(app).reserve(id,idempotency_key,data.model_dump(mode="json"))

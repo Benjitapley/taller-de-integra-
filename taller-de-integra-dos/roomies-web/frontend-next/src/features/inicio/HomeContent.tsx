@@ -42,9 +42,9 @@ const emptyFilters: SearchFilters = {
 };
 
 function publicationFilters(filters: SearchFilters, cursor?: string) {
-  const query = new URLSearchParams();
+  const query = new URLSearchParams({ limite: "20" });
   if (cursor) query.set("cursor", cursor);
-  for (const field of ["consulta", "precio_min", "precio_max", "cupos_disponibles", "categoria", "tipo_vivienda", "mascota", "id_region", "id_comuna"] as const) {
+  for (const field of ["consulta", "precio_min", "precio_max", "cupos_disponibles", "tipo_vivienda", "mascota", "id_region", "id_comuna"] as const) {
     if (filters[field]) query.set(field, filters[field]);
   }
   return query;
@@ -86,6 +86,7 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
   const [retry, setRetry] = useState(0);
   const [filters, setFilters] = useState(emptyFilters);
   const [applied, setApplied] = useState(emptyFilters);
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [sending, setSending] = useState<number | null>(null);
   const [connectionMessage, setConnectionMessage] = useState("");
   const [results, setResults] = useState<{
@@ -184,13 +185,15 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
     router.push(`${routes.home}?${query}`, { scroll: false });
   }}>
     <form className={styles.searchForm} onSubmit={search}>
-      <label className={styles.search} aria-label="Buscar publicaciones y personas">
+      <div className={styles.searchRow}><label className={styles.search} aria-label="Buscar publicaciones y personas">
         <Icon name="search" size={22} />
         <input aria-label={isPeople ? "Buscar por comuna o zona" : "Buscar por título, comuna o descripción"} value={filters.consulta}
           onChange={(event) => setFilters({ ...filters, consulta: event.target.value })} maxLength={250}
           placeholder={isPeople ? "Comuna o zona de interés..." : "Comuna, sector o palabra clave..."} />
       </label>
-      <div className={styles.filterGrid}>
+      <Button type="submit">{loading ? "Buscando…" : "Buscar"}</Button></div>
+      <div className={styles.filterBar}><span>Precio · Comuna · Cupos</span><Button type="button" variant="secondary" aria-expanded={filtersOpen} aria-controls="publication-filters" onClick={() => setFiltersOpen(open => !open)}>Filtros</Button></div>
+      <div id="publication-filters" className={styles.filterGrid} hidden={!filtersOpen}>
         {isPeople ? <>
           <label>Presupuesto máximo (CLP)<input type="number" min="0" max="2147483647" value={filters.presupuesto_max}
             onChange={(event) => setFilters({ ...filters, presupuesto_max: event.target.value })} /></label>
@@ -206,18 +209,15 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
             onChange={(event) => setFilters({ ...filters, precio_max: event.target.value })} /></label>
           <label>Cupos exactos<input type="number" min="1" max="2147483647" step="1" placeholder="Cualquier cantidad"
             value={filters.cupos_disponibles} onChange={(event) => setFilters({ ...filters, cupos_disponibles: event.target.value })} /></label>
-          <label>Publicación<select value={filters.categoria} onChange={(event) => setFilters({ ...filters, categoria: event.target.value })}>
-            <option value="">Todas</option><option value="busco">Busca arriendo</option><option value="ofrezco">Ofrece arriendo</option>
-          </select></label>
           <label>Vivienda<select value={filters.tipo_vivienda} onChange={(event) => setFilters({ ...filters, tipo_vivienda: event.target.value })}>
-            <option value="">Todos los tipos</option><option value="casa">Casa</option><option value="departamento">Departamento</option><option value="habitacion">Habitación</option>
+            <option value="">Todos los tipos</option><option value="Casa">Casa</option><option value="Departamento">Departamento</option><option value="Habitacion">Habitación</option>
           </select></label>
           <label>Mascotas<select value={filters.mascota} onChange={(event) => setFilters({ ...filters, mascota: event.target.value })}>
             <option value="">Indiferente</option><option value="si">Acepta</option><option value="no">No acepta</option>
           </select></label>
         </>}
       </div>
-      <div className={styles.filterActions}><Button type="submit">{loading ? "Buscando…" : "Buscar"}</Button>
+      <div className={styles.filterActions}>
         <Button type="button" variant="secondary" onClick={clearFilters}>Limpiar filtros</Button></div>
     </form>
 
@@ -238,10 +238,10 @@ export default function HomeContent({ canReport = false }: { canReport?: boolean
       </article>)}</div>
       : <EmptyState icon="user" title="No hay personas para estos filtros" description="Prueba con otra comuna, presupuesto u ocupación." />)}
     {!loading && !isPeople && (listings.length
-      ? <div className={styles.results}>{listings.map((publication) => <article className={styles.resultCard} key={publication.id_publicacion}>
+      ? <div className={styles.listingGrid}>{listings.map((publication) => <article className={styles.listingCard} key={publication.id_publicacion}>
         {publication.imagenes[0]?.url && <Image className={styles.publicationImage} src={publication.imagenes[0].url} alt="" width={180} height={140} unoptimized />}
-        <div className={styles.publicationDetails}><p className={styles.badge}>{publication.categoria === "busco" ? "Busca arriendo" : "Ofrece arriendo"}</p>
-          <h3><Link href={`/publicaciones/${publication.id_publicacion}`}>{publication.titulo}</Link></h3><p>{publication.ubicacion}</p><strong>{price(publication.precio)}</strong>
+        <div className={styles.publicationDetails}><p className={styles.badge}>{"⌂ Arriendo"}</p>
+          <h3><Link href={`/publicaciones/${publication.id_publicacion}`}>{publication.titulo}</Link></h3><p>⌖ {publication.comuna?.nombre ?? publication.ubicacion}</p><strong>{price(publication.precio)}</strong>
           <small>{publication.tipo ?? "Publicación"} · {publication.tipo_vivienda || "Vivienda sin especificar"} · {publication.cupos_disponibles ?? "Por confirmar"} cupos disponibles · Mascotas: {publication.mascota === "si" ? "sí" : "no"}</small>
           {publication.descripcion && <p className={styles.description}>{publication.descripcion}</p>}</div>
       </article>)}</div>

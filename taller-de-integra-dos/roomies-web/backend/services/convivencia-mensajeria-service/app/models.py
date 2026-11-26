@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 PositiveId = Annotated[int, Field(strict=True, gt=0, le=9223372036854775807)]
 
@@ -76,7 +76,7 @@ class Message(BaseModel):
     nombre_remitente: str
     contenido: Annotated[str, Field(min_length=1, max_length=2000)]
     fecha_envio: datetime
-    id_cliente: UUID | None = None
+    id_cliente: UUID | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class MessagePage(BaseModel):
@@ -85,16 +85,43 @@ class MessagePage(BaseModel):
     siguiente_cursor: str | None
 
 
+class TaskState(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    estado: Literal["Completada"]
+
+
+class Task(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_tarea: PositiveId
+    id_arriendo: PositiveId
+    titulo: str
+    descripcion: str | None
+    estado: Literal["Pendiente", "Completada"]
+    id_creador: PositiveId
+    id_asignado: PositiveId | None
+    fecha_creacion: datetime
+
+
+class TaskPage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    items: list[Task]
+    siguiente_cursor: str | None
+    id_usuario_actual: PositiveId
+
+
 class ErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     detail: str
     code: str
+    codigo: str | None = None
 
 
 class ServiceError(Exception):
     def __init__(self, code, detail, status=409):
         self.status = status
         self.body = {"detail": detail, "code": code}
+        if status == 403:
+            self.body["codigo"] = "sin_permiso"
         super().__init__(detail)
 
 
@@ -106,7 +133,7 @@ class Expulsion(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id_usuario: PositiveId
     motivo: Annotated[str, Field(strict=True, min_length=1, max_length=500)]
-    confirmo: Annotated[bool, Field(strict=True)]
+    confirmo: Annotated[bool, Field(strict=True, validation_alias=AliasChoices("confirmo", "confirmacion"))]
 
     @field_validator("motivo")
     @classmethod

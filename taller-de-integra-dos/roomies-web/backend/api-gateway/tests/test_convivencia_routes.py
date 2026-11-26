@@ -23,11 +23,13 @@ def exercise(handler, method="GET", path="/", settings=None, **kwargs):
     return asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("path", ["/api/arriendos/mio", "/api/arriendos/7", "/api/arriendos/7/integrantes"])
+@pytest.mark.parametrize("path", ["/api/arriendos/mio", "/api/arriendos/7", "/api/arriendos/7/integrantes?activos=true&cursor=next"])
 def test_arriendos_use_dedicated_upstream_and_forward_only_public_auth(path):
     def handler(request):
         assert request.url.host == "convivencia.test"
-        assert request.url.path == path
+        assert request.url.path == path.split("?", 1)[0]
+        if "?" in path:
+            assert request.url.query.decode() == path.split("?", 1)[1]
         assert request.headers["authorization"] == "Bearer synthetic"
         assert "x-roomies-service" not in request.headers
         return reply(200, content=b'{}', headers={"Content-Type": "application/json"})
@@ -71,6 +73,7 @@ def test_arriendos_upstream_errors_also_disable_caching(status):
 
 
 @pytest.mark.parametrize("method,path,query", [
+    ("POST", "/api/arriendos/4/expulsiones", b""),
     ("GET", "/api/conversaciones", b""),
     ("GET", "/api/conversaciones/12", b""),
     ("GET", "/api/conversaciones/12/mensajes", b"limite=20&antes=abc"),
@@ -105,6 +108,34 @@ def test_mensajeria_conserva_denegacion_directa_de_convivencia():
                       headers={"Authorization": "Bearer account-token"})
     assert result.status_code == 403
     assert result.json() == {"detail": "No tienes acceso."}
+    assert result.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("method,path", [
+    ("GET", "/api/arriendos/4/tareas"),
+    ("POST", "/api/arriendos/4/tareas"),
+    ("GET", "/api/arriendos/4/integrantes"),
+    ("PATCH", "/api/tareas/17"),
+    ("PATCH", "/api/tareas/17/estado"),
+])
+def test_tareas_se_enrutan_al_mismo_servicio_y_conservan_403(method, path):
+    payload = b'{"estado":"Completada"}' if method == "PATCH" else b'{"titulo":"Aseo"}' if method == "POST" else b""
+
+    def handler(request):
+        assert request.url.host == "convivencia.test"
+        assert request.url.path == path
+        assert request.headers["authorization"] == "Bearer account-token"
+        assert "x-roomies-service" not in request.headers
+        assert request.content == payload
+        return reply(403, content=b'{"detail":"Sin acceso."}', headers={"Content-Type": "application/json"})
+
+    result = exercise(handler, method=method, path=path,
+                      settings=Settings(local_mode=True, convivencia_upstream="http://convivencia.test"),
+                      headers={"Authorization": "Bearer account-token", "X-Roomies-Service": "must-not-forward",
+                               **({"Content-Type": "application/json"} if payload else {})},
+                      content=payload if payload else None)
+    assert result.status_code == 403
+    assert result.json() == {"detail": "Sin acceso."}
     assert result.headers["cache-control"] == "no-store"
 
 

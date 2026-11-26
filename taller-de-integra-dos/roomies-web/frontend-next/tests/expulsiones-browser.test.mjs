@@ -35,7 +35,7 @@ test("E05 owner confirmation, double click, hidden action and active revocation"
    await new Promise(resolve=>setTimeout(resolve,300)); removed.add(input.id_usuario);
    return reply(200,{id_arriendo:1,id_usuario:input.id_usuario,estado:removed.size===2?"Finalizado":"Activo",integrantes_activos:2-removed.size,cupos_disponibles:removed.size});
   }
-  if(path === "/api/arriendos/1/tareas") return revoked ? reply(403,{}) : reply(200,{items:[{id_tarea:1,id_arriendo:1,id_creador:2,id_asignado:2,titulo:"Tarea privada",descripcion:null,estado:"Pendiente",fecha_creacion:"2026-11-24T12:00:00Z"}],siguiente_cursor:null});
+  if(path === "/api/arriendos/1/tareas") return revoked ? reply(403,{}) : reply(200,{items:[{id_tarea:1,id_arriendo:1,id_creador:2,id_asignado:2,titulo:"Tarea privada",descripcion:null,estado:"Pendiente",fecha_creacion:"2026-11-24T12:00:00Z"}],siguiente_cursor:null,id_usuario_actual:2});
   if(path === "/api/conversaciones") return reply(200,{items:[{id_conversacion:1,id_arriendo:1,fecha_creacion:"2026-11-24T12:00:00Z"}]});
   if(path === "/api/conversaciones/1/mensajes") return revoked ? reply(403,{}) : reply(200,{items:[{id_mensaje:1,id_conversacion:1,id_remitente:3,nombre_remitente:"Otra integrante",contenido:"Mensaje privado",fecha_envio:"2026-11-24T12:00:00Z"}],siguiente_cursor:null});
   return reply(404,{});

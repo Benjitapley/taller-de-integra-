@@ -1,0 +1,154 @@
+{
+  "checked_at": "2026-11-26T22:26:29.212Z",
+  "project_ref": "erefnpvdjondjpcyjrpb",
+  "sql_editor": "https://supabase.com/dashboard/project/erefnpvdjondjpcyjrpb/sql/8f889407-9d21-434c-ae40-1ca5abd2d796",
+  "applied": [
+    "001_convivencia_schema.up.sql",
+    "002_relacion_historica.up.sql",
+    "003_incorporacion_ocupacion.up.sql",
+    "004_mensajeria.up.sql",
+    "005_tareas.up.sql"
+  ],
+  "sha256": {
+    "001_convivencia_schema.up.sql": "c6544583d1efeb59ecfd2de45fe4afb0b2b4283b6dc5439029b0f3a6928e767d",
+    "002_relacion_historica.up.sql": "82aeb0a3533a8c1d581906f70fafca3e8a246c3c2819dde257a6bb6b1a980d65",
+    "003_incorporacion_ocupacion.up.sql": "50c84ee8d63c52df3f85f537b54d2ea002c3a3356145da5c5f2231d5954ee2c2",
+    "004_mensajeria.up.sql": "1ff34bba663ed22caa49e992537d762e525f76481ff8461f4da2341fd625abbc",
+    "005_tareas.up.sql": "e6f5e35b91a0aa7fd79210f6991101dc463dd199ffa11a475038a29ac1c22dd7"
+  },
+  "atomic_transaction": true,
+  "prior_attempt_rolled_back": true,
+  "before": {
+    "roles": [
+      {
+        "name": "sql_auth_users",
+        "login": true,
+        "super": false,
+        "inherit": false,
+        "createdb": false,
+        "bypassrls": false,
+        "createrole": false
+      },
+      {
+        "name": "sql_listado_applications",
+        "login": true,
+        "super": false,
+        "inherit": false,
+        "createdb": false,
+        "bypassrls": false,
+        "createrole": false
+      }
+    ],
+    "tables": [
+      "auth_users.foto_limpieza",
+      "auth_users.identidad",
+      "auth_users.notificacion",
+      "auth_users.perfil_comun",
+      "auth_users.sesion_revocada",
+      "haycupo.conexion",
+      "haycupo.imagen_publicacion",
+      "haycupo.publicacion",
+      "haycupo.usuario",
+      "listado_applications.admision_operacion",
+      "listado_applications.admision_reserva",
+      "listado_applications.comuna",
+      "listado_applications.outbox",
+      "listado_applications.postulacion",
+      "listado_applications.publicacion_metadata",
+      "listado_applications.publication_image_cleanup",
+      "listado_applications.publication_image_operation",
+      "listado_applications.region"
+    ],
+    "schemas": [
+      "haycupo",
+      "auth_users",
+      "listado_applications"
+    ],
+    "database": "postgres",
+    "executor": "postgres"
+  },
+  "verification": {
+    "tables": [
+      "arriendo",
+      "conversacion",
+      "incorporacion",
+      "mensaje",
+      "outbox",
+      "pertenencia",
+      "tarea"
+    ],
+    "runtime": {
+      "login": true,
+      "super": false,
+      "inherit": false,
+      "createdb": false,
+      "bypassrls": false,
+      "createrole": false,
+      "replication": false
+    },
+    "triggers": [
+      "desasignar_tareas_retirado",
+      "pertenencia_capacidad",
+      "pertenencia_capacidad",
+      "registrar_fin_pertenencia"
+    ],
+    "task_rows": 0,
+    "member_rows": 0,
+    "runtime_can_read": true,
+    "anon_schema_access": false,
+    "runtime_can_insert": true,
+    "managed_memberships": [
+      {
+        "set": false,
+        "role": "sql_convivencia_mensajeria",
+        "admin": true,
+        "member": "postgres",
+        "grantor": "supabase_admin",
+        "inherit": false
+      }
+    ],
+    "runtime_can_complete": true,
+    "runtime_can_read_auth": false,
+    "runtime_can_edit_creator": false,
+    "authenticated_schema_access": false
+  },
+  "business_fingerprints_before": {
+    "usuario": {
+      "count": 8,
+      "digest": "2ab73ac2db065fe7fdcb0342ff0c6f9b"
+    },
+    "conexion": {
+      "count": 3,
+      "digest": "fabcf741c34e30e4b4fe2605fd181326"
+    },
+    "publicacion": {
+      "count": 4,
+      "digest": "700ac41b3618d8ee1960022de4102473"
+    },
+    "imagen_publicacion": {
+      "count": 3,
+      "digest": "b6a1f4575bf3730164da94d278d32f2e"
+    }
+  },
+  "business_fingerprints_after": {
+    "usuario": {
+      "count": 8,
+      "digest": "2ab73ac2db065fe7fdcb0342ff0c6f9b"
+    },
+    "conexion": {
+      "count": 3,
+      "digest": "fabcf741c34e30e4b4fe2605fd181326"
+    },
+    "publicacion": {
+      "count": 4,
+      "digest": "700ac41b3618d8ee1960022de4102473"
+    },
+    "imagen_publicacion": {
+      "count": 3,
+      "digest": "b6a1f4575bf3730164da94d278d32f2e"
+    }
+  },
+  "business_fingerprints_unchanged": true,
+  "runtime_credential": "Creada para el rol nuevo; almacenada con DPAPI fuera de Git. No se rotaron Auth/Listado.",
+  "acceptance": "Migración y conexión SQL verificadas. No acredita HTTP con cuentas reales ni Expo físico."
+}

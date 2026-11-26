@@ -37,6 +37,7 @@ test("cliente API: transporte y errores, sin red ni base de datos", async (t) =>
   });
 
   for (const [status, payload, message] of [
+    [422, { codigo: "validacion", mensaje: "Revisa", detalles: [{ campo: "id_comuna", mensaje: "Comuna inválida" }] }, "Revisa · id_comuna: Comuna inválida"],
     [401, { detail: "Acceso no autorizado" }, "Acceso no autorizado"],
     [422, { detail: [{ loc: ["body", "correo"], msg: "Campo obligatorio" }] }, "Campo obligatorio"],
   ]) {

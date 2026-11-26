@@ -2,7 +2,7 @@
 
 Revision: 26/11/2026, America/Santiago. Fuente: Roomies_Backlog_TI2_Sprint3_v1.4.pdf, paginas 29-30; dependencias F03 y decisiones D02/D05 en paginas 5 y 32.
 
-Base: `52ef5fd144232ebc4df50616cf3da4e37699292b`, rama `SCRUM-122-Conectar-retiro-por-arrendador-y-revocar-la-experiencia-activa`, cambios locales sin commit. [Jira SCRUM-122](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-122). PR pendiente. El [manifest SHA-256](sources-sha256.txt) identifica las fuentes revisadas, incluidos los nuevos escenarios.
+Revision inicial basada en `52ef5fd144232ebc4df50616cf3da4e37699292b`, registrada en `51374ae`, rama `SCRUM-122-Conectar-retiro-por-arrendador-y-revocar-la-experiencia-activa`. [Jira SCRUM-122](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-122). El [manifest SHA-256](sources-sha256.txt) identifica las fuentes reconciliadas con `dev-web`; los resultados actualizados del merge figuran al final. Las secciones previas conservan los resultados de sus revisiones originales.
 
 ## Resultado de la revision
 
@@ -77,3 +77,32 @@ Las capturas proceden de fixtures HTTP. La persistencia se acredita por la suite
 ## Limite de aceptacion
 
 E05 queda implementado y validado localmente. Ya no estan pendientes las cinco pruebas SQL ni el recorrido local de servicios. Para aceptar el candidato desplegado en E06/B06, aplicar las migraciones en el destino y repetir el recorrido con sus versiones, Gateway y proveedor real identificados; registrar SHA/digest y evidencia. No se ejecutaron despliegues, migraciones remotas ni pruebas en Expo/celular fisico en esta revision. Jira y PR siguen sin actualizarse.
+
+## Integración con SCRUM-123 · 25/11/2026
+
+Se reconcilió `9c9ab5e` con `dev-web` en `d934a97`, que ya contiene SCRUM-122 y E04. Se conserva el contrato de retiro y tareas integrado en `dev-web`, incluido el formulario `RemoveMember`, la paginación y la comprobación periódica de pertenencia. Las implementaciones alternativas de servicio, BFF y pantalla de tareas se retiraron para evitar rutas y modelos duplicados. Sus commits siguen en el historial.
+
+La secuencia de migración vigente es `001`–`004`, [005_retiro.up.sql](../../../backend/services/convivencia-mensajeria-service/migrations/005_retiro.up.sql) y [006_tareas_reasignables.up.sql](../../../backend/services/convivencia-mensajeria-service/migrations/006_tareas_reasignables.up.sql). Se retiró `005_retiros.up.sql`, que creaba las mismas tablas con un esquema incompatible. Esta integración no aplica migraciones sobre bases compartidas.
+
+Se conserva el control de pertenencia móvil de SCRUM-123: consulta real al entrar/regresar a la app, desmontaje de pantallas privadas y vaciado del almacén tras una denegación. También se conserva el enlace de postulantes aceptados a la gestión de integrantes.
+
+Validación de la integración: Convivencia, 92 pruebas aprobadas con PostgreSQL efímero y migraciones 001–006; Gateway, 185 aprobadas; Listado, 4 pruebas de proyección de retiro aprobadas; web/BFF y regresiones HTTP, 58 aprobadas; convivencia móvil, 12 aprobadas. Typecheck y lint web pasaron. Los resultados y el manifiesto de la sección anterior describen la revisión histórica de SCRUM-122, no certifican por sí solos este merge.
+
+La prueba adicional `npm.cmd run test:convivencia-browser` pasó (1 prueba) con Next/BFF reales y Edge con API sintética, sin Playwright ni cuentas reales; reproduce confirmación, doble clic, respuesta perdida, ausencia de acción para quien no es dueño y revocación de tareas. `E05_QA_DIR` permite regenerar las capturas complementarias [escritorio](retiro-confirmacion.png) y [ancho móvil web](retiro-confirmacion-mobile.png). La aceptación en despliegue y celular físico continúa pendiente.
+
+## Merge de SCRUM-122 con dev-web · 26/11/2026
+
+Se integra `origin/dev-web` en `99577b4` sobre `51374ae`, conservando el historial de ambas ramas. Los conflictos eran dos capturas, este documento y el fixture de navegador. Se conservan las secciones de evidencia de ambas revisiones y se regeneran las tres capturas de E05 con el frontend reconciliado.
+
+La prueba ampliada mantiene retiro parcial/ultimo, doble clic, revocacion de tareas/chat/borrador y enlaces de Mi arriendo; incorpora `id_usuario_actual` requerido por el contrato actual de tareas de E04. Se conserva la nueva pantalla de tareas, el hook compartido de pertenencia, las migraciones y las adaptaciones de Convivencia de `dev-web`, junto con la verificacion de propietario por API interna de SCRUM-122.
+
+Validacion posterior a resolver los conflictos:
+
+- Convivencia: **123 passed**, sin omisiones, PostgreSQL efimero y todas las migraciones `*.up.sql` actuales, incluidas las de compatibilidad hasta `007_expulsiones.up.sql`.
+- Gateway: **191 passed**.
+- BFF y navegador: **17 passed**, sin omisiones; comando anterior ampliado con `tests/tareas-contract.test.mjs` y `tests/expulsiones-browser.test.mjs`, con Chromium configurado.
+- `run_c03.py --departures`: **PASS**, cuatro servicios y SQL reales; permisos, concurrencia, revocacion, reasignacion, cierre, reinicios y evento antiguo.
+- `npm.cmd run typecheck` y `npm.cmd run lint`: **exit 0** con Next 16.4.6.
+- `node tests/build-isolated.mjs`: **exit 0**, compilacion de produccion sin dotenv ni red externa. Next informa la advertencia existente de multiples lockfiles.
+
+El proveedor externo de identidad sigue siendo un fixture local. Esta validacion no aplica migraciones en destinos compartidos ni acredita aceptacion en despliegue o celular fisico.

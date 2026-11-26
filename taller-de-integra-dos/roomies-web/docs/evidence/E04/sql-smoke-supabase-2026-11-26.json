@@ -1,0 +1,9 @@
+{
+  "scope": "SQL migration smoke, not HTTP/Auth/Expo acceptance",
+  "identity": "synthetic, transaction rolled back",
+  "create_and_complete": true,
+  "retirement_unassigns_pending": true,
+  "completed_history_kept": true,
+  "rolled_back": true,
+  "task_rows_after": 0
+}

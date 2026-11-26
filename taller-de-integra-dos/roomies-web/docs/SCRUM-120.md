@@ -14,6 +14,14 @@
 
 ## Estado de aceptación
 
+Comprobación posterior del 26/11 con los datos del usuario: [identidad real y diagnóstico de Kubero](evidence/E03/2026-11-26-hosted/README.md). Ambas cuentas autenticaron en Supabase (200 y correo confirmado). El Gateway de Test devuelve 503 en perfil/arriendo/conversaciones; la web publicada devuelve 503 al iniciar sesión. En Kubero Test faltan aplicaciones de Auth/Users, Listado y Convivencia, y el Gateway solo configura el destino de Match. **El bloqueo actual es el despliegue e integración, no la entrega de credenciales.** No se acredita todavía una pertenencia ni el chat con esas cuentas.
+
+Revisión del 2026-11-26: [ensayo integrado de navegador, HTTP y PostgreSQL](evidence/E03/validacion-2026-11-26.md). El recorrido local ya demuestra envío entre dos integrantes, recarga, paginación visual, reintentos, permisos y retiro, cambios de cuenta y persistencia después de reiniciar Convivencia. La identidad de ese ensayo es una fixture GoTrue/JWKS explícita: **no constituye aceptación con Supabase real ni PostgreSQL Kubero**. Se corrigió la identificación del emisor por nombre; ahora se usa su ID de negocio, también presente en el perfil de transición.
+
+Los resultados siguientes describen revisiones históricas; los fallos antiguos por ausencia de PostgreSQL no representan el estado del runner actual.
+
+Revisión del 2026-11-25: [migraciones, SQL real y pendientes de aceptación web](evidence/E03/validacion-2026-11-25.md). PostgreSQL 19 en 5432 ya tiene `roomies_local` migrada y tres regresiones SQL aprobadas. Falta confirmar la configuración pública de Supabase Auth de staging y ejecutar la aceptación con dos identidades, Gateway y navegador. El registro anterior se conserva como evidencia histórica; el reporte enlazado contiene el estado actual.
+
 **Implementación web y backend integrada al contrato; aceptación funcional incompleta.** Se añadieron las rutas de Mensajería al servicio Convivencia y al Gateway, junto con la migración PostgreSQL `004_mensajeria.up.sql`. El servicio verifica la pertenencia activa en cada operación, limita el historial al ingreso y deduplica el envío por remitente/conversación/UUID. No se pudo comprobar persistencia entre dos integrantes ni denegación efectiva con cuentas reales porque este trabajo no se ejecutó contra una base migrada, Gateway y servicio desplegados. No declarar E03 completamente aceptado hasta ejecutar esos casos en ese entorno.
 
 ## Evidencia de esta revisión
@@ -35,13 +43,11 @@
 
 ## Pendiente para completar E03
 
-Ejecutar en un entorno integrado con la migración aplicada, PostgreSQL, Gateway y servicio de Convivencia/Mensajería disponibles. La evidencia local con fixtures y las pruebas con repositorios/upstreams simulados no reemplazan estos casos:
+El [informe del 26/11](evidence/E03/validacion-2026-11-26.md) distingue los casos ya probados localmente del cierre en destino. Para aceptar el paquete conforme al backlog aún se requiere:
 
-- [ ] Con dos cuentas integrantes activas, enviar mensajes desde ambas, actualizar la página y comprobar que los mismos mensajes guardados aparecen en ambos chats.
-- [ ] Reintentar un envío ambiguo/fallido y verificar en persistencia que conserva el mismo `id_cliente` y no crea duplicados.
-- [ ] Retirar a un integrante y comprobar que no puede consultar ni enviar por la interfaz ni mediante acceso directo a `/api/conversaciones/{id}/mensajes`; registrar respuestas HTTP y confirmar que no hubo lectura/escritura autorizada.
-- [ ] Forzar o simular una respuesta tardía al cambiar de conversación/cuenta y comprobar que no mezcla mensajes; verificar que los errores de envío siguen marcados como fallidos.
-- [ ] Recorrer historial autorizado con `antes`/`limite` y comprobar que cargar mensajes anteriores conserva la posición de lectura.
-- [ ] Adjuntar comandos y resultados sanitizados, SHA del commit probado, entorno, fecha y enlaces a PR/Jira. No hay un enlace PR/Jira registrado todavía.
+- [x] Confirmar el proyecto Supabase facilitado por el usuario y autenticar dos cuentas reales con correo confirmado. Su pertenencia al arriendo sigue sin verificar por los errores 503.
+- [ ] Desplegar Auth/Users, Listado y Convivencia con imágenes reales, migraciones y roles de Kubero; configurar sus destinos en el Gateway y en la web. Preparar/verificar integrantes y actores para los casos negativos.
+- [ ] Repetir el guion contra Gateway/servicios desplegados y PostgreSQL Kubero, con esas identidades reales. Conservar el resultado de cada caso, sin presentar la fixture de identidad como Supabase.
+- [ ] Asociar la evidencia de destino al SHA efectivamente desplegado y a la PR correspondiente. [Jira SCRUM-120](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-120).
 
-Hasta completar estos puntos, el estado es **implementado, aceptación E03 pendiente**; no declarar cumplido el criterio de dos integrantes ni el de acceso denegado real.
+Estado: **implementación y ensayo integrado local comprobados; aceptación en destino pendiente**. El ensayo local no cambia Jira a terminado.

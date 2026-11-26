@@ -46,6 +46,9 @@ class HttpIdentity:
 
 
 class HttpPublications:
+    def expulsion_occupancy(self, publication_id, projection):
+        self.request("PUT", f"/internal/convivencia/publicaciones/{publication_id}/ocupacion", None, projection)
+
     def request(self, method, path, key, payload=None):
         try:
             url = service_url("LISTADO_UPSTREAM_URL", docker_hosts=("listado", "listado-applications"))

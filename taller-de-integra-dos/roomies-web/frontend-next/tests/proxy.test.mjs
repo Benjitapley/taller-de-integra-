@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const project = fileURLToPath(new URL("../", import.meta.url));
-test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos", { timeout: 120_000 }, async (t) => {
+test("rewrites HTTP con servidor aislado: sin FastAPI, usuarios ni base de datos", { timeout: process.env.PUBLICATIONS_BROWSER_TESTS === "1" ? 240_000 : 120_000 }, async (t) => {
   // No ocupar el puerto de un servidor existente ni detener procesos ajenos.
   const portCheck = createServer();
   portCheck.listen(0, "127.0.0.1");

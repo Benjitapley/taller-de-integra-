@@ -1,6 +1,6 @@
 import MemberPageGate from "@/features/recorrido/MemberPageGate";
-import TasksPreviewPage from "@/features/recorrido/TasksPreviewPage";
+import ConnectedTasksPage from "@/features/convivencia/tareas/TasksPage";
 
 export default function TasksPage() {
-  return <MemberPageGate><TasksPreviewPage /></MemberPageGate>;
+  return <MemberPageGate><ConnectedTasksPage /></MemberPageGate>;
 }

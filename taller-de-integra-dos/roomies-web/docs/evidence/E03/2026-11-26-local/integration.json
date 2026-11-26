@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-26T20:57:07.518868+00:00",
+  "head": "f422d84ca3f2bd96e6a785812c04b042ff07af55",
+  "identity": "fixture GoTrue/JWKS, NO Supabase",
+  "database": "PostgreSQL real local, base propia ef\u00edmera",
+  "restart_persistence": "passed",
+  "retry_rows": 1,
+  "unauthorized_rows": 0,
+  "source_sha256": {
+    "backend\\local_stack\\e03_browser.mjs": "f563fc454368e2c887af3d7e8c2082bdb2c98a41a28f4d03bcbb585d3dea25ff",
+    "backend\\local_stack\\e03_acceptance.py": "3adb2df6cb0358ee62ef33aaaffb60675cc0bb1cf45e33b1dc332c76d2b29ad6",
+    "frontend-next\\src\\features\\recorrido\\ChatPreviewPage.tsx": "a64d7f78ea3b95715f922970131269af3ad80a0258be8bd65584284ad3d65613",
+    "frontend-next\\src\\lib\\recorrido\\chat.ts": "0120be97c50e1bc16eef4d4fb0f4d29bea642e65fc44f4bbedd4ea0d2702b94b",
+    "backend\\services\\auth-users-service\\app\\api\\routes\\local_users.py": "a5126a71869ff98984adb24bc87312f44e2fcfe6cf2c5dfc54c81eb1d4d32e09"
+  },
+  "migrations": {
+    "backend\\services\\auth-users-service\\migrations\\001_auth_users_schema.up.sql": "fa716fc618dd00ffb0366f4bbdcb95c3a45006fc3fe0bfef8430002068d4a9b3",
+    "backend\\services\\auth-users-service\\migrations\\002_auth_users_runtime_grants.up.sql": "a732a9ef2851a6603f6f42d11a6fec6cf78d3dcd9c2a6486a73fd505adacaddd",
+    "bootstrap-adaptado": "903b6e931d3354d2a2c828e76ac329926e7a1857f56fc5dc546466fab1f29016",
+    "local-runtime": "6e6f659fdde8d7fd8145c0a6e887c1f46fbb8f39dbe6698121fe20c069a0fb24",
+    "backend\\services\\listado-applications-service\\migrations\\001_publicaciones_contract.up.sql": "7d14d805fbabe92ef38192b5726236451d75b3874a6daadce427e204d4f93c74",
+    "backend\\services\\listado-applications-service\\migrations\\002_publication_images.sql": "c5f01cea0a4658d3b216410742700b27c512496d2eca3e7361a28efc89348b76",
+    "backend\\services\\listado-applications-service\\migrations\\003_catalogo_cut.up.sql": "3f722e773aad6a634d2db28c03b0a3134c9a7802bd5f0823933322363ba9434b",
+    "backend\\services\\listado-applications-service\\migrations\\004_acceptance_operations.sql": "ef034925577ea79216271a47e1b41767f305f8f8b1a8ff65133d00f4d13d9de7",
+    "backend\\services\\convivencia-mensajeria-service\\migrations\\001_convivencia_schema.up.sql": "f7a2becd7ad8234f3807f763c0197e32e32358aad47c1d233b4be8e6c38df11f",
+    "backend\\services\\convivencia-mensajeria-service\\migrations\\002_relacion_historica.up.sql": "fb4c87d489a335b1e4bcc3d5638b10211b4ed779f46b1f0190275a093efce0c2",
+    "backend\\services\\convivencia-mensajeria-service\\migrations\\003_incorporacion_ocupacion.up.sql": "23f4bd082fb417c1929524ad1a2b1a32933016df13d7f32165ccb95681aa27ed",
+    "backend\\services\\convivencia-mensajeria-service\\migrations\\004_mensajeria.up.sql": "79e9039384daabb70b3e333a76727440ee527f7bb7d8381e7029bd2f426f4f76",
+    "backend\\services\\convivencia-mensajeria-service\\migrations\\005_mensajeria_historial.up.sql": "8feb9ac7ad2fa4bd45b08df8124b4f5ebeeab8c7b95ccf3abe2452ecded092d6",
+    "backend\\services\\convivencia-mensajeria-service\\migrations\\005_retiro.up.sql": "aa78b9beaa82eadc57f92c54b21056afa7c0f835215b65320a63f85ae5a07b7e",
+    "backend\\services\\convivencia-mensajeria-service\\migrations\\006_mensajes_nombres.up.sql": "f546291f17fe48b59d5e603a66283ba818f2cda937a6e07d3e946f8e1eb93e57",
+    "backend\\services\\convivencia-mensajeria-service\\migrations\\006_tareas_reasignables.up.sql": "197a1d802cd33c259b0b7972d4786fa37be97963f8d896b52844266835be0a7c",
+    "backend\\services\\convivencia-mensajeria-service\\migrations\\007_expulsiones.up.sql": "3655dfcea77d3c44dea03f186e2f241ee24d2377cd46021d81247ecae877605c"
+  }
+}

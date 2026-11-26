@@ -7,7 +7,19 @@ BEGIN
     SELECT 1 FROM pg_roles r WHERE rolname='sql_convivencia_mensajeria'
       AND rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
       AND NOT rolreplication AND NOT rolbypassrls AND NOT rolinherit
-      AND NOT EXISTS (SELECT 1 FROM pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)
+      -- El runtime nunca pertenece a otro rol. Supabase conserva una membresía
+      -- administrativa inversa: postgres pertenece al runtime, otorgada por
+      -- supabase_admin. Esa relación no da privilegios de postgres al runtime.
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_auth_members m
+        WHERE m.member=r.oid OR (m.roleid=r.oid AND NOT (
+          pg_get_userbyid(m.member)='postgres'
+          AND pg_get_userbyid(m.grantor)='supabase_admin'
+          AND m.admin_option
+          AND NOT COALESCE((to_jsonb(m)->>'inherit_option')::boolean, false)
+          AND NOT COALESCE((to_jsonb(m)->>'set_option')::boolean, false)
+        ))
+      )
   ) THEN
     RAISE EXCEPTION 'Falta un rol de runtime dedicado y sin privilegios heredados';
   END IF;

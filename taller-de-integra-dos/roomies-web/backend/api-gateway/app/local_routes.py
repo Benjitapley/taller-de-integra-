@@ -2,17 +2,17 @@
 import asyncio
 import re
 from fastapi import Request
-from starlette.responses import JSONResponse
-from app.proxy import forward_to,bounded_body,BodyTooLarge
+from starlette.responses import JSONResponse, Response
+from .proxy import forward_to,bounded_body,BodyTooLarge
 
 ROUTES=[
  (r"/api/arriendos/[1-9][0-9]*/expulsiones",{"POST"},"convivencia_upstream"),
- (r"/api/arriendos/[1-9][0-9]*/integrantes",{"GET"},"convivencia_upstream"),
  (r"/api/arriendos/[1-9][0-9]*/tareas",{"GET","POST"},"convivencia_upstream"),
  (r"/api/tareas/[1-9][0-9]*(?:/estado)?",{"PATCH"},"convivencia_upstream"),
  (r"/api/usuarios/me",{"POST","GET","PATCH"},"upstream"),
  (r"/api/usuarios/me/foto",{"PUT"},"upstream"),
  (r"/api/arriendos/(?:mio|[1-9][0-9]*)",{"GET"},"convivencia_upstream"),
+ (r"/api/arriendos/[1-9][0-9]*/integrantes",{"GET"},"convivencia_upstream"),
  (r"/api/reportes",{"POST"},"reportes_upstream"),
  (r"/api/reportes/mios",{"GET"},"reportes_upstream"),
  (r"/api/admin/reportes",{"GET"},"reportes_upstream"),
@@ -37,8 +37,6 @@ ROUTES=[
  (r"/api/postulaciones/[1-9][0-9]*",{"GET"},"listado_upstream"),
  (r"/api/postulaciones/[1-9][0-9]*/estado",{"PATCH"},"listado_upstream"),
  (r"/api/postulaciones/[1-9][0-9]*/retiro",{"POST"},"listado_upstream"),
- (r"/api/arriendos/mio",{"GET"},"convivencia_upstream"),
- (r"/api/arriendos/[1-9][0-9]*",{"GET"},"convivencia_upstream"),
  (r"/api/conversaciones",{"GET"},"convivencia_upstream"),
  (r"/api/conversaciones/[1-9][0-9]*",{"GET"},"convivencia_upstream"),
  (r"/api/conversaciones/[1-9][0-9]*/mensajes",{"GET","POST"},"convivencia_upstream"),

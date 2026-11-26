@@ -1,5 +1,73 @@
 # S3R-E01 · Conectar catálogo y formularios al DTO y cursor
 
+## Parche de seguridad y auditoría de aceptación real · 26/11/2026
+
+`next` y `eslint-config-next` están fijados en **16.4.6**, con lockfile actualizado.
+El [aviso oficial de noviembre](https://nextjs.org/blog/november-2026-security-release)
+sitúa el parche de seguridad en 16.4.5; se eligió el
+[parche posterior de la misma línea](https://github.com/vercel/next.js/releases/tag/v16.4.6).
+`npm audit` ya no reporta Next.js; conserva siete avisos moderados en dependencias
+de ESLint, fuera de esta actualización de Next. Los registros de 16.4.3 siguientes
+se conservan como evidencia histórica, no como estado de la dependencia actual.
+
+La [auditoría de aceptación real](qa/S3R-E01-aceptacion-real.md) confirma que
+PostgreSQL acepta autenticación en `127.0.0.1:5432` (verificación posterior de
+solo lectura), pero faltan DSN activos de servicio, Gateway, configuración
+activa de Storage e identidad de las cuentas de prueba. Se informó este bloqueo
+antes de ejecutar pruebas contra datos compartidos. No se inició ni reinició un
+servicio real y no se ejecutaron migraciones ni pruebas destructivas contra 5432.
+
+La [lista actualizada](qa/S3R-E01-pendientes.md) registra la comprobación SQL
+sanitizada y la ampliación del recorrido local con tres imágenes, precio
+230000→245000, filtro vacío y rechazo de precios inválidos sin envío.
+
+Las tres suites omitidas previamente requieren rutas de Playwright, no PostgreSQL.
+Se habilitan en la regresión local posterior al parche; usan dobles HTTP y no
+acreditan el recorrido real. Los resultados y comandos del parche se registran en
+[la verificación de esta fecha](evidence/S3R-E01/verificacion-2026-11-26.md).
+Resultado posterior al parche: **157 aprobadas, 0 fallidas, 0 omitidas**;
+lint, TypeScript y build correctos con Next.js 16.4.6. El fixture de integrantes
+de la suite opcional de reportes se completó conforme al DTO vigente, conservando
+las validaciones de producción.
+
+**El commit de esta entrega identifica el candidato local; no acredita aceptación
+real ni autoriza marcar Jira como terminado.** Siguen pendientes el ciclo con fotos
+del equipo, otra cuenta, reinicio, conflictos y cursores del entorno compartido.
+
+## Registro histórico anterior al parche · 26/11/2026
+
+La web envía exclusivamente los campos de Sprint 3 v2, con las enumeraciones
+`Casa`, `Departamento` y `Habitacion`. El BFF entrega `codigo`, `mensaje` y
+`detalles`, conserva 401/403/409/413/415/422/503 y transmite archivos con FormData
+sin fijar Content-Type. La UI muestra detalles por campo y conserva textos,
+archivos, IDs de imágenes e Idempotency-Key ante error o pérdida de red.
+
+Se agregaron reglas editables como lista (bloqueadas fuera de Disponible), vista
+previa en vivo, portada y límites de fotografías, progreso indeterminado de envío
+y confirmación de cierre. Catálogo y detalle usan la paleta y estructura de los
+mockups TI4: tarjetas, filtros lavanda, breadcrumb, galería y acciones del dueño.
+Los filtros usan cupos exactos y solo ofrecen La Araucanía y sus comunas.
+
+El [guion de coordinación TI4 y acta de aceptación](contracts/S3R-E01-TI4.md)
+incluye ejemplos reproducibles, errores, multipart y casillas para evidencia real.
+La [verificación local del 26](evidence/S3R-E01/verificacion-2026-11-26.md)
+registra comandos, alcance y resultados de esta revisión.
+Resultado: **154 pruebas aprobadas, 0 fallidas y 3 opcionales omitidas**;
+lint y TypeScript correctos. Build correcto al repetir, con advertencia de
+seguridad de Next.js 16.4.3 que recomienda actualizar la dependencia.
+
+La evidencia SQL del 25 ya muestra **67 pruebas aprobadas con PostgreSQL real
+temporal**; las limitaciones anteriores de inicialización de PostgreSQL son
+históricas. Storage y Convivencia seguían simulados en esa corrida.
+Esa corrida acredita SQL local temporal; no acredita el servicio Windows de
+puerto 5432 solicitado en la aceptación actual. El candidato desplegado y
+Storage real aún requieren aceptación integrada.
+
+**E01 continúa abierto para aceptación:** faltan Gateway/servicios/Storage reales,
+fotos aportadas por el equipo verificadas en otra sesión y tras reiniciar,
+coordinación nominal TI4 y registro del candidato integrado con PR y SHA final.
+Los registros siguientes son históricos y no sustituyen esta revisión.
+
 ## Revisión local del 24/11/2026
 
 Base del workspace: `1acd903` en `SCRUM-118`. Se comparó el código con la ficha

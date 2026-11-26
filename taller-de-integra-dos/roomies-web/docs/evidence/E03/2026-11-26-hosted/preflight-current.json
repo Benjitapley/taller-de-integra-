@@ -1,0 +1,65 @@
+{
+  "date": "2026-11-26T21:25:16.434763+00:00",
+  "supabase_origin": "https://erefnpvdjondjpcyjrpb.supabase.co",
+  "gateway": "https://roomies-gateway-test.inf.uct.cl",
+  "business_mutations": false,
+  "actors": [
+    {
+      "alias": "actor-1",
+      "supabase_login_status": 200,
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/usuarios/me",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/local/v1/perfil",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/arriendos/mio",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversaciones",
+          "status": 503
+        }
+      ],
+      "email_confirmed": true,
+      "session_is_anonymous": false
+    },
+    {
+      "alias": "actor-2",
+      "supabase_login_status": 200,
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/usuarios/me",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/local/v1/perfil",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/arriendos/mio",
+          "status": 503
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversaciones",
+          "status": 503
+        }
+      ],
+      "email_confirmed": true,
+      "session_is_anonymous": false
+    }
+  ],
+  "gateway_health_status": 200
+}

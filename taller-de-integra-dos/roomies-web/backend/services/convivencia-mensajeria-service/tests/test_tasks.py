@@ -49,10 +49,10 @@ def test_permissions_invalid_assignee_and_retirement(tasks_http):
     assert client.patch(f"/api/tareas/{pending['id_tarea']}", json={"id_asignado": 2}).status_code == 403
     actor.user_id = 2
     rows = client.get(url).json()["items"]
-    assert rows[1]["id_asignado"] is None
-    assert rows[0]["estado"] == "Completada"
+    assert next(row for row in rows if row["id_tarea"] == pending["id_tarea"])["id_asignado"] is None
+    assert next(row for row in rows if row["id_tarea"] == task_id)["estado"] == "Completada"
     path = f"/api/tareas/{pending['id_tarea']}"
-    assert client.patch(path, json={"id_asignado": 3}).status_code == 403
+    assert client.patch(path, json={"id_asignado": 3}).status_code == 422
     assert client.patch(path, json={"titulo": "Fuera de D04", "id_asignado": 2}).status_code == 422
     assert client.patch(path, json={"id_asignado": 2}).json()["id_asignado"] == 2
     assert client.patch(path + "/estado", json={"estado": "Completada"}).status_code == 200
@@ -80,7 +80,7 @@ def test_filtered_pagination_three_pages_and_actor_bound_cursor(tasks_http):
         cursor = page["siguiente_cursor"]
         if cursor is None:
             break
-    assert ids == [1, 3, 5, 7, 9]
+    assert ids == [9, 7, 5, 3, 1]
     first = client.get(url, params={"limite": 2}).json()
     actor.user_id = 3
     assert client.get(url, params={"cursor": first["siguiente_cursor"]}).status_code == 422

@@ -1,0 +1,82 @@
+name: E04 test images
+
+on:
+  push:
+    branches: [deploy/e04-kubero-test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: e04-test-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api-gateway
+            context: taller-de-integra-dos/roomies-web/backend/api-gateway
+            dockerfile: taller-de-integra-dos/roomies-web/backend/api-gateway/Dockerfile
+          - service: convivencia-mensajeria
+            context: taller-de-integra-dos/roomies-web
+            dockerfile: taller-de-integra-dos/roomies-web/backend/services/convivencia-mensajeria-service/Dockerfile
+          - service: auth-users
+            context: taller-de-integra-dos/roomies-web
+            dockerfile: taller-de-integra-dos/roomies-web/backend/services/auth-users-service/Dockerfile
+          - service: listado-applications
+            context: taller-de-integra-dos/roomies-web
+            dockerfile: taller-de-integra-dos/roomies-web/backend/services/listado-applications-service/Dockerfile
+    steps:
+      - name: Fetch exact public source revision
+        env:
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          git init .
+          git remote add origin "https://github.com/${SOURCE_REPOSITORY}.git"
+          git fetch --depth=1 origin "$SOURCE_SHA"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Build image
+        env:
+          OWNER: ${{ github.repository_owner }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+          SERVICE: ${{ matrix.service }}
+          BUILD_CONTEXT: ${{ matrix.context }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
+        run: |
+          IMAGE="ghcr.io/${OWNER,,}/roomies-${SERVICE}:sha-${SOURCE_SHA}"
+          printf 'IMAGE=%s\n' "$IMAGE" >> "$GITHUB_ENV"
+          docker build --pull --label "org.opencontainers.image.source=https://github.com/${SOURCE_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${SOURCE_SHA}" \
+            --file "$DOCKERFILE" --tag "$IMAGE" "$BUILD_CONTEXT"
+      - name: Check image starts and serves health
+        run: |
+          docker run -d --name e04-health -e ROOMIES_RUNTIME_MODE=supabase -p 127.0.0.1:18000:8000 "$IMAGE"
+          trap 'docker rm -f e04-health >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:18000/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs e04-health
+          exit 1
+      - name: Authenticate and publish exact SHA
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
+          docker push "$IMAGE"
+          docker image inspect "$IMAGE" --format '{{json .RepoDigests}}' >> "$GITHUB_STEP_SUMMARY"
+          printf '\nImage: `%s`\n' "$IMAGE" >> "$GITHUB_STEP_SUMMARY"
+          docker logout ghcr.io
