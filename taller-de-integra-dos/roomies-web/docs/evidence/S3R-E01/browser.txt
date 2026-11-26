@@ -1,0 +1,16 @@
+> frontend-next@0.1.0 test:publications-browser
+> node --test tests/publications-browser.test.mjs
+
+✔ S3R-E01: Cargar más envía cursor_p2 y aplicar cupos exactos reinicia y reemplaza el catálogo (44131.9112ms)
+ℹ GET /api/publicaciones
+ℹ GET /api/publicaciones
+ℹ GET /api/publicaciones?cursor=cursor_p2
+ℹ GET /api/publicaciones?cupos_disponibles=2
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 44615.6029
