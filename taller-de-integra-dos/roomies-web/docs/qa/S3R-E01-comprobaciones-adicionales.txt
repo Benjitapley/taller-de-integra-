@@ -1,0 +1,17 @@
+✔ S3R-E01: cursor, errores canónicos, fotos recuperables, edición y cierre en navegador (23403.7774ms)
+ℹ Filtro vacío, precios inválidos sin envío, crear con tres imágenes, editar 230000→245000 conservando una y agregando otra, recarga y cierre: HTTP sintético. No acredita fotos del equipo, Storage/Gateway reales ni reinicio del backend.
+ℹ GET /api/publicaciones?limite=20
+ℹ GET /api/publicaciones?limite=20
+ℹ GET /api/publicaciones?limite=20&cursor=cursor_p2
+ℹ GET /api/publicaciones?limite=20&cursor=cursor_p2
+ℹ GET /api/publicaciones?limite=20&cursor=cursor_p3
+ℹ GET /api/publicaciones?limite=20&cupos_disponibles=2&id_region=9
+ℹ GET /api/publicaciones?limite=20&consulta=sin+coincidencias+E01&cupos_disponibles=2&id_region=9
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23646.2417

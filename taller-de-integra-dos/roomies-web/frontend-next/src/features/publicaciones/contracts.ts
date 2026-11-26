@@ -1,5 +1,9 @@
-export type PublicationImage = { id_imagen: number; url: string; orden: number };
+export type PublicationImage = { id_imagen: number; url: string; orden?: number };
+export type PublicationPlace = { id: number; nombre: string };
 export type Publication = {
+  region?: PublicationPlace | null; comuna?: PublicationPlace | null;
+  autor?: { id_usuario: number; nombre: string; foto: string | null } | null;
+  fecha_publicacion?: string | null; reglas_arrendador?: string[];
   id_publicacion: number; id_arriendo?: number | null; titulo: string; precio: number; ubicacion: string;
   tipo: string | null; tipo_vivienda: string | null; categoria: string | null;
   cupos_totales: number | null; cupos_disponibles: number | null;
@@ -20,12 +24,24 @@ export function publicationPage(value: unknown): PublicationPage {
     siguiente_cursor: value.siguiente_cursor,
     items: value.items.map((item: Record<string, unknown>) => {
       if (!item || !Number.isSafeInteger(item.id_publicacion) || Number(item.id_publicacion) < 1 || !Number.isSafeInteger(item.precio) || Number(item.precio) < 0 || Number(item.precio) > 999999999999) throw new Error("Publicación inválida.");
+      const place = (value: unknown): PublicationPlace | null => {
+        if (!value || typeof value !== "object" || !("id" in value) || !Number.isSafeInteger(value.id) ||
+            !("nombre" in value) || typeof value.nombre !== "string") return null;
+        return { id: Number(value.id), nombre: value.nombre };
+      };
+      const region = place(item.region), comuna = place(item.comuna);
+      const author = item.autor as Record<string, unknown> | null;
       const text = (name: string) => typeof item[name] === "string" ? item[name] as string : null;
       return {
         id_publicacion: item.id_publicacion as number,
         id_arriendo: Number.isSafeInteger(item.id_arriendo) && Number(item.id_arriendo) > 0 ? Number(item.id_arriendo) : null,
         titulo: text("titulo") || "Publicación sin título", precio: item.precio as number,
-        ubicacion: text("ubicacion") || "Ubicación por confirmar", tipo: text("tipo"), tipo_vivienda: text("tipo_vivienda"),
+        region, comuna, fecha_publicacion: text("fecha_publicacion"),
+        autor: author && Number.isSafeInteger(author.id_usuario) && typeof author.nombre === "string" ? {
+          id_usuario: Number(author.id_usuario), nombre: author.nombre, foto: publicImageURL(author.foto),
+        } : null,
+        reglas_arrendador: Array.isArray(item.reglas_arrendador) ? item.reglas_arrendador.filter((rule): rule is string => typeof rule === "string") : [],
+        ubicacion: text("ubicacion") || [comuna?.nombre, region?.nombre].filter(Boolean).join(", ") || "Ubicación por confirmar", tipo: text("tipo"), tipo_vivienda: text("tipo_vivienda"),
         categoria: text("categoria"), estado: text("estado"), descripcion: text("descripcion"), mascota: text("mascota"),
         cupos_totales: typeof item.cupos_totales === "number" ? item.cupos_totales : null,
         cupos_disponibles: typeof item.cupos_disponibles === "number" ? item.cupos_disponibles : null,

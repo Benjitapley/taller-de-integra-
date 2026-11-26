@@ -13,6 +13,11 @@ export class ApiError extends Error {
 }
 
 function errorMessage(status: number, payload: unknown): string {
+  if (payload && typeof payload === "object" && "mensaje" in payload && typeof payload.mensaje === "string") {
+    const details = "detalles" in payload && Array.isArray(payload.detalles) ? payload.detalles.flatMap(item =>
+      item && typeof item.campo === "string" && typeof item.mensaje === "string" ? [`${item.campo}: ${item.mensaje}`] : []) : [];
+    return [payload.mensaje, ...details].join(" · ");
+  }
   if (payload && typeof payload === "object" && "detail" in payload) {
     const detail = payload.detail;
     if (typeof detail === "string") return detail;

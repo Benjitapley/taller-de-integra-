@@ -52,17 +52,18 @@ export async function publicationsBrowser({ base, cookie, playwrightPath, browse
     });
     assert.deepEqual(location, { region: "9", commune: String(selected.id_comuna) });
     await page.getByLabel("Título", { exact: true }).fill("Aviso de prueba local");
-    await page.getByLabel("Tipo de vivienda").selectOption("habitacion");
-    await page.getByLabel("Dirección o sector (opcional)", { exact: true }).fill("Centro");
+    await page.getByLabel("Tipo de vivienda").selectOption("Habitacion");
     await page.getByLabel("Precio del arriendo (CLP)", { exact: true }).fill("999999999999");
-    await page.getByLabel("Capacidad total del espacio", { exact: true }).fill("2");
+    await page.getByLabel("Capacidad total", { exact: true }).fill("2");
     await page.getByLabel("Descripción", { exact: true }).fill("Descripción de prueba local");
     const images = page.getByLabel("Fotografías (hasta 5 en total)");
     await images.setInputFiles(photo("pieza.png"));
     await images.setInputFiles(photo("entrada.png"));
     await page.getByRole("img", { name: "Vista previa 2" }).waitFor();
     assert.equal(await page.getByRole("img", { name: "Vista previa 1" }).evaluate(image => image.decode().then(() => image.naturalWidth)), 1);
-    await page.getByRole("textbox", { name: /Reglas del arriendo/ }).fill("Sin humo\nRespetar horarios");
+    await page.getByLabel("Regla 1", { exact: true }).fill("Sin humo");
+    await page.getByRole("button", { name: "Agregar regla", exact: true }).click();
+    await page.getByLabel("Regla 2", { exact: true }).fill("Respetar horarios");
     await page.getByRole("button", { name: "Vista previa", exact: true }).click();
     await page.getByRole("region", { name: "Vista previa del aviso" }).getByRole("heading", { name: "Aviso de prueba local" }).waitFor();
     await page.route("**/web-api/publicaciones", async route => {
@@ -93,7 +94,7 @@ export async function publicationsBrowser({ base, cookie, playwrightPath, browse
     assert.equal(keys[0], keys[1]);
     await page.getByRole("button", { name: "Publicar ahora", exact: true }).click();
     await page.getByRole("heading", { name: "Aviso guardado con formato canónico" }).waitFor();
-    await page.getByText("Publicado por Arrendadora de prueba").waitFor();
+    await page.getByText("Arrendadora de prueba", { exact: true }).waitFor();
     await page.getByText("Sin humo", { exact: true }).waitFor();
     assert.equal(keys[0], keys[2]);
 
@@ -101,7 +102,7 @@ export async function publicationsBrowser({ base, cookie, playwrightPath, browse
     const existing = {
       id_publicacion: 42, region: { id: 9, nombre: "La Araucanía" },
       comuna: { id: selected.id_comuna, nombre: selected.nombre }, titulo: "Publicación existente",
-      categoria: "ofrezco", tipo: "Arrendador", tipo_vivienda: "habitacion", precio: 999999999999,
+      estado: "Disponible", tipo: "Arrendador", tipo_vivienda: "Habitacion", precio: 999999999999,
       ubicacion: "Centro", cupos_totales: 2, mascota: "no", descripcion: "Detalle existente",
       imagenes: [{ id_imagen: 11 }, { id_imagen: 12 }], reglas_arrendador: ["Sin humo"],
     };
@@ -128,7 +129,7 @@ export async function publicationsBrowser({ base, cookie, playwrightPath, browse
     const removed = page.getByRole("checkbox", { name: "Conservar imagen" }).nth(1);
     await removed.uncheck();
     await images.setInputFiles(photo("nueva.png"));
-    const rules = page.getByRole("textbox", { name: /Reglas del arriendo/ });
+    const rules = page.getByLabel("Regla 1", { exact: true });
     assert.equal(await rules.inputValue(), "Sin humo");
     await rules.fill("Respetar horarios");
     await page.getByLabel("Capacidad total", { exact: true }).fill("1");
@@ -196,6 +197,7 @@ export async function publicationsBrowser({ base, cookie, playwrightPath, browse
 
     await page.goto(base + "/mis-publicaciones");
     await page.getByRole("heading", { name: "Aviso guardado con formato canónico" }).waitFor();
+    page.once("dialog", dialog => dialog.accept());
     await page.getByRole("button", { name: "Cerrar publicación" }).click();
     await page.getByText("Cerrada", { exact: true }).filter({ visible: true }).waitFor();
     assert.equal(await page.getByRole("button", { name: "Cerrar publicación" }).isDisabled(), true);
