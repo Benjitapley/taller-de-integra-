@@ -59,12 +59,14 @@ export const mensajeDePostulacion = (error: ErrorHttp): string => {
   return elegir(error, MENSAJES_POSTULACION);
 };
 // Listado responde el retiro sin `codigo`: 403 si no es el postulante, 404 si no existe.
-// El 409 reúne dos causas (incorporación en curso o estado no retirable), así que se deja
-// el texto del servidor, que las distingue.
+// El 409 reúne dos causas (incorporación en curso o estado no retirable); el mensaje las menciona.
 export const mensajeDeRetiro = (error: ErrorHttp): string => {
   if (!error.codigoServidor) {
     if (error.estadoHttp === 403) return MENSAJES_RETIRO.sin_permiso;
     if (error.estadoHttp === 404) return MENSAJES_RETIRO.no_encontrado;
+    if (error.estadoHttp === 409) {
+      return "No se pudo retirar: la postulación ya no está abierta o su incorporación sigue en curso. Revisa su estado e inténtalo más tarde.";
+    }
   }
   return elegir(error, MENSAJES_RETIRO);
 };
