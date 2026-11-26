@@ -1,5 +1,10 @@
 import { colors } from '@/theme/colors';
-import type { EstadoPostulacion } from '@/types/Postulacion';
+import {
+  MOTIVO_CIERRE_PUBLICACION,
+  MOTIVO_OTRO_ARRIENDO,
+  MOTIVO_RETIRO_VOLUNTARIO,
+  type EstadoPostulacion,
+} from '@/types/Postulacion';
 
 export const configPorEstadoPostulacion: Record<
   EstadoPostulacion,
@@ -59,21 +64,36 @@ export const pasosPorEstadoPostulacion: Record<EstadoPostulacion, PasoPostulacio
   Cancelada: [
     { titulo: TITULOS[0], descripcion: SOLICITUD_ENVIADA, marcador: 'hecho' },
     { titulo: TITULOS[1], descripcion: 'La revisión se detuvo al cancelar.', marcador: 'inactivo' },
-    { titulo: TITULOS[2], descripcion: 'Cancelaste tu postulación.', marcador: 'cancelado' },
+    { titulo: TITULOS[2], descripcion: descripcionCancelacion(), marcador: 'cancelado' },
   ],
 };
 
-// Tarjeta "Chat con arrendador". El chat de postulación existe solo mientras la
-// postulación está Preseleccionada, en los otros estados la tarjeta no se muestra.
+// La cancelación la fija el retiro, el cierre del aviso o la incorporación a otro
+// arriendo (contrato 4.2). El texto del paso final sale del motivo que informa el
+// servidor: no se afirma "Cancelaste" si la cancelación no la hizo la persona.
+export function descripcionCancelacion(motivo?: string): string {
+  if (motivo === MOTIVO_RETIRO_VOLUNTARIO) return 'Retiraste tu postulación.';
+  if (motivo === MOTIVO_CIERRE_PUBLICACION) return 'El arrendador cerró la publicación.';
+  if (motivo === MOTIVO_OTRO_ARRIENDO) return 'Te incorporaste a otro arriendo.';
+  return 'La postulación fue cancelada.';
+}
+
+export function pasosDePostulacion(estado: EstadoPostulacion, motivo?: string): PasoPostulacion[] {
+  const pasos = pasosPorEstadoPostulacion[estado];
+  if (estado !== 'Cancelada') return pasos;
+  return pasos.map((paso, indice) =>
+    indice === 2 ? { ...paso, descripcion: descripcionCancelacion(motivo) } : paso,
+  );
+}
+
+// Tarjeta "Chat con arrendador". El contrato (4.2) dice que la preselección es un
+// estado visible y no abre ningún chat, así que ningún estado muestra la tarjeta.
 export const chatPorEstadoPostulacion: Record<
   EstadoPostulacion,
   { texto: string; nota?: string } | null
 > = {
-  Pendiente: { texto: 'Se habilitará únicamente si el arrendador te preselecciona.' },
-  Preseleccionada: {
-    texto: 'El arrendador te preseleccionó: se habilitará una conversación con él.',
-    nota: 'Disponible cuando se conecte la mensajería (M4-D04).',
-  },
+  Pendiente: null,
+  Preseleccionada: null,
   Aceptada: null,
   Rechazada: null,
   Cancelada: null,
