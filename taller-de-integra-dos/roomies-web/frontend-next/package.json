@@ -18,6 +18,7 @@
     "test:profile-http": "node --test tests/profile-scrum94.http.mjs",
     "test:connections": "node --test tests/connections.test.mjs",
     "test:publications": "node --test tests/publications.test.mjs",
+    "test:publications-browser": "node --test tests/publications-browser.test.mjs",
     "test:admin": "node --test tests/admin.test.mjs",
     "test:reports": "node --test tests/reportes.test.mjs tests/admin-reportes.test.mjs",
     "test:reports-browser": "node --test tests/reportes-browser.test.mjs",
@@ -42,6 +43,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "playwright": "^1.65.1",
     "typescript": "^5"
   }
 }

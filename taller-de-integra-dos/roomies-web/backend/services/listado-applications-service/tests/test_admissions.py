@@ -158,6 +158,35 @@ def test_cierre_primero_impide_intencion_y_reserva(repository):
     assert not peer.calls
 
 
+def test_e01_http_409_al_reducir_capacidad_con_incorporacion_pendiente(repository):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from app.api.routes import router, service as route_service
+    from backend.service_runtime.http import configure
+    from backend.service_runtime.security import confirmed_actor
+
+    publication, (application,) = setup(repository, total=3, people=(22,))
+    peer = Peer()
+    peer.offline = True
+    status, pending = Admissions(service(), peer).accept(1, application, None, str(uuid4()))
+    assert status == 202 and pending["incorporacion_pendiente"]
+    assert repository.publication(publication)["ocupacion_confirmada"] == 0
+
+    app = FastAPI()
+    configure(app)
+    app.include_router(router)
+    app.dependency_overrides[route_service] = service
+    app.dependency_overrides[confirmed_actor] = lambda: type("Identity", (), {"user_id": 1})()
+    with TestClient(app) as web:
+        response = web.put(f"/api/publicaciones/{publication}", files={
+            name: (None, value) for name, value in {**DATA, "cupos_totales": "2"}.items()
+        })
+    assert response.status_code == 409, response.text
+    assert "incorporaci" in response.json()["detail"].lower()
+    assert repository.publication(publication)["cupos_totales"] == 3
+    assert repository.application(application)["estado"] == "Preseleccionada"
+
+
 def test_confirmacion_idempotente_versionada_y_no_libera_reserva_ganadora(repository):
     publication,(application,)=setup(repository,people=(22,))
     peer=Peer();key=str(uuid4())
