@@ -51,3 +51,16 @@ def test_caida_de_listado_conserva_revocacion_y_outbox(service, repository, port
     ports[1].expulsion_down = False
     assert service.dispatch_expulsions() == 1
     assert service.dispatch_expulsions() == 0
+
+
+def test_replay_de_expulsion_anterior_al_merge(service, repository):
+    from psycopg.types.json import Jsonb
+    identifier = rental(service)
+    response = {"id_expulsion": str(uuid4()), "id_arriendo": identifier, "id_usuario": 3, "estado": "Inactiva"}
+    with repository.transaction() as c:
+        c.execute("UPDATE convivencia_mensajeria.pertenencia SET estado='Inactiva' WHERE id_usuario=3")
+        c.execute("INSERT INTO convivencia_mensajeria.expulsion(id_expulsion,id_arriendo,id_usuario,id_actor,motivo,respuesta) VALUES(%s,%s,3,1,'Prueba',%s)", (response["id_expulsion"], identifier, Jsonb(response)))
+    assert service.expel(identifier, 1, 3, "Prueba") == response
+    with pytest.raises(ServiceError) as error:
+        service.expel(identifier, 1, 3, "Otro motivo")
+    assert error.value.status == 409

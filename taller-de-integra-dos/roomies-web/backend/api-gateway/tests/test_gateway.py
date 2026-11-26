@@ -396,11 +396,13 @@ def test_invalid_size_settings(field, value):
 
 def test_new_environment_settings(monkeypatch):
     for key, value in {"MAX_REQUEST_BYTES": "64", "MAX_RESPONSE_BYTES": "128",
-                       "CLIENT_BODY_TIMEOUT": "2", "TOTAL_TIMEOUT": "4"}.items():
+                       "CLIENT_BODY_TIMEOUT": "2", "TOTAL_TIMEOUT": "4",
+                       "CORS_ORIGINS": " http://localhost:8081, ,http://localhost:8081 "}.items():
         monkeypatch.setenv("GATEWAY_" + key, value)
     config = Settings.from_env()
     assert (config.max_request_bytes, config.max_response_bytes) == (64, 128)
     assert (config.client_body_timeout, config.total_timeout) == (2, 4)
+    assert config.cors_origins == ("http://localhost:8081",)
 
 
 def test_total_deadline_is_shared_by_reception_and_upstream():

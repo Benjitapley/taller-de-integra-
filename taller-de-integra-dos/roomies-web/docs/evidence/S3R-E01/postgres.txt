@@ -1,0 +1,153 @@
+Servidor SQL verificado: PostgreSQL 19.0 on x86_64-windows, compiled by msvc-19.44.35230, 64-bit
+PUBLICATIONS_TEST_ADMIN_DSN=postgresql://publications_test_admin@127.0.0.1:59086/roomies_sprint2_disposable
+LISTADO_DATABASE_URL=postgresql://sql_listado_applications@127.0.0.1:59086/roomies_sprint2_disposable
+Entorno: PostgreSQL efímero loopback; roles dedicados; puertos HTTP simulados; sin dotenv.
+============================= test session starts =============================
+platform win32 -- Python 3.14.7, pytest-9.2.0, pluggy-1.7.0 -- C:\Users\gabri\AppData\Local\Python\pythoncore-3.14-64\python.exe
+rootdir: C:\taller-de-integra-\taller-de-integra-dos\roomies-web\backend\services\listado-applications-service
+collecting ... collected 67 items
+
+tests/test_admissions.py::test_ultimo_cupo_concurrente_solo_confirma_una_aceptacion PASSED [  1%]
+tests/test_admissions.py::test_timeout_despues_commit_y_reinicio_reusa_uuid_sin_falso_exito PASSED [  2%]
+tests/test_admissions.py::test_replay_y_conflictos_de_clave_y_actor PASSED [  4%]
+tests/test_admissions.py::test_409_compensado_deja_preseleccionada_y_admite_nuevo_intento PASSED [  5%]
+tests/test_admissions.py::test_recuperacion_automatica_tras_caida_de_red PASSED [  7%]
+tests/test_admissions.py::test_cierre_y_capacidad_no_intercalan_con_aceptacion PASSED [  8%]
+tests/test_admissions.py::test_cierre_primero_impide_intencion_y_reserva PASSED [ 10%]
+tests/test_admissions.py::test_e01_http_409_al_reducir_capacidad_con_incorporacion_pendiente PASSED [ 11%]
+tests/test_admissions.py::test_confirmacion_idempotente_versionada_y_no_libera_reserva_ganadora PASSED [ 13%]
+tests/test_admissions.py::test_proyeccion_adelantada_no_duplica_ocupacion_ni_anuncia_reservas_pendientes[2] PASSED [ 14%]
+tests/test_admissions.py::test_proyeccion_adelantada_no_duplica_ocupacion_ni_anuncia_reservas_pendientes[3] PASSED [ 16%]
+tests/test_contract.py::test_catalogo_valida_comuna_con_catalogo_persistido PASSED [ 17%]
+tests/test_contract.py::test_detalle_incluye_propietario_solo_con_sesion_autorizada PASSED [ 19%]
+tests/test_contract.py::test_precio_clp_ida_vuelta_exacta[0] PASSED      [ 20%]
+tests/test_contract.py::test_precio_clp_ida_vuelta_exacta[999999999999] PASSED [ 22%]
+tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[-1] PASSED [ 23%]
+tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[0.1] PASSED [ 25%]
+tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[999999999999.1] PASSED [ 26%]
+tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[1000000000000] PASSED [ 28%]
+tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[NaN] PASSED [ 29%]
+tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[Infinity] PASSED [ 31%]
+tests/test_contract.py::test_catalogos_nacionales_y_comuna_region PASSED [ 32%]
+tests/test_contract.py::test_mas_de_dos_paginas_fechas_empatadas_y_cuenta PASSED [ 34%]
+tests/test_contract.py::test_filtro_cupos_exactos_con_confirmacion_retiro_y_cursor PASSED [ 35%]
+tests/test_contract.py::test_ocupacion_desconocida_no_inventa_cupos PASSED [ 37%]
+tests/test_contract.py::test_edicion_preserva_fecha_y_cierre_fotos PASSED [ 38%]
+tests/test_contract.py::test_sync_ocupacion_requiere_servicio_interno PASSED [ 40%]
+tests/test_contract.py::test_migracion_rechaza_precio_heredado_sin_redondear PASSED [ 41%]
+tests/test_contract.py::test_consulta_interna_reportes_conserva_autorizacion_y_propietario PASSED [ 43%]
+tests/test_contract.py::test_e01_dto_ubicacion_autor_reglas_y_filtro_privado PASSED [ 44%]
+tests/test_contract.py::test_e01_reglas_canonicas_aplican_limites_y_conservan_alias PASSED [ 46%]
+tests/test_contract.py::test_e01_crear_editar_cerrar_y_cancelar_postulaciones PASSED [ 47%]
+tests/test_http_limits.py::test_upload_limits_count_actual_chunks_and_keep_profile_limit[/api/publicaciones-26000000-204] PASSED [ 49%]
+tests/test_http_limits.py::test_upload_limits_count_actual_chunks_and_keep_profile_limit[/api/publicaciones/7-26000000-204] PASSED [ 50%]
+tests/test_http_limits.py::test_upload_limits_count_actual_chunks_and_keep_profile_limit[/api/publicaciones-26000001-413] PASSED [ 52%]
+tests/test_http_limits.py::test_upload_limits_count_actual_chunks_and_keep_profile_limit[/local/v1/perfil-6291457-413] PASSED [ 53%]
+tests/test_images.py::test_validates_real_image_bytes[PNG-image/png] PASSED [ 55%]
+tests/test_images.py::test_validates_real_image_bytes[JPEG-image/jpeg] PASSED [ 56%]
+tests/test_images.py::test_validates_real_image_bytes[WEBP-image/webp] PASSED [ 58%]
+tests/test_images.py::test_rejects_corruption_spoofing_and_limits[corrupt] PASSED [ 59%]
+tests/test_images.py::test_rejects_corruption_spoofing_and_limits[spoofed-mime] PASSED [ 61%]
+tests/test_images.py::test_rejects_corruption_spoofing_and_limits[unsupported-type] PASSED [ 62%]
+tests/test_images.py::test_rejects_corruption_spoofing_and_limits[too-large] PASSED [ 64%]
+tests/test_images.py::test_rejects_corruption_spoofing_and_limits[empty] PASSED [ 65%]
+tests/test_images.py::test_exact_byte_limit_and_pixel_limit PASSED       [ 67%]
+tests/test_images.py::test_create_five_images_replays_across_new_workflow_instance PASSED [ 68%]
+tests/test_images.py::test_six_images_no_upload_and_foreign_ids_no_upload PASSED [ 70%]
+tests/test_images.py::test_retain_add_remove_order_and_cleanup_after_commit_failure PASSED [ 71%]
+tests/test_images.py::test_partial_failure_cleanup_and_retry_same_operation[second-upload] PASSED [ 73%]
+tests/test_images.py::test_partial_failure_cleanup_and_retry_same_operation[commit] PASSED [ 74%]
+tests/test_images.py::test_edit_version_conflict_keeps_winning_images PASSED [ 76%]
+tests/test_images.py::test_storage_fixed_bucket_no_redirects_and_retry_verifies_bytes PASSED [ 77%]
+tests/test_images.py::test_storage_unavailable_normalized_no_secret_leak PASSED [ 79%]
+tests/test_images.py::test_storage_api_key_headers_support_secret_and_legacy_keys[sb_secret_synthetic-test-key-False] PASSED [ 80%]
+tests/test_images.py::test_storage_api_key_headers_support_secret_and_legacy_keys[synthetic-legacy-jwt-True] PASSED [ 82%]
+tests/test_images.py::test_storage_malformed_error_body_stays_dependency_error[None] PASSED [ 83%]
+tests/test_images.py::test_storage_malformed_error_body_stays_dependency_error[body1] PASSED [ 85%]
+tests/test_images.py::test_storage_malformed_error_body_stays_dependency_error[private upstream response] PASSED [ 86%]
+tests/test_images_postgres.py::test_real_journal_replay_ownership_and_retention PASSED [ 88%]
+tests/test_images_postgres.py::test_real_failure_recovery_does_not_duplicate[second-upload] PASSED [ 89%]
+tests/test_images_postgres.py::test_real_failure_recovery_does_not_duplicate[commit] PASSED [ 91%]
+tests/test_images_postgres.py::test_real_cleanup_failure_is_durable_after_commit PASSED [ 92%]
+tests/test_images_postgres.py::test_real_concurrent_edits_preserve_winning_references PASSED [ 94%]
+tests/test_images_postgres.py::test_multipart_limits_canonical_response_and_mime PASSED [ 95%]
+tests/test_images_postgres.py::test_multipart_five_exact_maximum_images_are_accepted PASSED [ 97%]
+tests/test_web112.py::test_postulantes_superan_cien_con_fechas_empatadas_y_cursor_privado PASSED [ 98%]
+tests/test_web112.py::test_retiro_es_del_postulante_idempotente_y_conserva_aceptacion PASSED [100%]
+
+============================== warnings summary ===============================
+..\..\..\..\..\..\Users\gabri\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\gabri\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=================================== PASSES ====================================
+=========================== short test summary info ===========================
+PASSED tests/test_admissions.py::test_ultimo_cupo_concurrente_solo_confirma_una_aceptacion
+PASSED tests/test_admissions.py::test_timeout_despues_commit_y_reinicio_reusa_uuid_sin_falso_exito
+PASSED tests/test_admissions.py::test_replay_y_conflictos_de_clave_y_actor
+PASSED tests/test_admissions.py::test_409_compensado_deja_preseleccionada_y_admite_nuevo_intento
+PASSED tests/test_admissions.py::test_recuperacion_automatica_tras_caida_de_red
+PASSED tests/test_admissions.py::test_cierre_y_capacidad_no_intercalan_con_aceptacion
+PASSED tests/test_admissions.py::test_cierre_primero_impide_intencion_y_reserva
+PASSED tests/test_admissions.py::test_e01_http_409_al_reducir_capacidad_con_incorporacion_pendiente
+PASSED tests/test_admissions.py::test_confirmacion_idempotente_versionada_y_no_libera_reserva_ganadora
+PASSED tests/test_admissions.py::test_proyeccion_adelantada_no_duplica_ocupacion_ni_anuncia_reservas_pendientes[2]
+PASSED tests/test_admissions.py::test_proyeccion_adelantada_no_duplica_ocupacion_ni_anuncia_reservas_pendientes[3]
+PASSED tests/test_contract.py::test_catalogo_valida_comuna_con_catalogo_persistido
+PASSED tests/test_contract.py::test_detalle_incluye_propietario_solo_con_sesion_autorizada
+PASSED tests/test_contract.py::test_precio_clp_ida_vuelta_exacta[0]
+PASSED tests/test_contract.py::test_precio_clp_ida_vuelta_exacta[999999999999]
+PASSED tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[-1]
+PASSED tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[0.1]
+PASSED tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[999999999999.1]
+PASSED tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[1000000000000]
+PASSED tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[NaN]
+PASSED tests/test_contract.py::test_precio_no_admite_fracciones_ni_fuera_de_rango[Infinity]
+PASSED tests/test_contract.py::test_catalogos_nacionales_y_comuna_region
+PASSED tests/test_contract.py::test_mas_de_dos_paginas_fechas_empatadas_y_cuenta
+PASSED tests/test_contract.py::test_filtro_cupos_exactos_con_confirmacion_retiro_y_cursor
+PASSED tests/test_contract.py::test_ocupacion_desconocida_no_inventa_cupos
+PASSED tests/test_contract.py::test_edicion_preserva_fecha_y_cierre_fotos
+PASSED tests/test_contract.py::test_sync_ocupacion_requiere_servicio_interno
+PASSED tests/test_contract.py::test_migracion_rechaza_precio_heredado_sin_redondear
+PASSED tests/test_contract.py::test_consulta_interna_reportes_conserva_autorizacion_y_propietario
+PASSED tests/test_contract.py::test_e01_dto_ubicacion_autor_reglas_y_filtro_privado
+PASSED tests/test_contract.py::test_e01_reglas_canonicas_aplican_limites_y_conservan_alias
+PASSED tests/test_contract.py::test_e01_crear_editar_cerrar_y_cancelar_postulaciones
+PASSED tests/test_http_limits.py::test_upload_limits_count_actual_chunks_and_keep_profile_limit[/api/publicaciones-26000000-204]
+PASSED tests/test_http_limits.py::test_upload_limits_count_actual_chunks_and_keep_profile_limit[/api/publicaciones/7-26000000-204]
+PASSED tests/test_http_limits.py::test_upload_limits_count_actual_chunks_and_keep_profile_limit[/api/publicaciones-26000001-413]
+PASSED tests/test_http_limits.py::test_upload_limits_count_actual_chunks_and_keep_profile_limit[/local/v1/perfil-6291457-413]
+PASSED tests/test_images.py::test_validates_real_image_bytes[PNG-image/png]
+PASSED tests/test_images.py::test_validates_real_image_bytes[JPEG-image/jpeg]
+PASSED tests/test_images.py::test_validates_real_image_bytes[WEBP-image/webp]
+PASSED tests/test_images.py::test_rejects_corruption_spoofing_and_limits[corrupt]
+PASSED tests/test_images.py::test_rejects_corruption_spoofing_and_limits[spoofed-mime]
+PASSED tests/test_images.py::test_rejects_corruption_spoofing_and_limits[unsupported-type]
+PASSED tests/test_images.py::test_rejects_corruption_spoofing_and_limits[too-large]
+PASSED tests/test_images.py::test_rejects_corruption_spoofing_and_limits[empty]
+PASSED tests/test_images.py::test_exact_byte_limit_and_pixel_limit
+PASSED tests/test_images.py::test_create_five_images_replays_across_new_workflow_instance
+PASSED tests/test_images.py::test_six_images_no_upload_and_foreign_ids_no_upload
+PASSED tests/test_images.py::test_retain_add_remove_order_and_cleanup_after_commit_failure
+PASSED tests/test_images.py::test_partial_failure_cleanup_and_retry_same_operation[second-upload]
+PASSED tests/test_images.py::test_partial_failure_cleanup_and_retry_same_operation[commit]
+PASSED tests/test_images.py::test_edit_version_conflict_keeps_winning_images
+PASSED tests/test_images.py::test_storage_fixed_bucket_no_redirects_and_retry_verifies_bytes
+PASSED tests/test_images.py::test_storage_unavailable_normalized_no_secret_leak
+PASSED tests/test_images.py::test_storage_api_key_headers_support_secret_and_legacy_keys[sb_secret_synthetic-test-key-False]
+PASSED tests/test_images.py::test_storage_api_key_headers_support_secret_and_legacy_keys[synthetic-legacy-jwt-True]
+PASSED tests/test_images.py::test_storage_malformed_error_body_stays_dependency_error[None]
+PASSED tests/test_images.py::test_storage_malformed_error_body_stays_dependency_error[body1]
+PASSED tests/test_images.py::test_storage_malformed_error_body_stays_dependency_error[private upstream response]
+PASSED tests/test_images_postgres.py::test_real_journal_replay_ownership_and_retention
+PASSED tests/test_images_postgres.py::test_real_failure_recovery_does_not_duplicate[second-upload]
+PASSED tests/test_images_postgres.py::test_real_failure_recovery_does_not_duplicate[commit]
+PASSED tests/test_images_postgres.py::test_real_cleanup_failure_is_durable_after_commit
+PASSED tests/test_images_postgres.py::test_real_concurrent_edits_preserve_winning_references
+PASSED tests/test_images_postgres.py::test_multipart_limits_canonical_response_and_mime
+PASSED tests/test_images_postgres.py::test_multipart_five_exact_maximum_images_are_accepted
+PASSED tests/test_web112.py::test_postulantes_superan_cien_con_fechas_empatadas_y_cursor_privado
+PASSED tests/test_web112.py::test_retiro_es_del_postulante_idempotente_y_conserva_aceptacion
+================== 67 passed, 1 warning in 111.12s (0:01:51) ==================

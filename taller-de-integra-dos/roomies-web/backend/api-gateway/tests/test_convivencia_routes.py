@@ -23,11 +23,13 @@ def exercise(handler, method="GET", path="/", settings=None, **kwargs):
     return asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("path", ["/api/arriendos/mio", "/api/arriendos/7"])
+@pytest.mark.parametrize("path", ["/api/arriendos/mio", "/api/arriendos/7", "/api/arriendos/7/integrantes?activos=true&cursor=next"])
 def test_arriendos_use_dedicated_upstream_and_forward_only_public_auth(path):
     def handler(request):
         assert request.url.host == "convivencia.test"
-        assert request.url.path == path
+        assert request.url.path == path.split("?", 1)[0]
+        if "?" in path:
+            assert request.url.query.decode() == path.split("?", 1)[1]
         assert request.headers["authorization"] == "Bearer synthetic"
         assert "x-roomies-service" not in request.headers
         return reply(200, content=b'{}', headers={"Content-Type": "application/json"})
@@ -107,3 +109,19 @@ def test_mensajeria_conserva_denegacion_directa_de_convivencia():
     assert result.status_code == 403
     assert result.json() == {"detail": "No tienes acceso."}
     assert result.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("method,path",[("POST","/api/arriendos/7/expulsiones"),("GET","/api/arriendos/7/integrantes"),("GET","/api/arriendos/7/tareas"),("POST","/api/arriendos/7/tareas"),("PATCH","/api/tareas/9"),("PATCH","/api/tareas/9/estado")])
+def test_e05_retiro_integrantes_y_tareas_en_gateway(method,path):
+    body=b'{"id_usuario":2,"motivo":"Incumplimiento","confirmo":true}'
+    def handler(request):
+        assert request.url.host == "convivencia.test"
+        assert request.url.path == path
+        assert request.method == method
+        assert request.headers["authorization"] == "Bearer synthetic"
+        assert "x-roomies-service" not in request.headers
+        if method != "GET": assert request.content == body
+        return reply(200,content=b'{}',headers={"Cache-Control":"public"})
+    response=exercise(handler,method=method,path=path,settings=Settings(local_mode=True,convivencia_upstream="http://convivencia.test"),headers={"Authorization":"Bearer synthetic","X-Roomies-Service":"ignored"},content=body if method!="GET" else None)
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"

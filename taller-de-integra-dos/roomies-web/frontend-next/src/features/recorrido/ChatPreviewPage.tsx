@@ -5,11 +5,11 @@ import Link from "next/link";
 import PageHeader from "@/components/layout/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import type { ConversacionDto, MensajeDto } from "@/features/recorrido/types";
+import type { ConversacionDto, MensajeServicioDto } from "@/features/recorrido/types";
 import styles from "./ChatPreviewPage.module.css";
 
-type ChatMessage = MensajeDto & { key: string; state?: "sending" | "failed" };
-type ChatPage = { items: MensajeDto[]; siguiente_cursor: string | null };
+type ChatMessage = MensajeServicioDto & { key: string; state?: "sending" | "failed" };
+type ChatPage = { items: MensajeServicioDto[]; siguiente_cursor: string | null };
 
 export default function ChatPreviewPage() {
   const [conversationId, setConversationId] = useState<number | null>(null);
@@ -168,7 +168,7 @@ export default function ChatPreviewPage() {
         signal: requests.current?.signal,
       });
       if (!response.ok) throw Object.assign(Error("No se confirmó el envío. Puedes reintentar el mismo mensaje."), { status: response.status });
-      const saved: MensajeDto = await response.json();
+      const saved: MensajeServicioDto = await response.json();
       if (requestGeneration !== generation.current) return;
       setMessages((current) => current.map((message) => message.key === clientId ? { ...saved, key: clientId } : message));
     } catch (caught) {
