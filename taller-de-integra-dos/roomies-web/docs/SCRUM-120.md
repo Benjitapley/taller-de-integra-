@@ -14,6 +14,8 @@
 
 ## Estado de aceptación
 
+Revisión del 2026-11-25: [migraciones, SQL real y pendientes de aceptación web](evidence/E03/validacion-2026-11-25.md). PostgreSQL 19 en 5432 ya tiene `roomies_local` migrada y tres regresiones SQL aprobadas. Falta confirmar la configuración pública de Supabase Auth de staging y ejecutar la aceptación con dos identidades, Gateway y navegador. El registro anterior se conserva como evidencia histórica; el reporte enlazado contiene el estado actual.
+
 **Implementación web y backend integrada al contrato; aceptación funcional incompleta.** Se añadieron las rutas de Mensajería al servicio Convivencia y al Gateway, junto con la migración PostgreSQL `004_mensajeria.up.sql`. El servicio verifica la pertenencia activa en cada operación, limita el historial al ingreso y deduplica el envío por remitente/conversación/UUID. No se pudo comprobar persistencia entre dos integrantes ni denegación efectiva con cuentas reales porque este trabajo no se ejecutó contra una base migrada, Gateway y servicio desplegados. No declarar E03 completamente aceptado hasta ejecutar esos casos en ese entorno.
 
 ## Evidencia de esta revisión

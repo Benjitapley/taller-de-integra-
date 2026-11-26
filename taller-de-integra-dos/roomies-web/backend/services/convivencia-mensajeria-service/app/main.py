@@ -201,7 +201,7 @@ def create_app(instance=None, run_recovery=True):
         try:
             raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)).decode("ascii")
             owner, chat, message_id = raw.split(".")
-            if not all(part.isdigit() and int(part) > 0 for part in (owner, chat, message_id)):
+            if not all(part.isdigit() and 0 < int(part) <= 9223372036854775807 for part in (owner, chat, message_id)):
                 raise ValueError()
             if int(owner) != user_id or int(chat) != conversation_id:
                 raise ValueError()
@@ -209,7 +209,7 @@ def create_app(instance=None, run_recovery=True):
         except (ValueError, UnicodeDecodeError):
             raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422) from None
 
-    @application.get("/api/conversaciones/{id}/mensajes", response_model=MessagePage, response_model_exclude_none=True, responses=errors)
+    @application.get("/api/conversaciones/{id}/mensajes", response_model=MessagePage, responses=errors)
     def messages(
         id: Annotated[int, Path(gt=0, le=9223372036854775807)],
         antes: Annotated[str | None, Query(max_length=512)] = None,

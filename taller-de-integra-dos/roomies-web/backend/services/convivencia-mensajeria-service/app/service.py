@@ -1,5 +1,5 @@
 """Incorporación con reserva firme, respuesta durable y compensación por outbox."""
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from psycopg.types.json import Jsonb
 
@@ -9,6 +9,19 @@ from app.models import Incorporation, Reservation, ServiceError, unavailable
 class Convivencia:
     def __init__(self, repository, identity, publications):
         self.repository, self.identity, self.publications = repository, identity, publications
+
+    def dispatch_expulsions(self):
+        delivered = 0
+        with self.repository.transaction() as c:
+            events = c.execute("SELECT * FROM convivencia_mensajeria.expulsion_outbox WHERE NOT enviado ORDER BY id_expulsion LIMIT 20 FOR UPDATE SKIP LOCKED").fetchall()
+            for event in events:
+                try:
+                    self.publications.expulsion_occupancy(event["id_publicacion"], event["proyeccion"])
+                except Exception:
+                    continue
+                c.execute("UPDATE convivencia_mensajeria.expulsion_outbox SET enviado=true WHERE id_expulsion=%s", (event["id_expulsion"],))
+                delivered += 1
+        return delivered + self.dispatch_departures()
 
     def incorporate(self, key: UUID, payload: dict):
         result = self._incorporate(key, payload)
@@ -141,13 +154,14 @@ class Convivencia:
                 self._incorporate(operation["id_operacion"], operation["payload"])
             except Exception:
                 continue
-        self.dispatch_departures()
-        return self.dispatch()
+        return self.dispatch() + self.dispatch_expulsions()
 
 
-    def expel(self, rental_id, actor_id, data):
+    def expel(self, rental_id, actor_id, data, reason=None):
         from uuid import uuid4
         from app.models import Expulsion
+        if reason is not None:
+            data = {"id_usuario": data, "motivo": reason, "confirmo": True}
         data = Expulsion.model_validate(data).model_dump()
         with self.repository.transaction() as c:
             row = c.execute("SELECT * FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s", (rental_id,)).fetchone()
@@ -157,8 +171,13 @@ class Convivencia:
                 raise ServiceError("FORBIDDEN", "Solo el dueño del aviso puede retirar integrantes.", 403)
             c.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", (f"publicacion:{row['id_publicacion']}",))
             row = c.execute("SELECT * FROM convivencia_mensajeria.arriendo WHERE id_arriendo=%s FOR UPDATE", (rental_id,)).fetchone()
-            previous = c.execute("SELECT respuesta FROM convivencia_mensajeria.retiro WHERE id_arriendo=%s AND id_usuario=%s", (rental_id,data["id_usuario"])).fetchone()
+            previous = c.execute("SELECT motivo,respuesta FROM convivencia_mensajeria.retiro WHERE id_arriendo=%s AND id_usuario=%s", (rental_id,data["id_usuario"])).fetchone()
+            if previous is None:
+                # Los retiros de E03 anteriores al merge conservan su respuesta durable.
+                previous = c.execute("SELECT motivo,respuesta FROM convivencia_mensajeria.expulsion WHERE id_arriendo=%s AND id_usuario=%s", (rental_id,data["id_usuario"])).fetchone()
             if previous:
+                if previous["motivo"] != data["motivo"]:
+                    raise ServiceError("EXPULSION_CONFLICT", "El retiro ya fue registrado con otro motivo.", 409)
                 return previous["respuesta"]
             member = c.execute("SELECT * FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa' FOR UPDATE", (rental_id,data["id_usuario"])).fetchone()
             if member is None:
@@ -174,10 +193,12 @@ class Convivencia:
             notice = {"tipo":"expulsion","event_key":f"expulsion:{key}","id_usuario":data["id_usuario"],"referencia_id":rental_id}
             for action,payload in (("Ocupacion",projection),("Notificar",notice)):
                 c.execute("INSERT INTO convivencia_mensajeria.retiro_outbox(id_retiro,accion,payload) VALUES(%s,%s,%s)", (key,action,Jsonb(payload)))
+        self.dispatch_expulsions()
         return body
 
     def dispatch_departures(self):
         from backend.service_runtime.notifications import send_notification
+        delivered = 0
         with self.repository.transaction() as c:
             events = c.execute("SELECT * FROM convivencia_mensajeria.retiro_outbox WHERE NOT enviado ORDER BY ultimo_intento NULLS FIRST,id_retiro,accion LIMIT 20 FOR UPDATE SKIP LOCKED").fetchall()
             for event in events:
@@ -190,3 +211,5 @@ class Convivencia:
                 except Exception:
                     continue
                 c.execute("UPDATE convivencia_mensajeria.retiro_outbox SET enviado=true WHERE id_retiro=%s AND accion=%s", (event["id_retiro"],event["accion"]))
+                delivered += 1
+        return delivered

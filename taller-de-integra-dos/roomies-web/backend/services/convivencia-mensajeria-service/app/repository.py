@@ -96,14 +96,19 @@ class PostgresRepository:
     def messages(self, conversation_id, user_id, before_id, limit):
         with self.transaction() as c:
             _, membership = self._authorize_conversation(c, conversation_id, user_id, lock=True)
-            query = """SELECT id_mensaje,id_conversacion,id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio
-                FROM convivencia_mensajeria.mensaje
+            query = """SELECT id_mensaje,id_conversacion,id_emisor AS id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio
+                FROM convivencia_mensajeria.mensajes
                 WHERE id_conversacion=%s AND fecha_envio >= %s"""
             params = [conversation_id, membership["creada_en"]]
             if before_id is not None:
-                query += " AND id_mensaje < %s"
-                params.append(before_id)
-            query += " ORDER BY id_mensaje DESC LIMIT %s"
+                anchor = c.execute("""SELECT fecha_envio,id_mensaje FROM convivencia_mensajeria.mensajes
+                    WHERE id_conversacion=%s AND id_mensaje=%s AND fecha_envio >= %s""",
+                    (conversation_id, before_id, membership["creada_en"])).fetchone()
+                if anchor is None:
+                    raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422)
+                query += " AND (fecha_envio,id_mensaje) < (%s,%s)"
+                params.extend([anchor["fecha_envio"], anchor["id_mensaje"]])
+            query += " ORDER BY fecha_envio DESC,id_mensaje DESC LIMIT %s"
             params.append(limit + 1)
             rows = c.execute(query, params).fetchall()
             has_older = len(rows) > limit
@@ -114,17 +119,17 @@ class PostgresRepository:
     def send_message(self, conversation_id, user_id, display_name, content, client_id):
         with self.transaction() as c:
             self._authorize_conversation(c, conversation_id, user_id, lock=True)
-            row = c.execute("""INSERT INTO convivencia_mensajeria.mensaje
-                (id_conversacion,id_remitente,nombre_remitente,contenido,id_cliente)
+            row = c.execute("""INSERT INTO convivencia_mensajeria.mensajes
+                (id_conversacion,id_emisor,nombre_remitente,contenido,id_cliente)
                 VALUES(%s,%s,%s,%s,%s)
-                ON CONFLICT(id_conversacion,id_remitente,id_cliente) DO NOTHING
-                RETURNING id_mensaje,id_conversacion,id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio""",
+                ON CONFLICT(id_conversacion,id_emisor,id_cliente) DO NOTHING
+                RETURNING id_mensaje,id_conversacion,id_emisor AS id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio""",
                 (conversation_id, user_id, display_name, content, client_id)).fetchone()
             if row is not None:
                 return row
-            row = c.execute("""SELECT id_mensaje,id_conversacion,id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio
-                FROM convivencia_mensajeria.mensaje
-                WHERE id_conversacion=%s AND id_remitente=%s AND id_cliente=%s""",
+            row = c.execute("""SELECT id_mensaje,id_conversacion,id_emisor AS id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio
+                FROM convivencia_mensajeria.mensajes
+                WHERE id_conversacion=%s AND id_emisor=%s AND id_cliente=%s""",
                 (conversation_id, user_id, client_id)).fetchone()
             if row is None:
                 raise ServiceError("MESSAGE_RETRY_CONFLICT", "No se pudo confirmar el reintento.", 409)

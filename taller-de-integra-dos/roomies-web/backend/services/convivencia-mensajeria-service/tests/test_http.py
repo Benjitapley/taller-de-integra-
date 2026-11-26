@@ -162,6 +162,7 @@ def test_historial_chat_usa_cursor_anterior_y_oculta_uuid_de_otros(http):
     service.repository.messages.return_value = ([own], None)
     older = client.get("/api/conversaciones/12/mensajes?limite=1&antes=" + cursor)
     assert older.status_code == 200
+    assert older.json()["siguiente_cursor"] is None
     assert service.repository.messages.call_args.args == (12, 2, 23, 1)
 
 
@@ -202,8 +203,27 @@ def test_http_403_de_convivencia_no_expone_conversacion_por_id_directo(http, met
         result = client.post(path, json={"contenido": "No autorizado", "id_cliente": str(uuid4())})
     assert result.status_code == 403
     assert result.headers["Cache-Control"] == "no-store"
+    assert result.json()["codigo"] == "sin_permiso"
     if method == "post":
         service.repository.send_message.assert_called_once()
+
+
+def test_expulsion_deriva_actor_y_no_exige_clave_del_mensaje(http):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=1)
+    service.expel.return_value = {"id_usuario": 3, "estado": "Inactiva"}
+    response = client.post("/api/arriendos/4/expulsiones", json={"id_usuario": 3, "motivo": "Retiro de prueba", "confirmacion": True})
+    assert response.status_code == 200
+    service.expel.assert_called_once_with(4, 1, {"id_usuario": 3, "motivo": "Retiro de prueba", "confirmo": True})
+
+
+@pytest.mark.parametrize("changes", [{"confirmacion": False}, {"confirmacion": "true"}, {"motivo": " "}, {"motivo": "x" * 501}, {"id_usuario": True}, {"id_actor": 1}])
+def test_expulsion_rechaza_payload_no_confirmado_o_actor_inyectado(http, changes):
+    client, service, application = http
+    application.dependency_overrides[confirmed_actor] = lambda: SimpleNamespace(user_id=1)
+    response = client.post("/api/arriendos/4/expulsiones", json={"id_usuario": 3, "motivo": "Prueba", "confirmacion": True, **changes})
+    assert response.status_code == 422
+    service.expel.assert_not_called()
 
 
 @pytest.mark.parametrize("changes", [{"motivo":""},{"motivo":"  "},{"motivo":"x"*501},{"confirmo":False},{"confirmo":"true"},{"id_usuario":True},{"extra":1}])
