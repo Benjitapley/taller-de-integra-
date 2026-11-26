@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 import { CustomButton } from "@/components/CustomButton";
 import type { EstadoPerfilPropio } from "@/hooks/usePerfilPropio";
@@ -67,6 +68,22 @@ function SobreMi({ perfil }: { perfil: PerfilPropioVista }) {
   );
 }
 
+function AccesoMisPostulaciones() {
+  const router = useRouter();
+  return (
+    <View style={styles.tarjeta}>
+      <Text style={styles.titulo}>Mis postulaciones</Text>
+      <Text style={styles.textoSecundario}>Sigue el estado de tus postulaciones o retira las que sigan abiertas.</Text>
+      <CustomButton
+        titulo="Ver mis postulaciones"
+        variante="contorno"
+        iconoIzquierdo="document-text-outline"
+        onPress={() => router.push("/postulaciones")}
+      />
+    </View>
+  );
+}
+
 export function ContenidoPerfil({ estado, onReintentar }: {
   estado: EstadoPerfilPropio;
   onReintentar: () => void;
@@ -116,6 +133,7 @@ export function ContenidoPerfil({ estado, onReintentar }: {
         <Text style={styles.titulo}>Publicaciones activas</Text>
         <Text style={styles.textoSecundario}>No disponibles por el momento.</Text>
       </View>
+      <AccesoMisPostulaciones />
       <View style={styles.tarjeta}>
         <Text style={styles.titulo}>Evaluaciones recibidas</Text>
         <Text style={styles.textoSecundario}>Reputación y evaluaciones no disponibles por el momento.</Text>
