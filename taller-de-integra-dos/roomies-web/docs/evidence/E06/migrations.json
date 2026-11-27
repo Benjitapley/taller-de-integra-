@@ -1,0 +1,83 @@
+{
+  "version": "17.6 (Debian 17.6-2.pgdg13+1)",
+  "reportes_role_minimal": true,
+  "reportes_tables": [
+    {
+      "table": "reporte",
+      "rls": true
+    },
+    {
+      "table": "reporte_historial",
+      "rls": true
+    },
+    {
+      "table": "outbox",
+      "rls": true
+    },
+    {
+      "table": "operacion_envio",
+      "rls": true
+    }
+  ],
+  "match_history": "match_conexion.relacion_aceptada",
+  "reportes_cannot_read_connections": true,
+  "match_cannot_read_reports": true,
+  "migrations": [
+    {
+      "path": "supabase-business-snapshot",
+      "sha256": "881af81d9713282962d195cfdd9b91aaac0138c561c85bb61d802843c9b25031",
+      "applied_at": "2026-11-27T00:28:47.196845+00:00"
+    },
+    {
+      "path": "convivencia/005_mensajeria_historial.up.sql",
+      "sha256": "8feb9ac7ad2fa4bd45b08df8124b4f5ebeeab8c7b95ccf3abe2452ecded092d6",
+      "applied_at": "2026-11-27T00:31:55.101005+00:00"
+    },
+    {
+      "path": "convivencia/005_retiro.up.sql",
+      "sha256": "aa78b9beaa82eadc57f92c54b21056afa7c0f835215b65320a63f85ae5a07b7e",
+      "applied_at": "2026-11-27T00:31:55.135975+00:00"
+    },
+    {
+      "path": "convivencia/006_mensajes_nombres.up.sql",
+      "sha256": "f546291f17fe48b59d5e603a66283ba818f2cda937a6e07d3e946f8e1eb93e57",
+      "applied_at": "2026-11-27T00:31:55.139612+00:00"
+    },
+    {
+      "path": "convivencia/006_tareas_reasignables.up.sql",
+      "sha256": "edeb6afbe57572a7ce9e48fb333cafb7eb92df799cad2fe15d6b03a141eb36d0",
+      "applied_at": "2026-11-27T00:31:55.144427+00:00"
+    },
+    {
+      "path": "convivencia/007_expulsiones.up.sql",
+      "sha256": "3655dfcea77d3c44dea03f186e2f241ee24d2377cd46021d81247ecae877605c",
+      "applied_at": "2026-11-27T00:31:55.165943+00:00"
+    },
+    {
+      "path": "kubero/clp-and-occupancy-v1",
+      "sha256": "55d45be5baa58b5e71714123db6951cd20305814efaa6888af9a5cbf267ec04c",
+      "applied_at": "2026-11-27T00:31:55.183206+00:00"
+    },
+    {
+      "path": "backend/services/match-conexion-service/migrations/001_relacion_aceptada.up.sql",
+      "sha256": "308bc00172596d18f46818ce8419ec986ddb22b589cb785b281d1271a4ee6b55",
+      "applied_at": "2026-11-27T02:59:26.101947+00:00"
+    },
+    {
+      "path": "backend/services/reportes-service/migrations/001_reportes.up.sql",
+      "sha256": "311dfa24f1b8661f1d9c3e6962ef621f1ee30d3457ccabeaead2155a417d8825",
+      "applied_at": "2026-11-27T02:59:26.105309+00:00"
+    },
+    {
+      "path": "backend/services/reportes-service/migrations/002_revision.up.sql",
+      "sha256": "42e7e459d055ed6a4076f158e4fabee17f0f0df8396affeeb0d8e282de4476a4",
+      "applied_at": "2026-11-27T02:59:26.108442+00:00"
+    },
+    {
+      "path": "backend/services/reportes-service/migrations/003_envio_idempotente.up.sql",
+      "sha256": "c9107cbb639d390e565fe6459b300f1cad264c607c33e937ceacabb0b970c50c",
+      "applied_at": "2026-11-27T02:59:26.111441+00:00"
+    }
+  ],
+  "at": "2026-11-27T03:10:28.093149+00:00"
+}

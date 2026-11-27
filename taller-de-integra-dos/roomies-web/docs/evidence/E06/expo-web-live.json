@@ -1,0 +1,14 @@
+{
+  "at": "2026-11-27T03:01:56.721Z",
+  "environment": "Expo SDK 57 export web; Chromium 390x844; Gateway real Kubero TEST; no dispositivo físico",
+  "checks": [
+    "catalogo-real",
+    "reportes-persistidos",
+    "arriendo-real",
+    "chat-envio-y-relectura",
+    "crear-tarea-real",
+    "perfil-editado-y-releido",
+    "personas-sin-mocks"
+  ],
+  "errors": []
+}

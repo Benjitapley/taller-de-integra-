@@ -1,0 +1,416 @@
+{
+  "environment": "PostgreSQL efímero; FastAPI real; Auth y puertos entre servicios inyectados; no Expo ni Kubero",
+  "examples": [
+    {
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 200,
+      "response": {
+        "id_responsable": 2,
+        "estado": "Activo",
+        "id_arriendo": 1,
+        "id_publicacion": 7,
+        "cupos_totales": 2,
+        "version_capacidad": 1,
+        "ocupacion": 2
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/arriendos/1",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 200,
+      "response": {
+        "id_responsable": 2,
+        "estado": "Activo",
+        "id_arriendo": 1,
+        "id_publicacion": 7,
+        "cupos_totales": 2,
+        "version_capacidad": 1,
+        "ocupacion": 2
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/arriendos/1/integrantes?limite=1",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "id_usuario": 2,
+            "nombre": null,
+            "fecha_ingreso": "2026-11-26T23:10:26.101249-03:00",
+            "activo": true,
+            "es_responsable": true
+          }
+        ],
+        "siguiente_cursor": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZW50YWwiOjEsImFjdG9yIjoyLCJsaW1pdCI6MSwiYWZ0ZXIiOjF9.1ydE192LonRvR7_5x5z0rGizk1yyMk-GOuA2rJTg5ME",
+        "puede_retirar": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/arriendos/1/integrantes?limite=1&cursor=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZW50YWwiOjEsImFjdG9yIjoyLCJsaW1pdCI6MSwiYWZ0ZXIiOjF9.1ydE192LonRvR7_5x5z0rGizk1yyMk-GOuA2rJTg5ME",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "id_usuario": 3,
+            "nombre": null,
+            "fecha_ingreso": "2026-11-26T23:10:26.477070-03:00",
+            "activo": true,
+            "es_responsable": false
+          }
+        ],
+        "siguiente_cursor": null,
+        "puede_retirar": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/arriendos/1/integrantes?cursor=invalid",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 422,
+      "response": {
+        "detail": "Cursor inválido.",
+        "code": "INVALID_CURSOR"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversaciones?limite=20",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "id_conversacion": 1,
+            "id_arriendo": 1,
+            "fecha_creacion": "2026-11-26T23:10:26.092522-03:00"
+          }
+        ],
+        "siguiente_cursor": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversaciones/1",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 200,
+      "response": {
+        "id_conversacion": 1,
+        "id_arriendo": 1,
+        "fecha_creacion": "2026-11-26T23:10:26.092522-03:00"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversaciones/1/mensajes",
+      "actor_fixture": 2,
+      "body": {
+        "contenido": "Mensaje ficticio 0",
+        "id_cliente": "f9babb3d-318b-41fb-b840-8e33d95808ad"
+      },
+      "status": 200,
+      "response": {
+        "id_mensaje": 1,
+        "id_conversacion": 1,
+        "id_remitente": 2,
+        "nombre_remitente": "E06 ficticio",
+        "contenido": "Mensaje ficticio 0",
+        "fecha_envio": "2026-11-26T23:10:28.541661-03:00",
+        "id_cliente": "f9babb3d-318b-41fb-b840-8e33d95808ad"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversaciones/1/mensajes",
+      "actor_fixture": 2,
+      "body": {
+        "contenido": "Mensaje ficticio 1",
+        "id_cliente": "5e733d1c-2ac3-4ab2-a2a3-aad3d9740352"
+      },
+      "status": 200,
+      "response": {
+        "id_mensaje": 2,
+        "id_conversacion": 1,
+        "id_remitente": 2,
+        "nombre_remitente": "E06 ficticio",
+        "contenido": "Mensaje ficticio 1",
+        "fecha_envio": "2026-11-26T23:10:28.738199-03:00",
+        "id_cliente": "5e733d1c-2ac3-4ab2-a2a3-aad3d9740352"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversaciones/1/mensajes",
+      "actor_fixture": 2,
+      "body": {
+        "contenido": "Mensaje ficticio 2",
+        "id_cliente": "1f598f0d-1245-4f5f-9b74-c811ed36bd14"
+      },
+      "status": 200,
+      "response": {
+        "id_mensaje": 3,
+        "id_conversacion": 1,
+        "id_remitente": 2,
+        "nombre_remitente": "E06 ficticio",
+        "contenido": "Mensaje ficticio 2",
+        "fecha_envio": "2026-11-26T23:10:28.937640-03:00",
+        "id_cliente": "1f598f0d-1245-4f5f-9b74-c811ed36bd14"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversaciones/1/mensajes?limite=1",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "id_mensaje": 3,
+            "id_conversacion": 1,
+            "id_remitente": 2,
+            "nombre_remitente": "E06 ficticio",
+            "contenido": "Mensaje ficticio 2",
+            "fecha_envio": "2026-11-26T23:10:28.937640-03:00",
+            "id_cliente": "1f598f0d-1245-4f5f-9b74-c811ed36bd14"
+          }
+        ],
+        "siguiente_cursor": "Mi4xLjM"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversaciones/1/mensajes?limite=1&antes=Mi4xLjM",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "id_mensaje": 2,
+            "id_conversacion": 1,
+            "id_remitente": 2,
+            "nombre_remitente": "E06 ficticio",
+            "contenido": "Mensaje ficticio 1",
+            "fecha_envio": "2026-11-26T23:10:28.738199-03:00",
+            "id_cliente": "5e733d1c-2ac3-4ab2-a2a3-aad3d9740352"
+          }
+        ],
+        "siguiente_cursor": "Mi4xLjI"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/arriendos/1/tareas",
+      "actor_fixture": 2,
+      "body": {
+        "titulo": "Tarea ficticia 0",
+        "id_asignado": 3
+      },
+      "status": 201,
+      "response": {
+        "id_tarea": 1,
+        "id_arriendo": 1,
+        "titulo": "Tarea ficticia 0",
+        "descripcion": null,
+        "estado": "Pendiente",
+        "id_creador": 2,
+        "id_asignado": 3,
+        "fecha_creacion": "2026-11-26T23:10:29.829400-03:00"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/arriendos/1/tareas",
+      "actor_fixture": 2,
+      "body": {
+        "titulo": "Tarea ficticia 1",
+        "id_asignado": 3
+      },
+      "status": 201,
+      "response": {
+        "id_tarea": 2,
+        "id_arriendo": 1,
+        "titulo": "Tarea ficticia 1",
+        "descripcion": null,
+        "estado": "Pendiente",
+        "id_creador": 2,
+        "id_asignado": 3,
+        "fecha_creacion": "2026-11-26T23:10:30.091705-03:00"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/arriendos/1/tareas",
+      "actor_fixture": 2,
+      "body": {
+        "titulo": "Tarea ficticia 2",
+        "id_asignado": 3
+      },
+      "status": 201,
+      "response": {
+        "id_tarea": 3,
+        "id_arriendo": 1,
+        "titulo": "Tarea ficticia 2",
+        "descripcion": null,
+        "estado": "Pendiente",
+        "id_creador": 2,
+        "id_asignado": 3,
+        "fecha_creacion": "2026-11-26T23:10:30.275644-03:00"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/arriendos/1/tareas?limite=1&estado=Pendiente",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "id_tarea": 3,
+            "id_arriendo": 1,
+            "titulo": "Tarea ficticia 2",
+            "descripcion": null,
+            "estado": "Pendiente",
+            "id_creador": 2,
+            "id_asignado": 3,
+            "fecha_creacion": "2026-11-26T23:10:30.275644-03:00"
+          }
+        ],
+        "siguiente_cursor": "Mi4xLlBlbmRpZW50ZS4z",
+        "id_usuario_actual": 2
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/arriendos/1/tareas?limite=1&estado=Pendiente&cursor=Mi4xLlBlbmRpZW50ZS4z",
+      "actor_fixture": 2,
+      "body": null,
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "id_tarea": 2,
+            "id_arriendo": 1,
+            "titulo": "Tarea ficticia 1",
+            "descripcion": null,
+            "estado": "Pendiente",
+            "id_creador": 2,
+            "id_asignado": 3,
+            "fecha_creacion": "2026-11-26T23:10:30.091705-03:00"
+          }
+        ],
+        "siguiente_cursor": "Mi4xLlBlbmRpZW50ZS4y",
+        "id_usuario_actual": 2
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tareas/1",
+      "actor_fixture": 2,
+      "body": {
+        "id_asignado": 3
+      },
+      "status": 200,
+      "response": {
+        "id_tarea": 1,
+        "id_arriendo": 1,
+        "titulo": "Tarea ficticia 0",
+        "descripcion": null,
+        "estado": "Pendiente",
+        "id_creador": 2,
+        "id_asignado": 3,
+        "fecha_creacion": "2026-11-26T23:10:29.829400-03:00"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tareas/1/estado",
+      "actor_fixture": 2,
+      "body": {
+        "estado": "Completada"
+      },
+      "status": 403,
+      "response": {
+        "detail": "Solo el asignado puede completar la tarea.",
+        "code": "TASK_FORBIDDEN",
+        "codigo": "sin_permiso"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tareas/1/estado",
+      "actor_fixture": 3,
+      "body": {
+        "estado": "Completada"
+      },
+      "status": 200,
+      "response": {
+        "id_tarea": 1,
+        "id_arriendo": 1,
+        "titulo": "Tarea ficticia 0",
+        "descripcion": null,
+        "estado": "Completada",
+        "id_creador": 2,
+        "id_asignado": 3,
+        "fecha_creacion": "2026-11-26T23:10:29.829400-03:00"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/arriendos/1/expulsiones",
+      "actor_fixture": 1,
+      "body": {
+        "id_usuario": 3,
+        "motivo": "Fin de prueba ficticia",
+        "confirmo": true
+      },
+      "status": 200,
+      "response": {
+        "id_arriendo": 1,
+        "id_usuario": 3,
+        "estado": "Activo",
+        "integrantes_activos": 1,
+        "cupos_disponibles": 1
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/arriendos/1/tareas",
+      "actor_fixture": 3,
+      "body": null,
+      "status": 403,
+      "response": {
+        "detail": "No perteneces a este arriendo.",
+        "code": "TASK_FORBIDDEN",
+        "codigo": "sin_permiso"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversaciones/1/mensajes",
+      "actor_fixture": 3,
+      "body": null,
+      "status": 403,
+      "response": {
+        "detail": "No tienes acceso a esta conversación.",
+        "code": "CONVERSATION_FORBIDDEN",
+        "codigo": "sin_permiso"
+      }
+    }
+  ]
+}

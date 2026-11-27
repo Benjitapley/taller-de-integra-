@@ -4,16 +4,13 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { CustomButton } from "@/components/CustomButton";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { iniciarCicloSesionSupabase } from "@/lib/supabase";
-import { ConvivenciaDemoProvider } from "@/components/convivencia/ConvivenciaDemoProvider";
 
 export default function RootLayout() {
   useEffect(() => iniciarCicloSesionSupabase(), []);
 
   return (
     <AuthProvider>
-      <ConvivenciaDemoProvider>
         <NavegacionPrincipal />
-      </ConvivenciaDemoProvider>
     </AuthProvider>
   );
 }
@@ -50,6 +47,17 @@ function NavegacionPrincipal() {
       <Stack.Screen name="auth/callback" />
       <Stack.Protected guard={estaAutenticado}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="reportes" options={{ headerShown: true, title: "Reportes" }} />
+        <Stack.Screen name="personas" options={{ headerShown: true, title: "Personas" }} />
+        <Stack.Screen name="conexiones" options={{ headerShown: true, title: "Conexiones" }} />
+        <Stack.Screen name="convivencia/formulario" options={{ headerShown: true, title: "Tarea" }} />
+        <Stack.Screen name="notificaciones" options={{ headerShown: true, title: "Notificaciones" }} />
+        <Stack.Screen name="mis-publicaciones" options={{ headerShown: true, title: "Mis publicaciones" }} />
+        <Stack.Screen name="postulaciones/index" options={{ headerShown: true, title: "Mis postulaciones" }} />
+        <Stack.Screen name="postulantes/[id]" options={{ headerShown: true, title: "Postulantes" }} />
+        <Stack.Screen name="arriendos/[id]" options={{ headerShown: true, title: "Integrantes" }} />
+        <Stack.Screen name="usuario/[id]" options={{ headerShown: true, title: "Perfil público" }} />
+        <Stack.Screen name="publicacion/crear/arrendador" options={{ headerShown: true, title: "Publicación" }} />
         <Stack.Screen
           name="convivencia/tareas"
           options={{

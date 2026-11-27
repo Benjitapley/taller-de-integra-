@@ -1,6 +1,7 @@
 import { solicitarJson } from "@/services/httpClient";
 import type { ErrorHttp } from "@/types/Http";
 import type { EstadoPostulacion, Postulacion } from "@/types/Postulacion";
+import type { ResultadoPagina } from "@/services/listaPaginada";
 
 export type EstadoPostulacionDto = EstadoPostulacion;
 
@@ -90,9 +91,7 @@ export async function postularAPublicacion(
 
 export const RUTA_MIS_POSTULACIONES = "/api/postulaciones/mias";
 
-export type ResultadoMisPostulaciones =
-  | { exito: true; datos: Postulacion[]; estadoHttp: number }
-  | ErrorHttp;
+export type ResultadoMisPostulaciones = ResultadoPagina<Postulacion>;
 
 // Convierte una fila del backend (snake_case) al modelo de la app. Devuelve null
 // si falta algo esencial o el estado no es uno de los conocidos: nunca se
@@ -131,9 +130,12 @@ function leerPostulacionPropia(fila: unknown): Postulacion | null {
 
 /** Postulaciones de la persona con sesión, de la más reciente a la más antigua. */
 export async function obtenerMisPostulaciones(
+  cursor?: string,
   enviar: EnviarPostulacion = solicitarJson,
 ): Promise<ResultadoMisPostulaciones> {
-  const resultado = await enviar(RUTA_MIS_POSTULACIONES);
+  const parametros = new URLSearchParams({ limite: "20" });
+  if (cursor) parametros.set("cursor", cursor);
+  const resultado = await enviar(`${RUTA_MIS_POSTULACIONES}?${parametros}`);
   if (!resultado.exito) return resultado;
 
   const respuestaInvalida: ErrorHttp = {
@@ -143,14 +145,16 @@ export async function obtenerMisPostulaciones(
     estadoHttp: resultado.estadoHttp,
   };
 
-  if (!Array.isArray(resultado.datos)) return respuestaInvalida;
+  if (typeof resultado.datos !== "object" || resultado.datos === null) return respuestaInvalida;
+  const { items, siguiente_cursor } = resultado.datos as Record<string, unknown>;
+  if (!Array.isArray(items) || !(siguiente_cursor === null || (typeof siguiente_cursor === "string" && siguiente_cursor.length > 0))) return respuestaInvalida;
 
   const postulaciones: Postulacion[] = [];
-  for (const fila of resultado.datos) {
+  for (const fila of items) {
     const postulacion = leerPostulacionPropia(fila);
     // Una fila ilegible invalida toda la respuesta: no se muestra una lista a medias.
     if (!postulacion) return respuestaInvalida;
     postulaciones.push(postulacion);
   }
-  return { exito: true, datos: postulaciones, estadoHttp: resultado.estadoHttp };
+  return { exito: true, datos: { items: postulaciones, siguiente_cursor }, estadoHttp: resultado.estadoHttp };
 }

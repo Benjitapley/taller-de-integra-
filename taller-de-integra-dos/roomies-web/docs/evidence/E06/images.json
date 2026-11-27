@@ -1,0 +1,38 @@
+{
+  "gateway": {
+    "image": "ghcr.io/benjitapley/roomies-e05-api-gateway:sha-5af51a981b91ecc1df5ca652828b4740a6b504a2",
+    "digest": "sha256:865029d9977fb532f9dcdd03e1e85ecbc34f749c553b6bea5e62d60dc83cbb61",
+    "source_revision": "5af51a981b91ecc1df5ca652828b4740a6b504a2",
+    "label_verified": true
+  },
+  "auth": {
+    "image": "ghcr.io/benjitapley/roomies-auth-users:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+    "digest": "sha256:b004cbf7ddc5df719a487771041b5d3ba20f4d92aa1a209451663b75b4283939",
+    "source_revision": "eca88225c21a78a91fef150f5dda767bdf61c0bd",
+    "label_verified": true
+  },
+  "listado": {
+    "image": "ghcr.io/benjitapley/roomies-listado-applications:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+    "digest": "sha256:b561cd15ac7e7f909705b2069369c766f91c4d7107df7716f3f943976ccb45dc",
+    "source_revision": "eca88225c21a78a91fef150f5dda767bdf61c0bd",
+    "label_verified": true
+  },
+  "convivencia": {
+    "image": "ghcr.io/benjitapley/roomies-convivencia-mensajeria:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+    "digest": "sha256:5a3482ec8446327dddb4064a50e9f6b8d0721988ba43281cd3983737894bbafd",
+    "source_revision": "eca88225c21a78a91fef150f5dda767bdf61c0bd",
+    "label_verified": true
+  },
+  "reportes": {
+    "image": "ghcr.io/benjitapley/roomies-reportes:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+    "digest": "sha256:b4920d7ce7d5239e399a99e683e2d77ddc727311ae9ce9a5ee850ab6f9812145",
+    "source_revision": "eca88225c21a78a91fef150f5dda767bdf61c0bd",
+    "label_verified": true
+  },
+  "match": {
+    "image": "ghcr.io/benjitapley/roomies-match-conexion:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+    "digest": "sha256:641e2ec2de53997fe75586d1ab0bdd35e745ee0c1e959902f27687d8401e1c58",
+    "source_revision": "eca88225c21a78a91fef150f5dda767bdf61c0bd",
+    "label_verified": true
+  }
+}

@@ -2,7 +2,7 @@ name: Roomies TEST images
 
 on:
   push:
-    branches: [deploy/e04-kubero-test, deploy/e05-kubero-test]
+    branches: [deploy/e04-kubero-test, deploy/e05-kubero-test, deploy/e06-kubero-test]
   workflow_dispatch:
 
 permissions:
@@ -33,6 +33,12 @@ jobs:
           - service: listado-applications
             context: taller-de-integra-dos/roomies-web
             dockerfile: taller-de-integra-dos/roomies-web/backend/services/listado-applications-service/Dockerfile
+          - service: reportes
+            context: taller-de-integra-dos/roomies-web
+            dockerfile: taller-de-integra-dos/roomies-web/backend/services/reportes-service/Dockerfile
+          - service: match-conexion
+            context: taller-de-integra-dos/roomies-web
+            dockerfile: taller-de-integra-dos/roomies-web/backend/services/match-conexion-service/Dockerfile
     steps:
       - name: Fetch exact public source revision
         env:

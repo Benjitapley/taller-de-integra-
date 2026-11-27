@@ -18,7 +18,7 @@ from backend.service_runtime.contracts import DependencyUnavailable
 from backend.service_runtime.http import configure
 from backend.service_runtime.security import confirmed_actor, access_token
 from backend.service_runtime.reporting_security import verify_report_service
-from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, Conversation, Message, MessageCreate, MessagePage, Expulsion, Task, TaskPage, TaskCreate, TaskAssign, TaskState, unavailable
+from app.models import ErrorResponse, Incorporation, Receipt, Rental, ServiceError, Conversation, ConversationPage, Message, MessageCreate, MessagePage, Expulsion, Task, TaskPage, TaskCreate, TaskAssign, TaskState, unavailable
 from app.ports import HttpIdentity, HttpPublications
 from app.repository import PostgresRepository
 from app.service import Convivencia
@@ -149,7 +149,7 @@ def create_app(instance=None, run_recovery=True):
     @application.get("/api/arriendos/{id}/integrantes")
     def members(id: Annotated[int, Path(gt=0, le=9223372036854775807)],
                 limite: Annotated[int, Query(ge=1, le=100)] = 20,
-                cursor: str | None = None, identity=Depends(confirmed_actor),
+                cursor: Annotated[str | None, Query(min_length=1, max_length=2048)] = None, identity=Depends(confirmed_actor),
                 token=Depends(access_token), application_service=Depends(service)):
         secret = os.environ.get("ROOMIES_INTERNAL_TOKEN", "")
         if len(secret) < 32:
@@ -159,7 +159,7 @@ def create_app(instance=None, run_recovery=True):
         if cursor is not None:
             try:
                 value = jwt.decode(cursor, secret, algorithms=["HS256"])
-                if any(value.get(k) != v for k, v in context.items()) or type(value.get("after")) is not int or value["after"] < 1:
+                if any(value.get(k) != v for k, v in context.items()) or type(value.get("after")) is not int or not 0 < value["after"] <= 9223372036854775807:
                     raise ValueError()
                 after = value["after"]
             except Exception:
@@ -181,9 +181,26 @@ def create_app(instance=None, run_recovery=True):
                   "es_responsable": row["es_responsable"]} for row in rows[:limite]], "siguiente_cursor": next_cursor,
                 "puede_retirar": owner is True}
 
-    @application.get("/api/conversaciones", responses=errors)
-    def conversations(identity=Depends(confirmed_actor), application_service=Depends(service)):
-        return {"items": application_service.repository.conversations(identity.user_id)}
+    @application.get("/api/conversaciones", response_model=ConversationPage, responses=errors)
+    def conversations(limite: Annotated[int, Query(ge=1, le=100)] = 20,
+                      cursor: Annotated[str | None, Query(min_length=1, max_length=1024)] = None,
+                      identity=Depends(confirmed_actor), application_service=Depends(service)):
+        secret = os.environ.get("ROOMIES_INTERNAL_TOKEN", "")
+        if len(secret) < 32:
+            raise unavailable()
+        context = {"kind": "conversations", "actor": identity.user_id, "limit": limite}
+        after = 0
+        if cursor is not None:
+            try:
+                value = jwt.decode(cursor, secret, algorithms=["HS256"])
+                if any(value.get(k) != v for k, v in context.items()) or type(value.get("after")) is not int or not 0 < value["after"] <= 9223372036854775807:
+                    raise ValueError()
+                after = value["after"]
+            except (jwt.PyJWTError, ValueError, TypeError):
+                raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422) from None
+        rows = application_service.repository.conversations(identity.user_id, after, limite)
+        next_cursor = jwt.encode({**context, "after": rows[limite - 1]["id_conversacion"]}, secret, algorithm="HS256") if len(rows) > limite else None
+        return {"items": rows[:limite], "siguiente_cursor": next_cursor}
 
     @application.get("/api/conversaciones/{id}", response_model=Conversation, responses=errors)
     def conversation(id: Annotated[int, Path(gt=0, le=9223372036854775807)], identity=Depends(confirmed_actor), application_service=Depends(service)):

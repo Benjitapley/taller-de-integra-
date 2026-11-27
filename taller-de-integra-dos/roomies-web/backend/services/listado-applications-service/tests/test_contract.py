@@ -139,6 +139,24 @@ def test_mas_de_dos_paginas_fechas_empatadas_y_cuenta(repository,admin_connectio
     assert web.get("/api/publicaciones/mias",params={"limite":2,"cursor":first}).status_code==422
 
 
+@pytest.mark.parametrize("path", ["/api/publicaciones", "/api/publicaciones/mias"])
+def test_e06_catalogo_y_propias_tres_paginas_completas(repository, admin_connection, path):
+    ids = [add(repository) for _ in range(53)]
+    admin_connection.execute("UPDATE listado_applications.publicacion SET fecha_publicacion='2026-11-26T12:00:00Z'")
+    web, _ = client(repository)
+    seen, cursor, pages = [], None, 0
+    while True:
+        result = web.get(path, params={"limite": 20, **({"cursor": cursor} if cursor else {})})
+        assert result.status_code == 200, result.text
+        page = result.json()
+        seen.extend(row["id_publicacion"] for row in page["items"])
+        pages += 1
+        cursor = page["siguiente_cursor"]
+        if cursor is None:
+            break
+    assert pages == 3 and seen == sorted(ids, reverse=True) and len(set(seen)) == 53
+
+
 def test_filtro_cupos_exactos_con_confirmacion_retiro_y_cursor(repository):
     ids=[add(repository) for _ in range(6)]
     web,publications=client(repository)

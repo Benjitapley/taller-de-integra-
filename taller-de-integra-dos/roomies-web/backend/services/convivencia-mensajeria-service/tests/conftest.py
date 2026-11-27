@@ -108,3 +108,7 @@ def repository():
 def service(repository, ports):
     from app.service import Convivencia
     return Convivencia(repository, *ports)
+
+
+def pytest_addoption(parser):
+    parser.addoption("--e06-examples", default=None, help="Destino opcional de ejemplos HTTP del laboratorio E06.")

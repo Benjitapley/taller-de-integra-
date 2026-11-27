@@ -11,6 +11,19 @@ const compilado = ts.transpileModule(fuente, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
+test("idempotencia conserva clave y Bearer; rechaza claves inválidas antes de la sesión", async () => {
+  const client = preparar();
+  await client.solicitar("/api/reportes", { metodo: "POST", cuerpo: {}, claveIdempotencia: "e06-operation" });
+  assert.equal(client.llamadas[0].opciones.headers["Idempotency-Key"], "e06-operation");
+  assert.equal(client.llamadas[0].opciones.headers.Authorization, "Bearer token-ficticio-para-pruebas");
+  const invalid = preparar();
+  for (const claveIdempotencia of ["", "bad key", "x\r\nAuthorization: evil", "x".repeat(81)]) {
+    assert.equal((await invalid.solicitar("/api/reportes", { metodo: "POST", cuerpo: {}, claveIdempotencia })).codigo, "peticion_invalida");
+  }
+  assert.equal(invalid.consultasSesion(), 0);
+  assert.equal(invalid.llamadas.length, 0);
+});
+
 function preparar({
   base = "https://api.example.invalid/v1",
   token = "token-ficticio-para-pruebas",

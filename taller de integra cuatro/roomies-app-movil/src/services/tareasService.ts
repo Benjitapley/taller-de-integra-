@@ -20,7 +20,7 @@ type Transporte = typeof solicitarJson;
 const idValido = (valor: unknown): valor is number => typeof valor === "number" && Number.isSafeInteger(valor) && valor > 0;
 const errorRespuesta = (): ErrorHttp => ({ exito: false, codigo: "respuesta_invalida", error: "La respuesta de tareas no tiene el formato esperado." });
 
-function tarea(valor: unknown): valor is TareaApi {
+export function tarea(valor: unknown): valor is TareaApi {
   if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
   const item = valor as Record<string, unknown>;
   return idValido(item.id_tarea) && idValido(item.id_arriendo) && idValido(item.id_creador) &&

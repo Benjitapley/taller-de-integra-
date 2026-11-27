@@ -1,0 +1,16 @@
+{
+  "at": "2026-11-27T03:09:13.504Z",
+  "environment": "Expo SDK 57 web, Chromium 390x844, APIs reales Kubero TEST; no teléfono físico",
+  "publication_created": 38,
+  "rental_closed": 2,
+  "checks": [
+    "crear-publicacion-multipart-con-selector",
+    "editar-precio-conservando-foto",
+    "enviar-reporte-y-seguir-tras-recarga",
+    "cerrar-publicacion-propia",
+    "retiro-revoca-chat-abierto",
+    "ultimo-retiro-finaliza-y-persiste"
+  ],
+  "errors": [],
+  "execution_notes": "Los pasos de creación, edición, reporte, cierre y retiro se ejecutaron con éxito; un timeout en la última lectura se revalidó entrando de nuevo y recargando el arriendo finalizado. Las comprobaciones se reúnen de esas ejecuciones sobre las mismas entidades."
+}

@@ -62,7 +62,7 @@ Los siguientes hitos son fechas del backlog.
 | 21/11 | B04: operación real por servicio y datos de destino; dependencias A02/C02/F01/A03 disponibles. | Parra coordina la recepción | **Pendiente**; verificar dependencias por servicio. |
 | 24/11 | Primera prueba cruzada E04 en teléfono físico; tarea creada en web y completada en móvil. | Gabriel con TI4 | Cliente Expo local conectado al contrato y comprobado con tipos/lint/prueba aislada; **prueba física y Gateway compartido pendientes**. |
 | 25/11 | Candidato preliminar, SHA, imágenes, migraciones, contrato y versión móvil identificados. | Parra | **Pendiente**. |
-| 26/11 | Validaciones A06/C06/D06/E06 y B06 candidato final aprobado. | Responsables por paquete | **Pendiente**; no cerrar por solo disponer de health. |
+| 26/11 | Validaciones A06/C06/D06/E06 y B06 candidato final aprobado. | Responsables por paquete | E06: correcciones y QA local registradas en [SCRUM-123](../SCRUM-123.md). Actualización 27/11: Reportes y contrato paginado desplegados en TEST, digests registrados y cliente Expo conectado/verificado en navegador. **B06 pendiente**: persona TI4, build/prueba física, aceptación de Next publicado y actas. No equivale a aprobación. |
 | 27/11–01/12 | Cierre, defectos, restauración, evidencia, documentación y ensayo; sin nuevas funciones. | Equipo | **Planificado, no ejecutado**. |
 | 02/12 | Presentación del candidato verificado. | Equipo TI2/TI4 | **Planificado**. |
 

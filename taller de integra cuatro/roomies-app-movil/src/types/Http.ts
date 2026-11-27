@@ -22,6 +22,8 @@ export type ResultadoHttp =
   | ErrorHttp;
 
 export interface OpcionesPeticionHttp {
+  /** Clave estable de una mutación; no se permiten cabeceras de identidad. */
+  claveIdempotencia?: string;
   metodo?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   cuerpo?: unknown;
   /** Las peticiones son protegidas salvo que se indique false explícitamente. */

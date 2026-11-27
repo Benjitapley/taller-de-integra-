@@ -1,6 +1,5 @@
 import { ENVIAR_DETALLE_MASCOTAS, ENVIAR_ENLACE_REFERENCIA } from "@/constants/camposPublicacion";
 import { solicitarFormulario } from "@/services/httpClient";
-import { publicacionesMock } from "@/mocks/publicaciones";
 import type { ErrorHttp } from "@/types/Http";
 import type {
   CategoriaPublicacionDto,
@@ -14,7 +13,6 @@ import type {
   TipoMascota,
   TipoPublicacion,
   TipoVivienda,
-  Publicacion,
 } from "@/types/Publicacion";
 
 // Las banderas ENVIAR_* viven en constants/camposPublicacion.ts: también las usan
@@ -22,9 +20,8 @@ import type {
 export { ENVIAR_DETALLE_MASCOTAS, ENVIAR_ENLACE_REFERENCIA };
 
 // Servicio de publicaciones. Este archivo es compartido con la búsqueda
-// (M4-B07, M4-B08): las funciones de listado y detalle se agregan aquí, no en
-// un segundo servicio. M4-C07 cubre la creación; B08-B10 conservan por ahora
-// su fuente demostrativa hasta confirmar y conectar el contrato de consulta.
+// La navegación actual consulta el contrato canónico en roomiesApi.
+// Se conservan las funciones de creación para los consumidores anteriores.
 //
 // Las llamadas salen por el cliente HTTP único (`solicitarFormulario`, M4-A07), que
 // agrega el Bearer de la sesión de Supabase. Ese cliente nunca lanza: aquí tampoco; el resultado es
@@ -281,32 +278,4 @@ export async function crearPublicacion(
     throw error;
   }
   return enviarSolicitud(solicitud, enviar, imagenUri);
-}
-
-export interface FiltrosArriendo {
-  precioMin?: number;
-  precioMax?: number;
-  comuna?: string;
-  habitaciones?: number;
-}
-
-/**
- * Fuente demostrativa de B08/B09. No envía solicitudes ni simula una sesión.
- * La consulta real deberá usar solicitarJson del cliente HTTP autenticado.
- * `habitaciones` queda pendiente: el modelo local no entrega ese dato.
- */
-export async function obtenerPublicaciones(filtros: FiltrosArriendo = {}): Promise<Publicacion[]> {
-  const zona = filtros.comuna?.trim().toLocaleLowerCase("es-CL");
-  return publicacionesMock.filter((publicacion) =>
-    (filtros.precioMin === undefined || publicacion.precio >= filtros.precioMin) &&
-    (filtros.precioMax === undefined || publicacion.precio <= filtros.precioMax) &&
-    (!zona || publicacion.ubicacion.toLocaleLowerCase("es-CL").includes(zona)),
-  );
-}
-
-/** Detalle demostrativo de B10; comparte los IDs y la fuente del listado. */
-export async function obtenerPublicacionPorId(id: string | number): Promise<Publicacion | null> {
-  const numero = Number(id);
-  if (!Number.isSafeInteger(numero) || numero < 1) return null;
-  return publicacionesMock.find((publicacion) => publicacion.idPublicacion === numero) ?? null;
 }

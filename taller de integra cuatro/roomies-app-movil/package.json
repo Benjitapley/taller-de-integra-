@@ -45,11 +45,13 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "test": "node --test tests/*.test.mjs",
     "test:http": "node --test tests/httpClient.test.mjs",
     "test:perfil": "node --test tests/usuariosService.test.mjs tests/perfil.test.mjs",
     "test:publicaciones": "node --test tests/publicacionesService.test.mjs",
     "test:convivencia": "node --test tests/convivencia.test.mjs",
-    "test:tareas": "node --test tests/tareasService.test.mjs"
+    "test:tareas": "node --test tests/tareasService.test.mjs",
+    "test:paginacion": "node --test tests/paginacion.test.mjs"
   },
   "private": true
 }
