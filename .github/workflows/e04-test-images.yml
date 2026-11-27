@@ -1,8 +1,8 @@
-name: E04 test images
+name: Roomies TEST images
 
 on:
   push:
-    branches: [deploy/e04-kubero-test]
+    branches: [deploy/e04-kubero-test, deploy/e05-kubero-test]
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - service: api-gateway
+          - service: e05-api-gateway
             context: taller-de-integra-dos/roomies-web/backend/api-gateway
             dockerfile: taller-de-integra-dos/roomies-web/backend/api-gateway/Dockerfile
           - service: convivencia-mensajeria
@@ -55,12 +55,12 @@ jobs:
         run: |
           IMAGE="ghcr.io/${OWNER,,}/roomies-${SERVICE}:sha-${SOURCE_SHA}"
           printf 'IMAGE=%s\n' "$IMAGE" >> "$GITHUB_ENV"
-          docker build --pull --label "org.opencontainers.image.source=https://github.com/${SOURCE_REPOSITORY}" \
+          docker build --pull --provenance=false --label "org.opencontainers.image.source=https://github.com/${SOURCE_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${SOURCE_SHA}" \
             --file "$DOCKERFILE" --tag "$IMAGE" "$BUILD_CONTEXT"
       - name: Check image starts and serves health
         run: |
-          docker run -d --name e04-health -e ROOMIES_RUNTIME_MODE=supabase -p 127.0.0.1:18000:8000 "$IMAGE"
+          docker run -d --name e04-health -e ROOMIES_RUNTIME_MODE=kubero -p 127.0.0.1:18000:8000 "$IMAGE"
           trap 'docker rm -f e04-health >/dev/null 2>&1 || true' EXIT
           for attempt in $(seq 1 30); do
             if curl --silent --fail http://127.0.0.1:18000/health; then

@@ -1,0 +1,77 @@
+{
+  "deployments": [
+    {
+      "name": "roomies-auth-users-test",
+      "image": "ghcr.io/benjitapley/roomies-auth-users:sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+      "privateIngress": true,
+      "runAsUser": 10001,
+      "pods": [
+        {
+          "name": "roomies-auth-users-test-kuberoapp-web-7b88447f8c-47szf",
+          "containers": [
+            {
+              "image": "ghcr.io/benjitapley/roomies-auth-users:sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+              "ready": true,
+              "restarts": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "roomies-listado-test",
+      "image": "ghcr.io/benjitapley/roomies-listado-applications:sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+      "privateIngress": true,
+      "runAsUser": 10001,
+      "pods": [
+        {
+          "name": "roomies-listado-test-kuberoapp-web-86bdc585fc-jvc6z",
+          "containers": [
+            {
+              "image": "ghcr.io/benjitapley/roomies-listado-applications:sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+              "ready": true,
+              "restarts": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "roomies-convivencia-test",
+      "image": "ghcr.io/benjitapley/roomies-convivencia-mensajeria:sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+      "privateIngress": true,
+      "runAsUser": 10001,
+      "pods": [
+        {
+          "name": "roomies-convivencia-test-kuberoapp-web-55dfbffbbf-qfj2c",
+          "containers": [
+            {
+              "image": "ghcr.io/benjitapley/roomies-convivencia-mensajeria:sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+              "ready": true,
+              "restarts": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "roomies-gateway-test",
+      "image": "ghcr.io/benjitapley/roomies-e05-api-gateway:sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+      "privateIngress": false,
+      "runAsUser": 10001,
+      "pods": [
+        {
+          "name": "roomies-gateway-test-kuberoapp-web-8bd748995-zcd9n",
+          "containers": [
+            {
+              "image": "ghcr.io/benjitapley/roomies-e05-api-gateway:sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+              "ready": true,
+              "restarts": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "checked_at": "2026-11-27T00:40:45.670Z"
+}

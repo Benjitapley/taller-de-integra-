@@ -19,7 +19,7 @@ async def lifespan(app):
             try: await asyncio.wait_for(stop.wait(),timeout=2)
             except TimeoutError: pass
     import os
-    task=asyncio.create_task(cleanup()) if os.environ.get("ROOMIES_RUNTIME_MODE")=="supabase" or os.environ.get("ROOMIES_LOCAL_MODE")=="1" else None
+    task=asyncio.create_task(cleanup()) if os.environ.get("ROOMIES_RUNTIME_MODE") in {"supabase", "kubero"} or os.environ.get("ROOMIES_LOCAL_MODE")=="1" else None
     try: yield
     finally:
         stop.set()
@@ -30,7 +30,7 @@ app.include_router(health_router)
 
 # Supabase y la topología desechable comparten el contrato de perfil.
 import os
-if os.environ.get("ROOMIES_LOCAL_MODE") == "1" or os.environ.get("ROOMIES_RUNTIME_MODE") == "supabase":
+if os.environ.get("ROOMIES_LOCAL_MODE") == "1" or os.environ.get("ROOMIES_RUNTIME_MODE") in {"supabase", "kubero"}:
     from app.api.routes.local_users import router as local_router
     from backend.service_runtime.http import configure
     from fastapi.staticfiles import StaticFiles

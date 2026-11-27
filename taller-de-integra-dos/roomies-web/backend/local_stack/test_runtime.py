@@ -327,7 +327,9 @@ def test_disposable_keeps_its_local_destination(insecure_test, monkeypatch):
     "https://roomies-listado.onrender.com/",
     "https://roomies-match.onrender.com:443",
 ])
-def test_shared_services_use_configured_https_origins(real, monkeypatch, variable, origin):
+@pytest.mark.parametrize("mode", ["supabase", "kubero"])
+def test_shared_services_use_configured_https_origins(real, monkeypatch, variable, origin, mode):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", mode)
     monkeypatch.setenv(variable, origin)
     assert service_url(variable) == origin.rstrip("/")
 
@@ -360,7 +362,9 @@ def test_shared_services_use_configured_https_origins(real, monkeypatch, variabl
     "//roomies-auth.onrender.com",
     "file:///etc/passwd",
 ])
-def test_shared_services_reject_invalid_origins(real, monkeypatch, origin):
+@pytest.mark.parametrize("mode", ["supabase", "kubero"])
+def test_shared_services_reject_invalid_origins(real, monkeypatch, origin, mode):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", mode)
     monkeypatch.setenv("AUTH_USERS_UPSTREAM_URL", origin)
     with pytest.raises(DependencyUnavailable):
         service_url("AUTH_USERS_UPSTREAM_URL")
@@ -392,5 +396,36 @@ def test_disposable_mode_keeps_remote_services_disabled(real, monkeypatch):
     monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "disposable")
     monkeypatch.setenv("ROOMIES_LOCAL_MODE", "1")
     monkeypatch.setenv("AUTH_USERS_UPSTREAM_URL", "https://roomies-auth.onrender.com")
+    with pytest.raises(DependencyUnavailable):
+        service_url("AUTH_USERS_UPSTREAM_URL")
+
+
+@pytest.mark.parametrize("variable,host", [
+    ("AUTH_USERS_UPSTREAM_URL", "roomies-auth-users-test-kuberoapp"),
+    ("LISTADO_UPSTREAM_URL", "roomies-listado-test-kuberoapp"),
+    ("CONVIVENCIA_UPSTREAM_URL", "roomies-convivencia-test-kuberoapp"),
+    ("MATCH_UPSTREAM_URL", "roomies-match-test-kuberoapp"),
+])
+def test_kubero_test_uses_private_domain_service(real, monkeypatch, variable, host):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "kubero")
+    monkeypatch.setenv("ROOMIES_DEPLOYMENT_ENV", "test")
+    monkeypatch.setenv(variable, f"http://{host}:80")
+    assert service_url(variable) == f"http://{host}:80"
+
+
+@pytest.mark.parametrize("mode,stage,origin", [
+    ("supabase", "test", "http://roomies-auth-users-test-kuberoapp:80"),
+    ("kubero", "production", "http://roomies-auth-users-test-kuberoapp:80"),
+    ("kubero", "test", "http://roomies-listado-test-kuberoapp:80"),
+    ("kubero", "test", "http://roomies-auth-users-test-kuberoapp:8000"),
+    ("kubero", "test", "http://roomies-auth-users-test-kuberoapp:80/internal"),
+    ("kubero", "test", "http://user:secret@roomies-auth-users-test-kuberoapp:80"),
+    ("kubero", "test", "http://roomies-auth-users-test-kuberoapp:80?x=1"),
+    ("kubero", "test", "http://roomies-auth-users-test-kuberoapp.evil:80"),
+])
+def test_private_kubero_service_is_scoped(real, monkeypatch, mode, stage, origin):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", mode)
+    monkeypatch.setenv("ROOMIES_DEPLOYMENT_ENV", stage)
+    monkeypatch.setenv("AUTH_USERS_UPSTREAM_URL", origin)
     with pytest.raises(DependencyUnavailable):
         service_url("AUTH_USERS_UPSTREAM_URL")

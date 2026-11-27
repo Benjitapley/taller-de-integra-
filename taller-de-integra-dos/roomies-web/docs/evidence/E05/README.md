@@ -1,5 +1,7 @@
 # Evidencia S3R-E05 / SCRUM-122
 
+**Estado remoto posterior:** [despliegue de Kubero y estado al detener el trabajo](2026-11-26-hosted/README.md). Base migrada y servicios desplegados; Gateway publico operativo. El recorrido remoto de retiro/revocacion/ultimo cierre sigue pendiente por solicitud de detener el trabajo.
+
 Revision: 26/11/2026, America/Santiago. Fuente: Roomies_Backlog_TI2_Sprint3_v1.4.pdf, paginas 29-30; dependencias F03 y decisiones D02/D05 en paginas 5 y 32.
 
 Revision inicial basada en `52ef5fd144232ebc4df50616cf3da4e37699292b`, registrada en `51374ae`, rama `SCRUM-122-Conectar-retiro-por-arrendador-y-revocar-la-experiencia-activa`. [Jira SCRUM-122](https://alu-team-wgo3vx0z.atlassian.net/browse/SCRUM-122). El [manifest SHA-256](sources-sha256.txt) identifica las fuentes reconciliadas con `dev-web`; los resultados actualizados del merge figuran al final. Las secciones previas conservan los resultados de sus revisiones originales.

@@ -1,0 +1,25 @@
+{
+  "checked_at": "2026-11-27T00:08:41.11802+00:00",
+  "database": "roomies-db-test2",
+  "executor": "postgres",
+  "version": "17.6 (Debian 17.6-2.pgdg13+1)",
+  "ssl": "off",
+  "schemas": [
+    "public"
+  ],
+  "tables": [
+    "public.prueba_persistencia_scrum100"
+  ],
+  "roles": [
+    {
+      "name": "sql_match_conexion",
+      "login": true,
+      "super": false,
+      "inherit": true,
+      "createdb": false,
+      "createrole": false,
+      "bypassrls": false
+    }
+  ],
+  "scope": "read-only SQL inspection via authorized Kubero TEST administrator console"
+}
