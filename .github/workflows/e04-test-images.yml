@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - service: api-gateway
+          - service: e05-api-gateway
             context: taller-de-integra-dos/roomies-web/backend/api-gateway
             dockerfile: taller-de-integra-dos/roomies-web/backend/api-gateway/Dockerfile
           - service: convivencia-mensajeria
