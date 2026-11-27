@@ -82,3 +82,5 @@ Preparar tres cuentas de prueba confirmadas: dueño y dos residentes; una cuarta
 12. Registrar evidencia por cliente/caso, resultado, IDs, versión y responsable de cada defecto. Si hay un bloqueo, corregir y repetir antes de aprobar B06. Coordinación B01 debe confirmar nominalmente la persona TI4; no completar firmas ni disponibilidad por inferencia.
 
 Las tres correcciones técnicas E06-01/02/03 están resueltas; E06-04 conserva la coordinación y aceptación física descritas en [SCRUM-123](../SCRUM-123.md). No se completan firmas ni actas por inferencia.
+
+Fuentes del cliente verificadas: `cf3fad659c64431dfe4fd3a567fde3e5b8b0f4eb`; [huellas y export Expo](../evidence/E06/sources-sha256.json).

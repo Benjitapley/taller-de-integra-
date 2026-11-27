@@ -41,3 +41,5 @@ La app Expo SDK 57 se exportó y ejecutó en Chromium a 390×844 contra ese Gate
 | E06-04 | **Pendiente:** aceptación con TI4 en teléfono físico, selector/permisos nativos, cruce Next publicado↔móvil, responsables y actas B06. | Gabriel Yamaguchi + persona TI4 por confirmar en B01 |
 
 La [acta B01](architecture/SCRUM-99-acta-capacidad-S3.md) mantiene pendientes la confirmación nominal TI4 y la ventana. No se inventaron participantes, aceptación ni disponibilidad. Las tres correcciones técnicas solicitadas quedan separadas de la firma y aceptación física de E06-04.
+
+Fuentes Expo/Next verificadas: `cf3fad659c64431dfe4fd3a567fde3e5b8b0f4eb`; [huellas y export Expo](./evidence/E06/sources-sha256.json).

@@ -1,0 +1,365 @@
+{
+  "at": "2026-11-27T03:18:01.102688+00:00",
+  "source_commit": "cf3fad659c64431dfe4fd3a567fde3e5b8b0f4eb",
+  "state": "Committed client, web and backend sources; Windows worktree and normalized Git blob fingerprints. Backend images use their separately recorded revisions.",
+  "files": [
+    {
+      "path": ".github/workflows/e04-test-images.yml",
+      "sha256": "fe6204e19ad31ba3423b132098bf050d27c3ac0940ecb8f7cbd2be5ae8d6c21d",
+      "git_blob_sha256": "0b8e3144021ceb5023c2f2601acafc87f9ef8015bd6799e2edcd1a11a1f2ae06"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/package.json",
+      "sha256": "716236a96fa5e9d00930f822a2c28735b14547d48d257798137ccf40f48dad68",
+      "git_blob_sha256": "e9e5c4659f81748e7bc0b822757afb4d591a0cbe69a371ef537e30ed8590e1da"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/(tabs)/_layout.tsx",
+      "sha256": "a70320134783ff628e86e16870abf074f093c2e1247e0ed8aa9e0ab860a6e45c",
+      "git_blob_sha256": "b96d5f373e9badd543c237a35f2d6cc5d5b67a4b51d3fc8ef8e8262b71e9df9e"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/(tabs)/buscar.tsx",
+      "sha256": "69dc4e29109a5d9ecf80a51722143ae0eed5bfa38166c6b8d1657aca29a63295",
+      "git_blob_sha256": "505f4c28d8133fdb16249f152e47b7cf59d9aef0fcd719c5f70cf7a91496a1ec"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/(tabs)/index.tsx",
+      "sha256": "28203dc4681c0d78a52a636ec023e6068afaff5fd96ef50600e26da552d5ebd3",
+      "git_blob_sha256": "f1409577da0e6ab58dc38d52091c3b23ee836139ec24dbb02b34f0b9d4fe832b"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/(tabs)/mensajes.tsx",
+      "sha256": "4ebbadb78e4f3ce04df2a28425e9e7b6529bdfe6c8f07dfdaefd3c4a4c6c7808",
+      "git_blob_sha256": "fad6d1b796a3d8f178c9ac31d85bac3909ef52ed39fe86f0179f903ecd73ffd8"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/(tabs)/perfil.tsx",
+      "sha256": "e7487ce775d426b88f0900331224640eb47a1f8094862fbe5cebd420648b7bb1",
+      "git_blob_sha256": "1c391ead81487a6b92a1d73cb40e93b0bf2e4dc3d16aff3e7813f3461b0ff7f7"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/(tabs)/publicar.tsx",
+      "sha256": "cc2fe7a89ce1b151021b53f8f70d199302dc3ce974312b1a058d80f960b39900",
+      "git_blob_sha256": "f11973b6cff5ab79156cff69aa8086e04d1bc9a5701cf63e7dbd6cbc98455930"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/_layout.tsx",
+      "sha256": "60e5112f6716bfe1901fba83204a9074266276ab9e094aab2ddd5c80bdcfabdf",
+      "git_blob_sha256": "e6109d35e996442447acfa72928d2276a532beccfbfa9efb6726c6985f5069d1"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/arriendo/chat.tsx",
+      "sha256": "f9411edab705a8687f46851a4186bbc11d582a5a0111c0d11fc61ef26c2c412f",
+      "git_blob_sha256": "30ed21a557bdf13e123713abbf3e7bb67d90853dbccb97aa74b06348780eef5f"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/arriendo/index.tsx",
+      "sha256": "f3677b4b1b3a8e224afbea2a4d3daf39714608b14f5f67d4f056dc620d256252",
+      "git_blob_sha256": "918974776780812bbdd11654c32f41d5e757ce6de66f173e9a965dc160bbba66"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/arriendos/[id].tsx",
+      "sha256": "879c2fc362d1428f4fc3b1df7d8034c10745e04e9f3995750e3b2269d13b7c2a",
+      "git_blob_sha256": "ce69ad1cc03f32bda2797a16e84d0f501f0d63f009772cad3c35c86d26c039d0"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/chats/[id].tsx",
+      "sha256": "e13709cb97a8a8d618efa8ce576b79225b95a73c42a966829e5055f2e37cb9a7",
+      "git_blob_sha256": "79962a20e928aea0a1c26e174ba17dabaee5b7b41a769b65fd9f9878c2d0d545"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/chats/index.tsx",
+      "sha256": "7805637b94104f5a4fd78fb57f70b9ee6fa21f9c8b5b0c87bc33f332c2155298",
+      "git_blob_sha256": "ec097e256015336cb378fc3932f0fa8bd0b5022db9916cba120c521ce8c3fd56"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/conexiones.tsx",
+      "sha256": "2aa1ce9349351a67e84c3e6a0c3695169b5d3fbbe74e7147e40fc9dd9433b7b5",
+      "git_blob_sha256": "2aa1ce9349351a67e84c3e6a0c3695169b5d3fbbe74e7147e40fc9dd9433b7b5"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/convivencia/formulario.tsx",
+      "sha256": "de6841c3d50d55a2029404140325971f9502fec3e1d77a29a1e073241aff9e10",
+      "git_blob_sha256": "de6841c3d50d55a2029404140325971f9502fec3e1d77a29a1e073241aff9e10"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/convivencia/tareas.tsx",
+      "sha256": "b06042e90a32b2d36e0a595c6bf846b3bc447e700e86141a8f53abe80768d629",
+      "git_blob_sha256": "64245dc20eaa2dbcf01b360e2e97c268bbf2131b228c9bdc66a12360169feaf4"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/mis-publicaciones.tsx",
+      "sha256": "12f157054211797eb201ea0557278e0654d8885638c1b1547911f3fe7f9d9bd3",
+      "git_blob_sha256": "6eb0ed0522ad19e5f75b9c70ff41e9c34c1b58c3fcf1e18d35fc3118abc7d8d0"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/notificaciones.tsx",
+      "sha256": "3d4c754baf5343114cbc15c87a6694c30a2792be3b301ebc33047e20bb8173d2",
+      "git_blob_sha256": "7726db17d7d4478d3403faec247423131937fb4e1d35da9f422ae30039fd5451"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/personas.tsx",
+      "sha256": "ffd0687981524636688ef5657ffeb740fe2c641c4814eb944148fe93a93be872",
+      "git_blob_sha256": "ffd0687981524636688ef5657ffeb740fe2c641c4814eb944148fe93a93be872"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/postulaciones/index.tsx",
+      "sha256": "68983b271d79a94e6eb6de2d824187e9bbd64764c39c89a9428f4664fd5b815a",
+      "git_blob_sha256": "fe3c6406ed86e38315695793d3eabac9ca250457a28c85773f5f5dc892202250"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/postulantes/[id].tsx",
+      "sha256": "51b90a9e8b61f13caf0201c8919f61960036d16a336ce6a7986928c7eff8f8e3",
+      "git_blob_sha256": "d9918ae39d43a33abe5721f142d83bf5b171af23bbef693408080fdf4f162eee"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/publicacion/[id]/index.tsx",
+      "sha256": "0ab88f6569356579903f6eeb38e46c1ef60a0ccefb4d39826e2e0523aa444562",
+      "git_blob_sha256": "70dacfe11686e2097ccb07bc1ae0f714c502c198e735cdb35572d6ebf455f83c"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/publicacion/crear/arrendador.tsx",
+      "sha256": "b74810bb5a68117041edf5050af78778f96ff365ad848564ac13cb824a72d7e2",
+      "git_blob_sha256": "16f1f3cc2e2dff8316d2ea7b9b7e219f92eedf646605c598dc3644460b2cba5b"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/publicacion/crear/compartida.tsx",
+      "sha256": "1b06af67b15c6e64fd0ed2ffac93eb6e8f1acbd13649665073d1c06fc139085e",
+      "git_blob_sha256": "1f615a799df59416cfd9281c9c0253cc97c6f32752e61910d339e363178a7579"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/publicacion/crear/fotos.tsx",
+      "sha256": "a2e75bae935b2849ff36d4978cc2a07bf455c0d51bd7e28dbe47fff155e32341",
+      "git_blob_sha256": "e9d2dcba03ca2201055dbdd0b70020e8a330e9101f8e2fde3ec1dad33fbe4bcd"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/publicacion/crear/previa.tsx",
+      "sha256": "a6a7fc2a24f21396f798d3cec52a95324924ac429c69bdd0047950aa876dafab",
+      "git_blob_sha256": "f0e03ddacfc8484c1c6c535bf5ecef1c4e3ad9b757bf87f27ef6aa0ef5cb739c"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/reportes.tsx",
+      "sha256": "18c670c69879365a09e532be892caec363fae4d09d205b58c44635a1422b9441",
+      "git_blob_sha256": "9010d7d4251e1ad93c728406fe16196ded4c98c9f00322966d1263e13a49c09d"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/app/usuario/[id].tsx",
+      "sha256": "e1fc1fa35a65a579d49baa7efa6914693f9cf989a22ee8a8789375c6f846a592",
+      "git_blob_sha256": "b06e9cbc050fd057d572f3a837a9a0012485b3281bc291b24addd25b6044eb1a"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/components/AccesoPerfil.tsx",
+      "sha256": "9ef5ee03c638eb799e8a36866047d11fa0b2ae2e0f73e23972752ead8df260cb",
+      "git_blob_sha256": "9ef5ee03c638eb799e8a36866047d11fa0b2ae2e0f73e23972752ead8df260cb"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/components/convivencia/AccesoArriendo.tsx",
+      "sha256": "6309489ea3799ffef20a443105446bd5660dae8d42dbf0df1b64f55789ec688a",
+      "git_blob_sha256": "a0ba35d257c7227a7a3bead94d4e37d99dc8302435a625352fe1b9e160960fa7"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/hooks/useApi.ts",
+      "sha256": "4dd7bab7db07e0779f6e1dbce034fd370801acc67b1d75f040f068076087ec32",
+      "git_blob_sha256": "6229899ff397504a13726367c70d2cfd80ef540b86a837c4fef7d0c936b4e516"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/hooks/useMisPostulaciones.ts",
+      "sha256": "d19470c4a892d393b45253f778b15efcdf4b075c85840b975e2cb3286ac2fb74",
+      "git_blob_sha256": "8ddd58246e899c213a9cdeb6ac2b92d6bfcbbdc5f092776223c52b586d324cb6"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/screens/FormularioAviso.tsx",
+      "sha256": "cc50899a36c4a7635fdd2b7c3240f6e239b8e4f8aedaa19c4124d3e71c65e3da",
+      "git_blob_sha256": "2a3821b17b247cca8605d37f3b4e3e89e287c1dc195d625f6b677580014ff2a0"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/screens/FormularioTarea.tsx",
+      "sha256": "7bf3f111ae1f4920e2140f9b8b7af6eaff5eaf4952dfd1a523faaca417fc1239",
+      "git_blob_sha256": "7bf3f111ae1f4920e2140f9b8b7af6eaff5eaf4952dfd1a523faaca417fc1239"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/screens/Personas.tsx",
+      "sha256": "1c9ec9e467a40e5e8e7f91c976d9897df108bcfecb4381a7f7b43194f3c25fd3",
+      "git_blob_sha256": "1c9ec9e467a40e5e8e7f91c976d9897df108bcfecb4381a7f7b43194f3c25fd3"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/screens/Recorrido.tsx",
+      "sha256": "b660e70391b8677ea9e4ed010e017cc640fad8a5dda7e9c2382f09c433353069",
+      "git_blob_sha256": "27bd7da29c01ca54bb3d52181bea1290155cac55e864d4ae5deab3b86e7bb23a"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/services/httpClient.ts",
+      "sha256": "9f5a4437378be531ae7c5d0249437147c4eb0633c2c39b33a32ecd2ce6c013ad",
+      "git_blob_sha256": "5259d3a114166a0cb533c52a602ae4c3724d5b4bad6c0845a669e93303822a7b"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/services/listaPaginada.ts",
+      "sha256": "b1166e03177a220d6624369bf665893b8dc33011dc4df88d805865b9409430b6",
+      "git_blob_sha256": "b1166e03177a220d6624369bf665893b8dc33011dc4df88d805865b9409430b6"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/services/postulacionesService.ts",
+      "sha256": "29281ae1716f7af02d655cd912d7535d560379a2adfbbcf5282c3c14d0d9f380",
+      "git_blob_sha256": "1a47048e08c09643005a6ba52853ad49ec5a1ae7d508d3e978fa0b30bf126618"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/services/publicacionesService.ts",
+      "sha256": "81cd3272567964b8d179a8403692bbe53d014483dadffdad074e416f7667eb84",
+      "git_blob_sha256": "2fc7a50f92651d72be16be90739715b8a06d2f6f36c45be4e352782a7d2d35f7"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/services/roomiesApi.ts",
+      "sha256": "1f802b1bc7f5f98715823febcce9471e7194e05429082b8a2c89afd401888830",
+      "git_blob_sha256": "1f802b1bc7f5f98715823febcce9471e7194e05429082b8a2c89afd401888830"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/services/tareasService.ts",
+      "sha256": "dc19ee8a22c93982ff58f6f17ff4e295ad9f66c0d5018578d10e85292fec410d",
+      "git_blob_sha256": "e098e39ff0b5fd1edb33c3c4c8270eb53a9ded43836872db51c9a62b8827d689"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/src/types/Http.ts",
+      "sha256": "98a7a80df8b10f6416fb4df7e3ff487c35353bd920a25ad6d1ada7ed4c3317ad",
+      "git_blob_sha256": "9f83cc0edd14c56b40d63465235378c7119850b28795477b992cb3e88d039a5a"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/tests/convivencia.test.mjs",
+      "sha256": "6a5035089e3510d26fd8ba71e149d0299ffa062c2df50e0df84c7914e764c462",
+      "git_blob_sha256": "43bf25ab6dbf9ffa010428ffe3115f2fbff246566a069dd6958180a1d0f79813"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/tests/httpClient.test.mjs",
+      "sha256": "161cfef1aaa5f59be68ab3f1c26c2c3cd9636b2ed437791f39eaafc18216d3f3",
+      "git_blob_sha256": "f47efbdba999d0959e875788a5fbba4181777d597295b86075bba7e9237c9edc"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/tests/paginacion.test.mjs",
+      "sha256": "785803c6ad2fd29534b11586b3c203081175dbc6a5e8e688ce6a1053fd28da8a",
+      "git_blob_sha256": "785803c6ad2fd29534b11586b3c203081175dbc6a5e8e688ce6a1053fd28da8a"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/tests/publicacionesService.test.mjs",
+      "sha256": "1533bfc6170647f218e2e4af7d5a00f6405cdbe2a82646a16d5c52dd618967fa",
+      "git_blob_sha256": "c0d70318294b1bd5991cfba765d8e47b834c67e018bb25965fd8e5b54ad95b10"
+    },
+    {
+      "path": "taller de integra cuatro/roomies-app-movil/tests/roomiesApi.test.mjs",
+      "sha256": "ae45a61a8c11e3cd965021d657cd0c26fff84d92ab32e98aa3637f39557382ec",
+      "git_blob_sha256": "ae45a61a8c11e3cd965021d657cd0c26fff84d92ab32e98aa3637f39557382ec"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/api-gateway/app/main.py",
+      "sha256": "e64f47a8d256cc9e66d05c84e07bd143947c4ab06af30f8c0e51f510fb5beaa6",
+      "git_blob_sha256": "1608950d9efeedc8b389dae158c0d19cee14c2f66417362af76ca22e76182fad"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/api-gateway/tests/test_cors.py",
+      "sha256": "6440d90bc23058d2c863d07cb919cd87576c0a556af43ec2803468fb9d9fbe5f",
+      "git_blob_sha256": "0eea1a56efa60112138e5038ad4b473c25043f43b09123cb5f404d76808dcaa2"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/local_stack/e06_notifications.py",
+      "sha256": "a67bb38df9dde63963b14413ecb4e487e010e9d1e27bbcab68469bbc9f9a63f1",
+      "git_blob_sha256": "a67bb38df9dde63963b14413ecb4e487e010e9d1e27bbcab68469bbc9f9a63f1"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/local_stack/e06_readonly_probe.py",
+      "sha256": "b3815fdb1709d50051f5caf4f6bd2d4b12eb49739eb9fe17ff431a5e33a2db55",
+      "git_blob_sha256": "b3815fdb1709d50051f5caf4f6bd2d4b12eb49739eb9fe17ff431a5e33a2db55"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/local_stack/run_e06.py",
+      "sha256": "c558d0151342dac32acd3bbef2e593ece511d774ac53dffdfa5e7ed1a341f970",
+      "git_blob_sha256": "c558d0151342dac32acd3bbef2e593ece511d774ac53dffdfa5e7ed1a341f970"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/convivencia-mensajeria-service/app/main.py",
+      "sha256": "5eefc7f3ba77de26527f1d926254689603f5bd8745da3bb970f323db3a963b04",
+      "git_blob_sha256": "9870fe97840af759c383bcf04bf64a3ce8d48a01b7b01167dafed205105f36bf"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/convivencia-mensajeria-service/app/models.py",
+      "sha256": "d3615bb82d16a3bf8ad79933c42e5f530ebd39a16c6be146a93580091c7f17d1",
+      "git_blob_sha256": "30fd21fa2a6b870958e79f6e336f4141b5604cc19c948be20b799a6927002a42"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/convivencia-mensajeria-service/app/repository.py",
+      "sha256": "2103c4d74c845628f505360ffa6bcc5ddb96a150b49f81e577ca4ae42471785c",
+      "git_blob_sha256": "1273e99a0a73242eacffac6236684a719684a61eec0b63ff133389cb55611bed"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/convivencia-mensajeria-service/tests/conftest.py",
+      "sha256": "8273e6a4678d1110eee5747b512bbf924724fe87d957272c36c0a654da279ec2",
+      "git_blob_sha256": "1637295feae49f64393054d43967e2dae17662642f085cd6a1977ee4ff31d821"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/convivencia-mensajeria-service/tests/test_e06_examples.py",
+      "sha256": "e9ca32243c87d65ad9ee44934aa6343a189c00522827417c123a9e1d84276b5c",
+      "git_blob_sha256": "e9ca32243c87d65ad9ee44934aa6343a189c00522827417c123a9e1d84276b5c"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/convivencia-mensajeria-service/tests/test_e06_pagination.py",
+      "sha256": "7a52075a91d1203cf3259f77cac618823fd8bc83f967838a6816609de1389eb4",
+      "git_blob_sha256": "7a52075a91d1203cf3259f77cac618823fd8bc83f967838a6816609de1389eb4"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/convivencia-mensajeria-service/tests/test_mensajeria_sql.py",
+      "sha256": "f1ca37e5e604162c02e82634e842ab404b2df8b5dba24433f1d4ef5fb3a9395e",
+      "git_blob_sha256": "ba13afba744e7c0d023a218e1bd944e551741ff81b0fdf58b3767a550fa9c4eb"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/listado-applications-service/tests/test_contract.py",
+      "sha256": "c3af8033405b7029a268d314f0f8c420e24c4adea0e35dc5dc37399784dca19f",
+      "git_blob_sha256": "f3b5b941994945a7cc6446090b956d7436e491d577ff1064153d40a3ca27afb7"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/listado-applications-service/tests/test_e06_notifications.py",
+      "sha256": "d29458655f74815aecc0f8232a8d50ee6fd506367bea8942eadf96d79e4c3830",
+      "git_blob_sha256": "d29458655f74815aecc0f8232a8d50ee6fd506367bea8942eadf96d79e4c3830"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/listado-applications-service/tests/test_web112.py",
+      "sha256": "bd17b0531e7627150902dd035008bbbd40d8ffc601c7b8f3d3d68b1e7a253ccc",
+      "git_blob_sha256": "d5669a24d2ca2f93274e052775491d9cf43adbf446e7b88fc99ef5d3c7908d43"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/backend/services/reportes-service/tests/test_postgres.py",
+      "sha256": "15dea30f33ff3c78e7c6fe65f24a95b3621e0a64ff289fa7de50e0b846701e28",
+      "git_blob_sha256": "ad23b0516e8bdedeabbc8745ddeaab574514ecde9dbcd34cecf20985a2ee0669"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/frontend-next/src/features/convivencia/tareas/TasksPage.tsx",
+      "sha256": "a61a745f249ae4b90309c87269e336208a2ca382f6f4c5c082ab93287ad83e99",
+      "git_blob_sha256": "e5742262ac6940d9dfcb6b515adf8b90bc169e045938bd08abd6e5cb2be73d2f"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/frontend-next/src/lib/recorrido/tasks.ts",
+      "sha256": "4562e0a3c9fa6a38cdbbd529523a95d32b886e1d5b9d83f13661e97ae392e684",
+      "git_blob_sha256": "b8e3bd0851aa68e6d629380a329a3c8891d33e84e3f3b1cff8195e46698ccf26"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/frontend-next/tests/convivencia-browser.test.mjs",
+      "sha256": "a93b5121133b8b6a5e9ce822980bd29bd171cbd76964d203f7d6944fb5197f7d",
+      "git_blob_sha256": "9c0adc088276bcb1271168e4925644e20ea4362c6b7372c177f5403fc514f2e2"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/frontend-next/tests/tareas-browser.test.mjs",
+      "sha256": "97ba70628a80f57bedc57644bdad409f7d99c954a297d7737d5f2fea097db226",
+      "git_blob_sha256": "508c13b9bc3755310f5279634426121fbdf2f4b28fad1ed2b2e13b196571b02e"
+    },
+    {
+      "path": "taller-de-integra-dos/roomies-web/frontend-next/tests/tareas-mobile-browser.test.mjs",
+      "sha256": "ac1a9997a53574fd3c2a6b4037081470412ed7f6ec07e86b0a2eec7b72ff2884",
+      "git_blob_sha256": "2c72970b409e4929cc1fd755d70e0d865b24377434b12a45ad859633dc60ad56"
+    }
+  ],
+  "expo_web_artifact": {
+    "source_commit": "cf3fad659c64431dfe4fd3a567fde3e5b8b0f4eb",
+    "bundle": ".expo/e06-web/_expo/static/js/web/entry-82af084ecac39b17f1463e34933a7d9e.js",
+    "sha256": "af4953d12030fcb18ca487186194195270ecadbbc4ba020f451e45fd6527e828",
+    "routes": 35,
+    "scope": "local export, not native Android/iOS build"
+  },
+  "backend_images": "images.json"
+}
