@@ -152,7 +152,18 @@ def service_url(variable, *, docker_hosts=()):
                   parsed.scheme == "https" and
                   re.fullmatch(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", parsed.hostname or "") and
                   len(parsed.hostname) <= 253 and (port is None or port > 0))
-        valid = ((local or remote) and
+        # Kubero TEST Services expose port 80 inside the roomies namespace.
+        # Keep service traffic private and restrict each variable to its domain.
+        test_services = {
+            "AUTH_USERS_UPSTREAM_URL": "roomies-auth-users-test-kuberoapp",
+            "LISTADO_UPSTREAM_URL": "roomies-listado-test-kuberoapp",
+            "CONVIVENCIA_UPSTREAM_URL": "roomies-convivencia-test-kuberoapp",
+            "MATCH_UPSTREAM_URL": "roomies-match-test-kuberoapp",
+        }
+        cluster = (mode == "kubero" and os.environ.get("ROOMIES_DEPLOYMENT_ENV") == "test" and
+                   variable in test_services and parsed.scheme == "http" and
+                   parsed.hostname == test_services[variable] and port == 80)
+        valid = ((local or remote or cluster) and
                  re.fullmatch(r"[A-Za-z0-9.-]+(?::[0-9]+)?", parsed.netloc) and
                  parsed.username is None and parsed.password is None and
                  parsed.path in {"", "/"} and
