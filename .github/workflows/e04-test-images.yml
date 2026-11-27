@@ -55,7 +55,7 @@ jobs:
         run: |
           IMAGE="ghcr.io/${OWNER,,}/roomies-${SERVICE}:sha-${SOURCE_SHA}"
           printf 'IMAGE=%s\n' "$IMAGE" >> "$GITHUB_ENV"
-          docker build --pull --label "org.opencontainers.image.source=https://github.com/${SOURCE_REPOSITORY}" \
+          docker build --pull --provenance=false --label "org.opencontainers.image.source=https://github.com/${SOURCE_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${SOURCE_SHA}" \
             --file "$DOCKERFILE" --tag "$IMAGE" "$BUILD_CONTEXT"
       - name: Check image starts and serves health
