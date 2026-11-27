@@ -1,0 +1,31 @@
+{
+  "source_sha": "8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+  "workflow_run": 45917430470,
+  "images": [
+    {
+      "image": "ghcr.io/benjitapley/roomies-auth-users",
+      "tag": "sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+      "digest": "sha256:61a7dae0e0c221535333b08455d0f254525e4281e2edc478d99438734f362934",
+      "anonymous_pull": 200
+    },
+    {
+      "image": "ghcr.io/benjitapley/roomies-convivencia-mensajeria",
+      "tag": "sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+      "digest": "sha256:4f698e430ad733b38ea16c6fc6715fd1138b3889879b21a0989f6679f5ad6d0f",
+      "anonymous_pull": 200
+    },
+    {
+      "image": "ghcr.io/benjitapley/roomies-listado-applications",
+      "tag": "sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+      "digest": "sha256:2e6c51cf01694eeed723a91ccbe396066bc7c8855a2d2516881a74b4b1cf7a47",
+      "anonymous_pull": 200
+    },
+    {
+      "image": "ghcr.io/benjitapley/roomies-e05-api-gateway",
+      "tag": "sha-8b8dfc95cc8b9668d3d34116c674686ae5349f01",
+      "digest": "sha256:ffeb54fc8400768c2dd60e96830b0497a08de7044e611379295464a07ee1b986",
+      "anonymous_pull": 200
+    }
+  ],
+  "running_pod_imageID": "not returned by Kubero; declared images and readiness verified separately"
+}

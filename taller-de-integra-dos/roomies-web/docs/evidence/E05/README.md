@@ -1,6 +1,6 @@
 # Evidencia S3R-E05 / SCRUM-122
 
-**Comprobacion remota posterior:** [inspeccion de Kubero/Supabase y bloqueo de aceptacion](2026-11-26-hosted/README.md). Se verificaron versiones y esquema reales; faltan servicios desplegados y objetos de retiro, y las rutas de negocio responden 503. No se ejecutaron retiros remotos.
+**Estado remoto posterior:** [despliegue de Kubero y estado al detener el trabajo](2026-11-26-hosted/README.md). Base migrada y servicios desplegados; Gateway publico operativo. El recorrido remoto de retiro/revocacion/ultimo cierre sigue pendiente por solicitud de detener el trabajo.
 
 Revision: 26/11/2026, America/Santiago. Fuente: Roomies_Backlog_TI2_Sprint3_v1.4.pdf, paginas 29-30; dependencias F03 y decisiones D02/D05 en paginas 5 y 32.
 

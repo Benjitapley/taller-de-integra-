@@ -1,0 +1,33 @@
+{
+  "users": 8,
+  "version": "17.6 (Debian 17.6-2.pgdg13+1)",
+  "connects": [
+    {
+      "role": "sql_auth_users",
+      "allowed": true
+    },
+    {
+      "role": "sql_listado_applications",
+      "allowed": true
+    },
+    {
+      "role": "sql_convivencia_mensajeria",
+      "allowed": true
+    }
+  ],
+  "database": "roomies-db-test2",
+  "identities": 8,
+  "migrations": [
+    "convivencia/005_mensajeria_historial.up.sql",
+    "convivencia/005_retiro.up.sql",
+    "convivencia/006_mensajes_nombres.up.sql",
+    "convivencia/006_tareas_reasignables.up.sql",
+    "convivencia/007_expulsiones.up.sql",
+    "kubero/clp-and-occupancy-v1",
+    "supabase-business-snapshot"
+  ],
+  "publications": 4,
+  "auth_reads_listado": false,
+  "convivencia_reads_auth": false,
+  "auth_reads_legacy_password": false
+}

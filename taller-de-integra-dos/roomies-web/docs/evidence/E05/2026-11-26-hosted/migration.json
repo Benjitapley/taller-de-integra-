@@ -1,0 +1,147 @@
+{
+  "source_project": "erefnpvdjondjpcyjrpb",
+  "source_captured_at": "2026-11-27T00:21:30.372898+00:00",
+  "local_restore_database": "roomies_e05_restore_20261126",
+  "local_restore": "not run: unavailable local admin credential",
+  "fingerprints_equal": "ordering depends on source/target collation; exact row multiset comparison used instead",
+  "tables": [
+    {
+      "name": "haycupo.usuario",
+      "count": 8,
+      "fingerprint": "eb274e2533ee949e840e6e61aa4be3bf"
+    },
+    {
+      "name": "haycupo.conexion",
+      "count": 3,
+      "fingerprint": "f65720236706ed55141dac0eeb968241"
+    },
+    {
+      "name": "haycupo.imagen_publicacion",
+      "count": 3,
+      "fingerprint": "f3a22168334d6683ad9d6115650e37f3"
+    },
+    {
+      "name": "haycupo.publicacion",
+      "count": 4,
+      "fingerprint": "4635f23250000dbf19d63e09b4db72b5"
+    },
+    {
+      "name": "auth_users.perfil_comun",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "auth_users.foto_limpieza",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "auth_users.notificacion",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "auth_users.sesion_revocada",
+      "count": 12,
+      "fingerprint": "2e097728cbb58ab7d44f45cc07998566"
+    },
+    {
+      "name": "auth_users.identidad",
+      "count": 8,
+      "fingerprint": "faa48886c40e1dc904be131811d8e521"
+    },
+    {
+      "name": "listado_applications.publicacion_metadata",
+      "count": 4,
+      "fingerprint": "ead195955303456b14c966ca1f7ee175"
+    },
+    {
+      "name": "listado_applications.outbox",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "listado_applications.publication_image_operation",
+      "count": 3,
+      "fingerprint": "de676b738268455329185689f3cf87b5"
+    },
+    {
+      "name": "listado_applications.publication_image_cleanup",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "listado_applications.postulacion",
+      "count": 4,
+      "fingerprint": "f55e8668480d43c4e0b375c8c8d6c5fc"
+    },
+    {
+      "name": "listado_applications.admision_operacion",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "listado_applications.admision_reserva",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "listado_applications.region",
+      "count": 16,
+      "fingerprint": "df2588f65ccdd9a0b199ca4231e53d2e"
+    },
+    {
+      "name": "listado_applications.comuna",
+      "count": 346,
+      "fingerprint": "20e6ca9480f9df7cd5f4d0a2f926e0b5"
+    },
+    {
+      "name": "convivencia_mensajeria.incorporacion",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "convivencia_mensajeria.outbox",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "convivencia_mensajeria.pertenencia",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "convivencia_mensajeria.arriendo",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "convivencia_mensajeria.conversacion",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "convivencia_mensajeria.mensaje",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "name": "convivencia_mensajeria.tarea",
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+  ],
+  "prepared_e05_migrations": [
+    "005_mensajeria_historial.up.sql",
+    "005_retiro.up.sql",
+    "006_mensajes_nombres.up.sql",
+    "006_tareas_reasignables.up.sql",
+    "007_expulsiones.up.sql"
+  ],
+  "kubero_restored": true,
+  "kubero_restore_trial": "passed and rolled back",
+  "all_25_table_row_multisets_equal": true,
+  "kubero_e05_migrations": "passed and committed",
+  "source_untouched": true,
+  "target_backup": "pg_dump custom, encrypted with DPAPI, pg_restore --list validated"
+}

@@ -6,7 +6,21 @@ Fecha: 26/11/2026, America/Santiago. Revision local de referencia: `bd8f788`. Se
 
 Se corrigio localmente la seleccion de rutas completas de Auth/Users y Gateway en `ROOMIES_RUNTIME_MODE=kubero`, y se habilitaron los upstreams HTTPS configurados por el operador en ese modo. Se conserva la validacion del destino/rol SQL y la excepcion TEST sin TLS ya documentada. Comprobaciones: Auth 156 passed / 2 skipped (pruebas SQL opt-in), Gateway 192 passed, runtime compartido 189 passed. No se publicaron imagenes ni se atribuye esta correccion local al Gateway activo.
 
-## Resultado
+## Estado al detener el trabajo por solicitud del usuario
+
+Actualizacion posterior a la inspeccion inicial: se importaron en PostgreSQL Kubero las 25 tablas de negocio y se compararon exactamente sus multiconjuntos de filas dentro de una transaccion de ensayo revertida y durante la importacion confirmada. Los datos de negocio originales en Supabase no se modificaron. Se conservaron los IDs/UUID. El respaldo del origen y el pg_dump previo de Kubero quedaron cifrados con DPAPI fuera de Git; el archivo custom de Kubero paso pg_restore --list. La prueba local de restauracion no se ejecuto por credencial administrativa local no vigente; el ensayo real se hizo en PostgreSQL 17.6 de Kubero.
+
+Se aplicaron y registraron las cinco migraciones pendientes de Convivencia, la conversion validada de precio a CLP entero y la conciliacion de ocupacion contando pertenencias. Se verificaron los permisos de conexion de los tres roles, la denegacion de lectura cruzada y la denegacion de la columna heredada de contrasena a Auth. Ver [migracion](migration.json) y [SQL posterior](kubero-sql-after.json).
+
+Se publicaron y desplegaron Auth/Users, Listado, Convivencia y Gateway con revision `8b8dfc95cc8b9668d3d34116c674686ae5349f01`. Los cuatro Pods estaban listos, sin reinicios y con UID configurado 10001. Los tres servicios de dominio tienen `ingress.enabled=false` y se comunican por DNS privado. Match no se modifico. Ver [despliegue](deployed.json) e [imagenes](images.json). Los digests del registro no se presentan como imageID obtenido del Pod.
+
+El Gateway publico devolvio `/health` 200, `/api/publicaciones` 200 y `/api/usuarios/me` sin token 401. Se crearon tres cuentas dedicadas de prueba, confirmadas en Supabase, se inicio sesion realmente y se inicializaron sus perfiles por el Gateway: IDs de negocio 15, 16 y 17. Las claves, passwords y tokens permanecen cifrados fuera de Git. No se crearon publicaciones, postulaciones, arriendos ni retiros de aceptacion.
+
+**Pendiente:** ejecutar el retiro remoto, doble envio, revocacion de chat/tareas, reasignacion y cierre del ultimo integrante. E05 no se declara cerrado. El usuario solicito detener el trabajo antes de ese recorrido. Se cerro la consola administrativa y el puente local; se limpiaron las variables temporales de las paginas. La configuracion/migracion desplegada se conserva.
+
+Validacion adicional del runtime privado: **201 passed**. Workflow de imagenes [45917430470](https://github.com/Benjitapley/taller-de-integra-/actions/runs/45917430470): cuatro jobs satisfactorios. Las secciones siguientes son la inspeccion historica anterior al despliegue y no describen el estado actual.
+
+## Resultado inicial (historico)
 
 La aceptacion remota de E05 esta bloqueada por dependencias de despliegue y migraciones faltantes. No se ejecutaron retiros ni se presento como prueba integrada una consulta SQL aislada.
 
