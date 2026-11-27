@@ -45,3 +45,24 @@ def test_retiro_es_del_postulante_idempotente_y_conserva_aceptacion(repository):
     repository.change(second["id_postulacion"],"Aceptada",None)
     with pytest.raises(RuleViolation) as error: service.withdraw(23,second["id_postulacion"])
     assert error.value.status==409
+
+
+def test_e06_mis_postulaciones_tres_paginas_filtro_y_contexto(repository, admin_connection):
+    publications = [repository.create(1, validate_publication(DATA)) for _ in range(53)]
+    for publication in publications:
+        repository.postulate(publication, 22)
+    admin_connection.execute("UPDATE listado_applications.postulacion SET fecha_postulacion='2026-11-26T12:00:00Z'")
+    service = Publications(repository, Mock(), Mock())
+    ids, cursor, pages = [], None, 0
+    while True:
+        page = service.application_page(22, limit=20, cursor=cursor, state="Pendiente")
+        ids.extend(row["id_postulacion"] for row in page["items"])
+        cursor = page["siguiente_cursor"]
+        pages += 1
+        if cursor is None:
+            break
+    assert pages == 3 and len(ids) == len(set(ids)) == 53 and ids == sorted(ids, reverse=True)
+    cursor = service.application_page(22, state="Pendiente")["siguiente_cursor"]
+    for args in ({"actor_id": 23, "state": "Pendiente"}, {"actor_id": 22, "state": "Cancelada"}):
+        with pytest.raises(RuleViolation):
+            service.application_page(cursor=cursor, **args)

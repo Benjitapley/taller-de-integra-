@@ -68,6 +68,12 @@ class Conversation(BaseModel):
     fecha_creacion: datetime
 
 
+class ConversationPage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    items: list[Conversation]
+    siguiente_cursor: str | None
+
+
 class Message(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id_mensaje: PositiveId

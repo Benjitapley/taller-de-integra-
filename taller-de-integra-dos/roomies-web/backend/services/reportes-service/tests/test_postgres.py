@@ -121,6 +121,36 @@ def test_more_than_two_pages_state_refresh_and_cursor_scoped_to_user(scenario, d
     assert "id_denunciante" not in refreshed.text
 
 
+def test_e06_admin_three_pages_ties_filters_and_cursor_context(scenario, database):
+    from app.main import admin_actor
+    client, _ = scenario
+    app.dependency_overrides[admin_actor] = lambda: Actor(uuid4(), 90, True, True)
+    with psycopg.connect(database) as connection:
+        connection.execute("""INSERT INTO reportes.reporte
+            (id_denunciante,id_publicacion_reportada,categoria,descripcion,estado,fecha)
+            SELECT 1,42,'E06','Volumen ficticio','Pendiente','2026-11-26T12:00:00Z'
+            FROM generate_series(1,53)""")
+        connection.execute("""INSERT INTO reportes.reporte
+            (id_denunciante,id_usuario_reportado,categoria,descripcion,estado,fecha)
+            SELECT 1,2,'E06','Fuera del filtro','En_Revision','2026-11-26T12:00:00Z'
+            FROM generate_series(1,25)""")
+    ids, cursor, pages, first = [], None, 0, None
+    while True:
+        result = client.get("/api/admin/reportes", params={"estado": "Pendiente", "tipo": "Publicacion", **({"cursor": cursor} if cursor else {})})
+        assert result.status_code == 200, result.text
+        page = result.json()
+        ids.extend(row["id_reporte"] for row in page["items"])
+        cursor = page["siguiente_cursor"]
+        first = first or cursor
+        pages += 1
+        if cursor is None:
+            break
+    assert pages == 3 and len(ids) == len(set(ids)) == 53 and ids == sorted(ids, reverse=True)
+    for query in ({"estado": "En_Revision", "tipo": "Publicacion"}, {"estado": "Pendiente", "tipo": "Usuario"}):
+        assert client.get("/api/admin/reportes", params={**query, "cursor": first}).status_code == 422
+    assert client.get("/api/reportes/mios", params={"cursor": first}).status_code == 422
+
+
 def test_operation_key_validation_and_same_key_isolated_between_accounts(scenario):
     client, person = scenario
     assert send(client, "bad key").status_code == 422

@@ -38,7 +38,7 @@ def test_historial_cronologico_con_empates_ingreso_y_cursor(repository, chat, mi
     expected = []
     with psycopg.connect(migrated_database) as connection:
         # Fechas deliberadamente distintas al orden de asignación del identity.
-        for offset in [-1, *reversed(range(35))]:
+        for offset in [-1, *reversed(range(55))]:
             timestamp = entered + timedelta(seconds=offset // 2)
             message = connection.execute("""INSERT INTO convivencia_mensajeria.mensaje
                 (id_conversacion,id_remitente,nombre_remitente,contenido,id_cliente,fecha_envio)
@@ -55,10 +55,10 @@ def test_historial_cronologico_con_empates_ingreso_y_cursor(repository, chat, mi
         if before is None:
             break
     actual = [message for page in pages for message in page]
-    assert len(pages) == 2
+    assert len(pages) == 3
     assert actual == [message for _, message in sorted(expected)]
-    assert len(set(actual)) == 35
-    print("SQL historial: 35 mensajes autorizados, dos páginas sin duplicados; cursor final NULL; preingreso excluido.")
+    assert len(set(actual)) == 55
+    print("SQL historial: 55 mensajes autorizados, tres páginas sin duplicados; cursor final NULL; preingreso excluido.")
     with pytest.raises(ServiceError) as error:
         repository.messages(conversation, 2, pre_entry, 20)
     assert error.value.status == 422

@@ -66,13 +66,13 @@ class PostgresRepository:
                   AND b.creada_en<COALESCE(a.terminada_en,'infinity'::timestamptz)
             ) AS coincidio""", (a, b)).fetchone()["coincidio"]
 
-    def conversations(self, user_id):
+    def conversations(self, user_id, after=0, limit=20):
         with self.transaction() as c:
             return c.execute("""SELECT c.id_conversacion,c.id_arriendo,c.creada_en AS fecha_creacion
                 FROM convivencia_mensajeria.conversacion c
                 JOIN convivencia_mensajeria.pertenencia p USING(id_arriendo)
-                WHERE p.id_usuario=%s AND p.estado='Activa'
-                ORDER BY c.id_conversacion""", (user_id,)).fetchall()
+                WHERE p.id_usuario=%s AND p.estado='Activa' AND c.id_conversacion>%s
+                ORDER BY c.id_conversacion LIMIT %s""", (user_id, after, limit + 1)).fetchall()
 
     @staticmethod
     def _authorize_conversation(c, conversation_id, user_id, *, lock=False):
@@ -181,13 +181,16 @@ class PostgresRepository:
             params = [rental_id, state, state, assigned, assigned]
             before = ""
             if before_id is not None:
-                before = " AND id_tarea < %s"
-                params.append(before_id)
+                anchor = c.execute("SELECT fecha_creacion FROM convivencia_mensajeria.tarea WHERE id_arriendo=%s AND id_tarea=%s", (rental_id, before_id)).fetchone()
+                if anchor is None:
+                    raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422)
+                before = " AND (fecha_creacion,id_tarea) < (%s,%s)"
+                params.extend([anchor["fecha_creacion"], before_id])
             params.append(limit + 1)
             rows = c.execute("""SELECT id_tarea,id_arriendo,titulo,descripcion,estado,id_creador,id_asignado,fecha_creacion
                 FROM convivencia_mensajeria.tarea WHERE id_arriendo=%s AND (%s::text IS NULL OR estado=%s)
                 AND (%s::bigint IS NULL OR id_asignado=%s)""" + before +
-                " ORDER BY id_tarea DESC LIMIT %s", params).fetchall()
+                " ORDER BY fecha_creacion DESC,id_tarea DESC LIMIT %s", params).fetchall()
             page = rows[:limit]
             return page, page[-1]["id_tarea"] if len(rows) > limit else None
 
@@ -246,8 +249,17 @@ class PostgresRepository:
         with self.transaction() as c:
             if not owner and not c.execute("SELECT 1 FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_usuario=%s AND estado='Activa'", (rental_id, user_id)).fetchone():
                 raise ServiceError("FORBIDDEN", "No tienes acceso al arriendo.", 403)
+            params = [rental_id, rental_id]
+            seek = ""
+            if after:
+                anchor = c.execute("SELECT creada_en FROM convivencia_mensajeria.pertenencia WHERE id_arriendo=%s AND id_pertenencia=%s", (rental_id, after)).fetchone()
+                if anchor is None:
+                    raise ServiceError("INVALID_CURSOR", "Cursor inválido.", 422)
+                seek = " AND (creada_en,id_pertenencia)>(%s,%s)"
+                params.extend([anchor["creada_en"], after])
+            params.append(limit + 1)
             return c.execute("""SELECT id_pertenencia,id_usuario,creada_en AS fecha_ingreso,
                 estado='Activa' AS activo,
                 id_pertenencia=(SELECT min(first.id_pertenencia) FROM convivencia_mensajeria.pertenencia first WHERE first.id_arriendo=%s) AS es_responsable FROM convivencia_mensajeria.pertenencia
-                WHERE id_arriendo=%s AND id_pertenencia>%s AND estado='Activa'
-                ORDER BY id_pertenencia LIMIT %s""", (rental_id, rental_id, after, limit + 1)).fetchall()
+                WHERE id_arriendo=%s AND estado='Activa'""" + seek +
+                " ORDER BY creada_en,id_pertenencia LIMIT %s", params).fetchall()
