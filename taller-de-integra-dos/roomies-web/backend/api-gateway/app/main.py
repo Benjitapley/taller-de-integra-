@@ -83,7 +83,7 @@ def create_app(settings: Settings | None = None, *, transport=None):
         allow_origins=list(config.cors_origins),
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
         max_age=600,
     )
     return app

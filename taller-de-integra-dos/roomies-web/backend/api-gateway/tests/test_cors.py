@@ -32,6 +32,15 @@ def json_response(status, payload):
                           headers={"Content-Type": "application/json"})
 
 
+@pytest.mark.parametrize("path", ["/api/reportes", "/api/publicaciones", "/api/postulaciones/1/estado"])
+def test_idempotent_mobile_web_preflight(path):
+    response = exercise(no_upstream, "OPTIONS", path,
+        headers={"Origin": ALLOWED_ORIGIN, "Access-Control-Request-Method": "POST",
+                 "Access-Control-Request-Headers": "authorization,content-type,idempotency-key"})
+    assert response.status_code == 200
+    assert "idempotency-key" in response.headers["access-control-allow-headers"].lower()
+
+
 @pytest.mark.parametrize("method,path", [
     ("GET", "/usuarios/me"),
     ("PATCH", "/usuarios/me"),
