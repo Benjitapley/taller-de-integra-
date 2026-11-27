@@ -8,7 +8,6 @@ import ts from "typescript";
 const cache = new Map();
 const rutas = {
   "@/constants/camposPublicacion": "../src/constants/camposPublicacion.ts",
-  "@/mocks/publicaciones": "../src/mocks/publicaciones.ts",
 };
 function cargar(ruta) {
   if (cache.has(ruta)) return cache.get(ruta);
@@ -33,33 +32,6 @@ function cargar(ruta) {
 }
 const servicio = cargar("../src/services/publicacionesService.ts");
 const adapter = cargar("../src/adapters/publicacionAdapter.ts");
-const { publicacionesMock } = cargar(rutas["@/mocks/publicaciones"]);
-
-test("listado y detalle comparten IDs, datos y tipos de las publicaciones demostrativas", async () => {
-  const listado = await servicio.obtenerPublicaciones();
-  assert.equal(listado.length, publicacionesMock.length);
-  for (const publicacion of listado) {
-    assert.equal(await servicio.obtenerPublicacionPorId(String(publicacion.idPublicacion)), publicacion);
-    assert.equal(typeof publicacion.idPublicacion, "number");
-  }
-});
-
-test("los filtros de precio y zona se combinan sin modificar la fuente de Inicio", async () => {
-  const antes = JSON.stringify(publicacionesMock);
-  const filtradas = await servicio.obtenerPublicaciones({ precioMin: 170000, precioMax: 230000, comuna: "  TEMUCO  " });
-  assert.ok(filtradas.length > 0);
-  assert.ok(filtradas.every((p) => p.precio >= 170000 && p.precio <= 230000 && /temuco/i.test(p.ubicacion)));
-  assert.equal((await servicio.obtenerPublicaciones({ precioMax: 0 })).length, 0);
-  assert.equal((await servicio.obtenerPublicaciones({ comuna: "Zona inexistente de prueba" })).length, 0);
-  assert.equal(JSON.stringify(publicacionesMock), antes);
-});
-
-test("el detalle devuelve null para IDs ausentes o inválidos", async () => {
-  for (const id of ["", "invalido", 0, -1, 1.5, 999999]) {
-    assert.equal(await servicio.obtenerPublicacionPorId(id), null);
-  }
-});
-
 test("el adaptador orientativo conserva el ID numérico y no inventa autor, origen o estado", () => {
   const resumen = adapter.adaptarPublicacion({
     id: 7, title: "Título", description: "Descripción", location_address: "Temuco",

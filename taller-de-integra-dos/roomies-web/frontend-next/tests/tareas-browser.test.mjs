@@ -1,20 +1,20 @@
 /** Real Next/BFF/React with HTTP fixtures; does not prove SQL behavior. */
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, rm, rmdir, symlink, unlink } from "node:fs/promises";
+import { cp, mkdtemp, rm, rmdir, symlink, unlink } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-test("E04 tasks: save failures, permissions, pagination, filters and persisted refresh", {
+test("E06 web: tres páginas de tareas e integrantes, red, reintento y revocación", {
  skip: !process.env.REPORTS_PLAYWRIGHT_PATH || !process.env.REPORTS_BROWSER_PATH, timeout: 180000,
 }, async () => {
  const { chromium } = createRequire(import.meta.url)(process.env.REPORTS_PLAYWRIGHT_PATH);
  const project = fileURLToPath(new URL("../",import.meta.url));
  const isolated = await mkdtemp(join(project,".proxy-test-lists-e04-"));
- let next, browser, linked = false, revoked = false, createFail = true, patchStatus = 503, posts = 0, failMore = true;
- const members = [2,3,4].map(id => ({id_usuario:id,nombre:id===4?null:`Integrante ${id}`,fecha_ingreso:"2026-11-24T12:00:00Z",activo:true,es_responsable:id===2}));
+ let next, browser, linked = false, revoked = false, createFail = true, patchStatus = 503, posts = 0, failMore = true, memberFail = true, memberReads = 0;
+ const members = Array.from({length:53},(_,i)=>i+2).map(id => ({id_usuario:id,nombre:id===4?null:`Integrante ${id}`,fecha_ingreso:"2026-11-24T12:00:00Z",activo:true,es_responsable:id===2}));
  const rental = {id_arriendo:1,id_publicacion:7,cupos_totales:3,version_capacidad:1,ocupacion:3};
  const tasks = Array.from({length:43},(_,i)=>({id_tarea:i+1,id_arriendo:1,id_creador:2,id_asignado:i===2?null:i===1?3:2,titulo:`Tarea ${i+1}`,descripcion:null,estado:"Pendiente",fecha_creacion:"2026-11-24T12:00:00Z"}));
  const upstream = createServer(async (request,response) => {
@@ -24,7 +24,12 @@ test("E04 tasks: save failures, permissions, pagination, filters and persisted r
   if(path === "/local/v1/perfil") return reply(200,{id_usuario_PK:2,nombre:"Integrante 2"});
   if(path === "/api/arriendos/mio") return revoked ? reply(404,{}) : reply(200,rental);
   if(revoked) return reply(403,{});
-  if(path === "/api/arriendos/1/integrantes") return reply(200,{items:url.searchParams.has("cursor")?[members[2]]:members.slice(0,2),siguiente_cursor:url.searchParams.has("cursor")?null:"members2",puede_retirar:false});
+  if(path === "/api/arriendos/1/integrantes") {
+   memberReads++;
+   const start=Number((url.searchParams.get("cursor")||"members0").replace("members",""));
+   if(start && memberFail) { memberFail=false; return reply(503,{}); }
+   return reply(200,{items:members.slice(start,start+20),siguiente_cursor:start+20<members.length?`members${start+20}`:null,puede_retirar:false});
+  }
   if(path === "/api/arriendos/1/tareas") {
    if(request.method === "POST") {
     posts++; let body=""; for await (const chunk of request) body+=chunk;
@@ -70,73 +75,64 @@ test("E04 tasks: save failures, permissions, pagination, filters and persisted r
     await ctx.route("**/*", route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
 
   const page=await ctx.newPage();
+  const errors=[]; page.on("pageerror",e=>errors.push(e.message));
   await page.goto(base+"/mi-arriendo/tareas");
-  const item = id => page.locator("li").filter({has:page.getByText(`Tarea ${id}`,{exact:true})});
+  const item=id=>page.locator("li").filter({has:page.getByText(`Tarea ${id}`,{exact:true})});
   await item(1).waitFor();
-  assert.equal(await item(1).getByRole("button",{name:"Completar",exact:true}).count(),1, await page.evaluate(async () => ({ session: await (await fetch('/web-api/auth/sesion')).json(), body: document.body.innerText })));
+  await page.getByRole("button",{name:/Nueva tarea/}).waitFor();
+  await page.waitForFunction(()=>!Array.from(document.querySelectorAll("button")).find(b=>b.textContent.includes("Nueva tarea"))?.disabled);
+  assert.equal(memberReads,1,"La pantalla solicita una sola página inicial de integrantes");
+  assert.equal(await item(1).getByRole("button",{name:"Completar",exact:true}).count(),1);
   assert.equal(await item(2).getByRole("button",{name:"Completar",exact:true}).count(),0);
-  assert.equal(await item(3).getByRole("button",{name:"Completar",exact:true}).count(),0);
-  // A failed PATCH must leave both the controlled select and status unchanged.
   await item(1).getByRole("button",{name:"Completar",exact:true}).click();
   await page.getByRole("alert").first().waitFor();
   await item(1).getByText("Pendiente",{exact:true}).waitFor();
-  await item(3).getByRole("combobox").selectOption("4");
-  await page.getByRole("button",{name:"Actualizar tareas"}).waitFor({state:"visible"});
-  await page.waitForFunction(()=>!document.querySelector('select[aria-label="Asignar Tarea 3"]').disabled);
-  assert.equal(await item(3).getByRole("combobox").inputValue(),"");
-  patchStatus=403;
-  await item(1).getByRole("button",{name:"Completar",exact:true}).click();
-  await page.getByRole("alert").filter({hasText:"asignado activo"}).first().waitFor();
-  await item(1).waitFor();
-  const evidence=join(project,"../docs/evidence/E04"); await mkdir(evidence,{recursive:true});
-  await page.screenshot({path:join(evidence,"01-patch-fallido.png"),fullPage:false});
+
+  // El fallo de página siguiente conserva opciones y reintenta el mismo cursor.
   await page.getByRole("button",{name:/Nueva tarea/}).click();
   const dialog=page.getByRole("dialog");
+  await dialog.getByRole("button",{name:"Más integrantes para asignar",exact:true}).click();
+  await dialog.getByRole("button",{name:"Reintentar integrantes",exact:true}).click();
+  await dialog.getByLabel("Asignar a (opcional)").locator('option[value="41"]').waitFor({state:"attached"});
+  await dialog.getByRole("button",{name:"Más integrantes para asignar",exact:true}).click();
+  await dialog.getByLabel("Asignar a (opcional)").locator('option[value="54"]').waitFor({state:"attached"});
+  await dialog.getByRole("button",{name:"Cerrar diálogo",exact:true}).click();
+  await page.getByText("Todos los integrantes cargados.",{exact:true}).waitFor();
+  assert.equal(await item(1).getByRole("combobox").locator("option").count(),54);
+  assert.equal(memberReads,4);
+
+  await page.getByRole("button",{name:/Nueva tarea/}).click();
   await dialog.getByLabel("Nombre de la tarea").fill("Aseo de la cocina");
-  await dialog.locator("textarea").fill("Limpiar mesones");
-  await dialog.getByLabel("Asignar a (opcional)").selectOption("4");
-  assert.equal(await dialog.getByLabel("Asignar a (opcional)").locator('option[value="4"]').textContent(),"Integrante #4");
+  await dialog.getByLabel("Asignar a (opcional)").selectOption("54");
   await dialog.getByRole("button",{name:"Crear tarea",exact:true}).click();
   await dialog.getByRole("alert").waitFor();
   assert.equal(await dialog.getByLabel("Nombre de la tarea").inputValue(),"Aseo de la cocina");
-  assert.equal(await dialog.getByLabel("Asignar a (opcional)").inputValue(),"4");
-  await page.screenshot({path:join(evidence,"02-formulario-error.png"),fullPage:false});
+  assert.equal(await dialog.getByLabel("Asignar a (opcional)").inputValue(),"54");
   createFail=false;
   await dialog.getByRole("button",{name:"Crear tarea",exact:true}).click({clickCount:2});
-  await dialog.waitFor({state:"hidden"});
-  assert.equal(posts,2);
-  await page.getByRole("status").filter({hasText:"Tarea creada"}).waitFor();
-  await page.getByText("Aseo de la cocina",{exact:true}).waitFor();
-  const more=page.getByRole("button",{name:"M\u00e1s tareas",exact:true});
+  await dialog.waitFor({state:"hidden"}); assert.equal(posts,2);
+  await page.getByText("Tarea guardada.",{exact:true}).waitFor();
+
+  const more=page.getByRole("button",{name:"Más tareas",exact:true});
   await more.click();
-  await page.getByRole("alert").filter({hasText:"reintentar"}).first().waitFor();
-  await more.click(); await item(40).waitFor();
+  await page.getByRole("button",{name:"Reintentar",exact:true}).click();
+  await item(40).waitFor(); await item(1).waitFor();
   await more.click(); await item(43).waitFor();
-  assert.equal(await page.getByText("Aseo de la cocina",{exact:true}).count(),1);
-  assert.equal(await page.locator('select[aria-label^="Asignar Tarea"]').count(),43);
-  patchStatus=0;
-  await item(3).getByRole("combobox").selectOption("2");
-  await item(3).getByRole("button",{name:"Completar",exact:true}).waitFor();
-  await item(1).getByRole("button",{name:"Completar",exact:true}).click();
+  await page.getByText("Fin de la lista de tareas.",{exact:true}).waitFor();
+  assert.equal(await page.locator("li").filter({has:page.locator("strong")}).count(),44);
+  assert.equal(await more.count(),0);
+  await page.getByRole("button",{name:"Completadas",exact:true}).click();
+  await page.getByText("No hay tareas completadas para este arriendo.",{exact:true}).waitFor();
+  assert.equal(await item(1).count(),0);
+  tasks[0].estado="Completada";
+  await page.reload();
+  await page.getByRole("button",{name:"Completadas",exact:true}).click();
   await item(1).getByText("Completada",{exact:true}).waitFor();
-  await page.getByRole("combobox",{name:"Filtrar por estado"}).selectOption("Completada");
-  await item(1).waitFor();
-  assert.equal(await item(2).count(),0); assert.equal(await more.count(),0);
-  // Simulates another client updating the shared API, not an Expo/physical test.
-  tasks[1].estado="Completada";
-  await page.getByRole("button",{name:"Actualizar tareas"}).click();
-  await item(2).getByText("Completada",{exact:true}).waitFor();
-  await page.reload(); await item(2).getByText("Completada",{exact:true}).waitFor();
-  await page.screenshot({path:join(evidence,"03-tareas-guardadas.png"),fullPage:false});
-  await page.setViewportSize({width:390,height:844});
-  await page.getByRole("button",{name:/Nueva tarea/}).click();
-  await dialog.waitFor();
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  await page.screenshot({path:join(evidence,"04-formulario-responsive.png"),fullPage:false});
-  await dialog.getByRole("button",{name:"Cancelar",exact:true}).click();
   revoked=true;
+  await page.reload();
   await page.getByRole("heading",{name:"Acceso no disponible"}).waitFor({timeout:12000});
-  assert.equal(await page.getByText("Tarea 1",{exact:true}).count(),0);
+  assert.equal(await item(1).count(),0);
+  assert.deepEqual(errors,[]);
   } finally {
     await browser?.close();
     if (next?.exitCode === null) {

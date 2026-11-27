@@ -28,7 +28,7 @@ test("E05 navegador: dueño, confirmación, respuesta perdida, doble clic y revo
     if (path === "/api/arriendos/mio") return reply(removed ? 404 : 200, rental());
     if (path === "/api/arriendos/7") return reply(200, rental());
     if (path === "/api/arriendos/7/integrantes") return reply(200, { items: removed ? [] : [member], siguiente_cursor: null, puede_retirar: owner });
-    if (path === "/api/arriendos/7/tareas") return reply(removed ? 403 : 200, { items: [task], siguiente_cursor: null });
+    if (path === "/api/arriendos/7/tareas") return reply(removed ? 403 : 200, { items: [task], siguiente_cursor: null, id_usuario_actual: 2 });
     if (path === "/api/arriendos/7/expulsiones") {
       let body = ""; for await (const chunk of request) body += chunk;
       assert.deepEqual(JSON.parse(body), { id_usuario: 2, motivo: "Motivo de prueba E05", confirmo: true });

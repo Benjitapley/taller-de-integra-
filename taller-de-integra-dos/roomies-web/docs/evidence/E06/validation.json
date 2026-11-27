@@ -1,0 +1,111 @@
+{
+  "at": "2026-11-27T03:12:00.953617+00:00",
+  "scope": "QA local, integración HTTP real y Expo SDK 57 web en Chromium; aceptación física pendiente.",
+  "backend": {
+    "convivencia": {
+      "full_run_before_fixture_fix": {
+        "passed": 125,
+        "failed": 1,
+        "cause": "El fake de Publicaciones no implementaba owned_by al comprobar retiro."
+      },
+      "final_targeted_e06": {
+        "passed": 6,
+        "failed": 0,
+        "deselected": 123,
+        "seconds": 70.13
+      },
+      "note": "Los 123 casos restantes pasaron en la corrida completa; las correcciones finales se revalidaron de forma dirigida."
+    },
+    "listado": {
+      "full_run": {
+        "passed": 74,
+        "failed": 0,
+        "seconds": 170.73
+      },
+      "new_auth_notifications_sql_targeted": {
+        "passed": 1,
+        "failed": 0,
+        "deselected": 74,
+        "seconds": 18.71
+      }
+    },
+    "reportes": {
+      "passed": 9,
+      "failed": 0,
+      "seconds": 28.11
+    },
+    "warning": "Starlette advierte deprecación de httpx en TestClient; no se cambiaron dependencias."
+  },
+  "expo": {
+    "typescript": "passed",
+    "lint": "passed; zero warnings on final run",
+    "react_screen_browser": {
+      "passed": 1,
+      "failed": 0,
+      "seconds": 21.58,
+      "scope": "Pantalla de tareas real con hosts RN/Router/AccesoArriendo y transporte de laboratorio; no teléfono."
+    },
+    "previous_node_tests": {
+      "passed": 60,
+      "failed": 0
+    },
+    "node_tests": {
+      "passed": 55,
+      "failed": 0,
+      "note": "Se sustituyeron los casos del almacén/chat demostrativo retirado por contratos HTTP reales, validación, idempotencia y fotografía multipart."
+    },
+    "web_export": {
+      "state": "passed",
+      "sdk": "57.0.24",
+      "routes": 35
+    },
+    "live_web": "expo-web-live.json",
+    "live_owner_web": "expo-web-owner-live.json",
+    "live_connections_web": "expo-web-conexiones-live.json"
+  },
+  "web": {
+    "typescript": "passed; final run exit 0",
+    "lint": "passed; final run exit 0, zero warnings",
+    "full_run": {
+      "passed": 164,
+      "failed": 1,
+      "skipped": 6,
+      "cause": "Fixture E05 de tareas omitía id_usuario_actual del contrato vigente."
+    },
+    "e05_fixture_corrected_targeted": {
+      "passed": 1,
+      "failed": 0,
+      "seconds": 145.71
+    },
+    "e06_browser_final": {
+      "passed": 1,
+      "failed": 0,
+      "seconds": 98.21,
+      "scope": "Next/BFF/React real; API de dominio simulada; incluye paginación dentro del formulario."
+    }
+  },
+  "final_e06_status": "E06-01/02/03 resolved in TEST; E06-04 physical acceptance and B06 remain pending",
+  "gateway_cors": {
+    "passed": 30,
+    "failed": 0,
+    "scope": "Incluye tres preflight idempotentes para Expo web."
+  },
+  "hosted_before": {
+    "probe": "hosted-readonly.json",
+    "business_writes": false,
+    "reportes_mios_status": 503,
+    "conversations_contract": "old; missing siguiente_cursor",
+    "physical_acceptance": false
+  },
+  "hosted": {
+    "probe": "hosted-after.json",
+    "business_writes": true,
+    "integrated_flow": "integrated-live.json",
+    "reportes_mios_status": 200,
+    "conversations_contract": "items+siguiente_cursor",
+    "images": "images.json",
+    "pods": "deployed.json",
+    "migrations": "migrations.json",
+    "physical_acceptance": false
+  }
+}

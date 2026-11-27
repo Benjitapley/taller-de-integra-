@@ -1,0 +1,450 @@
+{
+  "at": "2026-11-27T03:15:01.155926+00:00",
+  "environment": "Kubero TEST; HTTP aislado; no aceptación física",
+  "gateway": "https://roomies-gateway-test.inf.uct.cl",
+  "mobile_gateway_matches": true,
+  "checks": [
+    {
+      "method": "GET",
+      "path": "/usuarios/me",
+      "status": 200,
+      "fields": [
+        "breve_descripcion",
+        "ciudad",
+        "edad",
+        "edad_calculada",
+        "foto_perfil",
+        "id_usuario",
+        "nombre",
+        "ocupacion",
+        "sobre_mi",
+        "verificado"
+      ],
+      "response": {
+        "id_usuario": 16,
+        "nombre": "[redactado]",
+        "edad": 26,
+        "ocupacion": null,
+        "ciudad": null,
+        "breve_descripcion": "[redactado]",
+        "sobre_mi": null,
+        "foto_perfil": null,
+        "verificado": true,
+        "edad_calculada": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/publicaciones?limite=2",
+      "status": 200,
+      "fields": [
+        "items",
+        "siguiente_cursor"
+      ],
+      "count": 2,
+      "has_cursor": true,
+      "item_fields": [
+        "autor",
+        "categoria",
+        "comuna",
+        "cupos",
+        "cupos_disponibles",
+        "cupos_totales",
+        "descripcion",
+        "estado",
+        "fecha_publicacion",
+        "id",
+        "id_comuna",
+        "id_publicacion",
+        "id_region",
+        "imagen",
+        "imagenes",
+        "mascota",
+        "permitir_comentarios",
+        "precio",
+        "region",
+        "reglas",
+        "tipo",
+        "tipo_vivienda",
+        "titulo",
+        "ubicacion"
+      ],
+      "response": {
+        "items": [
+          {
+            "id_publicacion": 36,
+            "id": 36,
+            "titulo": "[redactado]",
+            "tipo": "Arrendador",
+            "tipo_vivienda": "casa",
+            "descripcion": "[redactado]",
+            "precio": 26,
+            "ubicacion": "[redactado]",
+            "estado": "Disponible",
+            "cupos_totales": 21,
+            "cupos": 21,
+            "cupos_disponibles": 21,
+            "categoria": "ofrezco",
+            "mascota": "si",
+            "permitir_comentarios": false,
+            "imagen": null,
+            "imagenes": [],
+            "fecha_publicacion": "2026-11-23T22:10:43.822021Z",
+            "id_region": 9,
+            "id_comuna": 9111,
+            "reglas": [],
+            "region": {
+              "id": 9,
+              "nombre": "[redactado]"
+            },
+            "comuna": {
+              "id": 9111,
+              "nombre": "[redactado]"
+            },
+            "autor": {
+              "id_usuario": 11,
+              "nombre": "[redactado]",
+              "foto": "[redactado]"
+            }
+          },
+          {
+            "id_publicacion": 33,
+            "id": 33,
+            "titulo": "[redactado]",
+            "tipo": "Arrendador",
+            "tipo_vivienda": "casa",
+            "descripcion": "[redactado]",
+            "precio": 120000,
+            "ubicacion": "[redactado]",
+            "estado": "Disponible",
+            "cupos_totales": 1,
+            "cupos": 1,
+            "cupos_disponibles": 1,
+            "categoria": "ofrezco",
+            "mascota": "no",
+            "permitir_comentarios": true,
+            "imagen": "[redactado]",
+            "imagenes": [
+              {
+                "id_imagen": 14,
+                "url": "[redactado]",
+                "orden": 0
+              }
+            ],
+            "fecha_publicacion": "2026-11-07T05:27:48.905912Z",
+            "id_region": null,
+            "id_comuna": null,
+            "reglas": [],
+            "region": null,
+            "comuna": null,
+            "autor": {
+              "id_usuario": 10,
+              "nombre": "[redactado]",
+              "foto": null
+            }
+          }
+        ],
+        "siguiente_cursor": "WzEsImJjZWIwYWE3YzI5NDg4NmIwMGI5YjQ0ZDBkYzA3NWM3NzJlOGM5ZjZmZWE0MzVhOTY1MGU0ZDUzNmU0Nzc2MjUiLCIyMDI2LTExLTA3VDA1OjI3OjQ4LjkwNTkxMiswMDowMCIsMzNdHLBVImQZALA0tK9YZMV8WkT-lkdiQJaLq_jBfgbYmjI"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/publicaciones/mias?limite=2",
+      "status": 200,
+      "fields": [
+        "items",
+        "siguiente_cursor"
+      ],
+      "count": 0,
+      "has_cursor": false,
+      "item_fields": [],
+      "response": {
+        "items": [],
+        "siguiente_cursor": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/postulaciones/mias?limite=2",
+      "status": 200,
+      "fields": [
+        "items",
+        "siguiente_cursor"
+      ],
+      "count": 1,
+      "has_cursor": false,
+      "item_fields": [
+        "actualizada_en",
+        "estado",
+        "estado_publicacion",
+        "fecha_postulacion",
+        "id_arriendo",
+        "id_postulacion",
+        "id_publicacion",
+        "id_usuario",
+        "incorporacion_pendiente",
+        "motivo",
+        "operacion",
+        "titulo"
+      ],
+      "response": {
+        "items": [
+          {
+            "id_postulacion": 7,
+            "id_publicacion": 37,
+            "id_usuario": 16,
+            "estado": "Aceptada",
+            "motivo": null,
+            "fecha_postulacion": "2026-11-27T02:54:01.703092+00:00",
+            "actualizada_en": "2026-11-27T02:54:05.374441+00:00",
+            "id_arriendo": 2,
+            "operacion": {
+              "estado": "Confirmada",
+              "id_operacion": "3dfa8973-4944-4c16-ae85-7f843ef057ad"
+            },
+            "incorporacion_pendiente": false,
+            "titulo": "[redactado]",
+            "estado_publicacion": "Cerrada"
+          }
+        ],
+        "siguiente_cursor": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notificaciones?limite=2",
+      "status": 200,
+      "fields": [
+        "items",
+        "siguiente_cursor"
+      ],
+      "count": 2,
+      "has_cursor": false,
+      "item_fields": [
+        "fecha",
+        "id_notificacion",
+        "referencia_id",
+        "tipo"
+      ],
+      "response": {
+        "items": [
+          {
+            "id_notificacion": 2,
+            "tipo": "postulacion_resultado",
+            "referencia_id": 7,
+            "fecha": "2026-11-27T02:54:06.516618Z"
+          },
+          {
+            "id_notificacion": 1,
+            "tipo": "postulacion_resultado",
+            "referencia_id": 7,
+            "fecha": "2026-11-27T02:54:04.005077Z"
+          }
+        ],
+        "siguiente_cursor": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/reportes/mios?limite=2",
+      "status": 200,
+      "fields": [
+        "items",
+        "siguiente_cursor"
+      ],
+      "count": 2,
+      "has_cursor": true,
+      "item_fields": [
+        "categoria",
+        "descripcion",
+        "estado",
+        "fecha",
+        "id_publicacion_reportada",
+        "id_reporte",
+        "id_usuario_reportado",
+        "tipo"
+      ],
+      "response": {
+        "items": [
+          {
+            "id_reporte": 4,
+            "tipo": "Usuario",
+            "id_usuario_reportado": 17,
+            "id_publicacion_reportada": null,
+            "categoria": "E06 convivencia histórica",
+            "descripcion": "[redactado]",
+            "estado": "Pendiente",
+            "fecha": "2026-11-27T03:12:47.001772Z"
+          },
+          {
+            "id_reporte": 2,
+            "tipo": "Usuario",
+            "id_usuario_reportado": 17,
+            "id_publicacion_reportada": null,
+            "categoria": "Verificación convivencia E06",
+            "descripcion": "[redactado]",
+            "estado": "Pendiente",
+            "fecha": "2026-11-27T03:00:17.207899Z"
+          }
+        ],
+        "siguiente_cursor": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNiIsImF1ZCI6Im1pcy1yZXBvcnRlcyIsImZlY2hhIjoiMjAyNi0xMS0yN1QwMzowMDoxNy4yMDc4OTkrMDA6MDAiLCJpZCI6Mn0.GZfeWJ9uHcJ4eUBsS7jsj-J5EvycfshIeeFvY7VcJqg"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversaciones?limite=2",
+      "status": 200,
+      "fields": [
+        "items",
+        "siguiente_cursor"
+      ],
+      "count": 0,
+      "has_cursor": false,
+      "item_fields": [],
+      "response": {
+        "items": [],
+        "siguiente_cursor": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "status": 404,
+      "fields": [
+        "code",
+        "detail"
+      ],
+      "code": "RENTAL_NOT_FOUND"
+    },
+    {
+      "method": "GET",
+      "path": "/api/publicaciones?cursor=invalid",
+      "status": 422,
+      "fields": [
+        "detail"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/publicaciones?limite=2&cursor=WzEsImJjZWIwYWE3YzI5NDg4NmIwMGI5YjQ0ZDBkYzA3NWM3NzJlOGM5ZjZmZWE0MzVhOTY1MGU0ZDUzNmU0Nzc2MjUiLCIyMDI2LTExLTA3VDA1OjI3OjQ4LjkwNTkxMiswMDowMCIsMzNdHLBVImQZALA0tK9YZMV8WkT-lkdiQJaLq_jBfgbYmjI",
+      "status": 200,
+      "fields": [
+        "items",
+        "siguiente_cursor"
+      ],
+      "count": 2,
+      "has_cursor": false,
+      "item_fields": [
+        "autor",
+        "categoria",
+        "comuna",
+        "cupos",
+        "cupos_disponibles",
+        "cupos_totales",
+        "descripcion",
+        "estado",
+        "fecha_publicacion",
+        "id",
+        "id_comuna",
+        "id_publicacion",
+        "id_region",
+        "imagen",
+        "imagenes",
+        "mascota",
+        "permitir_comentarios",
+        "precio",
+        "region",
+        "reglas",
+        "tipo",
+        "tipo_vivienda",
+        "titulo",
+        "ubicacion"
+      ],
+      "response": {
+        "items": [
+          {
+            "id_publicacion": 32,
+            "id": 32,
+            "titulo": "[redactado]",
+            "tipo": "Arrendador",
+            "tipo_vivienda": "casa",
+            "descripcion": "[redactado]",
+            "precio": 4567890,
+            "ubicacion": "[redactado]",
+            "estado": "Disponible",
+            "cupos_totales": 34567890,
+            "cupos": 34567890,
+            "cupos_disponibles": 34567890,
+            "categoria": "ofrezco",
+            "mascota": "si",
+            "permitir_comentarios": true,
+            "imagen": "[redactado]",
+            "imagenes": [
+              {
+                "id_imagen": 13,
+                "url": "[redactado]",
+                "orden": 0
+              }
+            ],
+            "fecha_publicacion": "2026-11-07T04:34:28.324069Z",
+            "id_region": null,
+            "id_comuna": null,
+            "reglas": [],
+            "region": null,
+            "comuna": null,
+            "autor": {
+              "id_usuario": 10,
+              "nombre": "[redactado]",
+              "foto": null
+            }
+          },
+          {
+            "id_publicacion": 31,
+            "id": 31,
+            "titulo": "[redactado]",
+            "tipo": "Arrendador",
+            "tipo_vivienda": "casa",
+            "descripcion": "[redactado]",
+            "precio": 21212,
+            "ubicacion": "[redactado]",
+            "estado": "Disponible",
+            "cupos_totales": 2,
+            "cupos": 2,
+            "cupos_disponibles": 2,
+            "categoria": "busco",
+            "mascota": "no",
+            "permitir_comentarios": true,
+            "imagen": "[redactado]",
+            "imagenes": [
+              {
+                "id_imagen": 12,
+                "url": "[redactado]",
+                "orden": 0
+              }
+            ],
+            "fecha_publicacion": "2026-11-04T06:30:32.118486Z",
+            "id_region": null,
+            "id_comuna": null,
+            "reglas": [],
+            "region": null,
+            "comuna": null,
+            "autor": {
+              "id_usuario": 7,
+              "nombre": "[redactado]",
+              "foto": "[redactado]"
+            }
+          }
+        ],
+        "siguiente_cursor": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/publicaciones/mias?limite=2&cursor=WzEsImJjZWIwYWE3YzI5NDg4NmIwMGI5YjQ0ZDBkYzA3NWM3NzJlOGM5ZjZmZWE0MzVhOTY1MGU0ZDUzNmU0Nzc2MjUiLCIyMDI2LTExLTA3VDA1OjI3OjQ4LjkwNTkxMiswMDowMCIsMzNdHLBVImQZALA0tK9YZMV8WkT-lkdiQJaLq_jBfgbYmjI",
+      "status": 422,
+      "fields": [
+        "detail"
+      ]
+    }
+  ]
+}

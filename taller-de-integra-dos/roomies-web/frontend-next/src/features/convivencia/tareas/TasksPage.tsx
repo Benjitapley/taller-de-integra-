@@ -35,6 +35,8 @@ export default function TasksPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [membersReady, setMembersReady] = useState(false);
   const [memberError, setMemberError] = useState("");
+  const [memberCursor, setMemberCursor] = useState<string | null>(null);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [state, setState] = useState<EstadoTarea>("Pendiente");
   const [page, setPage] = useState<TaskPage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,8 +49,18 @@ export default function TasksPage() {
   const [assignee, setAssignee] = useState("");
   const [assignments, setAssignments] = useState<Record<number, string>>({});
   const requestId = useRef(0);
+  const memberRequest = useRef(0);
+  const taskPending = useRef<string | null>(null);
+  const memberPending = useRef<number | null>(null);
+  const taskAttempt = useRef<string | undefined>(undefined);
+  const memberAttempt = useRef<string | undefined>(undefined);
+  const mutationPending = useRef(false);
 
   const loadTasks = useCallback(async (id: number, status: EstadoTarea, cursor?: string) => {
+    const key = `${id}:${status}:${cursor ?? ""}`;
+    if (taskPending.current === key) return;
+    taskPending.current = key;
+    taskAttempt.current = cursor;
     const current = ++requestId.current;
     setLoading(true); setError("");
     try {
@@ -56,40 +68,48 @@ export default function TasksPage() {
       if (cursor) params.set("cursor", cursor);
       const result = await json<TaskPage>(`/web-api/arriendos/${id}/tareas?${params}`);
       if (current !== requestId.current) return;
-      setPage(previous => ({ ...result, items: cursor && previous ? [...previous.items, ...result.items] : result.items }));
+      setPage(previous => ({ ...result, items: cursor && previous ? [...new Map([...previous.items, ...result.items].map(task => [task.id_tarea, task])).values()] : result.items }));
     } catch (failure) {
       if (current !== requestId.current) return;
-      if ((failure as { status?: number }).status === 403) { setRental(null); setPage(null); }
+      if ([401,403,404].includes((failure as { status?: number }).status ?? 0)) {
+        setRental(null); setPage(null); setMembers([]); setMemberCursor(null); setMembersReady(false);
+        memberRequest.current++; memberPending.current = null; setMembersLoading(false);
+      }
       setError(errorText(failure));
-    } finally { if (current === requestId.current) setLoading(false); }
+    } finally { if (current === requestId.current) { setLoading(false); taskPending.current = null; } }
   }, []);
 
-  const loadMembers = useCallback(async (id: number) => {
-    setMembersReady(false); setMemberError("");
+  const loadMembers = useCallback(async (id: number, cursor?: string) => {
+    if (memberPending.current !== null) return;
+    const current = ++memberRequest.current;
+    memberPending.current = current; memberAttempt.current = cursor;
+    setMembersLoading(true); setMemberError("");
     try {
-      let cursor: string | null = null;
-      const all: Member[] = [];
-      do {
-        const query: string = cursor ? `?${new URLSearchParams({ cursor })}` : "";
-        const result: MemberPage = await json<MemberPage>(`/web-api/arriendos/${id}/tareas-integrantes${query}`);
-        all.push(...result.items);
-        cursor = result.siguiente_cursor;
-        if (all.length > 200) throw new Error("Hay demasiados integrantes para mostrar.");
-      } while (cursor);
-      setMembers(all); setMembersReady(true);
-    } catch (failure) { setMemberError(errorText(failure)); }
+      const query = new URLSearchParams({ limite: "20", ...(cursor ? { cursor } : {}) });
+      const result = await json<MemberPage>(`/web-api/arriendos/${id}/tareas-integrantes?${query}`);
+      if (current !== memberRequest.current) return;
+      setMembers(previous => cursor ? [...new Map([...previous, ...result.items].map(member => [member.id_usuario, member])).values()] : result.items);
+      setMemberCursor(result.siguiente_cursor); setMembersReady(true);
+    } catch (failure) {
+      if (current !== memberRequest.current) return;
+      if ([401,403,404].includes((failure as { status?: number }).status ?? 0)) {
+        setMembers([]); setMembersReady(false); setMemberCursor(null); setRental(null); setPage(null);
+        requestId.current++; taskPending.current = null; setLoading(false);
+      }
+      setMemberError(errorText(failure));
+    } finally { if (current === memberRequest.current) { memberPending.current = null; setMembersLoading(false); } }
   }, []);
 
   useEffect(() => {
     let active = true;
-    const currentRequests = requestId;
+    const currentTasks = requestId, currentMembers = memberRequest;
     void json<Rental>("/web-api/arriendos/mio").then(result => {
       if (!active) return;
       setRental(result.id_arriendo);
       void loadMembers(result.id_arriendo);
       void loadTasks(result.id_arriendo, "Pendiente");
     }).catch(failure => { if (active) { setError(errorText(failure)); setLoading(false); } });
-    return () => { active = false; currentRequests.current++; };
+    return () => { active = false; currentTasks.current++; currentMembers.current++; taskPending.current = null; memberPending.current = null; };
   }, [loadMembers, loadTasks]);
 
   useEffect(() => {
@@ -106,7 +126,8 @@ export default function TasksPage() {
   }
 
   async function mutate(path: string, method: "POST" | "PATCH", body: unknown, success: string) {
-    if (!rental || busy) return false;
+    if (!rental || mutationPending.current) return false;
+    mutationPending.current = true;
     setBusy(true); setError(""); setNotice("");
     try {
       await json<TareaDto>(path, { method,
@@ -122,7 +143,7 @@ export default function TasksPage() {
         await loadTasks(rental, state);
       }
       return false;
-    } finally { setBusy(false); }
+    } finally { mutationPending.current = false; setBusy(false); }
   }
 
   async function create(event: FormEvent<HTMLFormElement>) {
@@ -146,21 +167,24 @@ export default function TasksPage() {
         <Button variant="secondary" disabled={!rental || !membersReady || busy} onClick={() => setOpen(true)}>＋ Nueva tarea</Button>
       </div>
       <div className={styles.actions} aria-label="Filtrar tareas por estado">
-        <Button variant={state === "Pendiente" ? "primary" : "secondary"} onClick={() => selectState("Pendiente")}>Pendientes</Button>
-        <Button variant={state === "Completada" ? "primary" : "secondary"} onClick={() => selectState("Completada")}>Completadas</Button>
+        <Button disabled={busy || !rental || (loading && !page)} variant={state === "Pendiente" ? "primary" : "secondary"} onClick={() => selectState("Pendiente")}>Pendientes</Button>
+        <Button disabled={busy || !rental || (loading && !page)} variant={state === "Completada" ? "primary" : "secondary"} onClick={() => selectState("Completada")}>Completadas</Button>
       </div>
       {notice && <p role="status">{notice}</p>}
       {error && <p role="alert">{error}</p>}
-      {memberError && <p role="alert">No se pudieron cargar los integrantes: {memberError} <Button variant="secondary" onClick={() => rental && void loadMembers(rental)}>Reintentar</Button></p>}
+      {memberError && <p role="alert">No se pudieron cargar los integrantes: {memberError} <Button variant="secondary" disabled={membersLoading} onClick={() => rental && void loadMembers(rental, memberAttempt.current)}>Reintentar integrantes</Button></p>}
+      {membersLoading && <p role="status">Cargando integrantes…</p>}
+      {memberCursor && rental && <Button variant="secondary" disabled={membersLoading} onClick={() => void loadMembers(rental, memberCursor)}>Más integrantes</Button>}
+      {membersReady && !memberCursor && !membersLoading && <p>Todos los integrantes cargados.</p>}
       {loading && <p role="status">Cargando tareas…</p>}
-      {!loading && error && rental && <Button variant="secondary" onClick={() => void loadTasks(rental, state)}>Reintentar</Button>}
+      {!loading && error && rental && <Button variant="secondary" onClick={() => void loadTasks(rental, state, taskAttempt.current)}>Reintentar</Button>}
       {!loading && page && page.items.length === 0 && <p>No hay tareas {state.toLowerCase()}s para este arriendo.</p>}
       {page && <ul className={styles.taskList}>{page.items.map(task => {
         const assignedActive = membersReady && members.some(member => member.id_usuario === task.id_asignado);
-        const canComplete = task.estado === "Pendiente" && assignedActive && task.id_asignado === page.id_usuario_actual;
+        const canComplete = task.estado === "Pendiente" && task.id_asignado === page.id_usuario_actual;
         return <li key={task.id_tarea}>
           <div><strong>{task.titulo}</strong>{task.descripcion && <p>{task.descripcion}</p>}
-            <small>{memberName(task.id_asignado)}{task.id_asignado !== null && !assignedActive ? " (retirado)" : ""}</small>
+            <small>{memberName(task.id_asignado)}{task.id_asignado !== null && membersReady && !memberCursor && !assignedActive ? " (retirado)" : ""}</small>
           </div>
           <div className={styles.taskControls}>
             <TareaStatus estado={task.estado} />
@@ -180,6 +204,7 @@ export default function TasksPage() {
         </li>;
       })}</ul>}
       {page?.siguiente_cursor && rental && <Button variant="secondary" disabled={loading} onClick={() => void loadTasks(rental, state, page.siguiente_cursor!)}>Más tareas</Button>}
+      {page && !page.siguiente_cursor && !loading && <p>Fin de la lista de tareas.</p>}
     </Card>
     <Modal open={open} onClose={() => { if (!busy) setOpen(false); }} title="Nueva tarea">
       <form className={styles.taskForm} onSubmit={event => void create(event)}>
@@ -193,6 +218,11 @@ export default function TasksPage() {
           <option value="">Sin asignar</option>
           {members.map(member => <option key={member.id_usuario} value={member.id_usuario}>{memberName(member.id_usuario)}</option>)}
         </select>
+        {memberCursor && rental && <Button type="button" variant="secondary" disabled={membersLoading || busy}
+          onClick={() => void loadMembers(rental, memberCursor)}>Más integrantes para asignar</Button>}
+        {membersLoading && <p role="status">Cargando integrantes…</p>}
+        {memberError && <p role="alert">{memberError} <Button type="button" variant="secondary" disabled={membersLoading || busy}
+          onClick={() => rental && void loadMembers(rental, memberAttempt.current)}>Reintentar integrantes</Button></p>}
         <div className={styles.formFooter}><span>{assignee ? `Asignada a ${memberName(Number(assignee))}` : "Se creará sin asignado"}</span>
           <Button type="submit" disabled={busy || !title.trim()}>{busy ? "Guardando…" : "Crear tarea"}</Button></div>
         {error && <p role="alert">{error}</p>}

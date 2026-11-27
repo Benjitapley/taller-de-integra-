@@ -1,0 +1,12 @@
+{
+  "at": "2026-11-27T03:16:13.171Z",
+  "environment": "Expo SDK 57 web; Gateway y Match reales Kubero TEST; no teléfono físico",
+  "checks": [
+    "solicitar-conexion-real",
+    "aceptar-conexion-real",
+    "perfil-contraparte-para-receptor",
+    "perfil-contraparte-para-emisor"
+  ],
+  "errors": [],
+  "execution_notes": "La solicitud y aceptación se realizaron en el primer intento. La lectura de recibidas agotó su espera; una nueva navegación confirmó la lista vacía y las vistas aceptadas mostraron la contraparte correcta en ambas cuentas."
+}

@@ -1,0 +1,237 @@
+{
+  "at": "2026-11-27T03:05:09.831Z",
+  "apps": [
+    {
+      "name": "roomies-gateway-test",
+      "image": "ghcr.io/benjitapley/roomies-e05-api-gateway:sha-5af51a981b91ecc1df5ca652828b4740a6b504a2",
+      "publicIngress": true,
+      "envNames": [
+        "ROOMIES_RUNTIME_MODE",
+        "MATCH_UPSTREAM_URL",
+        "AUTH_USERS_UPSTREAM_URL",
+        "LISTADO_UPSTREAM_URL",
+        "CONVIVENCIA_UPSTREAM_URL",
+        "REPORTES_UPSTREAM_URL",
+        "GATEWAY_CORS_ORIGINS"
+      ],
+      "pods": [
+        {
+          "name": "roomies-gateway-test-kuberoapp-web-79df855dd-5d598",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "kuberoapp-web",
+              "image": "ghcr.io/benjitapley/roomies-e05-api-gateway:sha-5af51a981b91ecc1df5ca652828b4740a6b504a2",
+              "restartCount": 0,
+              "ready": true,
+              "started": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "roomies-auth-users-test",
+      "image": "ghcr.io/benjitapley/roomies-auth-users:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+      "publicIngress": false,
+      "envNames": [
+        "ROOMIES_RUNTIME_MODE",
+        "ROOMIES_DEPLOYMENT_ENV",
+        "ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB",
+        "DB_SSLMODE",
+        "ROOMIES_KUBERO_DB_HOST",
+        "ROOMIES_KUBERO_DB_PORT",
+        "ROOMIES_KUBERO_DB_NAME",
+        "ROOMIES_SUPABASE_PROJECT_REF",
+        "ROOMIES_AUTH_PROVIDER_URL",
+        "ROOMIES_PERSISTENCE_LAYOUT",
+        "ROOMIES_AUTH_PUBLISHABLE_KEY",
+        "ROOMIES_INTERNAL_TOKEN",
+        "AUTH_USERS_UPSTREAM_URL",
+        "LISTADO_UPSTREAM_URL",
+        "CONVIVENCIA_UPSTREAM_URL",
+        "ROOMIES_SUPABASE_AUTH_ADMIN_KEY",
+        "AUTH_NOTIFICATIONS_CURSOR_SECRET",
+        "AUTH_USERS_DATABASE_URL",
+        "REPORTES_AUTH_JWT_KEY",
+        "ROOMIES_SUPABASE_STORAGE_KEY"
+      ],
+      "pods": [
+        {
+          "name": "roomies-auth-users-test-kuberoapp-web-66f75cf9cc-ff6qd",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "kuberoapp-web",
+              "image": "ghcr.io/benjitapley/roomies-auth-users:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+              "restartCount": 0,
+              "ready": true,
+              "started": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "roomies-listado-test",
+      "image": "ghcr.io/benjitapley/roomies-listado-applications:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+      "publicIngress": false,
+      "envNames": [
+        "ROOMIES_RUNTIME_MODE",
+        "ROOMIES_DEPLOYMENT_ENV",
+        "ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB",
+        "DB_SSLMODE",
+        "ROOMIES_KUBERO_DB_HOST",
+        "ROOMIES_KUBERO_DB_PORT",
+        "ROOMIES_KUBERO_DB_NAME",
+        "ROOMIES_SUPABASE_PROJECT_REF",
+        "ROOMIES_AUTH_PROVIDER_URL",
+        "ROOMIES_PERSISTENCE_LAYOUT",
+        "ROOMIES_AUTH_PUBLISHABLE_KEY",
+        "ROOMIES_INTERNAL_TOKEN",
+        "AUTH_USERS_UPSTREAM_URL",
+        "LISTADO_UPSTREAM_URL",
+        "CONVIVENCIA_UPSTREAM_URL",
+        "ROOMIES_CURSOR_SECRET",
+        "LISTADO_DATABASE_URL",
+        "REPORTES_LISTADO_JWT_KEY",
+        "ROOMIES_SUPABASE_STORAGE_KEY"
+      ],
+      "pods": [
+        {
+          "name": "roomies-listado-test-kuberoapp-web-8f44cdfbc-76crb",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "kuberoapp-web",
+              "image": "ghcr.io/benjitapley/roomies-listado-applications:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+              "restartCount": 0,
+              "ready": true,
+              "started": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "roomies-convivencia-test",
+      "image": "ghcr.io/benjitapley/roomies-convivencia-mensajeria:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+      "publicIngress": false,
+      "envNames": [
+        "ROOMIES_RUNTIME_MODE",
+        "ROOMIES_DEPLOYMENT_ENV",
+        "ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB",
+        "DB_SSLMODE",
+        "ROOMIES_KUBERO_DB_HOST",
+        "ROOMIES_KUBERO_DB_PORT",
+        "ROOMIES_KUBERO_DB_NAME",
+        "ROOMIES_SUPABASE_PROJECT_REF",
+        "ROOMIES_AUTH_PROVIDER_URL",
+        "ROOMIES_PERSISTENCE_LAYOUT",
+        "ROOMIES_AUTH_PUBLISHABLE_KEY",
+        "ROOMIES_INTERNAL_TOKEN",
+        "AUTH_USERS_UPSTREAM_URL",
+        "LISTADO_UPSTREAM_URL",
+        "CONVIVENCIA_UPSTREAM_URL",
+        "CONVIVENCIA_DATABASE_URL",
+        "REPORTES_CONVIVENCIA_JWT_KEY"
+      ],
+      "pods": [
+        {
+          "name": "roomies-convivencia-test-kuberoapp-web-7756ccd5db-swbts",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "kuberoapp-web",
+              "image": "ghcr.io/benjitapley/roomies-convivencia-mensajeria:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+              "restartCount": 0,
+              "ready": true,
+              "started": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "roomies-match-test",
+      "image": "ghcr.io/benjitapley/roomies-match-conexion:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+      "publicIngress": true,
+      "envNames": [
+        "ROOMIES_RUNTIME_MODE",
+        "ROOMIES_DEPLOYMENT_ENV",
+        "DB_SSLMODE",
+        "ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB",
+        "ROOMIES_KUBERO_DB_HOST",
+        "ROOMIES_KUBERO_DB_PORT",
+        "ROOMIES_KUBERO_DB_NAME",
+        "MATCH_DATABASE_URL",
+        "ROOMIES_SUPABASE_PROJECT_REF",
+        "REPORTES_MATCH_JWT_KEY",
+        "AUTH_USERS_UPSTREAM_URL",
+        "LISTADO_UPSTREAM_URL",
+        "ROOMIES_PERSISTENCE_LAYOUT",
+        "ROOMIES_AUTH_PROVIDER_URL",
+        "ROOMIES_AUTH_PUBLISHABLE_KEY"
+      ],
+      "pods": [
+        {
+          "name": "roomies-match-test-kuberoapp-web-647c6fb474-kn5hp",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "kuberoapp-web",
+              "image": "ghcr.io/benjitapley/roomies-match-conexion:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+              "restartCount": 0,
+              "ready": true,
+              "started": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "roomies-reportes-test",
+      "image": "ghcr.io/benjitapley/roomies-reportes:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+      "publicIngress": false,
+      "envNames": [
+        "ROOMIES_RUNTIME_MODE",
+        "ROOMIES_DEPLOYMENT_ENV",
+        "ROOMIES_KUBERO_ALLOW_INSECURE_TEST_DB",
+        "ROOMIES_KUBERO_DB_HOST",
+        "ROOMIES_KUBERO_DB_PORT",
+        "ROOMIES_KUBERO_DB_NAME",
+        "ROOMIES_SUPABASE_PROJECT_REF",
+        "ROOMIES_AUTH_PROVIDER_URL",
+        "ROOMIES_PERSISTENCE_LAYOUT",
+        "ROOMIES_AUTH_PUBLISHABLE_KEY",
+        "ROOMIES_INTERNAL_TOKEN",
+        "DB_SSLMODE",
+        "REPORTES_CURSOR_SECRET",
+        "REPORTES_AUTH_JWT_KEY",
+        "REPORTES_LISTADO_JWT_KEY",
+        "REPORTES_CONVIVENCIA_JWT_KEY",
+        "REPORTES_MATCH_JWT_KEY",
+        "AUTH_USERS_UPSTREAM_URL",
+        "LISTADO_UPSTREAM_URL",
+        "CONVIVENCIA_UPSTREAM_URL",
+        "MATCH_UPSTREAM_URL",
+        "REPORTES_DATABASE_URL"
+      ],
+      "pods": [
+        {
+          "name": "roomies-reportes-test-kuberoapp-web-86c6c56cd6-slgvj",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "kuberoapp-web",
+              "image": "ghcr.io/benjitapley/roomies-reportes:sha-eca88225c21a78a91fef150f5dda767bdf61c0bd",
+              "restartCount": 0,
+              "ready": true,
+              "started": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

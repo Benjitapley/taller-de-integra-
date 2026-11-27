@@ -10,7 +10,7 @@ import { join, resolve, sep } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-test("E04 móvil: PATCH fallido, retiro, cambio de cuenta y respuesta tras desenfoque", {
+test("E06 móvil simulado: tres páginas, red, retiro, cambio de cuenta y desenfoque", {
   skip: !process.env.REPORTS_PLAYWRIGHT_PATH || !process.env.REPORTS_BROWSER_PATH, timeout: 180_000,
 }, async () => {
   const { chromium } = createRequire(import.meta.url)(process.env.REPORTS_PLAYWRIGHT_PATH);
@@ -33,13 +33,14 @@ test("E04 móvil: PATCH fallido, retiro, cambio de cuenta y respuesta tras desen
     const mobile = await readFile(new URL("../../../../taller de integra cuatro/roomies-app-movil/src/app/convivencia/tareas.tsx", import.meta.url), "utf8");
     await writeFile(join(route, "screen.tsx"), '"use client";\n' + mobile
       .replaceAll('"expo-router"', '"./hosts"').replaceAll('"react-native"', '"./hosts"')
-      .replaceAll('"@/hooks/useAuth"', '"./hosts"').replaceAll('"@/services/tareasService"', '"./transport"'));
+      .replaceAll('"@/components/convivencia/AccesoArriendo"', '"./access"').replaceAll('"@/hooks/useAuth"', '"./hosts"').replaceAll('"@/services/tareasService"', '"./transport"'));
     await writeFile(join(route, "hosts.tsx"), `"use client";
 import {createContext,useContext,useEffect} from "react";
-export const Auth = createContext({sesion:{user:{id:"A"}}});
+export const Auth = createContext({sesion:{user:{id:"A"},access_token:"A"}});
 export const Focus = createContext(true);
 export const useAuth = () => useContext(Auth);
 export function useFocusEffect(effect:any){const focused=useContext(Focus);useEffect(()=>focused?effect():undefined,[effect,focused]);}
+export const router = {push:()=>{}};
 export const StyleSheet = {create:(value:any)=>value};
 export function View({children}:any){return <div>{children}</div>;}
 export const ScrollView=View;
@@ -47,12 +48,13 @@ export function Text({children}:any){return <span>{children}</span>;}
 export function ActivityIndicator(){return <span>Cargando tareas</span>;}
 export function Pressable({children,onPress,disabled}:any){return <button onClick={onPress} disabled={disabled}>{children}</button>;}
 `);
+    await writeFile(join(route, "access.tsx"), "export default function Access({children}:any){return children}");
     await writeFile(join(route, "transport.ts"), `
 export type EstadoTarea="Pendiente"|"Completada";
 export type PaginaTareas=any;
 const call=async(path:string)=>{const response=await fetch("/e04-fixture/"+path);return response.json()};
 export const obtenerArriendoActual=()=>call("mine");
-export const listarTareas=()=>call("tasks");
+export const listarTareas=(id:number,estado:string,cursor?:string)=>call("tasks?"+new URLSearchParams({estado,...(cursor?{cursor}:{})}));
 export const completarTarea=()=>call("complete");
 `);
     await writeFile(join(route, "page.tsx"), `"use client";
@@ -60,7 +62,7 @@ import {useState} from "react";
 import Screen from "./screen";
 import {Auth,Focus} from "./hosts";
 export default function Harness(){const [actor,setActor]=useState("A"),[focus,setFocus]=useState(true);
-return <Auth.Provider value={{sesion:{user:{id:actor}}}}><Focus.Provider value={focus}>
+return <Auth.Provider value={{sesion:{user:{id:actor},access_token:actor}}}><Focus.Provider value={focus}>
 <button onClick={()=>setActor("B")}>Cuenta B</button><button onClick={()=>setFocus(!focus)}>Cambiar foco</button>
 <Screen/></Focus.Provider></Auth.Provider>}
 `);
@@ -80,7 +82,7 @@ return <Auth.Provider value={{sesion:{user:{id:actor}}}}><Focus.Provider value={
     assert.ok(ready, logs);
     browser = await chromium.launch({ executablePath: process.env.REPORTS_BROWSER_PATH, headless: true });
     const context = await browser.newContext({ serviceWorkers: "block" });
-    let retired = false, other = false, completion = "fail", release, starts, taskReads = 0;
+    let retired = false, other = false, completion = "fail", release, starts, taskReads = 0, failMore = true;
     const task = { id_tarea: 17, titulo: "Privada cuenta A", descripcion: "Cocina", estado: "Pendiente", id_asignado: 2 };
     await context.route("**/*", async route => {
       const url = new URL(route.request().url());
@@ -89,7 +91,13 @@ return <Auth.Provider value={{sesion:{user:{id:actor}}}}><Focus.Provider value={
       const reply = data => route.fulfill({ json: data });
       const denied = { exito: false, estadoHttp: 403, error: "Ya no perteneces al arriendo." };
       if (url.pathname.endsWith("/mine")) return reply(retired ? denied : { exito: true, datos: 4, estadoHttp: 200 });
-      if (url.pathname.endsWith("/tasks")) { taskReads++; return reply({ exito: true, datos: { items: other ? [] : [task], siguiente_cursor: null, id_usuario_actual: 2 }, estadoHttp: 200 }); }
+      if (url.pathname.endsWith("/tasks")) {
+        taskReads++;
+        const start=Number(url.searchParams.get("cursor")||0);
+        if(start && failMore){failMore=false;return reply({exito:false,estadoHttp:503,error:"Sin red al cargar más."});}
+        const rows=other||url.searchParams.get("estado")==="Completada"?[]:[task,...Array.from({length:52},(_,i)=>({...task,id_tarea:100+i,titulo:`Volumen ${i+1}`,id_asignado:3}))];
+        return reply({exito:true,datos:{items:rows.slice(start,start+20),siguiente_cursor:start+20<rows.length?String(start+20):null,id_usuario_actual:2},estadoHttp:200});
+      }
       if (completion === "wait") { await new Promise(done => { release = done; starts?.(); }); return reply({ exito: true, datos: { ...task, estado: "Completada" }, estadoHttp: 200 }); }
       if (completion === "retire") { retired = true; return reply(denied); }
       return reply({ exito: false, estadoHttp: 503, error: "No se pudo guardar la tarea." });
@@ -99,6 +107,20 @@ return <Auth.Provider value={{sesion:{user:{id:actor}}}}><Focus.Provider value={
     page.on("pageerror", error => errors.push(error.message));
     await page.goto(origin + "/e04-mobile-test");
     const complete = page.getByRole("button", { name: "Completar tarea", exact: true });
+    const more=page.getByRole("button",{name:"Más tareas",exact:true});
+    await more.click();
+    await page.getByText("Sin red al cargar más.",{exact:true}).waitFor();
+    assert.equal(await page.getByText(task.titulo,{exact:true}).count(),1);
+    await page.getByRole("button",{name:"Reintentar",exact:true}).click();
+    await page.getByText("Volumen 39",{exact:true}).waitFor();
+    await more.click(); await page.getByText("Volumen 52",{exact:true}).waitFor();
+    await page.getByText("Fin de la lista.",{exact:true}).waitFor();
+    assert.equal(await page.getByText(task.titulo,{exact:true}).count(),1);
+    assert.equal(await more.count(),0);
+    await page.getByRole("button",{name:"Completadas",exact:true}).click();
+    await page.getByText("No hay tareas completadas.",{exact:true}).waitFor();
+    assert.equal(await page.getByText(task.titulo,{exact:true}).count(),0);
+    await page.getByRole("button",{name:"Pendientes",exact:true}).click();
     await complete.click();
     await page.getByText("No se pudo guardar la tarea.", { exact: true }).waitFor();
     assert.equal(await page.getByText(task.titulo, { exact: true }).isVisible(), true);

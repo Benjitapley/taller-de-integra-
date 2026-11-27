@@ -1,0 +1,79 @@
+# Colección manual TI2/TI4. Completar variables con cuentas/IDs del entorno.
+# Los ceros provocan validación: no son IDs de personas reales ni fixtures a insertar.
+@gateway = https://roomies-gateway-test.inf.uct.cl
+@token = COMPLETAR_LOCALMENTE
+@publicacion = 0
+@postulacion = 0
+@arriendo = 0
+@conversacion = 0
+@tarea = 0
+@integrante = 0
+@cursor = CURSOR_DEVUELTO_POR_LA_MISMA_LISTA
+
+### Perfil canónico
+GET {{gateway}}/api/usuarios/me
+Authorization: Bearer {{token}}
+
+### Catálogo; repetir con cursor devuelto, mismos filtros
+GET {{gateway}}/api/publicaciones?limite=20&id_region=9
+
+### Cursor inválido: 422
+GET {{gateway}}/api/publicaciones?cursor=invalid
+
+### Propias
+GET {{gateway}}/api/publicaciones/mias?limite=20
+Authorization: Bearer {{token}}
+
+### Mis postulaciones: el límite selecciona el sobre paginado
+GET {{gateway}}/api/postulaciones/mias?limite=20
+Authorization: Bearer {{token}}
+
+### Postulantes: propietario
+GET {{gateway}}/api/publicaciones/{{publicacion}}/postulantes?limite=20&estado=Pendiente
+Authorization: Bearer {{token}}
+
+### Mi arriendo
+GET {{gateway}}/api/arriendos/mio
+Authorization: Bearer {{token}}
+
+### Integrantes: no descargar todas las páginas para paginar en memoria
+GET {{gateway}}/api/arriendos/{{arriendo}}/integrantes?limite=20
+Authorization: Bearer {{token}}
+
+### Conversaciones
+GET {{gateway}}/api/conversaciones?limite=20
+Authorization: Bearer {{token}}
+
+### Historial: antes debe escaparse como parámetro de URL
+GET {{gateway}}/api/conversaciones/{{conversacion}}/mensajes?limite=20&antes={{cursor}}
+Authorization: Bearer {{token}}
+
+### Tareas pendientes
+GET {{gateway}}/api/arriendos/{{arriendo}}/tareas?limite=20&estado=Pendiente
+Authorization: Bearer {{token}}
+
+### Crear tarea desde web; usar JWT de integrante activo
+POST {{gateway}}/api/arriendos/{{arriendo}}/tareas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"titulo":"Aceptación E06","descripcion":"Completar desde Expo y verificar en web","id_asignado":{{integrante}}}
+
+### Completar desde Expo; únicamente asignado activo
+PATCH {{gateway}}/api/tareas/{{tarea}}/estado
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"estado":"Completada"}
+
+### Reportes propios
+GET {{gateway}}/api/reportes/mios?limite=20
+Authorization: Bearer {{token}}
+
+### Notificaciones propias
+GET {{gateway}}/api/notificaciones?limite=20
+Authorization: Bearer {{token}}
+
+### Moderación: solo web/administrador
+GET {{gateway}}/api/admin/reportes?limite=20&estado=Pendiente&tipo=Publicacion
+Authorization: Bearer {{token}}

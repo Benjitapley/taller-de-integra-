@@ -1,10 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import AccesoPerfil from "@/components/AccesoPerfil";
 
 const COLOR_ACTIVO = "#4F46E5";
 const COLOR_INACTIVO = "#666";
 
 export default function TabsLayout() {
+  return <AccesoPerfil><NavegacionTabs /></AccesoPerfil>;
+}
+function NavegacionTabs() {
   return (
     <Tabs
       screenOptions={{

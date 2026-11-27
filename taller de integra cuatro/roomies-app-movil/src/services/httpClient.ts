@@ -106,6 +106,12 @@ async function solicitar(
   }
 
   const headers: Record<string, string> = { Accept: "application/json" };
+  if (opciones.claveIdempotencia !== undefined) {
+    if (!/^[A-Za-z0-9:_-]{1,80}$/.test(opciones.claveIdempotencia)) {
+      return fallo("peticion_invalida", "La clave de la operación no es válida.");
+    }
+    headers["Idempotency-Key"] = opciones.claveIdempotencia;
+  }
   if (formato === "json" && cuerpo !== undefined) headers["Content-Type"] = "application/json";
   if (opciones.autenticada !== false) {
     if (!estaSupabaseConfigurado()) {

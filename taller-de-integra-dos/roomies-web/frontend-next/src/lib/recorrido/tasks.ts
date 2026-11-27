@@ -90,9 +90,11 @@ export async function handleTaskMembers(req: Request, rental: string,
   if (req.method !== "GET") return authReply(405, { detail: "Método no permitido." }, { Allow: "GET" });
   if (!idOk(rental)) return invalid();
   const q = new URL(req.url).searchParams;
-  if ([...q.keys()].some(k => k !== "cursor" || q.getAll(k).length !== 1) || !memberCursorOk(q.get("cursor"))) return invalid();
+  if ([...q.keys()].some(k => !["cursor", "limite"].includes(k) || q.getAll(k).length !== 1) || !memberCursorOk(q.get("cursor")) ||
+      q.has("limite") && !/^(?:[1-9][0-9]?|100)$/.test(q.get("limite")!)) return invalid();
   const query = new URLSearchParams({ activos: "true" });
   if (q.get("cursor")) query.set("cursor", q.get("cursor")!);
+  if (q.get("limite")) query.set("limite", q.get("limite")!);
   return request(req, `/api/arriendos/${rental}/integrantes?${query}`, "GET", undefined, config, transport);
 }
 

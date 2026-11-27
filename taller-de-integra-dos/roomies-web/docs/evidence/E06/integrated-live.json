@@ -1,0 +1,668 @@
+{
+  "at": "2026-11-27T03:12:47.429504+00:00",
+  "environment": "Gateway real y PostgreSQL Kubero TEST; tres cuentas ficticias; no teléfono físico",
+  "business_ids": {
+    "publication": 37,
+    "rental": 2,
+    "conversation": 1,
+    "message": 1,
+    "task": 3,
+    "report": 1,
+    "person_report": 2,
+    "applications": {
+      "1": 7,
+      "2": 8
+    }
+  },
+  "flow_verified": "integrated-rental-chat-tasks-reports",
+  "photo_verified": true,
+  "task_completed": true,
+  "diagnostic_history": [
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/regiones",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/regiones/9/comunas",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "POST",
+      "path": "/api/publicaciones",
+      "status": 201
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/publicaciones/37/detalle",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "POST",
+      "path": "/api/reportes",
+      "status": 201
+    },
+    {
+      "actor": 1,
+      "method": "POST",
+      "path": "/api/reportes",
+      "status": 201
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/reportes/mios?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/admin/reportes",
+      "status": 403
+    },
+    {
+      "actor": 2,
+      "method": "PUT",
+      "path": "/api/usuarios/me/foto",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/regiones",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/regiones/9/comunas",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/publicaciones/37/detalle",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/reportes/mios?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/admin/reportes",
+      "status": 403
+    },
+    {
+      "actor": 2,
+      "method": "PUT",
+      "path": "/api/usuarios/me/foto",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "POST",
+      "path": "/api/publicaciones/37/postulaciones",
+      "status": 201
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/publicaciones/37/postulantes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "PATCH",
+      "path": "/api/postulaciones/7/estado",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "PATCH",
+      "path": "/api/postulaciones/7/estado",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "POST",
+      "path": "/api/publicaciones/37/postulaciones",
+      "status": 201
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/publicaciones/37/postulantes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "PATCH",
+      "path": "/api/postulaciones/8/estado",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "PATCH",
+      "path": "/api/postulaciones/8/estado",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/conversaciones?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "POST",
+      "path": "/api/conversaciones/1/mensajes",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "POST",
+      "path": "/api/conversaciones/1/mensajes",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/conversaciones/1/mensajes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "POST",
+      "path": "/api/arriendos/2/tareas",
+      "status": 201
+    },
+    {
+      "actor": 1,
+      "method": "PATCH",
+      "path": "/api/tareas/3/estado",
+      "status": 403
+    },
+    {
+      "actor": 1,
+      "method": "PATCH",
+      "path": "/api/tareas/3",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "PATCH",
+      "path": "/api/tareas/3/estado",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "POST",
+      "path": "/api/reportes",
+      "status": 503
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/regiones",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/regiones/9/comunas",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/publicaciones/37/detalle",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/reportes/mios?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/admin/reportes",
+      "status": 403
+    },
+    {
+      "actor": 2,
+      "method": "PUT",
+      "path": "/api/usuarios/me/foto",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/publicaciones/37/postulantes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/publicaciones/37/postulantes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/conversaciones?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/conversaciones/1/mensajes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "PATCH",
+      "path": "/api/tareas/3/estado",
+      "status": 403
+    },
+    {
+      "actor": 1,
+      "method": "POST",
+      "path": "/api/reportes",
+      "status": 503
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/regiones",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/regiones/9/comunas",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/publicaciones/37/detalle",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/reportes/mios?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/admin/reportes",
+      "status": 403
+    },
+    {
+      "actor": 2,
+      "method": "PUT",
+      "path": "/api/usuarios/me/foto",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/publicaciones/37/postulantes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/publicaciones/37/postulantes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/conversaciones?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/conversaciones/1/mensajes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "PATCH",
+      "path": "/api/tareas/3/estado",
+      "status": 403
+    },
+    {
+      "actor": 1,
+      "method": "POST",
+      "path": "/api/reportes",
+      "status": 503
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/regiones",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/regiones/9/comunas",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/publicaciones/37/detalle",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/reportes/mios?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/admin/reportes",
+      "status": 403
+    },
+    {
+      "actor": 2,
+      "method": "PUT",
+      "path": "/api/usuarios/me/foto",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/usuarios/me",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/publicaciones/37/postulantes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 0,
+      "method": "GET",
+      "path": "/api/publicaciones/37/postulantes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "GET",
+      "path": "/api/conversaciones?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 2,
+      "method": "GET",
+      "path": "/api/conversaciones/1/mensajes?limite=20",
+      "status": 200
+    },
+    {
+      "actor": 1,
+      "method": "PATCH",
+      "path": "/api/tareas/3/estado",
+      "status": 403
+    },
+    {
+      "actor": 1,
+      "method": "POST",
+      "path": "/api/reportes",
+      "status": 201
+    }
+  ],
+  "final_checks": [
+    {
+      "actor_fixture": 0,
+      "method": "POST",
+      "path": "/api/reportes",
+      "status": 403
+    },
+    {
+      "actor_fixture": 1,
+      "method": "GET",
+      "path": "/api/conversaciones/1/mensajes",
+      "status": 403
+    },
+    {
+      "actor_fixture": 1,
+      "method": "POST",
+      "path": "/api/conversaciones/1/mensajes",
+      "status": 403
+    },
+    {
+      "actor_fixture": 1,
+      "method": "GET",
+      "path": "/api/arriendos/2/tareas",
+      "status": 403
+    },
+    {
+      "actor_fixture": 2,
+      "method": "GET",
+      "path": "/api/arriendos/mio",
+      "status": 404
+    },
+    {
+      "actor_fixture": 1,
+      "method": "GET",
+      "path": "/api/conversaciones?limite=20",
+      "status": 200
+    },
+    {
+      "actor_fixture": 0,
+      "method": "GET",
+      "path": "/api/arriendos/2",
+      "status": 200
+    },
+    {
+      "actor_fixture": 0,
+      "method": "GET",
+      "path": "/api/publicaciones/37/detalle",
+      "status": 200
+    },
+    {
+      "actor_fixture": 0,
+      "method": "GET",
+      "path": "/api/publicaciones/38/detalle",
+      "status": 200
+    },
+    {
+      "actor_fixture": 1,
+      "method": "POST",
+      "path": "/api/reportes",
+      "status": 201
+    },
+    {
+      "actor_fixture": 1,
+      "method": "GET",
+      "path": "/api/reportes/mios?limite=20",
+      "status": 200
+    }
+  ],
+  "read_retry_history": [],
+  "note": "El historial conserva 503 anteriores a la migración histórica de Match. La repetición integrada terminó correctamente. Una primera verificación de arriendo/mio tuvo 503 transitorio de identidad; esta corrida revalida el acceso. No acredita prueba de carga ni disponibilidad continua."
+}
