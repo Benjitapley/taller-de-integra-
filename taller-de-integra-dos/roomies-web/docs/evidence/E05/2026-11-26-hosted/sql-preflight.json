@@ -1,0 +1,517 @@
+{
+  "project_ref": "erefnpvdjondjpcyjrpb",
+  "scope": "read-only catalog queries; no business rows or credentials",
+  "schema": {
+    "roles": [
+      {
+        "name": "sql_auth_users",
+        "login": true,
+        "super": false,
+        "inherit": false,
+        "createdb": false,
+        "bypassrls": false,
+        "createrole": false
+      },
+      {
+        "name": "sql_listado_applications",
+        "login": true,
+        "super": false,
+        "inherit": false,
+        "createdb": false,
+        "bypassrls": false,
+        "createrole": false
+      },
+      {
+        "name": "sql_convivencia_mensajeria",
+        "login": true,
+        "super": false,
+        "inherit": false,
+        "createdb": false,
+        "bypassrls": false,
+        "createrole": false
+      }
+    ],
+    "columns": [
+      {
+        "type": "bigint",
+        "table": "arriendo",
+        "column": "id_arriendo",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "arriendo",
+        "column": "id_publicacion",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "arriendo",
+        "column": "cupos_totales",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "arriendo",
+        "column": "version_capacidad",
+        "nullable": "NO"
+      },
+      {
+        "type": "timestamp with time zone",
+        "table": "arriendo",
+        "column": "creado_en",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "arriendo",
+        "column": "version_ocupacion",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "pertenencia",
+        "column": "id_pertenencia",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "pertenencia",
+        "column": "id_arriendo",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "pertenencia",
+        "column": "id_usuario",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "pertenencia",
+        "column": "id_postulacion",
+        "nullable": "NO"
+      },
+      {
+        "type": "uuid",
+        "table": "pertenencia",
+        "column": "id_operacion",
+        "nullable": "NO"
+      },
+      {
+        "type": "text",
+        "table": "pertenencia",
+        "column": "estado",
+        "nullable": "NO"
+      },
+      {
+        "type": "timestamp with time zone",
+        "table": "pertenencia",
+        "column": "creada_en",
+        "nullable": "NO"
+      },
+      {
+        "type": "timestamp with time zone",
+        "table": "pertenencia",
+        "column": "terminada_en",
+        "nullable": "YES"
+      },
+      {
+        "type": "bigint",
+        "table": "tarea",
+        "column": "id_tarea",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "tarea",
+        "column": "id_arriendo",
+        "nullable": "NO"
+      },
+      {
+        "type": "character varying",
+        "table": "tarea",
+        "column": "titulo",
+        "nullable": "NO"
+      },
+      {
+        "type": "character varying",
+        "table": "tarea",
+        "column": "descripcion",
+        "nullable": "YES"
+      },
+      {
+        "type": "character varying",
+        "table": "tarea",
+        "column": "estado",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "tarea",
+        "column": "id_creador",
+        "nullable": "NO"
+      },
+      {
+        "type": "bigint",
+        "table": "tarea",
+        "column": "id_asignado",
+        "nullable": "YES"
+      },
+      {
+        "type": "timestamp with time zone",
+        "table": "tarea",
+        "column": "fecha_creacion",
+        "nullable": "NO"
+      },
+      {
+        "type": "timestamp with time zone",
+        "table": "tarea",
+        "column": "fecha_completada",
+        "nullable": "YES"
+      }
+    ],
+    "objects": [
+      {
+        "name": "convivencia_mensajeria.arriendo",
+        "present": true
+      },
+      {
+        "name": "convivencia_mensajeria.pertenencia",
+        "present": true
+      },
+      {
+        "name": "convivencia_mensajeria.incorporacion",
+        "present": true
+      },
+      {
+        "name": "convivencia_mensajeria.outbox",
+        "present": true
+      },
+      {
+        "name": "convivencia_mensajeria.conversacion",
+        "present": true
+      },
+      {
+        "name": "convivencia_mensajeria.mensaje",
+        "present": true
+      },
+      {
+        "name": "convivencia_mensajeria.mensajes",
+        "present": false
+      },
+      {
+        "name": "convivencia_mensajeria.tarea",
+        "present": true
+      },
+      {
+        "name": "convivencia_mensajeria.retiro",
+        "present": false
+      },
+      {
+        "name": "convivencia_mensajeria.retiro_outbox",
+        "present": false
+      },
+      {
+        "name": "convivencia_mensajeria.expulsion",
+        "present": false
+      },
+      {
+        "name": "convivencia_mensajeria.expulsion_outbox",
+        "present": false
+      },
+      {
+        "name": "supabase_migrations.schema_migrations",
+        "present": true
+      }
+    ],
+    "database": "postgres",
+    "executor": "postgres",
+    "triggers": [
+      {
+        "name": "pertenencia_capacidad",
+        "event": "INSERT",
+        "table": "pertenencia",
+        "timing": "BEFORE"
+      },
+      {
+        "name": "pertenencia_capacidad",
+        "event": "UPDATE",
+        "table": "pertenencia",
+        "timing": "BEFORE"
+      },
+      {
+        "name": "registrar_fin_pertenencia",
+        "event": "UPDATE",
+        "table": "pertenencia",
+        "timing": "BEFORE"
+      },
+      {
+        "name": "desasignar_tareas_retirado",
+        "event": "UPDATE",
+        "table": "pertenencia",
+        "timing": "AFTER"
+      }
+    ],
+    "checked_at": "2026-11-26T23:48:16.473424+00:00",
+    "constraints": [
+      {
+        "name": "arriendo_cupos_totales_check",
+        "table": "arriendo",
+        "definition": "CHECK ((cupos_totales > 0))"
+      },
+      {
+        "name": "arriendo_id_publicacion_check",
+        "table": "arriendo",
+        "definition": "CHECK ((id_publicacion > 0))"
+      },
+      {
+        "name": "arriendo_id_publicacion_key",
+        "table": "arriendo",
+        "definition": "UNIQUE (id_publicacion)"
+      },
+      {
+        "name": "arriendo_pkey",
+        "table": "arriendo",
+        "definition": "PRIMARY KEY (id_arriendo)"
+      },
+      {
+        "name": "arriendo_version_capacidad_check",
+        "table": "arriendo",
+        "definition": "CHECK ((version_capacidad > 0))"
+      },
+      {
+        "name": "arriendo_version_ocupacion_check",
+        "table": "arriendo",
+        "definition": "CHECK ((version_ocupacion >= 0))"
+      },
+      {
+        "name": "pertenencia_estado_check",
+        "table": "pertenencia",
+        "definition": "CHECK ((estado = ANY (ARRAY['Activa'::text, 'Inactiva'::text])))"
+      },
+      {
+        "name": "pertenencia_id_arriendo_fkey",
+        "table": "pertenencia",
+        "definition": "FOREIGN KEY (id_arriendo) REFERENCES convivencia_mensajeria.arriendo(id_arriendo)"
+      },
+      {
+        "name": "pertenencia_id_operacion_fkey",
+        "table": "pertenencia",
+        "definition": "FOREIGN KEY (id_operacion) REFERENCES convivencia_mensajeria.incorporacion(id_operacion)"
+      },
+      {
+        "name": "pertenencia_id_operacion_key",
+        "table": "pertenencia",
+        "definition": "UNIQUE (id_operacion)"
+      },
+      {
+        "name": "pertenencia_id_postulacion_check",
+        "table": "pertenencia",
+        "definition": "CHECK ((id_postulacion > 0))"
+      },
+      {
+        "name": "pertenencia_id_postulacion_key",
+        "table": "pertenencia",
+        "definition": "UNIQUE (id_postulacion)"
+      },
+      {
+        "name": "pertenencia_id_usuario_check",
+        "table": "pertenencia",
+        "definition": "CHECK ((id_usuario > 0))"
+      },
+      {
+        "name": "pertenencia_intervalo_valido",
+        "table": "pertenencia",
+        "definition": "CHECK (((terminada_en IS NULL) OR ((estado = 'Inactiva'::text) AND (terminada_en >= creada_en))))"
+      },
+      {
+        "name": "pertenencia_pkey",
+        "table": "pertenencia",
+        "definition": "PRIMARY KEY (id_pertenencia)"
+      },
+      {
+        "name": "tarea_check",
+        "table": "tarea",
+        "definition": "CHECK (((((estado)::text = 'Pendiente'::text) AND (fecha_completada IS NULL)) OR (((estado)::text = 'Completada'::text) AND (fecha_completada IS NOT NULL))))"
+      },
+      {
+        "name": "tarea_estado_check",
+        "table": "tarea",
+        "definition": "CHECK (((estado)::text = ANY ((ARRAY['Pendiente'::character varying, 'Completada'::character varying])::text[])))"
+      },
+      {
+        "name": "tarea_id_arriendo_fkey",
+        "table": "tarea",
+        "definition": "FOREIGN KEY (id_arriendo) REFERENCES convivencia_mensajeria.arriendo(id_arriendo)"
+      },
+      {
+        "name": "tarea_id_asignado_check",
+        "table": "tarea",
+        "definition": "CHECK ((id_asignado > 0))"
+      },
+      {
+        "name": "tarea_id_creador_check",
+        "table": "tarea",
+        "definition": "CHECK ((id_creador > 0))"
+      },
+      {
+        "name": "tarea_pkey",
+        "table": "tarea",
+        "definition": "PRIMARY KEY (id_tarea)"
+      },
+      {
+        "name": "tarea_titulo_check",
+        "table": "tarea",
+        "definition": "CHECK (((length(btrim((titulo)::text)) >= 1) AND (length(btrim((titulo)::text)) <= 120)))"
+      }
+    ],
+    "postgres_version": "17.6"
+  },
+  "history_and_privileges": {
+    "checked_at": "2026-11-26T23:49:21.083489+00:00",
+    "table_access": [
+      {
+        "kind": "r",
+        "table": "arriendo",
+        "delete": false,
+        "insert": true,
+        "select": true
+      },
+      {
+        "kind": "r",
+        "table": "pertenencia",
+        "delete": false,
+        "insert": true,
+        "select": true
+      },
+      {
+        "kind": "r",
+        "table": "tarea",
+        "delete": false,
+        "insert": true,
+        "select": true
+      }
+    ],
+    "update_grants": [
+      {
+        "table": "arriendo",
+        "column": "version_ocupacion",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "outbox",
+        "column": "ultimo_intento",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "incorporacion",
+        "column": "ultimo_intento",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "incorporacion",
+        "column": "respuesta",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "outbox",
+        "column": "reserva",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "incorporacion",
+        "column": "payload",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "outbox",
+        "column": "id_outbox",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "outbox",
+        "column": "id_operacion",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "incorporacion",
+        "column": "id_operacion",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "tarea",
+        "column": "id_asignado",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "incorporacion",
+        "column": "http_status",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "tarea",
+        "column": "fecha_completada",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "incorporacion",
+        "column": "etapa",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "tarea",
+        "column": "estado",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "pertenencia",
+        "column": "estado",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "incorporacion",
+        "column": "estado",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "outbox",
+        "column": "enviado",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "arriendo",
+        "column": "creado_en",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "incorporacion",
+        "column": "creada_en",
+        "privilege": "UPDATE"
+      },
+      {
+        "table": "outbox",
+        "column": "accion",
+        "privilege": "UPDATE"
+      }
+    ],
+    "migration_history": [
+      {
+        "name": "roomies_sprint2_stage1_additive",
+        "version": "20261104060118"
+      },
+      {
+        "name": "roomies_ti2_sprint3_listado_aditivo_haycupo",
+        "version": "20261123040924"
+      },
+      {
+        "name": "roomies_ti2_listado_insert_version_ocupacion",
+        "version": "20261123041819"
+      },
+      {
+        "name": "scrum111_perfil_comun",
+        "version": "20261123214834"
+      }
+    ]
+  }
+}

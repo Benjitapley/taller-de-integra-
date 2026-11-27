@@ -327,7 +327,9 @@ def test_disposable_keeps_its_local_destination(insecure_test, monkeypatch):
     "https://roomies-listado.onrender.com/",
     "https://roomies-match.onrender.com:443",
 ])
-def test_shared_services_use_configured_https_origins(real, monkeypatch, variable, origin):
+@pytest.mark.parametrize("mode", ["supabase", "kubero"])
+def test_shared_services_use_configured_https_origins(real, monkeypatch, variable, origin, mode):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", mode)
     monkeypatch.setenv(variable, origin)
     assert service_url(variable) == origin.rstrip("/")
 
@@ -360,7 +362,9 @@ def test_shared_services_use_configured_https_origins(real, monkeypatch, variabl
     "//roomies-auth.onrender.com",
     "file:///etc/passwd",
 ])
-def test_shared_services_reject_invalid_origins(real, monkeypatch, origin):
+@pytest.mark.parametrize("mode", ["supabase", "kubero"])
+def test_shared_services_reject_invalid_origins(real, monkeypatch, origin, mode):
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", mode)
     monkeypatch.setenv("AUTH_USERS_UPSTREAM_URL", origin)
     with pytest.raises(DependencyUnavailable):
         service_url("AUTH_USERS_UPSTREAM_URL")

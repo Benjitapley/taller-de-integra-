@@ -1,0 +1,36 @@
+{
+  "checked_at": "2026-11-26T23:43:30.814126+00:00",
+  "source_sha": "bd8f788",
+  "scope": "public HTTP checks without credentials; no business mutations",
+  "checks": [
+    {
+      "url": "https://roomies-gateway-test.inf.uct.cl/health",
+      "status": 200,
+      "body": {"status": "ok"}
+    },
+    {
+      "url": "https://roomies-gateway-test.inf.uct.cl/openapi.json",
+      "status": 404
+    },
+    {
+      "url": "https://roomies-gateway-test.inf.uct.cl/api/arriendos/mio",
+      "status": 503
+    },
+    {
+      "url": "https://roomies-gateway-test.inf.uct.cl/api/publicaciones",
+      "status": 503
+    },
+    {
+      "url": "https://taller-de-integra-frontend-next.vercel.app/",
+      "status": 200,
+      "server": "Vercel"
+    }
+  ],
+  "administration": {
+    "kubero": "redirected to /login; authentication required",
+    "supabase": "redirected to dashboard/sign-in; authentication required"
+  },
+  "migration_verification": "not performed; authenticated SQL access required",
+  "deployed_sha_or_digest": "not exposed by inspected HTTP responses; administration access required",
+  "e05_scenario": "not performed; dependencies unavailable and authenticated test actors required"
+}

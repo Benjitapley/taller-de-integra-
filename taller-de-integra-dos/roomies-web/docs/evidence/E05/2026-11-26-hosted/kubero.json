@@ -1,0 +1,53 @@
+{
+  "checked_at": "2026-11-26T23:48:37Z",
+  "pipeline": "roomies",
+  "phase": "test",
+  "gateway_detail": "https://kubero.inf.uct.cl/pipeline/roomies/test/roomies-gateway-test/detail",
+  "applications": [
+    {
+      "name": "roomies-db-admin-test",
+      "image": "postgres:17.6"
+    },
+    {
+      "name": "roomies-db-test",
+      "image": "ghcr.io/kubero-dev/idler:latest"
+    },
+    {
+      "name": "roomies-db-test2",
+      "image": "ghcr.io/kubero-dev/idler:latest"
+    },
+    {
+      "name": "roomies-gateway-test",
+      "image": "ghcr.io/cparra2007/roomies-api-gateway:sha-1267d9e",
+      "environment_keys": [
+        "ROOMIES_RUNTIME_MODE",
+        "MATCH_UPSTREAM_URL"
+      ]
+    },
+    {
+      "name": "roomies-match-test",
+      "image": "ghcr.io/cparra2007/roomies-match-conexion:sha-72e4bd6"
+    }
+  ],
+  "missing_services": [
+    "auth-users",
+    "listado-applications",
+    "convivencia-mensajeria"
+  ],
+  "registry_checks": [
+    {
+      "image": "ghcr.io/cparra2007/roomies-api-gateway:sha-1267d9e",
+      "status": 200,
+      "registry_manifest_digest": "sha256:afd6e339836ea0a848e34bccb2d92e30e19c7aef4f04ebcc80a1d2f277d89c16",
+      "revision_label": "1267d9e7cc847262caa0f9cadfa986d4f7f768ba"
+    },
+    {
+      "image": "ghcr.io/cparra2007/roomies-match-conexion:sha-72e4bd6",
+      "status": 200,
+      "registry_manifest_digest": "sha256:6423c9e38b695cf39c3a741258986d58893e537c8403326041b12e51eeea9fa2",
+      "revision_label": null
+    }
+  ],
+  "running_container_digest": "not obtained; registry tags are not proof of running imageID",
+  "mutations_performed": false
+}

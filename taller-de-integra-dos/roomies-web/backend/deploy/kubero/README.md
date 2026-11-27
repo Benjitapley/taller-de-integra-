@@ -1,5 +1,11 @@
 # E04: despliegue TEST
 
+## Destino confirmado y preparacion de E05
+
+El usuario confirmo PostgreSQL de Kubero como destino de negocio el 26/11/2026. La [inspeccion SQL real de Kubero](../../../docs/evidence/E05/2026-11-26-hosted/kubero-sql-preflight.json) encontro solo `public.prueba_persistencia_scrum100`; faltan los esquemas y roles de Auth/Listado/Convivencia. Los resultados de migraciones Supabase que siguen describen ese otro destino y no acreditan migraciones en Kubero.
+
+La revision local actual habilita los contratos completos de Gateway y Auth/Users con `ROOMIES_RUNTIME_MODE=kubero`, sin habilitar `ROOMIES_LOCAL_MODE`, y los upstreams HTTPS del operador para los servicios. Para PostgreSQL Kubero utilizar su configuracion de destino y TLS/excepcion TEST documentada, no `ROOMIES_SUPABASE_DB_HOST`. Mantener Supabase como proveedor de identidad. La correccion no esta desplegada: faltan esquemas/roles, datos conciliados e imagenes publicadas.
+
 Destino compartido confirmado: `https://roomies-gateway-test.inf.uct.cl`.
 Proyecto Supabase: `erefnpvdjondjpcyjrpb`.
 

@@ -1,8 +1,8 @@
-name: E04 test images
+name: Roomies TEST images
 
 on:
   push:
-    branches: [deploy/e04-kubero-test]
+    branches: [deploy/e04-kubero-test, deploy/e05-kubero-test]
   workflow_dispatch:
 
 permissions:
@@ -60,7 +60,7 @@ jobs:
             --file "$DOCKERFILE" --tag "$IMAGE" "$BUILD_CONTEXT"
       - name: Check image starts and serves health
         run: |
-          docker run -d --name e04-health -e ROOMIES_RUNTIME_MODE=supabase -p 127.0.0.1:18000:8000 "$IMAGE"
+          docker run -d --name e04-health -e ROOMIES_RUNTIME_MODE=kubero -p 127.0.0.1:18000:8000 "$IMAGE"
           trap 'docker rm -f e04-health >/dev/null 2>&1 || true' EXIT
           for attempt in $(seq 1 30); do
             if curl --silent --fail http://127.0.0.1:18000/health; then

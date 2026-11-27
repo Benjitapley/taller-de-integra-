@@ -148,7 +148,7 @@ def service_url(variable, *, docker_hosts=()):
         local = (parsed.scheme == "http" and
                  parsed.hostname in {"127.0.0.1", "localhost", *docker_hosts} and
                  port is not None and port > 0)
-        remote = (mode == "supabase" and variable in upstream_variables and
+        remote = (mode in {"supabase", "kubero"} and variable in upstream_variables and
                   parsed.scheme == "https" and
                   re.fullmatch(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", parsed.hostname or "") and
                   len(parsed.hostname) <= 253 and (port is None or port > 0))

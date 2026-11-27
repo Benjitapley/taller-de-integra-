@@ -46,6 +46,26 @@ def test_internal_and_noncanonical_arriendos_paths_are_not_routed(path):
     assert result.headers["cache-control"] == "no-store"
 
 
+def test_kubero_mode_exposes_e05_without_enabling_disposable_mode(monkeypatch):
+    monkeypatch.delenv("ROOMIES_LOCAL_MODE", raising=False)
+    monkeypatch.setenv("ROOMIES_RUNTIME_MODE", "kubero")
+    monkeypatch.setenv("CONVIVENCIA_UPSTREAM_URL", "https://roomies-convivencia-test.inf.uct.cl")
+
+    def handler(request):
+        assert request.url.host == "roomies-convivencia-test.inf.uct.cl"
+        assert request.url.path == "/api/arriendos/7/expulsiones"
+        assert request.headers["authorization"] == "Bearer synthetic"
+        return reply(200, content=b'{}', headers={"Content-Type": "application/json"})
+
+    config = Settings.from_env()
+    result = exercise(handler, method="POST", path="/api/arriendos/7/expulsiones", settings=config,
+                      headers={"Authorization": "Bearer synthetic"},
+                      json={"id_usuario": 2, "motivo": "Prueba", "confirmo": True})
+    assert result.status_code == 200
+    assert result.headers["cache-control"] == "no-store"
+    assert exercise(unexpected, path="/internal/incorporaciones", settings=config).status_code == 404
+
+
 def test_arriendos_are_read_only_and_disabled_without_configuration():
     config = Settings(local_mode=True)
     result = exercise(unexpected, path="/api/arriendos/mio", settings=config)
